@@ -479,7 +479,7 @@ proc parseExpr(self: Parser; precedence: Precedence): Node =
         self.skipLine()
         return newEmptyNode()
     elif indentErrorCode == -1:
-        self.err("indentation error: got -1 from 'checkIndent'")
+        self.blocks.drop()
 
     if self.isKind(TopLevelComment):
         self.parseTestComment()
@@ -733,8 +733,11 @@ proc parseIfExpr(self: Parser): Node
             break
 
         self.blocks.push(self.blockContextFromCurrentToken())
-        if self.token.checkIndent(self.blocks.peek()) != 0:
-            self.errInvalidBlockContext()
+
+        case self.token.checkIndent(self.blocks.peek())
+        of -1 : self.blocks.drop()
+        of 1  : self.errInvalidBlockContext()
+        else: discard
 
         let expr = self.parseExpr()
         self.blocks.drop()
@@ -792,6 +795,7 @@ proc parseBlockExpr(self: Parser; result: Node) =
             self.skipLine()
             continue
         elif checkResult < 0:
+            self.blocks.drop()
             break
 
         if not self.isExprStart() and result.len() > 0:
