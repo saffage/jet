@@ -1,6 +1,32 @@
+# Building from source
+
+To build Jet you need:
+  - The [Nim compiler](https://nim-lang.org/) of version 2.0.0 or higher
+  - Nimble package manager (ships with the Nim compiler)
+  - Any C compiler like GCC, Clang or ZigCC
+
+Then run this commands to build **Jet**:
+
+```bash
+$ nimble build
+```
+
+Or this for release build:
+
+```bash
+$ nimble release
+```
+
 # Build switches
 
-* `jetBuildGrammar` - build grammar into 'grammar.peg' file
+Any build switch can be enabled via **Nimble** with `-d:<flag>` flag, for example:
+
+```bash
+$ nimble build -d:jetBuildGrammar
+```
+
+All available build switches:
+  - `jetBuildGrammar` - build grammar into 'grammar.peg' file
 
 # TODO
 
