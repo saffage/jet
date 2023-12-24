@@ -1,0 +1,487 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Jet",
+	"scopeName": "source.jet",
+	"patterns": [
+		{ "include": "#illegal-indent" },
+		{ "include": "#comments" },
+		{ "include": "#keywords" },
+		{ "include": "#pragma" },
+		{ "include": "#builtin" },
+		{ "include": "#char-lit" },
+		{ "include": "#string-lit" },
+		{ "include": "#number-lit" },
+		{ "include": "#enum-lit" },
+		{ "include": "#routine-call" },
+		{ "include": "#type-identifier" },
+		{ "include": "#quoted-identifier" },
+		{ "include": "#parenthesis" },
+		{ "include": "#braces" },
+		{ "include": "#brackets" }
+	],
+	"repository": {
+		"illegal-indent": {
+			"patterns": [
+				{
+					"name": "invalid.illegal.indent.jet",
+					"match": "\\t"
+				}
+			]
+		},
+		"comments": {
+			"patterns": [
+				{
+					"name": "comment.block.documentation.module.jet",
+					"contentName": "comment.block.documentation.module.content.jet",
+					"begin": "//!",
+					"end": "$"
+				},
+				{
+					"name": "comment.block.documentation",
+					"contentName": "comment.block.documentation.content.jet",
+					"begin": "///",
+					"end": "$"
+				},
+				{
+					"name": "comment.line.bold",
+					"contentName": "comment.line.bold.content.jet",
+					"begin": "//>",
+					"end": "$"
+				},
+				{
+					"name": "comment.line",
+					"contentName": "comment.line.content.jet",
+					"begin": "//",
+					"end": "$"
+				}
+			]
+		},
+		"keywords": {
+			"patterns": [
+				{
+					"name": "constant.language.jet",
+					"match": "\\b(true|false|null|undefined)\\b"
+				},
+				{
+					"name": "variable.language.var.jet",
+					"match": "\\b(var)\\b"
+				},
+				{
+					"name": "storage.modifier.jet",
+					"match": "\\b(public|private)\\b"
+				},
+				{
+					"name": "keyword.operator.jet",
+					"match": "\\b(not|in|or|and|xor|is|as)\\b"
+				},
+				{
+					"name": "keyword.control.jet",
+					"match": "\\b(if|elif|else|match|while|loop|for|continue|break|return)\\b"
+				},
+				{
+					"name": "keyword.other.jet",
+					"match": "\\b(module|using|def|typedef|let|mut|const|val|where|do|of)\\b"
+				}
+			]
+		},
+		"pragma": {
+			"patterns": [
+				{
+					"begin": "((\\#\\!)|(\\#))\\[",
+					"beginCaptures": {
+						"0": { "name": "support.other.pragma.begin.jet" },
+						"2": { "name": "support.other.pragma.global-prefix.jet" },
+						"3": { "name": "support.other.pragma.prefix.jet" }
+					},
+					"end": "\\]",
+					"endCaptures": {
+						"0": { "name": "support.other.pragma.end.jet" }
+					},
+					"patterns": [
+						{
+							"comment": "Pragma parameters",
+							"begin": "\\(",
+							"beginCaptures": {
+								"0": { "name": "support.other.pragma.parenthesis.open.jet" }
+							},
+							"end": "\\)",
+							"endCaptures": {
+								"0": { "name": "support.other.pragma.parenthesis.close.jet" }
+							},
+							"patterns": [
+								{ "include": "source.jet" }
+							]
+						},
+						{
+							"match": "\\b([A-Za-z_][A-Za-z_0-9]*)\\b",
+							"captures": {
+								"1": { "name": "support.other.pragma.name.jet" }
+							}
+						},
+						{
+							"match": ",",
+							"name": "support.other.pragma.separator.jet"
+						}
+					]
+				},
+				{
+					"match": "((\\#\\!)|(\\#))[A-Za-z_][A-Za-z_0-9]*",
+					"captures": {
+						"0": { "name": "support.other.pragma.name.jet" },
+						"2": { "name": "support.other.pragma.global-prefix.jet" },
+						"3": { "name": "support.other.pragma.prefix.jet" }
+					}
+				}
+			]
+		},
+		"built-in-generic-parameter": {
+			"patterns": [
+				{
+					"match": "(?<![A-Za-z_0-9\\)\\}\\]])\\<([A-Za-z_][A-Za-z_0-9]*)\\>(?![A-Za-z_0-9\\(\\{\\[])",
+					"captures": {
+						"0": { "name": "entity.type.generic.angle-brackets.jet" },
+						"1": { "name": "entity.type.generic.identifier.jet" }
+					}
+				}
+			]
+		},
+		"builtin-types": {
+			"patterns": [
+				{
+					"comment": "Primitive types",
+					"name": "storage.type.jet",
+					"match": "\\b(unit|bool|[ui](8|16|32|64|size)|f(32|64))\\b"
+				},
+				{
+					"comment": "C Primitive types",
+					"name": "storage.type.jet",
+					"match": "\\b(cshort|cint|clong|clonglong|cushort|cuint|culong|culonglong|cfloat|cdouble|clongdouble|csize)\\b"
+				},
+				{
+					"comment": "Type aliases",
+					"name": "storage.type.jet",
+					"match": "\\b(char|string)\\b"
+				},
+				{
+					"comment": "Reserved",
+					"name": "storage.modifier.jet",
+					"match": "\\b(ref|out)\\b"
+				}
+			]
+		},
+		"builtin": {
+			"patterns": [
+				{ "include": "#builtin-types" },
+				{ "include": "#built-in-generic-parameter" },
+				{
+					"name": "keyword.other.function.jet",
+					"match": "\\b(sizeof|default)\\b"
+				},
+				{
+					"name": "keyword.operator.colon-colon.jet",
+					"match": "\\:\\:"
+				},
+				{
+					"name": "keyword.operator.colon.jet",
+					"match": "\\:"
+				},
+				{
+					"name": "keyword.operator.dot.jet",
+					"match": "\\."
+				},
+				{
+					"name": "keyword.operator.underscore.jet",
+					"match": "\\b\\_\\b"
+				},
+				{
+					"comment": "Operators",
+					"name": "keyword.operator.jet",
+					"match": "(\\!|\\?|\\>|\\<|\\=|\\+|\\-|\\*|\\/|\\%|\\&|\\$|\\^|\\@|\\|)"
+				}
+			]
+		},
+		"routine-call": {
+			"patterns": [
+				{
+					"match": "\\b([_a-zA-Z]\\w*)\\b(?=\\()",
+					"captures": {
+						"1": { "name": "entity.name.function.jet" }
+					}
+				}
+			]
+		},
+		"type-identifier": {
+			"patterns": [
+				{
+					"match": "\\b([A-Z][A-Za-z_0-9]*)\\b(\\?)?",
+					"captures": {
+						"1": { "name": "meta.type.name.jet" },
+						"2": { "name": "keyword.type.jet" }
+					}
+				}
+			]
+		},
+		"quoted-identifier": {
+			"patterns": [
+				{
+					"match": "`.*?`",
+					"name": "variable.name.jet"
+				}
+			]
+		},
+		"braces": {
+			"patterns": [
+				{
+					"begin": "\\{",
+					"beginCaptures": {
+						"0": { "name": "punctuation.brace.open.jet" }
+					},
+					"end": "\\}",
+					"endCaptures": {
+						"0": { "name": "punctuation.brace.close.jet" }
+					},
+					"patterns": [
+						{ "include": "source.jet" }
+					]
+				}
+			]
+		},
+		"brackets": {
+			"patterns": [
+				{
+					"begin": "\\[",
+					"beginCaptures": {
+						"0": { "name": "punctuation.bracket.open.jet" }
+					},
+					"end": "\\]",
+					"endCaptures": {
+						"0": { "name": "punctuation.bracket.close.jet" }
+					},
+					"patterns": [
+						{ "include": "source.jet" }
+					]
+				}
+			]
+		},
+		"parenthesis": {
+			"patterns": [
+				{
+					"begin": "\\(",
+					"beginCaptures": {
+						"0": { "name": "punctuation.parenthesis.open.jet" }
+					},
+					"end": "\\)",
+					"endCaptures": {
+						"0": { "name": "punctuation.parenthesis.close.jet" }
+					},
+					"patterns": [
+						{ "include": "source.jet" }
+					]
+				}
+			]
+		},
+		"string-lit": {
+			"patterns": [
+				{
+					"name": "string.jet",
+					"begin": "(?<=\\$)\"\"\"",
+					"end": "\"\"\"(?!\")",
+					"patterns": [
+						{ "include": "#string-fmt" },
+						{ "include": "#string-esc" }
+					]
+				},
+				{
+					"name": "string.jet",
+					"begin": "(?<=\\$)\"",
+					"end": "\"",
+					"patterns": [
+						{ "include": "#string-fmt" },
+						{ "include": "#string-esc" }
+					]
+				},
+				{
+					"name": "string.jet",
+					"begin": "(?<=\\$)(r|R)\"\"\"",
+					"beginCaptures": {
+						"1": { "name": "string.raw.jet" }
+					},
+					"end": "\"\"\"(?!\")",
+					"patterns": [
+						{ "include": "#string-fmt" }
+					]
+				},
+				{
+					"name": "string.jet",
+					"begin": "(?<=\\$)(r|R)\"",
+					"beginCaptures": {
+						"1": { "name": "string.raw.jet" }
+					},
+					"end": "\"",
+					"patterns": [
+						{ "include": "#string-fmt" }
+					]
+				},
+				{
+					"name": "string.quoted.triple.jet",
+					"begin": "(r|R)\"\"\"",
+					"beginCaptures": {
+						"1": { "name": "string.raw.jet" }
+					},
+					"end": "\"\"\"(?!\")"
+				},
+				{
+					"name": "string.quoted.triple.jet",
+					"begin": "\"\"\"",
+					"end": "\"\"\"(?!\")",
+					"patterns": [
+						{ "include": "#string-esc" }
+					]
+				},
+				{
+					"name": "string.quoted.double.jet",
+					"begin": "(r|R)\"",
+					"beginCaptures": {
+						"1": { "name": "string.raw.jet" }
+					},
+					"end": "\"(?!\")"
+				},
+				{
+					"name": "string.quoted.double.jet",
+					"begin": "\"",
+					"end": "\"",
+					"patterns": [
+						{ "include": "#string-esc" }
+					]
+				}
+			]
+		},
+		"char-lit": {
+			"patterns": [
+				{
+					"name": "string.quoted.single.jet",
+					"begin": "\\'",
+					"end": "\\'",
+					"patterns": [
+						{ "include": "#char-esc" },
+						{
+							"match": "\\\\."
+						}
+					]
+				}
+			]
+		},
+		"number-lit": {
+			"patterns": [
+				{
+					"name": "constant.numeric.float.jet",
+					"match": "(-)?\\b[0-9][_0-9]*((\\.[0-9][_0-9]*)?([eE][+-]?[0-9][_0-9]*)?)([a-zA-Z]\\w*)?\\b",
+					"captures": {
+						"1": { "name": "keyword.operator.jet" },
+						"4": { "name": "keyword.operator.jet" },
+						"5": { "name": "constant.numeric.suffix.jet" }
+					}
+				},
+				{
+					"name": "constant.numeric.hexadecimal.jet",
+					"match": "(-)?\\b(0[xX])[0-9a-fA-F][_0-9a-fA-F]*([a-zA-Z]\\w*)?\\b",
+					"captures": {
+						"1": { "name": "keyword.operator.jet" },
+						"2": { "name": "constant.numeric.prefix.jet" },
+						"3": { "name": "constant.numeric.suffix.jet" }
+					}
+				},
+				{
+					"name": "constant.numeric.octal.jet",
+					"match": "(-)?\\b(0o|(0O))[0-7][_0-7]*([a-zA-Z]\\w*)?\\b",
+					"captures": {
+						"1": { "name": "keyword.operator.jet" },
+						"2": { "name": "constant.numeric.prefix.jet" },
+						"3": { "name": "invalid.illegal.numeric.prefix.jet" },
+						"4": { "name": "constant.numeric.suffix.jet" }
+					}
+				},
+				{
+					"name": "constant.numeric.binary.jet",
+					"match": "(-)?\\b(0[bB])[01][_01]*([a-zA-Z]\\w*)?\\b",
+					"captures": {
+						"1": { "name": "keyword.operator.jet" },
+						"2": { "name": "constant.numeric.prefix.jet" },
+						"3": { "name": "constant.numeric.suffix.jet" }
+					}
+				},
+				{
+					"name": "constant.numeric.decimal.jet",
+					"match": "(-)?\\b[0-9][_0-9]*([a-zA-Z]\\w*)?\\b",
+					"captures": {
+						"1": { "name": "keyword.operator.jet" },
+						"2": { "name": "constant.numeric.suffix.jet" }
+					}
+				}
+			]
+		},
+		"char-esc": {
+			"patterns": [
+				{
+					"name": "constant.character.escape.jet",
+					"match": "\\\\[0nrtvbf\\\\\\'\\\"]"
+				},
+				{
+					"name": "constant.character.escape.jet",
+					"match": "\\\\x\\h\\h"
+				},
+				{
+					"name": "invalid.escape.jet",
+					"match": "\\\\."
+				}
+			]
+		},
+		"string-esc": {
+			"patterns": [
+				{
+					"name": "constant.character.escape.jet",
+					"match": "\\\\u[0-9a-fA-F]{4}"
+				},
+				{
+					"name": "constant.character.escape.jet",
+					"match": "\\\\u\\[[0-9a-fA-F]{1,4}\\]"
+				},
+				{ "include": "#char-esc" }
+			]
+		},
+		"string-fmt": {
+			"patterns": [
+				{
+					"name": "constant.character.escape.jet",
+					"match": "\\}\\}|\\{\\{"
+				},
+				{
+					"name": "meta.template.expression.jet",
+					"begin": "\\{",
+					"beginCaptures": {
+						"0": { "name": "string.interpolated.jet" }
+					},
+					"end": "\\}",
+					"endCaptures": {
+						"0": { "name": "string.interpolated.jet" }
+					},
+					"patterns": [
+						{
+							"name": "string.interpolated.format.jet",
+							"begin": ":",
+							"beginCaptures": {
+								"0": { "name": "string.interpolated.jet" }
+							},
+							"end": "(?=\\})"
+						},
+						{ "include": "source.jet" }
+					]
+				},
+				{
+					"name": "invalid.illegal.escape.jet",
+					"match": "\\{|\\}"
+				}
+			]
+		}
+	}
+}

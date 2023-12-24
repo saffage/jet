@@ -1,0 +1,28 @@
+{
+    ".source.jet": {
+        "def": {
+            "prefix": "def",
+            "body": "def ${1:name}(${2:arguments}) ${3:return type} = \n\t$0"
+        },
+        "typedef": {
+            "prefix": "type",
+            "body": "typedef ${1:name} = \n\t$0"
+        },
+        "record": {
+            "prefix": "record",
+            "body": "typedef ${1:name} = {\n\t$0\n}"
+        },
+        "if": {
+            "prefix": "if",
+            "body": "if ${1:expression} do\n\t$0"
+        },
+        "for": {
+            "prefix": "for",
+            "body": "for ${1:variable} in ${2:iterator or array} do\n\t$0"
+        },
+        "while": {
+            "prefix": "while",
+            "body": "while ${1:expression} do\n\t$0"
+        }
+    }
+}

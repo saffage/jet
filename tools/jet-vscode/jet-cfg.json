@@ -1,0 +1,48 @@
+{
+    "comments": {
+        "lineComment": "//"
+    },
+    "brackets": [
+        ["#[", "]"],
+        ["(", ")"],
+        ["[", "]"],
+        ["{", "}"]
+    ],
+    "autoClosingPairs": [
+        { "open": "#[", "close": "]" },
+        { "open": "(", "close": ")" },
+        { "open": "[", "close": "]" },
+        { "open": "{", "close": "}" },
+        { "open": "'", "close": "'", "notIn": ["string", "comment"] },
+        { "open": "\"", "close": "\"", "notIn": ["string"] }
+    ],
+    "surroundingPairs": [
+        { "open": "#[", "close": "]"},
+        { "open": "(", "close": ")"},
+        { "open": "[", "close": "]"},
+        { "open": "{", "close": "}"},
+        { "open": "'", "close": "'"},
+        { "open": "\"", "close": "\""}
+    ],
+    "folding": {
+        "offSide": true,
+		"markers": {
+            "start": "^\\s*#region",
+            "end": "^\\s*#endregion"
+        }
+	},
+    "onEnterRules": [
+        {
+          "beforeText": "^\\s*(?:if|elif|else|match|while|loop|def).*?(do|=)\\s*$",
+          "action": { "indent": "indent" }
+        },
+        {
+            "beforeText": "^\\s*//!.*$",
+            "action": { "indent": "none", "appendText": "//! " }
+        },
+        {
+            "beforeText": "^\\s*///.*$",
+            "action": { "indent": "none", "appendText": "/// " }
+        }
+    ]
+}
