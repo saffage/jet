@@ -4,4 +4,4 @@
 
 # TODO
 
-* remove old implementation of VM from 'vm.nim'
+Nothing
