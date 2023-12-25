@@ -83,8 +83,18 @@ proc parseExprParen(self: Parser; left: Node): Node
 proc parseExprBrace(self: Parser; left: Node): Node
 
 proc isTypeExprStart(self: Parser): bool
-proc parseBlock(self: Parser; result: Node; fn: ParseFn = parseExpr)
-proc parseList(self: Parser; result: Node; until, separator: TokenKind; fn: ParseFn = parseExpr)
+proc parseBlock(
+    self: Parser;
+    result: Node;
+    context: BlockContext;
+    until: TokenKind = Semicolon;
+    fn: ParseFn = parseExpr)
+proc parseList(
+    self: Parser;
+    result: Node;
+    until: TokenKind;
+    separator: TokenKind;
+    fn: ParseFn = parseExpr)
 
 proc parseInfixOp(self: Parser; left: Node): Node
 proc parseExprEqExpr(self: Parser; left: Node): Node
@@ -123,6 +133,8 @@ proc nextToken(self: Parser; checkIndent: bool = true)
 
 
 # ----- ERRORS ----- #
+{.push used.}
+
 proc err(self: Parser; msg: string) =
     error(msg, self.token.info)
     raise newException(ParserError, msg)
@@ -158,11 +170,13 @@ proc errInvalidIndent(self: Parser; explanation: string) =
 proc errInvalidIndent(self: Parser) =
     self.errSyntax(fmt"invalid indentation")
 
-proc errInvalidBlockContext(self: Parser) =
-    let blockContext = self.blocks.peek()
+proc errInvalidBlockContext(self: Parser; context: BlockContext) =
     self.errInvalidIndent(
-        fmt"This token is offside the context started at position [{blockContext.line}:{blockContext.getColumn()}], " &
+        fmt"This token is offside the context started at position [{context.line}:{context.getColumn()}], " &
         fmt"token position is [{self.token.info.dupNoLength()}]. This line will be skipped")
+
+proc errInvalidBlockContext(self: Parser) =
+    self.errInvalidBlockContext(self.blocks.peek())
 
 proc errInvalidNotation(self: Parser; explanation: string) =
     self.errSyntax(fmt"invalid notation. {explanation}")
@@ -182,11 +196,13 @@ proc errExpectedLastInLine(self: Parser; explanation: string) =
 proc errExpectedLastInLine(self: Parser) =
     self.errSyntax(fmt"token {self.token} must be last in line")
 
+proc errUnknownOp(self: Parser; op, explanation: string) =
+    self.err(fmt"Unknown operator: '{op}'. {explanation}")
+
 proc errUnknownOp(self: Parser; op: string) =
     self.err(fmt"Unknown operator: '{op}'")
 
-proc errUnknownOp(self: Parser; op, explanation: string) =
-    self.err(fmt"Unknown operator: '{op}'. {explanation}")
+{.pop.} # used
 
 
 # ----- PRIVATE ----- #
@@ -195,12 +211,6 @@ template isKind(self: Parser; tokenKinds: set[TokenKind]): bool = self.token.kin
 
 proc isSameLine(self: Parser): bool =
     return self.prevToken.info.line == self.token.info.line
-
-proc isSameIndent(self: Parser): bool =
-    if not self.blocks.isEmpty():
-        return self.blocks.peek().getColumn() == self.token.indent() |? -2 # '-2' is unreachable
-    else:
-        return false
 
 proc expected(self: Parser; kind: TokenKind) =
     if not self.isKind(kind):
@@ -248,17 +258,6 @@ proc skipLine(self: Parser; line: uint32) =
 
     dbg self, fmt"skipLine {line} after"
 
-proc skipBlock(self: Parser; indent: int) =
-    while self.token.kind != Last:
-        debug fmt"token {self.token.kind} at {self.token.info} was skipped"
-
-        if tokenIndent =? self.token.indent():
-            if tokenIndent >= indent: self.skipLine(self.token.info.line)
-            else: break
-        else: unreachable()
-
-        self.token = !self.scanner.getToken()
-
 proc skipLine(self: Parser) =
     self.skipLine(self.token.info.line)
 
@@ -297,18 +296,23 @@ proc tokenIndent(self: Parser; expectedIndent: Natural) =
     without indent =? self.token.indent(): self.errInvalidIndent()
     if indent != expectedIndent: self.errInvalidIndent()
 
-proc blockContextFromCurrentToken(self: Parser; allowSmallerIndent=false): BlockContext =
+proc blockContextFromCurrentToken(self: Parser; allowSmallerIndent: bool = false): BlockContext =
     let column: int
+    let kind: BlockContextKind
 
     if self.token.isFirstInLine():
         column = !self.token.indent()
+        kind   = Indent
 
-        if not allowSmallerIndent and column <= self.blocks.peek():
-            self.errInvalidIndent()
+        if column <= self.blocks.peek() and not allowSmallerIndent:
+            self.errInvalidBlockContext()
     else:
         column = self.token.info.column.int
+        kind   = Column
 
-    result = initBlockContext(Indent, self.token.info.line.int, column)
+    result = initBlockContext(kind, self.token.info.line.int, column)
+
+    hint fmt"new block context created: {result}"
 
 proc checkToken(
     self        : Parser;
@@ -389,6 +393,7 @@ proc fillTables(self: Parser) =
     self.prefix[KwTrue]           = parseLit
     self.prefix[KwFalse]          = parseLit
 
+    self.infix[Comma]      = parseVarDeclNoHead
     self.infix[LParen]     = parseExprParen
     self.infix[LBrace]     = parseExprBrace
     self.infix[Eq]         = parseExprEqExpr
@@ -418,6 +423,7 @@ proc parseAll(self: Parser): Node =
     result = newProgram()
 
     dbg self, "parseAll"
+
     while self.token.kind != Last:
         dbg self, "parseAll loop"
         let tree = self.parseExpr()
@@ -436,6 +442,8 @@ proc parseAll(self: Parser): Node =
                     tree.pragma.add(pragma.children)
 
             result.add(tree)
+
+    dbg self, "parseAll end"
 
 proc parseExpr(self: Parser): Node =
     dbg self, "parseExpr"
@@ -732,7 +740,7 @@ proc parseIfExpr(self: Parser): Node
 
     if self.skipMaybe(KwElse):
         elseBranch = newEmptyElseBranch()
-        self.parseBlock(elseBranch)
+        self.parseBlock(elseBranch, self.blockContextFromCurrentToken())
 
     dbg self, "parseIfExpr end"
 
@@ -747,7 +755,7 @@ proc parseDoExpr(self: Parser): Node
     self.skip(KwDo)
 
     result = newDoExpr()
-    self.parseBlock(result)
+    self.parseBlock(result, self.blockContextFromCurrentToken())
 
 proc parseEqExpr(self: Parser): Node
     {.grammarDocs.} =
@@ -758,7 +766,9 @@ proc parseEqExpr(self: Parser): Node
     self.skip(Eq)
 
     result = newEqExpr()
-    self.parseBlock(result)
+    let context = self.blockContextFromCurrentToken()
+
+    self.parseBlock(result, context)
 
 proc parseParen(self: Parser): Node =
     dbg self, "parseParen"
@@ -772,7 +782,7 @@ proc parseParen(self: Parser): Node =
     dbg self, "parseParen end"
 
 proc parseBrace(self: Parser): Node =
-    dbg self, "parseParen"
+    dbg self, "parseBrace"
 
     result = newBrace()
 
@@ -780,7 +790,7 @@ proc parseBrace(self: Parser): Node =
     self.parseList(result, RBrace, Semicolon, parseExpr)
     self.skip(RBrace)
 
-    dbg self, "parseParen end"
+    dbg self, "parseBrace end"
 
 proc parseInfixOp(self: Parser; left: Node): Node =
     if self.token.kind notin OperatorKinds:
@@ -846,6 +856,12 @@ proc parseVarDecl(self: Parser): Node
 proc parseVarDeclNoHead(self: Parser; left: Node): Node =
     dbg self, "parseVarDeclNoHead"
 
+    var names = @[left]
+
+    while self.skipMaybe(Comma):
+        self.checkToken(sameLine=true)
+        names &= self.parseId()
+
     var typeExpr  = self.parseTypeExpr()
     var isVarArgs = false
 
@@ -862,12 +878,12 @@ proc parseVarDeclNoHead(self: Parser; left: Node): Node =
             self.parseEqExpr()
         else: nil
 
-    result = newVarDecl(left, typeExpr, eqExpr)
+    result = newVarDecl(names, typeExpr, eqExpr)
 
     if isVarArgs:
         result[2] = newPragmaList(newPragma(id"VarArgParam", nil))
 
-    dbg self, "parseVarDeclNoHead after"
+    dbg self, "parseVarDeclNoHead end"
 
 proc parsePragmaAux(self: Parser): Node =
     assert(self.isKind(Id))
@@ -931,51 +947,46 @@ proc parsePragma(self: Parser): Node =
 proc isTypeExprStart(self: Parser): bool =
     result = self.isKind({Id, LtOp, DotDotDot})
 
-proc parseBlock(self: Parser; result: Node; fn: ParseFn) =
-    dbg self, "parseBlockExpr"
+proc parseBlock(self: Parser; result: Node; context: BlockContext; until: TokenKind; fn: ParseFn) =
+    dbg self, "parseBlock"
 
-    self.blocks.push(self.blockContextFromCurrentToken())
+    self.blocks.push(context)
 
-    while self.token.kind notin {Semicolon, Last}:
-        dbg self, "parseBlockExpr loop"
+    while self.token.kind notin {Last, until}:
+        dbg self, "parseBlock loop"
 
-        # first is always true
-        let checkResult = self.token.checkIndent(self.blocks.peek())
-
-        if checkResult > 0:
+        case self.token.checkIndent(self.blocks.peek())
+        of 1:
             self.errInvalidBlockContext()
             self.skipLine()
             continue
-        elif checkResult < 0:
-            self.blocks.drop()
+        of -1:
             break
+        else:
+            result &= fn(self)
 
-        # if not self.isExprStart() and result.len() > 0:
-        #     break
+    self.blocks.drop()
 
-        result &= fn(self)
-
-    dbg self, "parseBlockExpr end"
+    dbg self, "parseBlock end"
 
 proc parseList(self: Parser; result: Node; until, separator: TokenKind; fn: ParseFn) =
     dbg self, "parseList"
 
-    self.blocks.push(self.blockContextFromCurrentToken(allowSmallerIndent=true))
+    let allowSmallerIndent = self.blocks.peek().kind == Column
+    echo self.blocks.peek()
+    let context = self.blockContextFromCurrentToken(allowSmallerIndent)
 
-    while self.token.kind notin {Last, until}:
-        dbg self, "parseList loop"
+    self.parseBlock(result, context, until, fn)
 
-        if self.token.checkIndent(self.blocks.peek()) != 0:
-            self.errInvalidBlockContext()
-            self.skipLine()
-            continue
-
-        result &= fn(self)
-
-        if not self.skipMaybe(separator) and separator != Semicolon:
-            break
-
-    self.blocks.drop()
+    if self.blocks.peek().kind == Column:
+        #| ... = {
+        #|     ...
+        #| }
+        #  ^ closing token must be located here
+        let context = self.blocks.at(1)
+        case self.token.checkIndent(context)
+        of 0: discard
+        else: self.errInvalidBlockContext(context)
 
 proc getIntLit(self: Parser): Literal =
     {.warning[ProveInit]: off.}
