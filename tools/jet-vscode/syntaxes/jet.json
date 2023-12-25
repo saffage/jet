@@ -80,7 +80,7 @@
 				},
 				{
 					"name": "keyword.other.jet",
-					"match": "\\b(module|using|def|typedef|let|mut|const|val|where|do|of)\\b"
+					"match": "\\b(module|using|def|typedef|let|mut|const|val|where|do|of|impl)\\b"
 				}
 			]
 		},
@@ -175,7 +175,7 @@
 				{ "include": "#built-in-generic-parameter" },
 				{
 					"name": "keyword.other.function.jet",
-					"match": "\\b(sizeof|default)\\b"
+					"match": "\\b(sizeof)\\b"
 				},
 				{
 					"name": "keyword.operator.colon-colon.jet",
