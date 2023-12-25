@@ -53,6 +53,7 @@ type TokenKind* = enum
     KwNull    = "null"
     KwLet     = "let"
     KwMut     = "mut"
+    KwVal     = "val"
     KwDef     = "def"
     KwTypeDef = "typedef"
     KwIf      = "if"
