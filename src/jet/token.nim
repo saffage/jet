@@ -145,10 +145,10 @@ func notation*(self: Token; prev = Invalid; next = Invalid): Notation =
         return Unknown
 
     if not lastInLine and spacesAfter == 0 and (spacesBefore != 0 or firstInLine):
-        prefix = prev in PrefixWhitelist
+        prefix = prev notin PrefixWhitelist
 
     if not firstInLine and spacesBefore == 0 and (spacesAfter != 0 or lastInLine):
-        postfix = next in PostfixWhitelist
+        postfix = next notin PostfixWhitelist
 
     if prefix and postfix:
         # maybe somethis like `(!)`
