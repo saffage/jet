@@ -628,7 +628,7 @@ proc evalIfExprAux(vm: VmState; branches: openArray[Node]): int =
             if cond.boolVal:
                 return i
         of nkElseBranch:
-            assert(i == branches.high, "else branch must be the last branch in the IfExpr AST")
+            assert(i == branches.high, "illformed AST; else branch must be the last branch in the 'IfExpr' tree")
             return i
         else: unreachable("Illformed AST")
 
@@ -636,19 +636,21 @@ proc evalIfExpr(vm: VmState): Object =
     assert(vm.tree.len() > 0, "Illformed AST")
     result = unitObj
 
+    # TODO: check branch types (semantic check stage)
     let oldTree   = vm.tree
     let branchIdx = vm.evalIfExprAux(vm.tree.children)
     vm.tree = oldTree
 
-    let body = block:
-        let tree = vm.tree[branchIdx]
-        if tree.kind == nkIfBranch:
-            tree[1]
-        else:
-            assert(tree.kind == nkElseBranch)
-            tree
-
-    result = vm.eval(body)
+    if branchIdx != -1:
+        let body = block:
+            let tree = vm.tree[branchIdx]
+            if tree.kind != nkIfBranch:
+                assert(tree.kind == nkElseBranch)
+                tree
+            else: tree[1]
+        result = vm.eval(body)
+    else:
+        result = unitObj
 
 proc entryInfo(entry: StackEntry): string =
     result = fmt"in '{entry.name}' at {entry.info}"
