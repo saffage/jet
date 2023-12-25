@@ -1,7 +1,8 @@
 import std/tables
 
-import src/jet/ast/types
-import src/utils
+import jet/ast/types
+
+import utils
 
 
 proc isEqTypes*(x, y: Type): bool =

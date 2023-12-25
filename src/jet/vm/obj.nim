@@ -3,10 +3,11 @@ import std/strformat
 import std/strutils
 import std/hashes
 
-import src/utils
-import src/jet/ast
-import src/jet/ast/sym
-import src/jet/ast/types
+import jet/ast
+import jet/ast/sym
+import jet/ast/types
+
+import utils
 
 
 type Object* = ref object of Sym

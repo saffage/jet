@@ -1,7 +1,7 @@
 import std/tables
 import std/hashes
 
-import src/jet/ast/types
+import jet/ast/types
 
 
 type SymKind* = enum
