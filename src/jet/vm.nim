@@ -366,7 +366,8 @@ proc eval(vm: VmState; tree: Node): Object =
         of nkProgram    : vm.evalProgram()
         of nkExprParen  : vm.evalCall()
         of nkLit        : vm.evalLit()
-        of nkLetStmt    : vm.evalLetStmt()
+        # of nkLetStmt    : vm.evalLetStmt()
+        of nkVarDecl    : vm.evalLetStmt()
         of nkDefStmt    : vm.evalDefStmt()
         of nkReturnStmt : vm.evalReturnStmt()
         of nkIfExpr     : vm.evalIfExpr()
@@ -394,7 +395,7 @@ proc evalCall(vm: VmState): Object =
     let name = vm.tree[0].id
     let args = vm.tree[1].children.mapIt(vm.eval(it))
 
-    debug fmt"call '{name}', args: {args}"
+    # debug fmt"call '{name}', args: {args}"
 
     var fnObj = nil.Object
 
@@ -464,33 +465,34 @@ proc evalLit(vm: VmState): Object =
         else: unimplemented(fmt"'evalLit' for {lit.kind}")
 
 proc evalLetStmt(vm: VmState): Object =
-    let name = vm.tree[0].id
-    let typ  = vm.tree[1]
-    let expr = vm.eval(vm.tree[2])
-
-    if typ.kind != nkEmpty:
-        let expectedType = block:
-            let builtInTypes = builtInTypes.filterIt(it.name == typ.id)
-
-            if builtInTypes.len() < 1: vm.scope[typ.id].typ
-            elif builtInTypes.len() > 1: unreachable()
-            else: builtInTypes[0]
-        if expr.typ != expectedType:
-            vm.err(fmt"type mismatch, got {expr.typ}, expected {expectedType}")
-
-    if vm.scope[name] != nil:
-        vm.err(fmt"identifier '{name}' is already defined")
-
-    let variable = Object(
-        id    : name,
-        typ   : expr.typ,
-        kind  : skVar,
-        oType : expr.typ.kind
-    )
-    variable.copyVal(expr)
-    vm.scope[name] = variable
-
     result = unitObj
+
+    let names = vm.tree[0 ..^ 4].mapIt(it.id)
+    let typ   = vm.tree[^3]
+    let expr  = vm.eval(vm.tree[^2])
+
+    for name in names:
+        if typ.kind != nkEmpty:
+            let expectedType = block:
+                let builtInTypes = builtInTypes.filterIt(it.name == typ.id)
+
+                if builtInTypes.len() < 1: vm.scope[typ.id].typ
+                elif builtInTypes.len() > 1: unreachable()
+                else: builtInTypes[0]
+            if expr.typ != expectedType:
+                vm.err(fmt"type mismatch, got {expr.typ}, expected {expectedType}")
+
+        if vm.scope[name] != nil:
+            vm.err(fmt"identifier '{name}' is already defined")
+
+        let variable = Object(
+            id    : name,
+            typ   : expr.typ,
+            kind  : skVar,
+            oType : expr.typ.kind
+        )
+        variable.copyVal(expr)
+        vm.scope[name] = variable
 
 proc evalDefStmt(vm: VmState): Object =
     if vm.tree[0].kind == nkExprDotExpr:
@@ -504,24 +506,27 @@ proc evalDefStmt(vm: VmState): Object =
     var params  = newSeq[Sym]()
 
     for param in vm.tree[1].children:
-        let paramId     = param[0].id
-        let paramTypeId = param[1].id
-        var paramType   = types.builtinTypes.filterIt(it.name == paramTypeId)[0]
+        for paramId in param[0 ..^ 4].mapIt(it.id):
+            if param[^3].kind == nkEmpty:
+                vm.err(fmt"VM cannot infer type for parameters")
 
-        if paramType == nil:
-            let paramTypeSym = vm.scope[paramTypeId]
+            let paramTypeId = param[^3].id
+            var paramType   = types.builtinTypes.filterIt(it.name == paramTypeId)[0]
 
-            if paramTypeSym == nil:
-                vm.err(fmt"identifier '{paramTypeId}' is undefined")
-            if paramTypeSym.kind != skType:
-                vm.err(fmt"identifier '{paramTypeId}' is not a type")
+            if paramType == nil:
+                let paramTypeSym = vm.scope[paramTypeId]
 
-            paramType = paramTypeSym.typ
+                if paramTypeSym == nil:
+                    vm.err(fmt"identifier '{paramTypeId}' is undefined")
+                if paramTypeSym.kind != skType:
+                    vm.err(fmt"identifier '{paramTypeId}' is not a type")
 
-        params &= Sym(
-            id   : paramId,
-            typ  : paramType,
-            kind : skParam)
+                paramType = paramTypeSym.typ
+
+            params &= Sym(
+                id   : paramId,
+                typ  : paramType,
+                kind : skParam)
 
     let returnTypeId = vm.tree[2].id
     var returnType   = types.builtinTypes.filterIt(it.name == returnTypeId)[0]

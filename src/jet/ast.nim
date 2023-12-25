@@ -256,11 +256,15 @@ proc newGenericParam*(id: Node): Node =
     result  = newNode(nkGenericParam)
     result &= id
 
-proc newVarDecl*(name, typeExpr: Node): Node =
-    assert(name != nil and name.kind == nkId, if name != nil: $name.kind else: "nil")
-    assert(typeExpr != nil)
+proc newVarDecl*(names: openArray[Node]; typeExpr: Node; eqExpr: Node = nil): Node =
+    assert(names.len() > 0)
+    assert(names.allIt(it != nil and it.kind == nkId))
 
     result  = newNode(nkVarDecl)
-    result &= name
-    result &= typeExpr
+    result &= names
+    result &= (if typeExpr != nil: typeExpr else: newEmptyNode())
+    result &= (if eqExpr != nil: (assert(eqExpr.kind == nkEqExpr); eqExpr) else: newEmptyNode())
     result &= newEmptyNode()
+
+proc newVarDecl*(name: Node; typeExpr: Node; eqExpr: Node = nil): Node =
+    result = newVarDecl([name], typeExpr, eqExpr)

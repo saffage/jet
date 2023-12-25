@@ -30,13 +30,14 @@ type
         prevToken  : Token
         blocks     : Stack[BlockContext]    ## Sequence of block contexts
         pragmaPool : seq[Node]
+        precedence : ?Precedence
 
-        prefix : OrderedTable[TokenKind, PrefixParseFn]
+        prefix : OrderedTable[TokenKind, ParseFn]
         infix  : OrderedTable[TokenKind, InfixParseFn]
 
     ParserError* = object of CatchableError
 
-    PrefixParseFn = proc(self: Parser): Node
+    ParseFn       = proc(self: Parser): Node
     InfixParseFn  = proc(self: Parser; left: Node): Node
 
 const precedences = {
@@ -65,16 +66,14 @@ const precedences = {
 proc newParser*(scanner: Scanner): Parser
 proc fillTables(self: Parser)
 proc parseAll*(self: Parser): Node
-proc parseExpr(self: Parser; precedence: Precedence = Lowest): Node
+proc parseExpr(self: Parser): Node
 proc parseDef(self: Parser): Node
-proc parseLet(self: Parser): Node
+proc parseVarDeclStmt(self: Parser): Node
 proc parseReturn(self: Parser): Node
-proc parseIdOrDotExpr(self: Parser): Node
+proc parseIdOrExprDotExpr(self: Parser): Node
 proc parseId(self: Parser): Node
 proc parseLit(self: Parser): Node
 proc parseTypeExpr(self: Parser): Node
-proc parseSemicolon(self: Parser): Node
-proc parseSemicolon(self: Parser; left: Node): Node
 proc parseIfExpr(self: Parser): Node
 proc parseDoExpr(self: Parser): Node
 proc parseEqExpr(self: Parser): Node
@@ -82,10 +81,14 @@ proc parseBlockExpr(self: Parser; result: Node)
 proc parseParen(self: Parser): Node
 proc parsePragma(self: Parser): Node
 
+proc isTypeExprStart(self: Parser): bool
+proc parseList(self: Parser; result: Node; until, separator: TokenKind; fn: ParseFn = parseExpr)
+
 proc parseInfixOp(self: Parser; left: Node): Node
 proc parseExprParen(self: Parser; left: Node): Node
 proc parseExprEqExpr(self: Parser; left: Node): Node
-proc parseVarDecl(self: Parser; left: Node): Node
+proc parseVarDecl(self: Parser): Node
+proc parseVarDeclNoHead(self: Parser; left: Node): Node
 
 proc getIntLit(self: Parser): Literal
 proc getUIntLit(self: Parser): Literal
@@ -360,16 +363,16 @@ proc checkToken(
     if sameLine:
         self.tokenSameLine()
         check()
-    elif firstInLine:
+    if firstInLine:
         self.tokenFirstInLine()
         check()
-    elif lastInLine:
+    if lastInLine:
         self.tokenLastInLine()
         check()
-    elif notation != Unknown and self.tokenNotation() != notation:
+    if notation != Unknown and self.tokenNotation() != notation:
         self.errInvalidNotation()
         check()
-    elif expectedIndent =? indent:
+    if expectedIndent =? indent:
         self.tokenIndent(expectedIndent)
         check()
 
@@ -384,7 +387,9 @@ proc newParser(scanner: Scanner): Parser =
 
 proc fillTables(self: Parser) =
     self.prefix[KwDef]    = parseDef
-    self.prefix[KwLet]    = parseLet
+    self.prefix[KwLet]    = parseVarDeclStmt
+    self.prefix[KwMut]    = parseVarDeclStmt
+    self.prefix[KwVal]    = parseVarDeclStmt
     self.prefix[KwIf]     = parseIfExpr
     self.prefix[KwDo]     = parseDoExpr
     self.prefix[KwReturn] = parseReturn
@@ -392,7 +397,6 @@ proc fillTables(self: Parser) =
     self.prefix[LParen]   = parseParen
     self.prefix[Hashtag]  = parsePragma
 
-    self.prefix[Semicolon]        = parseSemicolon
     self.prefix[Id]               = parseId
     self.prefix[IntLit]           = parseLit
     self.prefix[UIntLit]          = parseLit
@@ -420,8 +424,8 @@ proc fillTables(self: Parser) =
 
     self.infix[LParen]     = parseExprParen
     self.infix[Eq]         = parseExprEqExpr
-    self.infix[Id]         = parseVarDecl
-    self.infix[DotDotDot]  = parseVarDecl
+    self.infix[Id]         = parseVarDeclNoHead
+    self.infix[DotDotDot]  = parseVarDeclNoHead
     self.infix[DotDot]     = parseInfixOp
     self.infix[DotDotLess] = parseInfixOp
     self.infix[KwAnd]      = parseInfixOp
@@ -465,7 +469,7 @@ proc parseAll(self: Parser): Node =
 
             result.add(tree)
 
-proc parseExpr(self: Parser; precedence: Precedence): Node =
+proc parseExpr(self: Parser): Node =
     dbg self, "parseExpr"
 
     let indentErrorCode = self.token.checkIndent(self.blocks.peek())
@@ -498,7 +502,7 @@ proc parseExpr(self: Parser; precedence: Precedence): Node =
 
     dbg self, "parseExpr infix"
 
-    while precedence <= precedences.getOrDefault(self.token.kind, Lowest):
+    while (self.precedence |? Lowest) <= precedences.getOrDefault(self.token.kind, Lowest):
         dbg self, "parseExpr infix loop"
 
         let notation = self.tokenNotation()
@@ -513,7 +517,7 @@ proc parseExpr(self: Parser; precedence: Precedence): Node =
             hint fmt"not an operator"
             break
 
-        hint fmt"current is {precedence}, got {precedences.getOrDefault(self.token.kind, Lowest)}"
+        hint fmt"current is {self.precedence |? Lowest}, got {precedences.getOrDefault(self.token.kind, Lowest)}"
 
         let infixFn = self.infix.getOrDefault(self.token.kind)
 
@@ -523,6 +527,8 @@ proc parseExpr(self: Parser; precedence: Precedence): Node =
 
         result = infixFn(self, result)
 
+    self.precedence = none(Precedence)
+
 proc parseDef(self: Parser): Node =
     dbg self, "parseDef"
 
@@ -530,7 +536,7 @@ proc parseDef(self: Parser): Node =
     self.checkToken(sameLine=true)
 
     # parse id or dot expr
-    let head = self.parseIdOrDotExpr()
+    let head = self.parseIdOrExprDotExpr()
     head.expectKind({nkId, nkExprDotExpr})
 
     if head.kind == nkId:
@@ -538,18 +544,22 @@ proc parseDef(self: Parser): Node =
     elif head.kind == nkExprDotExpr:
         discard
 
-    self.checkToken(sameLine=true)
     let params = newEmptyParamList()
 
-    for item in self.parseParen().children:
-        item.expectKind({nkExprEqExpr, nkVarDecl})
+    self.checkToken(sameLine=true)
+    self.skip(LParen)
+    self.parseList(params, RParen, Semicolon, parseVarDecl)
+    self.skip(RParen)
 
-        params.add block:
-            if item.kind == nkVarDecl:
-                newParam(item[0], item[1], nil, item[2])
-            else:
-                item[0].expectKind(nkId)
-                newParam(item[0], nil, item[1], nil)
+    # for item in self.parseParen().children:
+    #     item.expectKind({nkExprEqExpr, nkVarDecl})
+
+    #     params.add block:
+    #         if item.kind == nkVarDecl:
+    #             newParam(item[0], item[1], nil, item[2])
+    #         else:
+    #             item[0].expectKind(nkId)
+    #             newParam(item[0], nil, item[1], nil)
 
     let returnTypeExpr =
         if self.isKind({Eq, Last}):
@@ -570,65 +580,56 @@ proc parseDef(self: Parser): Node =
 
     result = newDefStmt(head, params, returnTypeExpr, body)
 
-proc parseLet(self: Parser): Node
+proc parseVarDeclStmt(self: Parser): Node
     {.grammarDocs.} =
     ## @grammar
-    ## LetStmt <- PragmaList? KW_LET KW_MUT? Id TypeExpr? EqExpr
+    ## VarDeclStmt <- (KW_LET / KW_MUT / KW_VAL) VarDecl
     ## @end
     result = nil
 
     dbg self, "parseLet"
 
-    self.skip(KwLet)
+    # TODO: flags for 'mut' and 'val'
+    self.skip({KwLet, KwMut, KwVal})
     self.checkToken(sameLine=true)
 
-    let isMut = self.skipMaybe(KwMut)
-
-    if isMut:
-        self.checkToken(sameLine=true)
-
-    let name = self.parseId()
-    let typeExpr =
-        if not self.isKind(Eq):
-            self.checkToken(sameLine=true)
-            self.parseTypeExpr()
-        else: nil
-
-    self.checkToken(sameLine=true)
-    let valueExpr = self.parseEqExpr()
-
-    dbg self, "parseLet after"
-
-    result = newLetStmt(name, typeExpr, valueExpr)
+    result = self.parseVarDecl()
 
 proc parseReturn(self: Parser): Node =
+    dbg self, "parseReturn"
+
     self.skip(KwReturn)
+    self.checkToken(sameLine=true)
+
+    dbg self, "parseReturn end"
+
     result = newReturnStmt(self.parseExpr())
 
-proc parseIdOrDotExpr(self: Parser): Node
+proc parseIdOrExprDotExpr(self: Parser): Node
     {.grammarDocs.} =
     ## @grammar
-    ## IdOrDotExpr <- Id ('.' Id)*
+    ## IdOrExprDotExpr <- Id (DOT Id)*
     ## @end
-    dbg self, "parseIdOrDotExpr"
+    dbg self, "parseIdOrExprDotExpr"
     self.expected(Id)
 
     result = id(self.token)
     self.nextToken()
 
     while self.skipMaybe(Dot):
-        dbg self, "parseIdOrDotExpr loop"
+        dbg self, "parseIdOrExprDotExpr loop"
         result = newExprDotExpr(result, id(self.token))
         self.nextToken()
 
-    dbg self, "parseIdOrDotExpr end"
+    dbg self, "parseIdOrExprDotExpr end"
 
 proc parseId(self: Parser): Node
     {.grammarDocs.} =
     ## @grammar
     ## Id <- !Keyword [_a-zA-Z] [_a-zA-Z0-9]* Skip
     ## @end
-    assert(self.token.kind == Id, $self.token.kind)
+    if self.token.kind != Id:
+        self.errExpectedId()
 
     result = id(self.token)
     self.nextToken()
@@ -701,19 +702,16 @@ proc parseTypeExpr(self: Parser): Node =
         self.skip(GtOp)
 
         return newGenericParam(id)
+    of DotDotDot:
+        self.checkToken(sameLine=true, notation=Prefix)
+        self.skipToken()
+        self.checkToken(sameLine=true)
+        result = newPrefix(id"...", self.parseTypeExpr())
     else:
-        self.errExpected({Id, LtOp})
+        self.errExpected({Id, LtOp, DotDotDot})
 
     dbg self, "parseTypeExpr after"
     result = nil
-
-proc parseSemicolon(self: Parser): Node =
-    dbg self, "parseSemicolon"
-    result = newParen()
-
-proc parseSemicolon(self: Parser; left: Node): Node =
-    dbg self, "parseSemicolon left"
-    result = left
 
 proc parseIfExpr(self: Parser): Node
     {.grammarDocs.} =
@@ -831,11 +829,11 @@ proc parseInfixOp(self: Parser; left: Node): Node =
         hint fmt"{self.token.kind}"
         self.errUnknownOp(if self.token.kind == Id: "id " & self.token.value else: $self.token.kind)
 
-    let precedence = precedences[self.token.kind]
-    let op         = id($self.token.kind)
+    let op = id($self.token.kind)
 
+    self.precedence = some(precedences[self.token.kind])
     self.skipToken()
-    result = newInfix(op, left, self.parseExpr(precedence))
+    result = newInfix(op, left, self.parseExpr())
 
 proc parseExprParen(self: Parser; left: Node): Node =
     assert(self.isKind(LParen))
@@ -854,18 +852,54 @@ proc parseExprEqExpr(self: Parser; left: Node): Node =
         # drop redundant 'EqExpr' node
         result[1] = result[1][0]
 
-proc parseVarDecl(self: Parser; left: Node): Node =
+proc parseVarDecl(self: Parser): Node
+    {.grammarDocs.} =
+    ## @grammar
+    ## VarDecl <- Id (COMMA Id)* TypeExpr? EqExpr?
+    ## @end
     dbg self, "parseVarDecl"
 
-    let isVarArgs = self.skipMaybe(DotDotDot)
-    let typeExpr  = self.parseTypeExpr()
+    var names = @[self.parseId()]
+
+    while self.skipMaybe(Comma):
+        self.checkToken(sameLine=true)
+        names &= self.parseId()
+
+    let typeExpr =
+        if self.isTypeExprStart():
+            self.checkToken(sameLine=true)
+            self.parseTypeExpr()
+        else: nil
+
+    let eqExpr =
+        if self.isKind(Eq):
+            self.checkToken(sameLine=true)
+            self.parseEqExpr()
+        else: nil
+
+    result = newVarDecl(names, typeExpr, eqExpr)
+
+    dbg self, "parseVarDecl end"
+
+proc parseVarDeclNoHead(self: Parser; left: Node): Node =
+    dbg self, "parseVarDeclNoHead"
+
+    var typeExpr  = self.parseTypeExpr()
+    var isVarArgs = false
+
+    if typeExpr.kind == nkPrefix:
+        if typeExpr[0].id != "...":
+            self.errUnknownOp(typeExpr[0].id)
+
+        typeExpr  = typeExpr[1]
+        isVarArgs = true
 
     result = newVarDecl(left, typeExpr)
 
     if isVarArgs:
-        result[2] = newPragmaList(newPragma(newIdNode("VarArgParam"), nil))
+        result[2] = newPragmaList(newPragma(id"VarArgParam", nil))
 
-    dbg self, "parseVarDecl after"
+    dbg self, "parseVarDeclNoHead after"
 
 proc parsePragmaAux(self: Parser): Node =
     assert(self.isKind(Id))
@@ -925,6 +959,20 @@ proc parsePragma(self: Parser): Node =
     dbg self, "parsePragma after"
 
     result = newPragmaList(pragmas)
+
+proc isTypeExprStart(self: Parser): bool =
+    result = self.isKind({Id, LtOp, DotDotDot})
+
+proc parseList(self: Parser; result: Node; until, separator: TokenKind; fn: ParseFn) =
+    dbg self, "parseList"
+
+    while self.token.kind notin {Last, until}:
+        dbg self, "parseList loop"
+
+        result &= fn(self)
+
+        if not self.skipMaybe(separator) and separator != Semicolon:
+            break
 
 proc getIntLit(self: Parser): Literal =
     {.warning[ProveInit]: off.}

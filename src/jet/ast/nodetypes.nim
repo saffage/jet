@@ -99,8 +99,9 @@ type
         nkPragmaList
             ## Pragma*
         nkVarDecl
-            ## Id(name)
+            ## Id(name)+
             ## expr(type)
+            ## EqExpr(value)
             ## PragmaList(pragmas)
 
     Node* = ref object
