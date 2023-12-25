@@ -32,4 +32,5 @@ All available build switches:
 
 # TODO
 
-Nothing
+- Testing framework for Jet's scanner, parser, checker, code generator
+- C code generator
