@@ -14,6 +14,32 @@ func newStack*[T](): Stack[T] =
 func isEmpty*[T](self: Stack[T]): bool =
     result = self.data.head == nil
 
+template stackItemsImpl() {.dirty.} =
+    var it {.cursor.} = self.data.head
+    while it != nil:
+        yield it.value
+        it = it.next
+
+template stackPairsImpl() {.dirty.} =
+    var it {.cursor.} = self.data.head
+    var i = 0
+    while it != nil:
+        yield (i, it.value)
+        it = it.next
+        i += 1
+
+iterator items*[T](self: Stack[T]): lent T =
+    stackItemsImpl()
+
+iterator mitems*[T](self: var Stack[T]): var T =
+    stackItemsImpl()
+
+iterator pairs*[T](self: Stack[T]): (int, lent T) =
+    stackPairsImpl()
+
+iterator mpairs*[T](self: var Stack[T]): (int, var T) =
+    stackPairsImpl()
+
 func len*[T](self: Stack[T]): int =
     result = 0
     var node {.cursor.} = self.data.head
@@ -27,9 +53,16 @@ func clear*[T](self: var Stack[T]) =
 func peekUnchecked*[T](self: Stack[T]): T =
     result = self.data.head.value
 
+func peek2Unchecked*[T](self: Stack[T]): T =
+    result = self.data.head.next.value
+
 func peek*[T](self: Stack[T]): T =
     if self.isEmpty(): raise StackError(msg: "peek failed, stack is empty")
     result = self.data.head.value
+
+func peek2*[T](self: Stack[T]): T =
+    if self.len() < 2: raise StackError(msg: "peek2 failed, stack is empty")
+    result = self.data.head.next.value
 
 func popUnchecked*[T](self: var Stack[T]): T =
     result = self.peekUnchecked()
@@ -39,6 +72,20 @@ func pop*[T](self: var Stack[T]): T =
     if self.isEmpty(): raise StackError(msg: "pop failed, stack is empty")
     result = self.peekUnchecked()
     self.data.remove(self.data.head)
+
+func at*[T](self: Stack[T]; n: Natural = 0): lent T =
+    for i, item in self.pairs():
+        if i == n: return item
+
+func replaceAt*[T](self: var Stack[T]; n: Natural = 0; item: sink T) =
+    for i, data in self.mpairs():
+        if i == n: data = item
+
+template `[]`*[T](self: Stack[T]; n: Natural): lent T =
+    self.at(n)
+
+template `[]=`*[T](self: var Stack[T]; n: Natural; item: sink T) =
+    self.replaceAt(n, item)
 
 func dropUnchecked*[T](self: var Stack[T]) =
     self.data.remove(self.data.head)
@@ -65,32 +112,6 @@ func toStack*[T](collection: openArray[T]): Stack[T] =
 func toStack*[T](item: sink T): Stack[T] =
     result = newStack[T]()
     result.push(item)
-
-template stackItemsImpl() {.dirty.} =
-    var it {.cursor.} = self.data.head
-    while it != nil:
-        yield it.value
-        it = it.next
-
-template stackPairsImpl() {.dirty.} =
-    var it {.cursor.} = self.data.head
-    var i = 0
-    while it != nil:
-        yield (i, it.value)
-        it = it.next
-        i += 1
-
-iterator items*[T](self: Stack[T]): lent T =
-    stackItemsImpl()
-
-iterator mitems*[T](self: var Stack[T]): var T =
-    stackItemsImpl()
-
-iterator pairs*[T](self: Stack[T]): (int, lent T) =
-    stackPairsImpl()
-
-iterator mpairs*[T](self: var Stack[T]): (int, var T) =
-    stackPairsImpl()
 
 iterator poppedItems*[T](self: var Stack[T]): T =
     while not self.isEmpty():
