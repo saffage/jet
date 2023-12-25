@@ -1,3 +1,5 @@
+import std/strformat
+
 import jet/literal
 
 
@@ -111,5 +113,16 @@ type
         of nkLit   : lit*      : TypedLiteral
         else       : children* : seq[Node]
 
+func isLeaf*(self: Node): bool =
+    result = self.kind in {nkEmpty, nkId, nkLit}
+
 func `$`*(self: Node): string =
-    return ($self.kind)[2..^1]
+    result = ($self.kind)[2..^1]
+
+    case self.kind
+    of nkLit:
+        result &= $self.lit
+    of nkId:
+        result &= fmt" '{self.id}'"
+    else:
+        discard

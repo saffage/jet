@@ -75,31 +75,31 @@ proc id*(token: Token): Node =
 proc id*(identifier: string): Node =
     newIdNode(identifier)
 
-proc traverseTree*(node: Node; buffer: var string; indentLevel: int = 0) =
-    if indentLevel > 0:
-        buffer.add('\n')
-
-        for _ in 0 ..< indentLevel:
-            buffer.add("|  ")
-
-    if node == nil:
-        buffer.add("null")
-        return
+proc traverseTree(tree: Node; buffer: var string; indent: string; last: bool) =
+    when defined(jetAstAsciiRepr):
+        const connector = "|  "
+        const leaf      = "|- "
+        const lastLeaf  = "'- "
+        const space     = "   "
     else:
-        # Remove 'nk' prefix.
-        buffer.add(($node.kind)[2 ..^ 1])
+        const connector = "│  "
+        const leaf      = "├─╴"
+        const lastLeaf  = "└─╴"
+        const space     = "   "
 
-    case node.kind
-    of nkEmpty:
-        discard
-    of nkLit:
-        buffer.add($node.lit)
-    of nkId:
-        buffer.addQuoted(node.id)
+    buffer &= indent & (if last: lastLeaf else: leaf)
+
+    if tree != nil:
+        buffer &= $tree & "\n"
+
+        if not tree.isLeaf():
+            let indent = indent & (if last: space else: connector)
+
+            for i, node in tree.children:
+                node.traverseTree(buffer, indent, i == tree.children.high)
     else:
-        for n in node.children:
-            n.traverseTree(buffer, indentLevel + 1)
+        buffer &= "null\n"
 
 proc treeRepr*(node: Node): string =
     result = ""
-    node.traverseTree(result, 0)
+    node.traverseTree(result, "", true)

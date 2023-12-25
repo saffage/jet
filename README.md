@@ -28,6 +28,7 @@ $ nimble build -d:jetBuildGrammar
 All available build switches:
   - `jetBuildGrammar` - build grammar into 'grammar.peg' file
   - `jetDebugParserState` - enable debug info output about Parser
+  - `jetAstAsciiRepr` - don't use UTF-8 symbols for AST representation function
 
 # TODO
 
