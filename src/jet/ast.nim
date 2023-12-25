@@ -34,12 +34,12 @@ proc newDefStmt*(name, params, returnType, body: Node): Node =
     result &= body
     result &= newEmptyNode()
 
-proc newTypedefStmt*(id, body: Node): Node =
-    assert(id != nil and id.kind == nkId)
+proc newTypedefStmt*(name, body: Node): Node =
+    assert(name != nil and name.kind == nkId)
     assert(body != nil and body.kind == nkEqExpr)
 
     result  = newNode(nkTypedefStmt)
-    result &= id
+    result &= name
     result &= body
     result &= newEmptyNode()
 

@@ -15,6 +15,8 @@ import utils
 import utils/text_style
 
 
+# proc print_node_tree(node: Node) {.importc: "print_node_tree", dynlib: "vm_test.dll", cdecl.}
+
 proc main() =
     const typeStyle = TextStyle(foreground: BrightCyan, italic: true)
 
@@ -37,9 +39,9 @@ proc main() =
     #   - backend stage
     #
     # Backends:
-    #   - C
-    #   - Bizzare VM
-    #   - Bizzare VM (JIT)
+    #   - C (WIP)
+    #   - Jet VM
+    #   - Bizzare VM (JIT, WIP)
 
     if paramCount() > 0:
         let argument  = paramStr(1)
@@ -59,6 +61,9 @@ proc main() =
 
         let objs = $vm.scope.syms.keys().toSeq().join(", ")
         echo stylizeText(fmt"scope = {{ {objs} }}", typeStyle)
+
+        # echo "call 'vm_test'"
+        # print_node_tree(program)
     else:
         unimplemented("REPL")
 

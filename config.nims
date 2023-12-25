@@ -9,3 +9,5 @@
 --warning: "ProveInit:off"
 
 --experimental: strictDefs
+
+--define: jetDebugParserState

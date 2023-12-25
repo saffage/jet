@@ -4,7 +4,6 @@ import std/strformat
 import std/strutils
 import std/sequtils
 import std/enumutils
-import std/importutils
 
 import jet/ast
 import jet/scanner
@@ -20,7 +19,6 @@ import pkg/questionable
 
 import utils
 import utils/line_info
-import utils/text_style
 
 
 type
@@ -68,6 +66,7 @@ proc fillTables(self: Parser)
 proc parseAll*(self: Parser): Node
 proc parseExpr(self: Parser): Node
 proc parseDef(self: Parser): Node
+proc parseTypedef(self: Parser): Node
 proc parseVarDeclStmt(self: Parser): Node
 proc parseReturn(self: Parser): Node
 proc parseIdOrExprDotExpr(self: Parser): Node
@@ -77,15 +76,17 @@ proc parseTypeExpr(self: Parser): Node
 proc parseIfExpr(self: Parser): Node
 proc parseDoExpr(self: Parser): Node
 proc parseEqExpr(self: Parser): Node
-proc parseBlockExpr(self: Parser; result: Node)
 proc parseParen(self: Parser): Node
+proc parseBrace(self: Parser): Node
 proc parsePragma(self: Parser): Node
+proc parseExprParen(self: Parser; left: Node): Node
+proc parseExprBrace(self: Parser; left: Node): Node
 
 proc isTypeExprStart(self: Parser): bool
+proc parseBlock(self: Parser; result: Node; fn: ParseFn = parseExpr)
 proc parseList(self: Parser; result: Node; until, separator: TokenKind; fn: ParseFn = parseExpr)
 
 proc parseInfixOp(self: Parser; left: Node): Node
-proc parseExprParen(self: Parser; left: Node): Node
 proc parseExprEqExpr(self: Parser; left: Node): Node
 proc parseVarDecl(self: Parser): Node
 proc parseVarDeclNoHead(self: Parser; left: Node): Node
@@ -95,20 +96,27 @@ proc getUIntLit(self: Parser): Literal
 proc getFloatLit(self: Parser): Literal
 proc parseTestComment(self: Parser)
 
-proc dbg(self: Parser; msg: string = "") =
-    const dbgStyle = TextStyle(foreground: Cyan, underlined: true)
-    let msg = if msg == "": "" else: (msg @ dbgStyle) & ": "
 
-    privateAccess(Scanner)
-    debug(
-        fmt"{msg}Parser state:" &
-        fmt("\n\tprev: {self.prevToken.human()}") &
-        fmt("\n\tcurr: {self.token.human()}") &
-        fmt("\n\tscanner:") &
-            fmt("\n\t\tprev: {self.scanner.prevToken.human()}") &
-            fmt("\n\t\tcurr: {self.scanner.token.human()}") &
-        fmt("\n\tblocks: {$self.blocks}")
-    )
+when defined(jetDebugParserState):
+    import std/importutils
+    import utils/text_style
+
+    proc dbg(self: Parser; msg: string = "") =
+        const dbgStyle = TextStyle(foreground: Cyan, underlined: true)
+        let msg = if msg == "": "" else: (msg @ dbgStyle) & ": "
+
+        privateAccess(Scanner)
+        debug(
+            fmt"{msg}Parser state:" &
+            fmt("\n\tprev: {self.prevToken.human()}") &
+            fmt("\n\tcurr: {self.token.human()}") &
+            fmt("\n\tscanner:") &
+                fmt("\n\t\tprev: {self.scanner.prevToken.human()}") &
+                fmt("\n\t\tcurr: {self.scanner.token.human()}") &
+            fmt("\n\tblocks: {$self.blocks}")
+        )
+else:
+    template dbg(self: Parser; msg: string = "") = discard
 
 proc checkIndent(token: Token; context: BlockContext): int
 proc nextToken(self: Parser; checkIndent: bool = true)
@@ -179,6 +187,7 @@ proc errUnknownOp(self: Parser; op: string) =
 
 proc errUnknownOp(self: Parser; op, explanation: string) =
     self.err(fmt"Unknown operator: '{op}'. {explanation}")
+
 
 # ----- PRIVATE ----- #
 template isKind(self: Parser; tokenKind: TokenKind): bool = self.token.kind == tokenKind
@@ -269,57 +278,14 @@ proc checkIndent(token: Token; context: BlockContext): int =
             return 0
 
 proc nextToken(self: Parser; checkIndent: bool) =
-    # dbg self, "nextToken"
-
     let token = !self.scanner.getToken()
-
-    # block IndentCheck:
-    #     if indent =? token.indent() and checkIndent:
-    #         if self.blocks.isEmpty():
-    #             if indent == 0:
-    #                 debug fmt"push indentation {indent} on stack"
-    #                 self.blocks.push(initBlockContext(Indent, token.info.line.int, indent))
-    #             else:
-    #                 self.errInvalidIndent(fmt"Expected token with 0 indentation, got {indent}")
-    #                 self.skipLine(token.info.line)
-    #                 break IndentCheck
-    #         else:
-    #             let currentIndent = self.blocks.peek()
-
-    #             if indent < currentIndent:
-    #                 var toDrop = 0
-    #                 for prevIndent in self.blocks:
-    #                     if prevIndent < indent:
-    #                         self.errInvalidIndent()
-    #                         self.skipLine(token.info.line)
-    #                         break IndentCheck
-    #                     elif prevIndent > indent:
-    #                         inc(toDrop)
-    #                     else: break
-    #                 debug fmt"drop indentation {self.blocks.peek()} from stack"
-    #                 self.blocks.drop(toDrop)
-    #             elif indent > currentIndent:
-    #                 if not self.blocks.isEmpty():
-    #                     let blockContext = self.blocks.peek()
-    #                     let column       = blockContext.getColumn()
-
-    #                     if column != token.info.column.int:
-    #                         self.errInvalidIndent(fmt"This token is offside the context started at position [{blockContext.line}:{column}], [{token.info}]")
-    #                         self.skipLine(token.info.line)
-    #                         break IndentCheck
-    #                 debug fmt"push indentation {indent} on stack"
-    #                 self.blocks.push(initBlockContext(Indent, token.info.line.int, indent))
-    #             else: discard
 
     self.prevToken = self.token
     self.token     = token
 
-    # dbg self, "nextToken after"
-
 proc tokenSameLine(self: Parser) =
     if not self.isSameLine():
         self.errExpectedSameLine()
-        raise newException(ParserError, "expected ")
 
 proc tokenFirstInLine(self: Parser) =
     if not self.token.isFirstInLine(): self.errExpectedFirstInLine()
@@ -331,13 +297,13 @@ proc tokenIndent(self: Parser; expectedIndent: Natural) =
     without indent =? self.token.indent(): self.errInvalidIndent()
     if indent != expectedIndent: self.errInvalidIndent()
 
-proc blockContextFromCurrentToken(self: Parser): BlockContext =
+proc blockContextFromCurrentToken(self: Parser; allowSmallerIndent=false): BlockContext =
     let column: int
 
     if self.token.isFirstInLine():
         column = !self.token.indent()
 
-        if column <= self.blocks.peek():
+        if not allowSmallerIndent and column <= self.blocks.peek():
             self.errInvalidIndent()
     else:
         column = self.token.info.column.int
@@ -386,18 +352,20 @@ proc newParser(scanner: Scanner): Parser =
     result.nextToken()
 
 proc fillTables(self: Parser) =
-    self.prefix[KwDef]    = parseDef
-    self.prefix[KwLet]    = parseVarDeclStmt
-    self.prefix[KwMut]    = parseVarDeclStmt
-    self.prefix[KwVal]    = parseVarDeclStmt
-    self.prefix[KwIf]     = parseIfExpr
-    self.prefix[KwDo]     = parseDoExpr
-    self.prefix[KwReturn] = parseReturn
-    self.prefix[Eq]       = parseEqExpr
-    self.prefix[LParen]   = parseParen
-    self.prefix[Hashtag]  = parsePragma
+    self.prefix[KwDef]     = parseDef
+    self.prefix[KwTypeDef] = parseTypedef
+    self.prefix[KwLet]     = parseVarDeclStmt
+    self.prefix[KwMut]     = parseVarDeclStmt
+    self.prefix[KwVal]     = parseVarDeclStmt
+    self.prefix[KwIf]      = parseIfExpr
+    self.prefix[KwDo]      = parseDoExpr
+    self.prefix[KwReturn]  = parseReturn
+    self.prefix[Id]        = parseId
+    self.prefix[Eq]        = parseEqExpr
+    self.prefix[Hashtag]   = parsePragma
+    self.prefix[LParen]    = parseParen
+    self.prefix[LBrace]    = parseBrace
 
-    self.prefix[Id]               = parseId
     self.prefix[IntLit]           = parseLit
     self.prefix[UIntLit]          = parseLit
     self.prefix[FloatLit]         = parseLit
@@ -406,23 +374,23 @@ proc fillTables(self: Parser) =
     self.prefix[RawStringLit]     = parseLit
     self.prefix[LongStringLit]    = parseLit
     self.prefix[LongRawStringLit] = parseLit
-
-    self.prefix[ISizeLit] = parseLit
-    self.prefix[USizeLit] = parseLit
-    self.prefix[I8Lit]    = parseLit
-    self.prefix[I16Lit]   = parseLit
-    self.prefix[I32Lit]   = parseLit
-    self.prefix[I64Lit]   = parseLit
-    self.prefix[U8Lit]    = parseLit
-    self.prefix[U16Lit]   = parseLit
-    self.prefix[U32Lit]   = parseLit
-    self.prefix[U64Lit]   = parseLit
-    self.prefix[F32Lit]   = parseLit
-    self.prefix[F64Lit]   = parseLit
-    self.prefix[KwTrue]   = parseLit
-    self.prefix[KwFalse]  = parseLit
+    self.prefix[ISizeLit]         = parseLit
+    self.prefix[USizeLit]         = parseLit
+    self.prefix[I8Lit]            = parseLit
+    self.prefix[I16Lit]           = parseLit
+    self.prefix[I32Lit]           = parseLit
+    self.prefix[I64Lit]           = parseLit
+    self.prefix[U8Lit]            = parseLit
+    self.prefix[U16Lit]           = parseLit
+    self.prefix[U32Lit]           = parseLit
+    self.prefix[U64Lit]           = parseLit
+    self.prefix[F32Lit]           = parseLit
+    self.prefix[F64Lit]           = parseLit
+    self.prefix[KwTrue]           = parseLit
+    self.prefix[KwFalse]          = parseLit
 
     self.infix[LParen]     = parseExprParen
+    self.infix[LBrace]     = parseExprBrace
     self.infix[Eq]         = parseExprEqExpr
     self.infix[Id]         = parseVarDeclNoHead
     self.infix[DotDotDot]  = parseVarDeclNoHead
@@ -579,6 +547,21 @@ proc parseDef(self: Parser): Node =
             newEmptyNode()
 
     result = newDefStmt(head, params, returnTypeExpr, body)
+
+proc parseTypedef(self: Parser): Node
+    {.grammarDocs.} =
+    ## @grammar
+    ## TypedefStmt = KW_TYPEDEF Id EqExpr
+    ## @end
+    self.skip(KwTypedef)
+
+    self.checkToken(sameLine=true)
+    let name = self.parseId()
+
+    self.checkToken(sameLine=true)
+    let body = self.parseEqExpr()
+
+    result = newTypedefStmt(name, body)
 
 proc parseVarDeclStmt(self: Parser): Node
     {.grammarDocs.} =
@@ -749,7 +732,7 @@ proc parseIfExpr(self: Parser): Node
 
     if self.skipMaybe(KwElse):
         elseBranch = newEmptyElseBranch()
-        self.parseBlockExpr(elseBranch)
+        self.parseBlock(elseBranch)
 
     dbg self, "parseIfExpr end"
 
@@ -764,7 +747,7 @@ proc parseDoExpr(self: Parser): Node
     self.skip(KwDo)
 
     result = newDoExpr()
-    self.parseBlockExpr(result)
+    self.parseBlock(result)
 
 proc parseEqExpr(self: Parser): Node
     {.grammarDocs.} =
@@ -775,54 +758,29 @@ proc parseEqExpr(self: Parser): Node
     self.skip(Eq)
 
     result = newEqExpr()
-    self.parseBlockExpr(result)
-
-proc parseBlockExpr(self: Parser; result: Node) =
-    dbg self, "parseBlockExpr"
-
-    self.blocks.push(self.blockContextFromCurrentToken())
-
-    while self.token.kind notin {Semicolon, Last}:
-        dbg self, "parseBlockExpr loop"
-
-        # first is always true
-        let checkResult = self.token.checkIndent(self.blocks.peek())
-
-        if checkResult > 0:
-            self.errInvalidBlockContext()
-            self.skipLine()
-            continue
-        elif checkResult < 0:
-            self.blocks.drop()
-            break
-
-        if not self.isExprStart() and result.len() > 0:
-            break
-
-        let expr = self.parseExpr()
-        result.children.add(expr)
-
-    dbg self, "parseBlockExpr end"
+    self.parseBlock(result)
 
 proc parseParen(self: Parser): Node =
     dbg self, "parseParen"
 
-    self.skip(LParen)
-
     result = newParen()
 
-    while self.token.kind notin {Last, RParen}:
-        dbg self, "parseParen loop"
-
-        let expr = self.parseExpr()
-        result.add(expr)
-
-        if self.skipMaybe(Semicolon):
-            discard
-
-    dbg self, "parseParen after"
-
+    self.skip(LParen)
+    self.parseList(result, RParen, Semicolon, parseExpr)
     self.skip(RParen)
+
+    dbg self, "parseParen end"
+
+proc parseBrace(self: Parser): Node =
+    dbg self, "parseParen"
+
+    result = newBrace()
+
+    self.skip(LBrace)
+    self.parseList(result, RBrace, Semicolon, parseExpr)
+    self.skip(RBrace)
+
+    dbg self, "parseParen end"
 
 proc parseInfixOp(self: Parser; left: Node): Node =
     if self.token.kind notin OperatorKinds:
@@ -836,12 +794,16 @@ proc parseInfixOp(self: Parser; left: Node): Node =
     result = newInfix(op, left, self.parseExpr())
 
 proc parseExprParen(self: Parser; left: Node): Node =
-    assert(self.isKind(LParen))
-
     dbg self, "parseExprParen"
 
     result = newExprParen(left)
     result[^1] = self.parseParen()
+
+proc parseExprBrace(self: Parser; left: Node): Node =
+    dbg self, "parseExprParen"
+
+    result = newExprBrace(left)
+    result[^1] = self.parseBrace()
 
 proc parseExprEqExpr(self: Parser; left: Node): Node =
     dbg self, "parseExprEqExpr"
@@ -894,7 +856,13 @@ proc parseVarDeclNoHead(self: Parser; left: Node): Node =
         typeExpr  = typeExpr[1]
         isVarArgs = true
 
-    result = newVarDecl(left, typeExpr)
+    let eqExpr =
+        if self.isKind(Eq):
+            self.checkToken(sameLine=true)
+            self.parseEqExpr()
+        else: nil
+
+    result = newVarDecl(left, typeExpr, eqExpr)
 
     if isVarArgs:
         result[2] = newPragmaList(newPragma(id"VarArgParam", nil))
@@ -963,16 +931,51 @@ proc parsePragma(self: Parser): Node =
 proc isTypeExprStart(self: Parser): bool =
     result = self.isKind({Id, LtOp, DotDotDot})
 
+proc parseBlock(self: Parser; result: Node; fn: ParseFn) =
+    dbg self, "parseBlockExpr"
+
+    self.blocks.push(self.blockContextFromCurrentToken())
+
+    while self.token.kind notin {Semicolon, Last}:
+        dbg self, "parseBlockExpr loop"
+
+        # first is always true
+        let checkResult = self.token.checkIndent(self.blocks.peek())
+
+        if checkResult > 0:
+            self.errInvalidBlockContext()
+            self.skipLine()
+            continue
+        elif checkResult < 0:
+            self.blocks.drop()
+            break
+
+        # if not self.isExprStart() and result.len() > 0:
+        #     break
+
+        result &= fn(self)
+
+    dbg self, "parseBlockExpr end"
+
 proc parseList(self: Parser; result: Node; until, separator: TokenKind; fn: ParseFn) =
     dbg self, "parseList"
 
+    self.blocks.push(self.blockContextFromCurrentToken(allowSmallerIndent=true))
+
     while self.token.kind notin {Last, until}:
         dbg self, "parseList loop"
+
+        if self.token.checkIndent(self.blocks.peek()) != 0:
+            self.errInvalidBlockContext()
+            self.skipLine()
+            continue
 
         result &= fn(self)
 
         if not self.skipMaybe(separator) and separator != Semicolon:
             break
+
+    self.blocks.drop()
 
 proc getIntLit(self: Parser): Literal =
     {.warning[ProveInit]: off.}
