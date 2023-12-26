@@ -35,6 +35,7 @@ type
 
     ParserError* = object of CatchableError
 
+    # TODO: .nimcall?
     ParseFn       = proc(self: Parser): Node
     InfixParseFn  = proc(self: Parser; left: Node): Node
 
@@ -105,6 +106,7 @@ proc parseInfixOp(self: Parser; left: Node): Node
 proc parseExprEqExpr(self: Parser; left: Node): Node
 proc parseVarDecl(self: Parser): Node
 proc parseVarDeclNoHead(self: Parser; left: Node): Node
+proc parseCommaInfix(self: Parser; left: Node): Node
 
 proc getIntLit(self: Parser): Literal
 proc getUIntLit(self: Parser): Literal
@@ -400,7 +402,7 @@ proc fillTables(self: Parser) =
     self.prefix[KwTrue]           = parseLit
     self.prefix[KwFalse]          = parseLit
 
-    self.infix[Comma]      = parseVarDeclNoHead
+    # self.infix[Comma]      = parseCommaInfix
     self.infix[LParen]     = parseExprParen
     self.infix[LBrace]     = parseExprBrace
     self.infix[Eq]         = parseExprEqExpr
@@ -814,6 +816,10 @@ proc parseDoExpr(self: Parser): Node
     result = newDoExpr()
     self.parseBlock(result, self.blockContextFromCurrentToken())
 
+    # if self.isKind(Semicolon):
+    #     self.checkToken(sameLine=true)
+    #     self.skip(Semicolon)
+
 proc parseEqExpr(self: Parser): Node
     {.grammarDocs.} =
     ## @grammar
@@ -830,10 +836,8 @@ proc parseEqExpr(self: Parser): Node
 proc parseParen(self: Parser): Node =
     dbg self, "parseParen"
 
-    result = newParen()
-
     self.skip(LParen)
-    self.parseList(result, RParen, Semicolon, parseExpr)
+    result = self.parseExpr()
     self.skip(RParen)
 
     dbg self, "parseParen end"
@@ -863,7 +867,10 @@ proc parseExprParen(self: Parser; left: Node): Node =
     dbg self, "parseExprParen"
 
     result = newExprParen(left)
-    result[^1] = self.parseParen()
+
+    self.skip(LParen)
+    self.parseList(result[^1], RParen, Comma)
+    self.skip(RParen)
 
 proc parseExprBrace(self: Parser; left: Node): Node =
     dbg self, "parseExprParen"
@@ -973,15 +980,26 @@ proc parseVarDeclNoHead(self: Parser; left: Node): Node =
 
     dbg self, "parseVarDeclNoHead end"
 
+proc parseCommaInfix(self: Parser; left: Node): Node =
+    result = case left.kind:
+        of nkId:
+            self.parseVarDeclNoHead(left)
+        else:
+            # 'Comma' token can be used only in parenthesis
+            self.skip(Comma)
+            left
+
 proc parsePragmaAux(self: Parser): Node =
     assert(self.isKind(Id))
 
     dbg self, "parsePragmaAux"
 
     let name = self.parseId()
-    let args =
-        if self.isKind(LParen): self.parseParen()
-        else: nil
+    let args = newParen()
+
+    if self.skipMaybe(LParen):
+        self.parseList(args, RParen, Comma)
+        self.skip(RParen)
 
     dbg self, "parsePragmaAux after"
 
@@ -1051,7 +1069,10 @@ proc parseBlock(self: Parser; result: Node; context: BlockContext; until: TokenK
         of -1:
             break
         else:
-            result &= fn(self)
+            let node = fn(self)
+
+            if node.kind != nkEmpty:
+                result &= node
 
     self.blocks.drop()
 
@@ -1061,12 +1082,17 @@ proc parseList(self: Parser; result: Node; until, separator: TokenKind; fn: Pars
     dbg self, "parseList"
 
     let allowSmallerIndent = self.blocks.peek().kind == Column
-    echo self.blocks.peek()
-    let context = self.blockContextFromCurrentToken(allowSmallerIndent)
+    let context            = self.blockContextFromCurrentToken(allowSmallerIndent)
+    let isSmallerIndent    = context.getColumn() < self.blocks.peek().getColumn()
 
-    self.parseBlock(result, context, until, fn)
+    self.parseBlock(result, context, until) do(this: Parser) -> Node:
+        result =
+            if not this.skipMaybe(separator):
+                fn(this)
+            else:
+                newEmptyNode()
 
-    if self.blocks.peek().kind == Column:
+    if allowSmallerIndent and isSmallerIndent:
         #| ... = {
         #|     ...
         #| }
