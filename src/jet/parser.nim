@@ -58,6 +58,7 @@ const precedences = {
     GeOp       : Cmp,
     KwAnd      : And,
     KwOr       : Or,
+    KwOf       : Member, # IDK
     Eq         : Assign,
 }.toOrderedTable()
 
@@ -73,7 +74,10 @@ proc parseIdOrExprDotExpr(self: Parser): Node
 proc parseId(self: Parser): Node
 proc parseLit(self: Parser): Node
 proc parseTypeExpr(self: Parser): Node
+proc parseMatchExpr(self: Parser): Node
 proc parseIfExpr(self: Parser): Node
+proc parseIfBranch(self: Parser): Node
+proc parseElseBranch(self: Parser): Node
 proc parseDoExpr(self: Parser): Node
 proc parseEqExpr(self: Parser): Node
 proc parseParen(self: Parser): Node
@@ -81,6 +85,7 @@ proc parseBrace(self: Parser): Node
 proc parsePragma(self: Parser): Node
 proc parseExprParen(self: Parser; left: Node): Node
 proc parseExprBrace(self: Parser; left: Node): Node
+proc parseBar(self: Parser): Node
 
 proc isTypeExprStart(self: Parser): bool
 proc parseBlock(
@@ -361,6 +366,7 @@ proc fillTables(self: Parser) =
     self.prefix[KwLet]     = parseVarDeclStmt
     self.prefix[KwMut]     = parseVarDeclStmt
     self.prefix[KwVal]     = parseVarDeclStmt
+    self.prefix[KwMatch]   = parseMatchExpr
     self.prefix[KwIf]      = parseIfExpr
     self.prefix[KwDo]      = parseDoExpr
     self.prefix[KwReturn]  = parseReturn
@@ -369,6 +375,7 @@ proc fillTables(self: Parser) =
     self.prefix[Hashtag]   = parsePragma
     self.prefix[LParen]    = parseParen
     self.prefix[LBrace]    = parseBrace
+    self.prefix[Bar]       = parseBar
 
     self.prefix[IntLit]           = parseLit
     self.prefix[UIntLit]          = parseLit
@@ -403,6 +410,7 @@ proc fillTables(self: Parser) =
     self.infix[DotDotLess] = parseInfixOp
     self.infix[KwAnd]      = parseInfixOp
     self.infix[KwOr]       = parseInfixOp
+    self.infix[KwOf]       = parseInfixOp
     self.infix[EqOp]       = parseInfixOp
     self.infix[NeOp]       = parseInfixOp
     self.infix[LtOp]       = parseInfixOp
@@ -704,6 +712,27 @@ proc parseTypeExpr(self: Parser): Node =
     dbg self, "parseTypeExpr after"
     result = nil
 
+proc parseMatchExpr(self: Parser): Node =
+    self.skip(KwMatch)
+
+    let expr  = self.parseExpr()
+    var cases = newSeq[Node]()
+    var elseCase = nil.Node
+
+    # TODO: block context
+    while self.isKind(Bar):
+        if elseCase != nil:
+            self.err(fmt"'else' case must be last case in 'match' expression")
+
+        let branch = self.parseBar()
+
+        if branch.kind == nkElseBranch:
+            elseCase = branch
+        else:
+            cases &= branch
+
+    result = newMatchExpr(expr, cases, elseCase)
+
 proc parseIfExpr(self: Parser): Node
     {.grammarDocs.} =
     ## @grammar
@@ -716,35 +745,63 @@ proc parseIfExpr(self: Parser): Node
     var branches = newSeqOfCap[Node](1)
 
     while true:
-        if branches.len() == 0:
-            self.skip(KwIf)
-        elif not self.skipMaybe(KwElif):
+        if branches.len() > 0 and not self.isKind(KwElif):
             break
 
-        self.blocks.push(self.blockContextFromCurrentToken())
+        branches &= self.parseIfBranch()
 
-        case self.token.checkIndent(self.blocks.peek())
-        of -1 : self.blocks.drop()
-        of 1  : self.errInvalidBlockContext()
-        else: discard
+        # if branches.len() == 0:
+        #     self.skip(KwIf)
+        # elif not self.skipMaybe(KwElif):
+        #     break
 
-        let expr = self.parseExpr()
-        self.blocks.drop()
-        let body = self.parseDoExpr()
+        # self.blocks.push(self.blockContextFromCurrentToken())
 
-        branches &= newIfBranch(expr, body)
+        # case self.token.checkIndent(self.blocks.peek())
+        # of -1 : self.blocks.drop()
+        # of 1  : self.errInvalidBlockContext()
+        # else: discard
+
+        # let expr = self.parseExpr()
+        # self.blocks.drop()
+        # let body = self.parseDoExpr()
+
+        # branches &= newIfBranch(expr, body)
 
     dbg self, "parseIfExpr else"
 
-    var elseBranch = nil.Node
-
-    if self.skipMaybe(KwElse):
-        elseBranch = newEmptyElseBranch()
-        self.parseBlock(elseBranch, self.blockContextFromCurrentToken())
+    let elseBranch =
+        if self.isKind(KwElse): self.parseElseBranch()
+        else: nil
 
     dbg self, "parseIfExpr end"
 
     result = newIfExpr(branches, elseBranch)
+
+proc parseIfBranch(self: Parser): Node =
+    self.skip({KwIf, KwElif})
+
+    self.blocks.push(self.blockContextFromCurrentToken())
+
+    case self.token.checkIndent(self.blocks.peek())
+    of -1 : self.blocks.drop()
+    of 1  : self.errInvalidBlockContext()
+    else: discard
+
+    let expr = self.parseExpr()
+    self.blocks.drop()
+
+    result = newIfBranch(expr, self.parseDoExpr())
+
+proc parseElseBranch(self: Parser): Node =
+    dbg self, "parseElseBranch"
+
+    self.skip(KwElse)
+
+    result = newEmptyElseBranch()
+    self.parseBlock(result, self.blockContextFromCurrentToken())
+
+    dbg self, "parseElseBranch end"
 
 proc parseDoExpr(self: Parser): Node
     {.grammarDocs.} =
@@ -793,8 +850,7 @@ proc parseBrace(self: Parser): Node =
     dbg self, "parseBrace end"
 
 proc parseInfixOp(self: Parser; left: Node): Node =
-    if self.token.kind notin OperatorKinds:
-        hint fmt"{self.token.kind}"
+    if self.token.kind notin OperatorKinds + {KwAnd, KwOr, KwOf}:
         self.errUnknownOp(if self.token.kind == Id: "id " & self.token.value else: $self.token.kind)
 
     let op = id($self.token.kind)
@@ -823,6 +879,38 @@ proc parseExprEqExpr(self: Parser; left: Node): Node =
     if result[1].len() == 1:
         # drop redundant 'EqExpr' node
         result[1] = result[1][0]
+
+proc parseBar(self: Parser): Node =
+    self.skip(Bar)
+
+    case self.token.kind
+    of KwElse:
+        result = self.parseElseBranch()
+        return
+    of KwElif:
+        result = self.parseIfBranch()
+        return
+    else:
+        result = self.parseExpr()
+
+    if result.kind == nkInfix:
+        if result[0].id != "of":
+            self.errExpected(KwOf)
+
+        result = newVariant(result)
+
+    case self.token.kind
+    of Last, Bar:
+        discard
+    of KwIf:
+        result = newMatchCase(result, self.parseIfBranch())
+    of KwDo:
+        result = newMatchCase(result, self.parseDoExpr())
+    else:
+        unimplemented(fmt"parseBar for {self.token.kind}")
+
+    if result.kind notin {nkVariant, nkCase, nkElseBranch}:
+        result = newVariant(result)
 
 proc parseVarDecl(self: Parser): Node
     {.grammarDocs.} =
@@ -1071,6 +1159,7 @@ grammarDocs do:
     ## DocComment <- ('///' [^\n]* Skip)+
     ## Comment <- '//' ![!/] [^\n]* / '////' [^\n]*
 
+# TODO: generate it from 'TokenKind' enum
 grammarDocs do:
     ## KW_IF  <- 'if'
     ## KW_LET <- 'let'

@@ -56,7 +56,7 @@ proc newEmptyIfExpr*(): Node =
 
 proc newIfExpr*(branches: openArray[Node]; elseBranch: Node = nil): Node =
     assert(branches.len() > 0)
-    assert(branches.allIt(it.kind == nkIfBranch), $branches.mapIt($it.kind))
+    assert(branches.allIt(it != nil and it.kind == nkIfBranch), $branches.mapIt($it.kind))
 
     result  = newNode(nkIfExpr)
     result &= branches
@@ -81,6 +81,33 @@ proc newElseBranch*(body: Node): Node =
 
     result  = newNode(nkElseBranch)
     result &= body
+
+proc newEmptyMatchExpr*(): Node =
+    result = newNode(nkMatch)
+
+proc newMatchExpr*(expr: Node; cases: openArray[Node]; elseBranch: Node = nil): Node =
+    assert(expr != nil)
+    assert(cases.allIt(it != nil))
+
+    result  = newNode(nkMatch)
+    result &= expr
+    result &= cases
+
+    if elseBranch != nil:
+        assert(elseBranch.kind == nkElseBranch, $elseBranch.kind)
+        result &= elseBranch
+
+proc newMatchExpr*(expr: Node; cases: Node; elseBranch: Node = nil): Node =
+    result = newMatchExpr(expr, cases, elseBranch)
+
+proc newMatchCase*(expr, bodyOrGuard: Node): Node =
+    assert(expr != nil)
+    assert(bodyOrGuard != nil and bodyOrGuard.kind in {nkDoExpr, nkIfBranch},
+        if bodyOrGuard != nil: $bodyOrGuard.kind else: "null")
+
+    result  = newNode(nkCase)
+    result &= expr
+    result &= bodyOrGuard
 
 proc newEmptyElseBranch*(): Node =
     result = newNode(nkElseBranch)
@@ -268,3 +295,9 @@ proc newVarDecl*(names: openArray[Node]; typeExpr: Node; eqExpr: Node = nil): No
 
 proc newVarDecl*(name: Node; typeExpr: Node; eqExpr: Node = nil): Node =
     result = newVarDecl([name], typeExpr, eqExpr)
+
+proc newVariant*(entry: Node): Node =
+    assert(entry != nil and entry.kind in {nkId, nkInfix})
+
+    result  = newNode(nkVariant)
+    result &= entry

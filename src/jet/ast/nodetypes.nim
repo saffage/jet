@@ -105,6 +105,15 @@ type
             ## expr(type)
             ## EqExpr(value)
             ## PragmaList(pragmas)
+        nkMatch
+            ## expr
+            ## (Case | IfBranch)+
+            ## ElseBranch?
+        nkCase
+            ## expr(match-expression)
+            ## DoExpr(body) | IfBranch(guard)
+        nkVariant
+            ## Infix | Id
 
     Node* = ref object
         case kind* : NodeKind

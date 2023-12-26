@@ -59,11 +59,13 @@ type TokenKind* = enum
     KwIf      = "if"
     KwElif    = "elif"
     KwElse    = "else"
+    KwMatch   = "match"
     KwReturn  = "return"
     KwWhile   = "while"
     KwFor     = "for"
     KwLoop    = "loop"
     KwDo      = "do"
+    KwOf      = "of"
 
     #[ Operators-Keywords ]#
     KwOr      = "or"
@@ -89,6 +91,7 @@ type TokenKind* = enum
     DotDotLess = "..<"
 
     #[ Special symbols ]#
+    Bar        = "|"
     ColonColon = "::"
     Underscore = "_"
     Hashtag    = "#"

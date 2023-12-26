@@ -481,6 +481,9 @@ proc nextToken*(self: var Scanner) =
             self.scanNumber()
         else:
             self.scanOperator()
+    of '|':
+        self.token.kind = Bar
+        inc(self.pos)
     of '.':
         if self[1] == '.':
             if self[2] == '<':
