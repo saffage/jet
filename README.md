@@ -1,6 +1,6 @@
 # Building from source
 
-To build Jet you need:
+To build **Jet** you need:
   - The [Nim compiler](https://nim-lang.org/) of version 2.0.0 or higher
   - Nimble package manager (ships with the Nim compiler)
   - Any C compiler like GCC, Clang or ZigCC
@@ -14,7 +14,7 @@ $ nimble build
 Or this for release build:
 
 ```bash
-$ nimble release
+$ nimble build -d:release
 ```
 
 # Build switches
@@ -32,5 +32,5 @@ All available build switches:
 
 # TODO
 
-- Testing framework for Jet's scanner, parser, checker, code generator
+- Testing framework for Jet's scanner, parser, checker and backend
 - C code generator
