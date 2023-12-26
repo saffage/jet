@@ -54,7 +54,7 @@ proc main() =
         var vm        = newVm(program)
         let evaluated = vm.eval()
 
-        unreachable(evaluated != nil, "eval result can't be null")
+        assert(evaluated != nil, "eval result can't be null")
 
         # if getCursorPos().x > 0: echo()
         echo stylizeText(evaluated.inspect(), typeStyle)

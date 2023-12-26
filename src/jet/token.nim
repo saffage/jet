@@ -46,7 +46,7 @@ func isFirstOrLast*(self: Token): bool =
 func spacesBefore*(self: Token): ?int =
     ## **Returns:** spaces before token, if this token not first in line
     if not self.isFirstInLine():
-        unreachable(self.spacesBefore != -1, "spacesBefore can't be -1")
+        assert(self.spacesBefore != -1, "spacesBefore can't be -1")
         return some(self.spacesBefore)
     else:
         return none(int)
@@ -54,7 +54,7 @@ func spacesBefore*(self: Token): ?int =
 func spacesAfter*(self: Token): ?int =
     ## **Returns:** spaces after token, if this token not last in line
     if not self.isLastInLine():
-        unreachable(self.spacesAfter != -1, "spacesAfter can't be -1")
+        assert(self.spacesAfter != -1, "spacesAfter can't be -1")
         return some(self.spacesAfter)
     else:
         return none(int)
@@ -62,7 +62,7 @@ func spacesAfter*(self: Token): ?int =
 func indent*(self: Token): ?int =
     ## **Returns:** indentation, if this token first in line
     if self.isFirstInLine():
-        unreachable(self.spacesBefore != -1, "spacesBefore can't be -1")
+        assert(self.spacesBefore != -1, "spacesBefore can't be -1")
         return some(self.spacesBefore)
     else:
         return none(int)

@@ -7,29 +7,47 @@ export logger
 
 ## Most of bad ideas are located here.
 
-func unreachable*(msg: string = "")
-    {.noreturn, noinline, raises: [].} =
-    if msg.len() > 0:
-        panic("reached unreachable code: " & msg)
-    else:
-        panic("reached unreachable code")
+type
+    UnreachableDefect        = object of Defect
+    UnimplementedDefect      = object of Defect
+    TodoDefect               = object of Defect
+    AbstractMethodCallDefect = object of Defect
 
-func unimplemented*(msg: string = "")
+func unreachable*(msg: string)
     {.noreturn, noinline, raises: [].} =
-    if msg.len() > 0:
-        panic("unimplemented: " & msg)
-    else:
-        panic("unimplemented")
+    let msg = "reached unreachable code; " & msg
+    logger.error(msg)
+    raise newException(UnreachableDefect, msg)
 
-func todo*(msg: string = "")
+func unreachable*()
     {.noreturn, noinline, raises: [].} =
-    if msg.len() > 0:
-        panic("todo: " & msg)
-    else:
-        panic("todo")
+    const msg = "reached unreachable code"
+    logger.error(msg)
+    raise newException(UnreachableDefect, msg)
 
-template unreachable*(cond: untyped; msg: string = "") =
-    if not cond: unreachable(msg)
+func unimplemented*(msg: string)
+    {.noreturn, noinline, raises: [].} =
+    let msg = "unimplemented; " & msg
+    logger.error(msg)
+    raise newException(UnimplementedDefect, msg)
+
+func unimplemented*()
+    {.noreturn, noinline, raises: [].} =
+    const msg = "unimplemented"
+    logger.error(msg)
+    raise newException(UnimplementedDefect, msg)
+
+func todo*(msg: string)
+    {.noreturn, noinline, raises: [].} =
+    let msg = "TODO: " & msg
+    logger.error(msg)
+    raise newException(TodoDefect, msg)
+
+func todo*()
+    {.noreturn, noinline, raises: [].} =
+    const msg = "TODO"
+    logger.error(msg)
+    raise newException(TodoDefect, msg)
 
 func numLen*(x: int): int =
     result = ord(x < 0) + log10(float32(abs(x)) + 1).ceil().int
@@ -49,8 +67,6 @@ func hasPragma(fn: NimNode; pragma: string): bool =
         if pragmaIdent != nil and $pragmaIdent == pragma:
             return true
     return false
-
-type AbstractMethodCallDefect = object of Defect
 
 macro abstract*(fn: untyped): untyped =
     fn.expectKind(nnkMethodDef)
