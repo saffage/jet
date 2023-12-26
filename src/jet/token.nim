@@ -132,11 +132,12 @@ template `indent=`*(self: var Token; value: Natural) =
     self.setIndent(value)
 
 func notation*(self: Token; prev = Invalid; next = Invalid): Notation =
-    # TODO: make this more clear
-    let firstInLine = not(spacesBefore =? self.spacesBefore())
-    let lastInLine  = not(spacesAfter =? self.spacesAfter())
-    var prefix      = false
-    var postfix     = false
+    let spacesBefore = self.spacesBefore() |? -2
+    let spacesAfter  = self.spacesAfter() |? -2
+    let firstInLine  = self.isFirstInLine()
+    let lastInLine   = self.isLastInLine()
+    var prefix       = false
+    var postfix      = false
 
     const PrefixWhitelist  = {Invalid, Comma, Semicolon, LParen, LBracket, LBrace}
     const PostfixWhitelist = {Invalid, Comma, Semicolon, RParen, RBracket, RBrace, Last} # idk are 'Last' is needed
