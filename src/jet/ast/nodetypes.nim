@@ -132,6 +132,6 @@ func `$`*(self: Node): string =
     of nkLit:
         result &= $self.lit
     of nkId:
-        result &= fmt" '{self.id}'"
+        result &= fmt(" \"{self.id}\"")
     else:
         discard

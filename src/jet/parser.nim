@@ -61,7 +61,7 @@ const precedences = {
     KwOr       : Or,
     KwOf       : Member, # IDK
     Eq         : Assign,
-}.toOrderedTable()
+}.toTable()
 
 proc newParser*(scanner: Scanner): Parser
 proc fillTables(self: Parser)
@@ -103,6 +103,7 @@ proc parseList(
     fn: ParseFn = parseExpr)
 
 proc parseInfixOp(self: Parser; left: Node): Node
+proc parseExprDotExpr(self: Parser; left: Node): Node
 proc parseExprEqExpr(self: Parser; left: Node): Node
 proc parseVarDecl(self: Parser): Node
 proc parseVarDeclNoHead(self: Parser; left: Node): Node
@@ -140,7 +141,7 @@ proc nextToken(self: Parser; checkIndent: bool = true)
 
 
 # ----- ERRORS ----- #
-{.push used.}
+{.push, used, noreturn.}
 
 proc err(self: Parser; msg: string) =
     error(msg, self.token.info)
@@ -151,6 +152,9 @@ proc errSyntax(self: Parser; msg: string) =
 
 proc errExpectedId(self: Parser) =
     self.err(fmt"expected identifier, got {self.token.kind}")
+
+proc errExpectedLit(self: Parser) =
+    self.err(fmt"expected literal, got {self.token.kind}")
 
 proc errExpectedExprStart(self: Parser) =
     self.errSyntax(fmt"token '{self.token.kind}' is not an expression start")
@@ -209,7 +213,7 @@ proc errUnknownOp(self: Parser; op, explanation: string) =
 proc errUnknownOp(self: Parser; op: string) =
     self.err(fmt"Unknown operator: '{op}'")
 
-{.pop.} # used
+{.pop.} # used, noreturn
 
 
 # ----- PRIVATE ----- #
@@ -323,7 +327,7 @@ proc blockContextFromCurrentToken(self: Parser; allowSmallerIndent: bool = false
 
 proc checkToken(
     self        : Parser;
-    notation    : Notation = Unknown;
+    notation    : set[Notation] = {};
     sameLine    : bool = false;
     firstInLine : bool = false;
     lastInLine  : bool = false;
@@ -346,9 +350,8 @@ proc checkToken(
     if lastInLine:
         self.tokenLastInLine()
         check()
-    if notation != Unknown and self.tokenNotation() != notation:
+    if notation != {} and self.tokenNotation() notin notation:
         self.errInvalidNotation()
-        check()
     if expectedIndent =? indent:
         self.tokenIndent(expectedIndent)
         check()
@@ -405,6 +408,7 @@ proc fillTables(self: Parser) =
     # self.infix[Comma]      = parseCommaInfix
     self.infix[LParen]     = parseExprParen
     self.infix[LBrace]     = parseExprBrace
+    self.infix[Dot]        = parseExprDotExpr
     self.infix[Eq]         = parseExprEqExpr
     self.infix[Id]         = parseVarDeclNoHead
     self.infix[DotDotDot]  = parseVarDeclNoHead
@@ -479,7 +483,6 @@ proc parseExpr(self: Parser): Node =
 
     if prefixFn == nil:
         self.errExpectedExprStart()
-        return newEmptyNode()
 
     result = prefixFn(self)
 
@@ -488,7 +491,7 @@ proc parseExpr(self: Parser): Node =
 
     dbg self, "parseExpr infix"
 
-    while (self.precedence |? Lowest) <= precedences.getOrDefault(self.token.kind, Lowest):
+    while self.precedence.isNone() or !self.precedence < precedences.getOrDefault(self.token.kind, Lowest):
         dbg self, "parseExpr infix loop"
 
         let notation = self.tokenNotation()
@@ -549,7 +552,7 @@ proc parseDef(self: Parser): Node =
 
     let returnTypeExpr =
         if self.isKind({Eq, Last}):
-            newIdNode("unit")
+            newEmptyNode()
         else:
             self.checkToken(sameLine=true)
             self.parseTypeExpr()
@@ -561,7 +564,6 @@ proc parseDef(self: Parser): Node =
         else:
             if not self.token.isFirstInLine() and not self.isKind(Last):
                 self.errExpected(Eq)
-                self.skipLine()
             newEmptyNode()
 
     result = newDefStmt(head, params, returnTypeExpr, body)
@@ -657,11 +659,12 @@ proc parseLit(self: Parser): Node
             newLitNode(newLit(false))
         of StringLit, RawStringLit, LongStringLit, LongRawStringLit:
             newLitNode(newLit(self.token.value))
-        of TypedLiteralKinds, IntLit, UIntLit, FloatLit:
+        of TypedLiteralKinds, IntLit, UIntLit, FloatLit, CharLit:
             let lit = case self.token.kind:
                 of IntLit, I8Lit, I16Lit, I32Lit, I64Lit  : self.getIntLit()
                 of UIntLit, U8Lit, U16Lit, U32Lit, U64Lit : self.getUIntLit()
                 of FloatLit, F32Lit, F64Lit               : self.getFloatLit()
+                of CharLit: newLit(self.token.value[0]) # TOOBAD: why only 1
                 else: unreachable()
             let typedLit = case self.token.kind:
                 of ISizeLit : lit.tryIntoTyped(tlkISize)
@@ -676,10 +679,12 @@ proc parseLit(self: Parser): Node
                 of U64Lit   : lit.tryIntoTyped(tlkU64)
                 of F32Lit   : lit.tryIntoTyped(tlkF32)
                 of F64Lit   : lit.tryIntoTyped(tlkF64)
+                of CharLit  : lit.tryIntoTyped(tlkChar)
                 of IntLit, UIntLit, FloatLit : lit.toTypedLit()
                 else: unreachable()
             newLitNode(typedLit)
-        else: unimplemented()
+        else:
+            self.errExpectedLit()
     self.nextToken()
 
 proc parseTypeExpr(self: Parser): Node =
@@ -704,7 +709,7 @@ proc parseTypeExpr(self: Parser): Node =
 
         return newGenericParam(id)
     of DotDotDot:
-        self.checkToken(sameLine=true, notation=Prefix)
+        self.checkToken(sameLine=true, notation={Prefix})
         self.skipToken()
         self.checkToken(sameLine=true)
         result = newPrefix(id"...", self.parseTypeExpr())
@@ -881,11 +886,30 @@ proc parseExprBrace(self: Parser; left: Node): Node =
 proc parseExprEqExpr(self: Parser; left: Node): Node =
     dbg self, "parseExprEqExpr"
 
-    result = newExprEqExpr(left, self.parseEqExpr())
+    self.checkToken(notation={Infix})
+    self.skip(Eq)
+    self.checkToken(sameLine=true)
+    self.precedence = some(Assign)
 
-    if result[1].len() == 1:
-        # drop redundant 'EqExpr' node
-        result[1] = result[1][0]
+    dbg self, "parseExprEqExpr end"
+
+    result = newExprEqExpr(left, self.parseExpr())
+
+    # if result[1].len() == 1:
+    #     # drop redundant 'EqExpr' node
+    #     result[1] = result[1][0]
+
+proc parseExprDotExpr(self: Parser; left: Node): Node =
+    dbg self, "parseExprDotExpr"
+
+    self.checkToken(notation={Infix, Prefix})
+    self.skip(Dot)
+    self.checkToken(sameLine=true)
+    self.precedence = some(Member)
+
+    dbg self, "parseExprDotExpr end"
+
+    result = newExprDotExpr(left, self.parseExpr())
 
 proc parseBar(self: Parser): Node =
     self.skip(Bar)
@@ -1014,7 +1038,6 @@ proc parsePragma(self: Parser): Node =
     if spacesBefore =? self.token.spacesBefore():
         if spacesBefore != 0:
             self.errExpected({Id, Hashtag})
-            return
 
     let pragmas: seq[Node]
 
@@ -1030,7 +1053,6 @@ proc parsePragma(self: Parser): Node =
 
             if not self.isKind(Id):
                 self.errExpectedId()
-                self.skipLine()
 
             let pragma = self.parsePragmaAux()
             tmp.add(pragma)
@@ -1044,7 +1066,6 @@ proc parsePragma(self: Parser): Node =
 
     if pragmas.len() == 0:
         self.errSyntax(fmt"empty pragma blocks are invalid")
-        return
 
     dbg self, "parsePragma after"
 
@@ -1064,8 +1085,6 @@ proc parseBlock(self: Parser; result: Node; context: BlockContext; until: TokenK
         case self.token.checkIndent(self.blocks.peek())
         of 1:
             self.errInvalidBlockContext()
-            self.skipLine()
-            continue
         of -1:
             break
         else:
@@ -1074,6 +1093,7 @@ proc parseBlock(self: Parser; result: Node; context: BlockContext; until: TokenK
             if node.kind != nkEmpty:
                 result &= node
 
+    # discard self.skipMaybe(until)
     self.blocks.drop()
 
     dbg self, "parseBlock end"

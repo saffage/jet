@@ -1,3 +1,4 @@
+import std/strutils
 import std/strformat
 
 import utils
@@ -135,8 +136,10 @@ func newTypedLit*(value: bool): TypedLiteral = TypedLiteral(kind: tlkBool, boolV
 func newTypedLit*(value: char): TypedLiteral = TypedLiteral(kind: tlkChar, charVal: value)
 
 func `$`*(self: TypedLiteral): string =
+    template escape(str: string): string =
+        multiReplace(str, ("\0", "\\0"), ("\n", "\\n"), ("\r", "\\r"), ("\t", "\\t"), ("\'", "\\'"), ("\"", "\\\""), ("\\", "\\\\"))
+
     result = case self.kind:
-        of tlkString : '"' & self.stringVal & '"'
         of tlkISize  : $self.isizeVal
         of tlkUSize  : $self.usizeVal
         of tlkI8     : $self.i8Val
@@ -150,7 +153,8 @@ func `$`*(self: TypedLiteral): string =
         of tlkF32    : $self.f32Val
         of tlkF64    : $self.f64Val
         of tlkBool   : $self.boolVal
-        of tlkChar   : $self.charVal
+        of tlkChar   : "'" & escape($self.charVal) & "'"
+        of tlkString : '"' & escape(self.stringVal) & '"'
         of tlkNull   : "<null>"
         of tlkUnit   : "<unit>"
         of tlkNever  : "<never>"

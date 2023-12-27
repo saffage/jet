@@ -7,7 +7,7 @@ type Precedence* = enum
     Postfix
     Sum
     Product
-    Member
-    Index
     Call
+    Index
+    Member
     Highest
