@@ -7,7 +7,7 @@ import jet/ast
 import jet/ast/sym
 import jet/ast/types
 
-import utils
+import lib/utils
 
 
 type Object* = ref object of Sym

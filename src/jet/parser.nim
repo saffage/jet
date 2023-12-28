@@ -14,11 +14,11 @@ import jet/parser/precedence
 
 import lib/stack
 import lib/grammar_docs
+import lib/utils
+import lib/utils/line_info
 
 import pkg/questionable
 
-import utils
-import utils/line_info
 
 
 type
@@ -117,7 +117,7 @@ proc parseTestComment(self: Parser)
 
 when defined(jetDebugParserState):
     import std/importutils
-    import utils/text_style
+    import lib/utils/text_style
 
     proc dbg(self: Parser; msg: string = "") =
         const dbgStyle = TextStyle(foreground: Cyan, underlined: true)

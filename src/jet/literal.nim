@@ -1,7 +1,7 @@
 import std/strutils
 import std/strformat
 
-import utils
+import lib/utils
 
 
 # ----- UNTYPED LITERAL ----- #

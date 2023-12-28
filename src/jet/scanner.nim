@@ -7,8 +7,8 @@ import pkg/questionable
 import jet/scanner_base
 import jet/token
 
-import utils
-import utils/line_info
+import lib/utils
+import lib/utils/line_info
 
 export scanner_base
 

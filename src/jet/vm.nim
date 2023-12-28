@@ -11,11 +11,11 @@ import jet/literal
 import jet/vm/obj
 import jet/sem/typechecker
 
-import utils
-import utils/text_style
-import utils/line_info
-
 import lib/stack
+import lib/utils
+import lib/utils/text_style
+import lib/utils/line_info
+
 
 # TODO:
 #   - some 'vmError' calls was replaces by 'panic'. This is invalid.

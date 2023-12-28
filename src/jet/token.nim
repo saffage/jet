@@ -4,7 +4,7 @@ import pkg/questionable
 
 import jet/token_kind
 
-import utils/line_info
+import lib/utils/line_info
 
 export token_kind
 

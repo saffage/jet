@@ -7,8 +7,8 @@ import std/strformat
 
 import jet/token
 
-import utils
-import utils/line_info
+import lib/utils
+import lib/utils/line_info
 
 
 type ScannerBase* = object of RootObj

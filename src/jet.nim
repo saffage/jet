@@ -11,8 +11,8 @@ import jet/ast/sym
 import jet/vm
 import jet/vm/obj
 
-import utils
-import utils/text_style
+import lib/utils
+import lib/utils/text_style
 
 
 # proc print_node_tree(node: Node) {.importc: "print_node_tree", dynlib: "vm_test.dll", cdecl.}

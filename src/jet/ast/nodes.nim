@@ -5,7 +5,8 @@ import std/math
 import jet/ast/nodetypes
 import jet/literal
 import jet/token
-import utils
+
+import lib/utils
 
 
 export nodetypes

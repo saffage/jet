@@ -1,7 +1,8 @@
 from std/math import log10, ceil
 
 import std/macros
-import utils/logger
+
+import lib/utils/logger
 
 export logger
 
