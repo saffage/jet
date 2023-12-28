@@ -107,7 +107,6 @@ proc parseExprDotExpr(self: Parser; left: Node): Node
 proc parseExprEqExpr(self: Parser; left: Node): Node
 proc parseVarDecl(self: Parser): Node
 proc parseVarDeclNoHead(self: Parser; left: Node): Node
-proc parseCommaInfix(self: Parser; left: Node): Node
 
 proc getIntLit(self: Parser): Literal
 proc getUIntLit(self: Parser): Literal
@@ -267,7 +266,7 @@ proc skipLine(self: Parser; line: uint32) =
 
         debug fmt"token {token.kind} at {token.info} was skipped"
 
-    dbg self, fmt"skipLine {line} after"
+    dbg self, fmt"skipLine {line} end"
 
 proc skipLine(self: Parser) =
     self.skipLine(self.token.info.line)
@@ -430,9 +429,6 @@ proc fillTables(self: Parser) =
     self.infix[Percent]    = parseInfixOp
     self.infix[PlusPlus]   = parseInfixOp
 
-proc isExprStart(self: Parser): bool =
-    return self.token.kind in self.prefix
-
 proc parseAll(self: Parser): Node =
     result = newProgram()
 
@@ -573,13 +569,16 @@ proc parseTypedef(self: Parser): Node
     ## @grammar
     ## TypedefStmt = KW_TYPEDEF Id EqExpr
     ## @end
-    self.skip(KwTypedef)
+    dbg self, "parseTypedef"
 
+    self.skip(KwTypedef)
     self.checkToken(sameLine=true)
     let name = self.parseId()
 
     self.checkToken(sameLine=true)
     let body = self.parseEqExpr()
+
+    dbg self, "parseTypedef end"
 
     result = newTypedefStmt(name, body)
 
@@ -631,11 +630,15 @@ proc parseId(self: Parser): Node
     ## @grammar
     ## Id <- !Keyword [_a-zA-Z] [_a-zA-Z0-9]* Skip
     ## @end
+    dbg self, "parseId"
+
     if self.token.kind != Id:
         self.errExpectedId()
 
     result = id(self.token)
     self.nextToken()
+
+    dbg self, "parseId end"
 
 proc parseLit(self: Parser): Node
     {.grammarDocs.} =
@@ -717,10 +720,12 @@ proc parseTypeExpr(self: Parser): Node =
     else:
         self.errExpected({Id, LtOp, DotDotDot})
 
-    dbg self, "parseTypeExpr after"
+    dbg self, "parseTypeExpr end"
     result = nil
 
 proc parseMatchExpr(self: Parser): Node =
+    dbg self, "parseMatchExpr"
+
     self.skip(KwMatch)
 
     let expr  = self.parseExpr()
@@ -739,6 +744,8 @@ proc parseMatchExpr(self: Parser): Node =
         else:
             cases &= branch
 
+    dbg self, "parseMatchExpr end"
+
     result = newMatchExpr(expr, cases, elseCase)
 
 proc parseIfExpr(self: Parser): Node
@@ -750,31 +757,10 @@ proc parseIfExpr(self: Parser): Node
     ## @end
     dbg self, "parseIfExpr"
 
-    var branches = newSeqOfCap[Node](1)
+    var branches = @[self.parseIfBranch()]
 
-    while true:
-        if branches.len() > 0 and not self.isKind(KwElif):
-            break
-
+    while self.isKind(KwElif):
         branches &= self.parseIfBranch()
-
-        # if branches.len() == 0:
-        #     self.skip(KwIf)
-        # elif not self.skipMaybe(KwElif):
-        #     break
-
-        # self.blocks.push(self.blockContextFromCurrentToken())
-
-        # case self.token.checkIndent(self.blocks.peek())
-        # of -1 : self.blocks.drop()
-        # of 1  : self.errInvalidBlockContext()
-        # else: discard
-
-        # let expr = self.parseExpr()
-        # self.blocks.drop()
-        # let body = self.parseDoExpr()
-
-        # branches &= newIfBranch(expr, body)
 
     dbg self, "parseIfExpr else"
 
@@ -787,6 +773,8 @@ proc parseIfExpr(self: Parser): Node
     result = newIfExpr(branches, elseBranch)
 
 proc parseIfBranch(self: Parser): Node =
+    dbg self, "parseIfBranch"
+
     self.skip({KwIf, KwElif})
 
     self.blocks.push(self.blockContextFromCurrentToken())
@@ -796,8 +784,12 @@ proc parseIfBranch(self: Parser): Node =
     of 1  : self.errInvalidBlockContext()
     else: discard
 
+    dbg self, "parseIfBranch body"
+
     let expr = self.parseExpr()
     self.blocks.drop()
+
+    dbg self, "parseIfBranch end"
 
     result = newIfBranch(expr, self.parseDoExpr())
 
@@ -864,6 +856,8 @@ proc parseBrace(self: Parser): Node =
     dbg self, "parseBrace end"
 
 proc parseInfixOp(self: Parser; left: Node): Node =
+    dbg self, "parseInfixOp"
+
     if self.token.kind notin OperatorKinds + {KwAnd, KwOr, KwOf}:
         self.errUnknownOp(if self.token.kind == Id: "id " & self.token.value else: $self.token.kind)
 
@@ -871,7 +865,12 @@ proc parseInfixOp(self: Parser; left: Node): Node =
 
     self.precedence = some(precedences[self.token.kind])
     self.skipToken()
+
+    dbg self, "parseInfixOp right"
+
     result = newInfix(op, left, self.parseExpr())
+
+    dbg self, "parseInfixOp end"
 
 proc parseExprParen(self: Parser; left: Node): Node =
     dbg self, "parseExprParen"
@@ -917,6 +916,8 @@ proc parseExprDotExpr(self: Parser; left: Node): Node =
     result = newExprDotExpr(left, self.parseExpr())
 
 proc parseBar(self: Parser): Node =
+    dbg self, "parseBar"
+
     self.skip(Bar)
 
     case self.token.kind
@@ -929,11 +930,11 @@ proc parseBar(self: Parser): Node =
     else:
         result = self.parseExpr()
 
-    if result.kind == nkInfix:
-        if result[0].id != "of":
-            self.errExpected(KwOf)
-
+    if result.kind == nkInfix and result[0].id == "of":
         result = newVariant(result)
+        return
+
+    dbg self, "parseBar match case"
 
     case self.token.kind
     of Last, Bar:
@@ -944,6 +945,8 @@ proc parseBar(self: Parser): Node =
         result = newMatchCase(result, self.parseDoExpr())
     else:
         unimplemented(fmt"parseBar for {self.token.kind}")
+
+    dbg self, "parseBar end"
 
     if result.kind notin {nkVariant, nkCase, nkElseBranch}:
         result = newVariant(result)
@@ -1009,18 +1012,7 @@ proc parseVarDeclNoHead(self: Parser; left: Node): Node =
 
     dbg self, "parseVarDeclNoHead end"
 
-proc parseCommaInfix(self: Parser; left: Node): Node =
-    result = case left.kind:
-        of nkId:
-            self.parseVarDeclNoHead(left)
-        else:
-            # 'Comma' token can be used only in parenthesis
-            self.skip(Comma)
-            left
-
 proc parsePragmaAux(self: Parser): Node =
-    assert(self.isKind(Id))
-
     dbg self, "parsePragmaAux"
 
     let name = self.parseId()
@@ -1030,7 +1022,7 @@ proc parsePragmaAux(self: Parser): Node =
         self.parseList(args, RParen, Comma)
         self.skip(RParen)
 
-    dbg self, "parsePragmaAux after"
+    dbg self, "parsePragmaAux end"
 
     result = newPragma(name, args)
 
@@ -1072,7 +1064,7 @@ proc parsePragma(self: Parser): Node =
     if pragmas.len() == 0:
         self.errSyntax(fmt"empty pragma blocks are invalid")
 
-    dbg self, "parsePragma after"
+    dbg self, "parsePragma end"
 
     result = newPragmaList(pragmas)
 
