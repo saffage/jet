@@ -3,124 +3,104 @@ import std/strformat
 import jet/literal
 
 
-type
-    NodeKinds* = set[NodeKind]
+type NodeKind* = enum
+    #[ Leaf Nodes ]#
+    nkEmpty
+        ## Empty node
+    nkProgram
+        ## File
+    nkId
+        ## Unchecked symbol
+    nkGenericId
+        ## Unchecked generic symbol
+    nkLit
+        ## Some typed literal
 
-    NodeKind* = enum
-        # Leaf
-        nkEmpty
-            ## Empty node
-        nkProgram
-            ## File
-        nkId
-            ## Unckeched symbol
-        nkSym
-            ## Checked symbol
-        nkLit
-            ## Some typed literal
+    #[ Other ]#
+    nkDefStmt
+        ## Id(name) | ExprDotExpr(instance-and-name)
+        ## Paren(params)
+        ## expr(return-type)
+        ## EqExpr(body)
+        ## PragmaList
+    nkTypedefStmt
+        ## Id(name)
+        ## EqExpr(body)
+        ## PragmaList
+    nkReturnStmt
+        ## expr
+    nkIfExpr
+        ## IfBranch+
+        ## ElseBranch?
+    nkIfBranch
+        ## expr(condition)
+        ## DoExpr(body)
+    nkElseBranch
+        ## stmt+
+    nkDoExpr
+        ## stmt+
+    nkEqExpr
+        ## stmt+
+    nkExprEqExpr
+        ## expr(left)
+        ## expr(right)
+    nkExprColonExpr
+        ## expr(left)
+        ## expr(right)
+    nkExprDotExpr
+        ## expr(left)
+        ## expr(right)
 
-        # Statements
-        nkLetStmt
-            ## Id(name)
-            ## expr(type)
-            ## EqExpr(value)
-            ## PragmaList
-        nkDefStmt
-            ## Id(name) | ExprDotExpr(instance-and-name)
-            ## ParamList(params)
-            ## expr(return-type)
-            ## EqExpr(body)
-            ## PragmaList
-        nkTypedefStmt
-            ## Id(name)
-            ## EqExpr(body)
-            ## PragmaList
-        nkReturnStmt
-            ## expr
+    nkParen
+        ## expr(elements)*
+    nkBrace
+        ## expr(elements)*
+    nkExprParen
+        ## expr(prefix)
+        ## Paren(elements)
+    nkExprBrace
+        ## expr(prefix)
+        ## Brace(elements)
+    nkPrefix
+        ## Id(op)
+        ## expr(operand)
+    nkPostfix
+        ## Id(op)
+        ## expr(operand)
+    nkInfix
+        ## Id(op)
+        ## expr(left-operand)
+        ## expr(right-operand)
+    nkPragma
+        ## Id(name)
+        ## Paren(args)?
+    nkPragmaList
+        ## Pragma*
+    nkVarDecl
+        ## Id(name)+
+        ## expr(type)
+        ## EqExpr(value)
+        ## PragmaList(pragmas)
+    nkMatch
+        ## expr
+        ## (Case | IfBranch)+
+        ## ElseBranch?
+    nkCase
+        ## expr(match-expression)
+        ## DoExpr(body) | IfBranch(guard)
+    nkVariant
+        ## Infix | Id
 
-        nkParam
-            ## Id(name)
-            ## expr(type)
-            ## expr(default-value)
-            ## Pragma(pragma)
-        nkGenericParam
-            ## Id
-        nkParamList
-            ## nkParam
-
-        nkIfExpr
-            ## IfBranch+
-            ## ElseBranch?
-        nkIfBranch
-            ## expr(condition)
-            ## DoExpr(body)
-        nkElseBranch
-            ## stmt+
-        nkDoExpr
-            ## stmt+
-        nkEqExpr
-            ## stmt+
-        nkBarExpr
-            ## expr
-        nkExprEqExpr
-            ## expr(left)
-            ## expr(right)
-        nkExprColonExpr
-            ## expr(left)
-            ## expr(right)
-        nkExprDotExpr
-            ## expr(left)
-            ## expr(right)
-
-        nkParen
-            ## expr(elements)*
-        nkBrace
-            ## expr(elements)*
-        nkExprParen
-            ## expr(prefix)
-            ## Paren(elements)
-        nkExprBrace
-            ## expr(prefix)
-            ## Brace(elements)
-        nkAssign
-            ## Id(variable)
-            ## EqExpr(value)
-        nkPrefix
-            ## Id(op)
-            ## expr(operand)
-        nkPostfix
-            ## Id(op)
-            ## expr(operand)
-        nkInfix
-            ## Id(op)
-            ## expr(left-operand)
-            ## expr(right-operand)
-        nkPragma
-            ## Id(name)
-            ## Paren(args)
-        nkPragmaList
-            ## Pragma*
-        nkVarDecl
-            ## Id(name)+
-            ## expr(type)
-            ## EqExpr(value)
-            ## PragmaList(pragmas)
-        nkMatch
-            ## expr
-            ## (Case | IfBranch)+
-            ## ElseBranch?
-        nkCase
-            ## expr(match-expression)
-            ## DoExpr(body) | IfBranch(guard)
-        nkVariant
-            ## Infix | Id
-
-    Node* = ref object
-        case kind* : NodeKind
-        of nkEmpty : nil
-        of nkId    : id*       : string
-        of nkLit   : lit*      : TypedLiteral
-        else       : children* : seq[Node]
+type Node* = ref object
+    case kind* : NodeKind
+    of nkEmpty:
+        nil
+    of nkId, nkGenericId:
+        id* : string
+    of nkLit:
+        lit* : TypedLiteral
+    else:
+        children* : seq[Node]
 
 func isLeaf*(self: Node): bool =
     result = self.kind in {nkEmpty, nkId, nkLit}

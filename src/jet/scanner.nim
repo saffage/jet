@@ -190,6 +190,20 @@ func scanIdOrKeyword(self: var Scanner) =
     if self.token.kind == Invalid:
         self.token.kind = Id
 
+func escape*(self: string): string =
+    result = self.multiReplace(
+        ("\'", "\\'"),
+        ("\"", "\\\""),
+        ("\\", "\\\\"),
+        ("\0", "\\0"),
+        ("\b", "\\b"),
+        ("\f", "\\f"),
+        ("\v", "\\v"),
+        ("\t", "\\t"),
+        ("\n", "\\n"),
+        ("\r", "\\r"),
+    )
+
 func scanEscapedChar(self: var Scanner) =
     assert(self.ch() == '\\')
     inc(self.pos) # skip \

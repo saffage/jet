@@ -38,18 +38,16 @@ proc expectKind*(self: Node; kinds: set[NodeKind]) =
         panic(fmt"expected one of {kinds}, got {self.kind} instead")
 
 proc canHavePragma*(self: Node): bool =
-    return self.kind in {nkLetStmt, nkDefStmt, nkTypedefStmt}
+    return self.kind in {nkDefStmt, nkTypedefStmt}
 
 proc pragma*(self: Node): Node =
     result = case self.kind:
-        of nkLetStmt: self[3]
         of nkDefStmt: self[4]
         of nkTypedefStmt: self[2]
         else: nil
 
 proc `pragma=`*(self: Node; node: Node) =
     case self.kind:
-        of nkLetStmt: self[3] = node
         of nkDefStmt: self[4] = node
         of nkTypedefStmt: self[2] = node
         else: panic(fmt"node of kind {self.kind} can't have a pragma")
@@ -62,6 +60,9 @@ proc newEmptyNode*(): Node =
 
 proc newIdNode*(id: string): Node =
     result = Node(kind: nkId, id: id)
+
+proc newGenericId*(id: string): Node =
+    result = Node(kind: nkGenericId, id: id)
 
 proc newLitNode*(lit: TypedLiteral): Node =
     result = Node(kind: nkLit, lit: lit)

@@ -162,7 +162,7 @@ proc errExpectedExprStart(self: Parser) =
 proc errExpectedNodeOf(self: Parser; kind: NodeKind) =
     self.errSyntax(fmt"expected node of kind {kind}, got {self.token.kind} instead")
 
-proc errExpectedNodeOf(self: Parser; kinds: NodeKinds) =
+proc errExpectedNodeOf(self: Parser; kinds: set[NodeKind]) =
     self.errSyntax(fmt"expected node of kinds {kinds}, got {self.token.kind} instead")
 
 proc errExpected(self: Parser; kind: TokenKind) =
@@ -533,7 +533,7 @@ proc parseDef(self: Parser): Node =
     elif head.kind == nkExprDotExpr:
         discard
 
-    let params = newEmptyParamList()
+    let params = newParen()
 
     self.checkToken(sameLine=true)
     self.skip(LParen)
@@ -701,13 +701,14 @@ proc parseTypeExpr(self: Parser): Node =
 
         if self.tokenNotation() != Prefix: self.errSyntax(errMsg)
         self.skip(LtOp)
+        self.expected(Id)
 
-        let id = self.parseId()
+        let id = self.token.value
 
         if self.tokenNotation() != Postfix: self.errSyntax(errMsg)
         self.skip(GtOp)
 
-        return newGenericParam(id)
+        return newGenericId(id)
     of DotDotDot:
         self.checkToken(sameLine=true, notation={Prefix})
         self.skipToken()
@@ -842,8 +843,12 @@ proc parseParen(self: Parser): Node =
     dbg self, "parseParen"
 
     self.skip(LParen)
-    result = self.parseExpr()
-    self.skip(RParen)
+
+    if self.skipMaybe(RParen):
+        result = newParen()
+    else:
+        result = self.parseExpr()
+        self.skip(RParen)
 
     dbg self, "parseParen end"
 
@@ -918,7 +923,7 @@ proc parseBar(self: Parser): Node =
     of KwElse:
         result = self.parseElseBranch()
         return
-    of KwElif:
+    of KwIf:
         result = self.parseIfBranch()
         return
     else:

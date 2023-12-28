@@ -11,19 +11,9 @@ proc newProgram*(): Node =
 
 
 # ----- Stmt ------ #
-proc newLetStmt*(id, typeExpr, value: Node): Node =
-    assert(id != nil and id.kind == nkId)
-    assert(value != nil and value.kind == nkEqExpr)
-
-    result  = newNode(nkLetStmt)
-    result &= id
-    result &= (if typeExpr == nil: newEmptyNode() else: typeExpr)
-    result &= value
-    result &= newEmptyNode()
-
 proc newDefStmt*(name, params, returnType, body: Node): Node =
     assert(name != nil and name.kind in {nkId, nkExprDotExpr})
-    assert(params != nil and params.kind == nkParamList)
+    assert(params != nil and params.kind == nkParen)
     assert(returnType != nil)
     assert(body != nil and body.kind in {nkEmpty, nkEqExpr})
 
@@ -130,12 +120,6 @@ proc newEqExpr*(expr: Node): Node =
 proc newEqExpr*(): Node =
     result = newNode(nkEqExpr)
 
-proc newBarExpr*(expr: Node): Node =
-    assert(expr != nil)
-
-    result  = newNode(nkBarExpr)
-    result &= expr
-
 proc newExprEqExpr*(left, right: Node): Node =
     assert(left != nil)
     assert(right != nil)
@@ -182,14 +166,6 @@ proc newExprParen*(expr: Node): Node =
     result &= expr
     result &= newParen()
 
-proc newAssign*(id, value: Node): Node =
-    assert(id != nil and id.kind == nkId)
-    assert(value != nil and value.kind == nkEqExpr)
-
-    result  = newNode(nkAssign)
-    result &= id
-    result &= value
-
 proc newPrefix*(op: Node; operand: Node): Node =
     assert(op != nil)
     assert(operand != nil)
@@ -228,42 +204,6 @@ proc newPragma*(name, args: Node): Node =
     else:
         result &= newEmptyNode()
 
-proc newParam*(name, typeExpr, defaultValue, pragmas: Node): Node =
-    assert(name != nil and name.kind == nkId)
-
-    result  = newNode(nkParam)
-    result &= name
-
-    if typeExpr != nil:
-        result &= typeExpr
-    else:
-        result &= newEmptyNode()
-
-    if defaultValue != nil:
-        result &= defaultValue
-    else:
-        assert(typeExpr != nil)
-        result &= newEmptyNode()
-
-    if pragmas != nil:
-        assert(pragmas.kind in {nkEmpty, nkPragmaList}, $pragmas.kind)
-        result &= pragmas
-    else:
-        result &= newEmptyNode()
-
-proc newParamList*(params: openArray[Node]): Node =
-    result = newNode(nkParamList)
-
-    for param in params:
-        assert(param != nil and param.kind == nkParam)
-        result &= param
-
-proc newParamList*(param: Node): Node =
-    result = newParamList([param])
-
-proc newEmptyParamList*(): Node =
-    result = newParamList([])
-
 proc newPragmaList*(pragmas: openArray[Node]): Node =
     result = newNode(nkPragmaList)
 
@@ -276,12 +216,6 @@ proc newPragmaList*(pragma: Node): Node =
 
 proc newEmptyPragmaList*(): Node =
     result = newPragmaList([])
-
-proc newGenericParam*(id: Node): Node =
-    assert(id != nil and id.kind == nkId)
-
-    result  = newNode(nkGenericParam)
-    result &= id
 
 proc newVarDecl*(names: openArray[Node]; typeExpr: Node; eqExpr: Node = nil): Node =
     assert(names.len() > 0)

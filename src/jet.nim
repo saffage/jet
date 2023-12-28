@@ -7,6 +7,7 @@ import std/strformat
 import jet/scanner
 import jet/parser
 import jet/ast
+import jet/ast/algo
 import jet/ast/sym
 import jet/vm
 import jet/vm/obj
@@ -50,6 +51,8 @@ proc main() =
         var program   = parser.parseAll()
 
         echo(program.treeRepr)
+        echo("Recreated AST:")
+        echo(ast2jet(program))
 
         var vm        = newVm(program)
         let evaluated = vm.eval()

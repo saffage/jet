@@ -366,7 +366,6 @@ proc eval(vm: VmState; tree: Node): Object =
         of nkProgram    : vm.evalProgram()
         of nkExprParen  : vm.evalCall()
         of nkLit        : vm.evalLit()
-        # of nkLetStmt    : vm.evalLetStmt()
         of nkVarDecl    : vm.evalLetStmt()
         of nkDefStmt    : vm.evalDefStmt()
         of nkReturnStmt : vm.evalReturnStmt()

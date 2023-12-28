@@ -1,5 +1,7 @@
-import std/strutils
+import std/strutils except escape
 import std/strformat
+
+from jet/scanner import escape
 
 import lib/utils
 
@@ -134,6 +136,28 @@ func newTypedLit*(value: float32): TypedLiteral = TypedLiteral(kind: tlkF32, f32
 func newTypedLit*(value: float64): TypedLiteral = TypedLiteral(kind: tlkF64, f64Val: value)
 func newTypedLit*(value: bool): TypedLiteral = TypedLiteral(kind: tlkBool, boolVal: value)
 func newTypedLit*(value: char): TypedLiteral = TypedLiteral(kind: tlkChar, charVal: value)
+
+func str*(self: TypedLiteral): string =
+    ## **Returns:** a string representation of literal in a **Jet** code
+    result = case self.kind:
+        of tlkISize  : $self.isizeVal & "i"
+        of tlkUSize  : $self.usizeVal & "u"
+        of tlkI8     : $self.i8Val & "i8"
+        of tlkI16    : $self.i16Val & "i16"
+        of tlkI32    : $self.i32Val
+        of tlkI64    : $self.i64Val & "i64"
+        of tlkU8     : $self.u8Val & "u8"
+        of tlkU16    : $self.u16Val & "u16"
+        of tlkU32    : $self.u32Val & "u32"
+        of tlkU64    : $self.u64Val & "u64"
+        of tlkF32    : $self.f32Val & "f32"
+        of tlkF64    : $self.f64Val
+        of tlkBool   : $self.boolVal
+        of tlkChar   : "'" & escape($self.charVal) & "'"
+        of tlkString : '"' & escape(self.stringVal) & '"'
+        of tlkNull   : "null"
+        of tlkUnit   : "()"
+        of tlkNever  : "TODO \"never type expr\""
 
 func `$`*(self: TypedLiteral): string =
     template escape(str: string): string =
