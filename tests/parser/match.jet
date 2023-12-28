@@ -1,0 +1,53 @@
+match self.ch()
+| '.' if self.offset(1) == '.' and self.offset(2) == '<' do
+    self.token.kind = DotDotLess
+    self.pos = self.pos + 3
+
+//> Program
+//> └─╴Match
+//>    ├─╴ExprParen
+//>    │  ├─╴ExprDotExpr
+//>    │  │  ├─╴Id 'self'
+//>    │  │  └─╴Id 'ch'
+//>    │  └─╴Paren
+//>    └─╴Case
+//>       ├─╴Lit(type: char, value: '.')
+//>       └─╴IfBranch
+//>          ├─╴Infix
+//>          │  ├─╴Id 'and'
+//>          │  ├─╴Infix
+//>          │  │  ├─╴Id '=='
+//>          │  │  ├─╴ExprParen
+//>          │  │  │  ├─╴ExprDotExpr
+//>          │  │  │  │  ├─╴Id 'self'
+//>          │  │  │  │  └─╴Id 'offset'
+//>          │  │  │  └─╴Paren
+//>          │  │  │     └─╴Lit(type: i32, value: 1)
+//>          │  │  └─╴Lit(type: char, value: '.')
+//>          │  └─╴Infix
+//>          │     ├─╴Id '=='
+//>          │     ├─╴ExprParen
+//>          │     │  ├─╴ExprDotExpr
+//>          │     │  │  ├─╴Id 'self'
+//>          │     │  │  └─╴Id 'offset'
+//>          │     │  └─╴Paren
+//>          │     │     └─╴Lit(type: i32, value: 2)
+//>          │     └─╴Lit(type: char, value: '<')
+//>          └─╴DoExpr
+//>             ├─╴ExprEqExpr
+//>             │  ├─╴ExprDotExpr
+//>             │  │  ├─╴ExprDotExpr
+//>             │  │  │  ├─╴Id 'self'
+//>             │  │  │  └─╴Id 'token'
+//>             │  │  └─╴Id 'kind'
+//>             │  └─╴Id 'DotDotLess'
+//>             └─╴ExprEqExpr
+//>                ├─╴ExprDotExpr
+//>                │  ├─╴Id 'self'
+//>                │  └─╴Id 'pos'
+//>                └─╴Infix
+//>                   ├─╴Id '+'
+//>                   ├─╴ExprDotExpr
+//>                   │  ├─╴Id 'self'
+//>                   │  └─╴Id 'pos'
+//>                   └─╴Lit(type: i32, value: 3)
