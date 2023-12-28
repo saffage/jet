@@ -417,11 +417,9 @@ func scanNumber(self: var Scanner) =
             of "u16" : self.token.kind = U16Lit
             of "u32" : self.token.kind = U32Lit
             of "u64" : self.token.kind = U64Lit
-            of "is"  : self.token.kind = ISizeLit
-            of "us"  : self.token.kind = USizeLit
-            of "u"   : self.token.kind = UIntLit
-            of "i"   : scanError("redundant integer literal suffix")
-            else     : scanError("invalid suffix '$1' for integer literal" % suffix)
+            of "u"   : self.token.kind = USizeLit
+            of "i"   : self.token.kind = ISizeLit
+            else: scanError("invalid suffix '$1' for integer literal" % suffix)
         else:
             unreachable()
 
