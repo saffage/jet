@@ -6,7 +6,7 @@ var
     grammarBuffer {.compileTime.} = ""
 
 proc getAnnotation(line: string): string
-    {.compileTime.} =
+    {.compileTime, used.} =
     if line.len() < 2 or line[0] != '@' or line[1] notin IdentStartChars:
         result = ""
     else:
@@ -20,7 +20,8 @@ proc getAnnotation(line: string): string
             else:
                 break
 
-proc warningWithLineInfo(ident: string; lineinfo: sink LineInfo; lineOffset: int): NimNode =
+proc warningWithLineInfo(ident: string; lineinfo: sink LineInfo; lineOffset: int): NimNode
+    {.used.} =
     lineinfo.line += lineOffset
     lineinfo.column += 3
 
