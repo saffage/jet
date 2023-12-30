@@ -1,5 +1,7 @@
 import std/enumutils
 
+import pkg/questionable
+
 
 type TokenKind* = enum
     #[ Special ]#
@@ -10,8 +12,7 @@ type TokenKind* = enum
     TopLevelComment = "<top-level-comment>"   ## Module documentation comment
 
     #[ Literals ]#
-    IntLit           = "<int-literal>"                ## 10 or 10i
-    UIntLit          = "<uint-literal>"               ## 10u
+    IntLit           = "<int-literal>"                ## 10
     FloatLit         = "<float-literal>"              ## 1.0 or 1e2 etc.
     CharLit          = "<char-literal>"               ## quoted in '
     StringLit        = "<string-literal>"             ## quoted in "
@@ -86,6 +87,8 @@ type TokenKind* = enum
     Slash      = "/"
     Percent    = "%"
     PlusPlus   = "++"
+    Shl        = "<<"
+    Shr        = ">>"
     Eq         = "="
     DotDot     = ".."
     DotDotLess = "..<"
@@ -99,71 +102,28 @@ type TokenKind* = enum
     DotDotDot  = "..."
 
 const
-    TypedLiteralKinds* = {ISizeLit..F64Lit}
-    LiteralKinds*      = {IntLit..LongRawStringLit}
-    AnyLiteralKinds*   = TypedLiteralKinds + LiteralKinds
+    UntypedLiteralKinds* = {IntLit, FloatLit}
+    TypedLiteralKinds*   = {ISizeLit .. F64Lit}
+    StringLiteralKinds*  = {StringLit .. LongRawStringLit}
+    AnyLiteralKinds*     = {CharLit} + UntypedLiteralKinds + TypedLiteralKinds + StringLiteralKinds
 
-    CommentKinds*     = {Comment, TopLevelComment}
-    PunctuationKinds* = {LParen..RBracket, Dot..Semicolon}
-    KeywordKinds*     = {KwTrue..KwAnd}
-    OperatorKinds*    = {EqOp..DotDotLess}
+func isKeyword*(kind: TokenKind): bool =
+    const kinds = {KwTrue .. KwAnd}
+    result = kind in kinds
 
-func keywordToTokenKind*(keyword: string): TokenKind
-    {.raises: [].} =
-    ## **Returns:**
-    ##  - `Invalid` if `keyword` is not a keyword.
-    for kind in KeywordKinds:
-        if keyword == $kind:
-            return kind
+func isOperator*(kind: TokenKind): bool =
+    const kinds = {EqOp .. DotDotLess}
+    result = kind in kinds
 
-    return Invalid
+func isLiteral*(kind: TokenKind): bool =
+    const kinds = {IntLit .. LongRawStringLit, ISizeLit .. F64Lit}
+    result = kind in kinds
 
-func operatorToTokenKind*(operator: string): TokenKind
-    {.raises: [].} =
-    ## **Returns:**
-    ##  - `Invalid` if `operator` is not an operator.
-    for kind in OperatorKinds:
-        if operator == $kind:
-            return kind
+func fromString*(s: string): ?TokenKind =
+    const stringableKinds = {LParen .. DotDotDot}
+    result = none(TokenKind)
 
-    return Invalid
-
-func punctuationToTokenKind*(c: char): TokenKind =
-    ## **Returns:**
-    ##  - `Invalid` if `c` is not an punctuation character
-    for kind in PunctuationKinds:
-        if $c == $kind:
-            return kind
-
-    return Invalid
-
-func name*(kind: TokenKind): string =
-    return kind.symbolName
-
-func buildOperatorsArray(): array[OperatorKinds.len(), string]
-    {.compileTime.} =
-    {.warning[ProveInit]: off.}
-    var i = 0
-
-    for kind in OperatorKinds:
-        result[i] = $kind
-        inc(i)
-
-func buildOperatorCharsSet(): set[char]
-    {.compileTime.} =
-    result = {}
-
-    for kind in OperatorKinds:
-        for c in $kind:
-            result.incl(c)
-
-func buildOperatorStartCharsSet(): set[char] =
-    result = {}
-
-    for kind in OperatorKinds:
-        result.incl(($kind)[0])
-
-const
-    Operators*            = buildOperatorsArray()
-    OperatorCharSet*      = buildOperatorCharsSet()
-    OperatorStartCharSet* = buildOperatorStartCharsSet()
+    for kind in stringableKinds:
+        if $kind == s:
+            result = some(kind)
+            break

@@ -1,4 +1,5 @@
 import std/strformat
+import std/enumutils
 
 import pkg/questionable
 
@@ -131,36 +132,32 @@ template `indent=`*(self: var Token; value: Natural) =
     self.setIndent(value)
 
 func notation*(self: Token; prev = Invalid; next = Invalid): Notation =
+    const Whitelist  = {Invalid, Comma, Semicolon, LParen, LBracket, LBrace}
+
     let spacesBefore = self.spacesBefore() |? -2
     let spacesAfter  = self.spacesAfter() |? -2
-    let firstInLine  = self.isFirstInLine()
-    let lastInLine   = self.isLastInLine()
-    var prefix       = false
-    var postfix      = false
 
-    const PrefixWhitelist  = {Invalid, Comma, Semicolon, LParen, LBracket, LBrace}
-    const PostfixWhitelist = {Invalid, Comma, Semicolon, RParen, RBracket, RBrace, Last} # idk are 'Last' is needed
+    let prefix =
+        not self.isLastInline() and
+        spacesAfter == 0 and
+        (spacesBefore != 0 or self.isFirstInLine()) and
+        prev in WhiteList
 
-    if firstInLine and lastInLine:
-        return Unknown
+    let postfix =
+        not self.isFirstInLine() and
+        spacesBefore == 0 and
+        (spacesAfter != 0 or self.isLastInLine()) and
+        next in WhiteList + {Last}
 
-    if not lastInLine and spacesAfter == 0 and (spacesBefore != 0 or firstInLine):
-        prefix = prev notin PrefixWhitelist
-
-    if not firstInLine and spacesBefore == 0 and (spacesAfter != 0 or lastInLine):
-        postfix = next notin PostfixWhitelist
-
-    if prefix and postfix:
-        # maybe somethis like `(!)`
-        return Unknown
-
-    if prefix:
-        return Prefix
-
-    if postfix:
-        return Postfix
-
-    return Infix
+    result =
+        if prefix and postfix or self.isFirstAndLast():
+            Unknown
+        elif prefix:
+            Prefix
+        elif postfix:
+            Postfix
+        else:
+            Infix
 
 func isPrefix*(self: Token): bool =
     return self.notation() == Prefix
@@ -172,7 +169,7 @@ func isInfix*(self: Token): bool =
     return self.notation() == Infix
 
 func `$`*(self: Token): string =
-    return self.kind.name()
+    return self.kind.symbolName()
 
 func human*(self: Token): string
     {.raises: [ValueError].} =

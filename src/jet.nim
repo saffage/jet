@@ -4,16 +4,19 @@ import std/sequtils
 import std/strutils
 import std/strformat
 
-import jet/scanner
+import jet/lexer
 import jet/parser
 import jet/ast
 import jet/ast/algo
 import jet/ast/sym
+import jet/token
 import jet/vm
 import jet/vm/obj
 
 import lib/utils
 import lib/utils/text_style
+
+import pkg/questionable
 
 
 # proc print_node_tree(node: Node) {.importc: "print_node_tree", dynlib: "vm_test.dll", cdecl.}
@@ -45,25 +48,25 @@ proc main() =
     #   - Bizzare VM (JIT, WIP)
 
     if paramCount() > 0:
-        let argument  = paramStr(1)
-        var scanner   = openScannerFile(argument)
-        var parser    = newParser(scanner)
-        var program   = parser.parseAll()
+        let argument = paramStr(1)
+        var lexer    = newLexerFromFileName(argument)
+        var parser   = newParser(lexer)
+        var program  = parser.parseAll()
 
         echo(program.treeRepr)
         echo("Recreated AST:")
         echo(ast2jet(program))
 
-        var vm        = newVm(program)
-        let evaluated = vm.eval()
+        # var vm        = newVm(program)
+        # let evaluated = vm.eval()
 
-        assert(evaluated != nil, "eval result can't be null")
+        # assert(evaluated != nil, "eval result can't be null")
 
-        # if getCursorPos().x > 0: echo()
-        echo stylizeText(evaluated.inspect(), typeStyle)
+        # # if getCursorPos().x > 0: echo()
+        # echo stylizeText(evaluated.inspect(), typeStyle)
 
-        let objs = $vm.scope.syms.keys().toSeq().join(", ")
-        echo stylizeText(fmt"scope = {{ {objs} }}", typeStyle)
+        # let objs = $vm.scope.syms.keys().toSeq().join(", ")
+        # echo stylizeText(fmt"scope = {{ {objs} }}", typeStyle)
 
         # echo "call 'vm_test'"
         # print_node_tree(program)

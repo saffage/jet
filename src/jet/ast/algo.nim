@@ -37,7 +37,7 @@ proc ast2jet*(tree: Node; level: Natural = 0): string =
 
             fmt"def {name}{params} {returnType}{body}"
         of nkTypedefStmt:
-            let
+            var
                 name = ast2jet(tree[0])
                 body = ast2jet(tree[1])
 
@@ -49,15 +49,16 @@ proc ast2jet*(tree: Node; level: Natural = 0): string =
 
             fmt"{left}.{right}"
         of nkEqExpr:
-            # if tree.len() == 1:
-            #     let expr = ast2jet(tree[0])
+            if tree.len() == 1 and tree[0].kind != nkDoExpr:
+                let expr = ast2jet(tree[0])
 
-            #     fmt("= {expr}")
-            let exprs = tree.children
-                .mapIt(ast2jet(it, level + 1))
-                .join("\n")
+                fmt("= {expr}")
+            else:
+                let exprs = tree.children
+                    .mapIt(ast2jet(it, level + 1))
+                    .join("\n")
 
-            fmt("= \n{exprs}")
+                fmt("= \n{exprs}")
         of nkDoExpr:
             let exprs = tree.children
                 .mapIt(ast2jet(it, level + 1))
@@ -72,10 +73,10 @@ proc ast2jet*(tree: Node; level: Natural = 0): string =
             fmt"({elems})"
         of nkBrace:
             let elems = tree.children
-                .mapIt(ast2jet(it))
-                .join(", ")
+                .mapIt(ast2jet(it, level + 1))
+                .join(";\n")
 
-            fmt"{{ {elems} }}"
+            fmt("{{ \n{elems}\n{result}}}")
         of nkExprParen:
             let
                 expr  = ast2jet(tree[0])

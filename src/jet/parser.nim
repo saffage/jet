@@ -4,9 +4,10 @@ import std/strformat
 import std/strutils
 import std/sequtils
 import std/enumutils
+import std/options
 
 import jet/ast
-import jet/scanner
+import jet/lexer
 import jet/token
 import jet/literal
 import jet/parser/block_context
@@ -23,7 +24,7 @@ import pkg/questionable
 
 type
     Parser* = ref object
-        scanner    : Scanner
+        lexer      : Lexer
         token      : Token
         prevToken  : Token
         blocks     : Stack[BlockContext]    ## Sequence of block contexts
@@ -63,7 +64,7 @@ const precedences = {
     Eq         : Assign,
 }.toTable()
 
-proc newParser*(scanner: Scanner): Parser
+proc newParser*(lexer: sink Lexer): Parser
 proc fillTables(self: Parser)
 proc parseAll*(self: Parser): Node
 proc parseExpr(self: Parser): Node
@@ -122,14 +123,14 @@ when defined(jetDebugParserState):
         const dbgStyle = TextStyle(foreground: Cyan, underlined: true)
         let msg = if msg == "": "" else: (msg @ dbgStyle) & ": "
 
-        privateAccess(Scanner)
+        privateAccess(Lexer)
         debug(
             fmt"{msg}Parser state:" &
             fmt("\n\tprev: {self.prevToken.human()}") &
             fmt("\n\tcurr: {self.token.human()}") &
             fmt("\n\tscanner:") &
-                fmt("\n\t\tprev: {self.scanner.prevToken.human()}") &
-                fmt("\n\t\tcurr: {self.scanner.token.human()}") &
+                fmt("\n\t\tprev: {self.lexer.prev.human()}") &
+                fmt("\n\t\tcurr: {self.lexer.curr.human()}") &
             fmt("\n\tblocks: {$self.blocks}")
         )
 else:
@@ -232,11 +233,11 @@ proc expected(self: Parser; kinds: set[TokenKind]) =
         self.errSyntax(fmt"expected one of {kindsStr}, got '{self.token.kind}'")
 
 proc tokenNotation(self: Parser): Notation =
-    return self.token.notation(self.prevToken.kind, self.scanner.token.kind)
+    return self.token.notation(self.prevToken.kind, self.lexer.curr.kind)
 
 proc skipToken(self: Parser) =
     debug fmt"token {self.token.kind} at {self.token.info} was skipped"
-    self.token = !self.scanner.getToken()
+    self.token = self.lexer.getToken().get()
 
 proc skip(self: Parser; kind: TokenKind) =
     self.expected(kind)
@@ -258,7 +259,7 @@ proc skipLine(self: Parser; line: uint32) =
     dbg self, fmt"skipLine {line}"
 
     while self.token.kind != Last:
-        let token = !self.scanner.getToken()
+        let token = self.lexer.getToken().get()
 
         if token.info.line > line:
             self.token = token
@@ -287,7 +288,7 @@ proc checkIndent(token: Token; context: BlockContext): int =
             return 0
 
 proc nextToken(self: Parser; checkIndent: bool) =
-    let token = !self.scanner.getToken()
+    let token = self.lexer.getToken().get()
 
     self.prevToken = self.token
     self.token     = token
@@ -357,9 +358,9 @@ proc checkToken(
 
 
 # ----- API IMPL ----- #
-proc newParser(scanner: Scanner): Parser =
+proc newParser(lexer: sink Lexer): Parser =
     result = Parser(
-        scanner: scanner,
+        lexer: ensureMove(lexer),
         blocks: initBlockContext(Indent, 0, 0).toStack())
     result.fillTables()
     result.nextToken()
@@ -382,7 +383,6 @@ proc fillTables(self: Parser) =
     self.prefix[Bar]       = parseBar
 
     self.prefix[IntLit]           = parseLit
-    self.prefix[UIntLit]          = parseLit
     self.prefix[FloatLit]         = parseLit
     self.prefix[CharLit]          = parseLit
     self.prefix[StringLit]        = parseLit
@@ -464,7 +464,10 @@ proc parseExpr(self: Parser): Node =
         if self.blocks.len() == 1:
             self.errInvalidIndent(fmt"This token must have 0 indentation, but has {!self.token.indent()}")
         else:
-            self.errInvalidIndent(fmt"This token is offside the context started at position [{self.blocks.peek().line}:{self.blocks.peek().getColumn()}], token position is [{self.token.info.dupNoLength()}]. This line will be skipped")
+            self.errInvalidIndent(
+                fmt"This token is offside the context started at position " &
+                fmt"[{self.blocks.peek().line}:{self.blocks.peek().getColumn()}], " &
+                fmt"token position is [{self.token.info.dupNoLength()}]. This line will be skipped")
 
         self.skipLine()
         return newEmptyNode()
@@ -498,7 +501,7 @@ proc parseExpr(self: Parser): Node =
             hint "not an Infix or Postfix"
             break
 
-        if self.token.isFirstInLine() and self.token.kind notin OperatorKinds:
+        if self.token.isFirstInLine() and not self.token.kind.isOperator():
             hint fmt"not an operator"
             break
 
@@ -660,13 +663,13 @@ proc parseLit(self: Parser): Node
             newLitNode(newLit(true))
         of KwFalse:
             newLitNode(newLit(false))
-        of StringLit, RawStringLit, LongStringLit, LongRawStringLit:
+        of StringLiteralKinds:
             newLitNode(newLit(self.token.value))
-        of TypedLiteralKinds, IntLit, UIntLit, FloatLit, CharLit:
+        of TypedLiteralKinds, UntypedLiteralKinds, CharLit:
             let lit = case self.token.kind:
-                of IntLit, I8Lit, I16Lit, I32Lit, I64Lit  : self.getIntLit()
-                of UIntLit, U8Lit, U16Lit, U32Lit, U64Lit : self.getUIntLit()
-                of FloatLit, F32Lit, F64Lit               : self.getFloatLit()
+                of IntLit, I8Lit, I16Lit, I32Lit, I64Lit : self.getIntLit()
+                of U8Lit, U16Lit, U32Lit, U64Lit         : self.getUIntLit()
+                of FloatLit, F32Lit, F64Lit              : self.getFloatLit()
                 of CharLit: newLit(self.token.value[0]) # TOOBAD: why only 1
                 else: unreachable()
             let typedLit = case self.token.kind:
@@ -683,7 +686,7 @@ proc parseLit(self: Parser): Node
                 of F32Lit   : lit.tryIntoTyped(tlkF32)
                 of F64Lit   : lit.tryIntoTyped(tlkF64)
                 of CharLit  : lit.tryIntoTyped(tlkChar)
-                of IntLit, UIntLit, FloatLit : lit.toTypedLit()
+                of IntLit, FloatLit : lit.toTypedLit()
                 else: unreachable()
             newLitNode(typedLit)
         else:
@@ -858,7 +861,7 @@ proc parseBrace(self: Parser): Node =
 proc parseInfixOp(self: Parser; left: Node): Node =
     dbg self, "parseInfixOp"
 
-    if self.token.kind notin OperatorKinds + {KwAnd, KwOr, KwOf}:
+    if not self.token.kind.isOperator() and self.token.kind notin {KwAnd, KwOr, KwOf}:
         self.errUnknownOp(if self.token.kind == Id: "id " & self.token.value else: $self.token.kind)
 
     let op = id($self.token.kind)

@@ -1,7 +1,7 @@
 import std/strutils except escape
 import std/strformat
 
-from jet/scanner import escape
+from jet/lexer import escape
 
 import lib/utils
 
