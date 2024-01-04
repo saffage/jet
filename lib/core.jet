@@ -1,0 +1,27 @@
+# Primitive types
+@CompilerBuiltIn type isize
+@CompilerBuiltIn type usize
+@CompilerBuiltIn type i8
+@CompilerBuiltIn type i16
+@CompilerBuiltIn type i32
+@CompilerBuiltIn type i64
+@CompilerBuiltIn type u8
+@CompilerBuiltIn type u16
+@CompilerBuiltIn type u32
+@CompilerBuiltIn type u64
+@CompilerBuiltIn type f32
+@CompilerBuiltIn type f64
+@CompilerBuiltIn type string
+@CompilerBuiltIn type char
+@CompilerBuiltIn type bool = true | false
+
+
+# Functions
+@CompilerBuiltIn
+func print(message string)
+
+@CompilerBuiltIn
+func println(message string)
+
+@CompilerBuiltIn
+func panic(message string) !
