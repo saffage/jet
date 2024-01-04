@@ -50,51 +50,10 @@
 		"annotation": {
 			"patterns": [
 				{
-					"begin": "(\\@)\\[",
-					"beginCaptures": {
-						"0": { "name": "meta.annotation.brackets.jet" },
-						"1": { "name": "meta.annotation.prefix.jet" }
-					},
-					"end": "\\]",
-					"endCaptures": {
-						"0": { "name": "meta.annotation.brackets.jet" }
-					},
-					"patterns": [
-						{
-							"comment": "Pragma parameters",
-							"begin": "\\(",
-							"beginCaptures": {
-								"0": { "name": "punctuation.brackets.round.jet" }
-							},
-							"end": "\\)",
-							"endCaptures": {
-								"0": { "name": "punctuation.brackets.round.jet" }
-							},
-							"patterns": [
-								{ "include": "source.jet" }
-							]
-						},
-						{
-							"match": "\\b([A-Za-z_][A-Za-z_0-9]*)\\b",
-							"captures": {
-								"1": { "name": "meta.annotation.jet" }
-							}
-						},
-						{
-							"match": ",",
-							"name": "meta.annotation.separator.jet"
-						},
-						{
-							"match": ".",
-							"name": "invalid.illegal.annotation.jet"
-						}
-					]
-				},
-				{
-					"match": "(\\@)[A-Za-z_][A-Za-z_0-9]*",
+					"match": "\\@([A-Za-z_][A-Za-z_0-9]*)",
 					"captures": {
 						"0": { "name": "meta.annotation.jet" },
-						"1": { "name": "meta.annotation.prefix.jet" }
+						"1": { "name": "meta.annotation.name.jet" }
 					}
 				}
 			]
