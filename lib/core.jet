@@ -1,4 +1,3 @@
-# Primitive types
 @CompilerBuiltIn type isize
 @CompilerBuiltIn type usize
 @CompilerBuiltIn type i8
@@ -11,17 +10,16 @@
 @CompilerBuiltIn type u64
 @CompilerBuiltIn type f32
 @CompilerBuiltIn type f64
-@CompilerBuiltIn type string
 @CompilerBuiltIn type char
-@CompilerBuiltIn type bool = true | false
+@CompilerBuiltIn type bool
+@CompilerBuiltIn type any
 
-
-# Functions
-@CompilerBuiltIn
-func print(message string)
 
 @CompilerBuiltIn
-func println(message string)
+func print(messages ...any)
 
 @CompilerBuiltIn
-func panic(message string) !
+func println(messages ...any)
+
+@CompilerBuiltIn
+func panic(message ...any) (!)
