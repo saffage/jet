@@ -5,8 +5,8 @@
 	"patterns": [
 		{ "include": "#illegal-indent" },
 		{ "include": "#comments" },
-		{ "include": "#annotation" },
 		{ "include": "#keywords" },
+		{ "include": "#annotations" },
 		{ "include": "#builtins" },
 		{ "include": "#char-lit" },
 		{ "include": "#string-lit" },
@@ -30,7 +30,7 @@
 				{
 					"name": "comment.block.documentation",
 					"contentName": "comment.block.documentation.content.jet",
-					"begin": "##",
+					"begin": "##[^#]",
 					"end": "$"
 				},
 				{
@@ -47,7 +47,7 @@
 				}
 			]
 		},
-		"annotation": {
+		"annotations": {
 			"patterns": [
 				{
 					"match": "\\@([A-Za-z_][A-Za-z_0-9]*)",
@@ -66,16 +66,16 @@
 				},
 				{
 					"name": "keyword.control.jet",
-					"match": "\\b(if|elif|else|match|when|while|loop|for|continue|break|return)\\b"
+					"match": "\\b(if|elif|else|match|while|loop|for|continue|break|return)\\b"
 				},
 				{
 					"name": "keyword.jet",
-					"match": "\\b(module|use|func|type|var|val|do|impl)\\b"
+					"match": "\\b(module|use|rec|func|type|struct|enum|var|val|const|do|impl|[Ss]elf)\\b"
 				},
 				{
 					"comment": "Reserved keywords",
 					"name": "invalid.illegal.keyword.jet",
-					"match": "\\b(signal|trait|dynamic)\\b"
+					"match": "\\b(signal|trait|dynamic|static|lazy|when|with|where)\\b"
 				}
 			]
 		},
@@ -84,22 +84,12 @@
 				{
 					"comment": "Primitive types",
 					"name": "storage.type.primitive.jet",
-					"match": "\\b(unit|bool|[ui](8|16|32|64|size)|f(32|64))\\b"
+					"match": "\\b([ui](8|16|32|64|size)|f(32|64)|char|bool|any)\\b"
 				},
 				{
 					"comment": "Backend types",
 					"name": "storage.type.primitive.special.jet",
 					"match": "\\b(cshort|cint|clong|clonglong|cushort|cuint|culong|culonglong|cfloat|cdouble|clongdouble|csize)\\b"
-				},
-				{
-					"comment": "Type aliases",
-					"name": "storage.type.primitive.jet",
-					"match": "\\b(char|string)\\b"
-				},
-				{
-					"comment": "Reserved",
-					"name": "storage.modifier.jet",
-					"match": "\\b(ref|out)\\b"
 				}
 			]
 		},
@@ -170,27 +160,34 @@
 			"patterns": [
 				{
 					"name": "string.quoted.double.jet",
-					"begin": "(?<=\\$)\"\"\"",
+					"begin": "([fF])\"\"\"",
+					"beginCaptures": {
+						"1": { "name": "string.interpolated.prefix.jet" }
+					},
 					"end": "\"\"\"(?!\")",
 					"patterns": [
 						{ "include": "#string-fmt" },
-						{ "include": "#string-esc" }
+						{ "include": "#char-escape" }
 					]
 				},
 				{
 					"name": "string.quoted.double.jet",
-					"begin": "(?<=\\$)\"",
+					"begin": "([fF])\"",
+					"beginCaptures": {
+						"1": { "name": "string.interpolated.prefix.jet" }
+					},
 					"end": "\"|$",
 					"patterns": [
 						{ "include": "#string-fmt" },
-						{ "include": "#string-esc" }
+						{ "include": "#char-escape" }
 					]
 				},
 				{
 					"name": "string.quoted.double.jet",
-					"begin": "(?<=\\$)(r|R)\"\"\"",
+					"begin": "([fF])([rR])\"\"\"",
 					"beginCaptures": {
-						"1": { "name": "string.raw.jet" }
+						"1": { "name": "string.interpolated.prefix.jet" },
+						"2": { "name": "string.raw.prefix.jet" }
 					},
 					"end": "\"\"\"(?!\")",
 					"patterns": [
@@ -199,9 +196,10 @@
 				},
 				{
 					"name": "string.quoted.double.jet",
-					"begin": "(?<=\\$)(r|R)\"",
+					"begin": "([fF])([rR])\"",
 					"beginCaptures": {
-						"1": { "name": "string.raw.jet" }
+						"1": { "name": "string.interpolated.prefix.jet" },
+						"2": { "name": "string.raw.prefix.jet" }
 					},
 					"end": "\"|$",
 					"patterns": [
@@ -210,9 +208,9 @@
 				},
 				{
 					"name": "string.quoted.triple.jet",
-					"begin": "(r|R)\"\"\"",
+					"begin": "([rR])\"\"\"",
 					"beginCaptures": {
-						"1": { "name": "string.raw.jet" }
+						"1": { "name": "string.raw.prefix.jet" }
 					},
 					"end": "\"\"\"(?!\")"
 				},
@@ -221,14 +219,14 @@
 					"begin": "\"\"\"",
 					"end": "\"\"\"(?!\")",
 					"patterns": [
-						{ "include": "#string-esc" }
+						{ "include": "#char-escape" }
 					]
 				},
 				{
 					"name": "string.quoted.double.jet",
-					"begin": "(r|R)\"",
+					"begin": "([rR])\"",
 					"beginCaptures": {
-						"1": { "name": "string.raw.jet" }
+						"1": { "name": "string.raw.prefix.jet" }
 					},
 					"end": "\"(?!\")|$"
 				},
@@ -237,7 +235,7 @@
 					"begin": "\"",
 					"end": "\"|$",
 					"patterns": [
-						{ "include": "#string-esc" }
+						{ "include": "#char-escape" }
 					]
 				}
 			]
@@ -249,10 +247,7 @@
 					"begin": "\\'",
 					"end": "\\'|$",
 					"patterns": [
-						{ "include": "#char-esc" },
-						{
-							"match": "\\\\."
-						}
+						{ "include": "#char-escape" }
 					]
 				}
 			]
@@ -306,33 +301,16 @@
 				}
 			]
 		},
-		"char-esc": {
+		"char-escape": {
 			"patterns": [
 				{
 					"name": "constant.character.escape.jet",
-					"match": "\\\\[0nrtvbf\\\\\\'\\\"]"
-				},
-				{
-					"name": "constant.character.escape.jet",
-					"match": "\\\\x\\h\\h"
+					"match": "\\\\([0-9]{3}|[0nrt'\\\"\\\\]|x\\h{2}|u\\h{4}|U\\h{8}|u\\{\\h+\\})"
 				},
 				{
 					"name": "invalid.escape.jet",
 					"match": "\\\\."
 				}
-			]
-		},
-		"string-esc": {
-			"patterns": [
-				{
-					"name": "constant.character.escape.jet",
-					"match": "\\\\u[0-9a-fA-F]{4}"
-				},
-				{
-					"name": "constant.character.escape.jet",
-					"match": "\\\\u\\[[0-9a-fA-F]{1,4}\\]"
-				},
-				{ "include": "#char-esc" }
 			]
 		},
 		"string-fmt": {
