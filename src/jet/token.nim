@@ -137,17 +137,16 @@ func notation*(self: Token; prev = Invalid; next = Invalid): Notation =
     let spacesBefore = self.spacesBefore() |? -2
     let spacesAfter  = self.spacesAfter() |? -2
 
+    if prev == LParen and next == RParen:
+        return Unknown
+
     let prefix =
-        not self.isLastInline() and
         spacesAfter == 0 and
-        (spacesBefore != 0 or self.isFirstInLine()) and
-        prev in WhiteList
+        (spacesBefore != 0 or prev in WhiteList)
 
     let postfix =
-        not self.isFirstInLine() and
         spacesBefore == 0 and
-        (spacesAfter != 0 or self.isLastInLine()) and
-        next in WhiteList + {Last}
+        (spacesAfter != 0 or next in WhiteList + {Last})
 
     result =
         if prefix and postfix or self.isFirstAndLast():

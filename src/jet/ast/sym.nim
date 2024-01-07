@@ -5,25 +5,19 @@ import jet/ast/types
 
 
 type SymKind* = enum
-    skInvalid
     skType
-    skLit
     skVar
-    skParam
-    skVal           ## A value from anywhere
-    skReturnVal     ## A value from 'return expr' statement
+    skVal
+    skParam         ## A parameter variable
+    skLoopVar       ## A 'for' loop variable
+    skReturnVal     ## A value from 'return' statement
     skFunc
     skBuiltinFunc
 
 type Sym* = ref object of RootObj
-    id*  : string
-    typ* : Type
-
-    case kind* : SymKind
-    of skInvalid:
-        nil
-    of skType, skFunc, skVar, skParam, skLit, skBuiltinFunc, skVal, skReturnVal:
-        nil
+    `type`* : Type
+    id*     : string
+    kind*   : SymKind
 
 type Scope* = ref object
     depth* : int
@@ -31,24 +25,24 @@ type Scope* = ref object
     syms*  : OrderedTable[string, Sym]
 
 let builtinTypeSyms* = [
-    Sym(id: "unknown", typ: unknownType),
-    Sym(id: "null", typ: nullType),
-    Sym(id: "unit", typ: unitType),
-    Sym(id: "isize", typ: isizeType),
-    Sym(id: "usize", typ: usizeType),
-    Sym(id: "i8", typ: i8Type),
-    Sym(id: "i16", typ: i16Type),
-    Sym(id: "i32", typ: i32Type),
-    Sym(id: "i64", typ: i64Type),
-    Sym(id: "u8", typ: u8Type),
-    Sym(id: "u16", typ: u16Type),
-    Sym(id: "u32", typ: u32Type),
-    Sym(id: "u64", typ: u64Type),
-    Sym(id: "f32", typ: f32Type),
-    Sym(id: "f64", typ: f64Type),
-    Sym(id: "char", typ: charType),
-    Sym(id: "bool", typ: boolType),
-    Sym(id: "string", typ: stringType),
+    Sym(id: "unknown", `type`: unknownType),
+    Sym(id: "nil", `type`: nilType),
+    Sym(id: "unit", `type`: unitType),
+    Sym(id: "isize", `type`: isizeType),
+    Sym(id: "usize", `type`: usizeType),
+    Sym(id: "i8", `type`: i8Type),
+    Sym(id: "i16", `type`: i16Type),
+    Sym(id: "i32", `type`: i32Type),
+    Sym(id: "i64", `type`: i64Type),
+    Sym(id: "u8", `type`: u8Type),
+    Sym(id: "u16", `type`: u16Type),
+    Sym(id: "u32", `type`: u32Type),
+    Sym(id: "u64", `type`: u64Type),
+    Sym(id: "f32", `type`: f32Type),
+    Sym(id: "f64", `type`: f64Type),
+    Sym(id: "char", `type`: charType),
+    Sym(id: "bool", `type`: boolType),
+    Sym(id: "string", `type`: stringType),
 ]
 
 

@@ -19,11 +19,6 @@ template `[]=`*(self: Node; i: Natural; node: Node) = self.children[i] = node
 template `[]=`*(self: Node; i: BackwardsIndex; node: Node) = self.children[i] = node
 template `&=`*(self: Node; node: Node) = self.children.add(node)
 
-template last*(self: Node): Node = self.children[^1]
-template first*(self: Node): Node = self.children[1]
-template `last=`*(self: Node; node: Node) = self.children[^1] = node
-template `first=`*(self: Node; node: Node) = self.children[1] = node
-
 template len*(self: Node): int = self.children.len()
 template add*(self: Node; node: Node) = self.children.add(node)
 template add*(self: Node; node: openArray[Node]) = self.children.add(node)
@@ -38,19 +33,23 @@ proc expectKind*(self: Node; kinds: set[NodeKind]) =
         panic(fmt"expected one of {kinds}, got {self.kind} instead")
 
 proc canHavePragma*(self: Node): bool =
-    return self.kind in {nkDefStmt, nkTypedefStmt}
+    return self.kind in {nkFunc, nkType}
 
-proc pragma*(self: Node): Node =
+proc annotation*(self: Node): Node =
     result = case self.kind:
-        of nkDefStmt: self[4]
-        of nkTypedefStmt: self[2]
-        else: nil
+        of nkFunc: self[4]
+        of nkType: self[2]
+        else: panic(fmt"node of kind {self.kind} can't have an annotation")
 
-proc `pragma=`*(self: Node; node: Node) =
+    assert(result != nil)
+
+proc `annotation=`*(self: Node; node: Node) =
+    assert(node != nil)
+    
     case self.kind:
-        of nkDefStmt: self[4] = node
-        of nkTypedefStmt: self[2] = node
-        else: panic(fmt"node of kind {self.kind} can't have a pragma")
+        of nkFunc: self[4] = node
+        of nkType: self[2] = node
+        else: panic(fmt"node of kind {self.kind} can't have an annotation")
 
 proc newNode*(kind: NodeKind): Node =
     result = Node(kind: kind)

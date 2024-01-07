@@ -1,5 +1,3 @@
-import std/enumutils
-
 import pkg/questionable
 
 
@@ -51,12 +49,11 @@ type TokenKind* = enum
     #[ Keywords ]#
     KwTrue    = "true"
     KwFalse   = "false"
-    KwNull    = "null"
-    KwLet     = "let"
-    KwMut     = "mut"
+    KwNil     = "nil"
+    KwVar     = "var"
     KwVal     = "val"
-    KwDef     = "def"
-    KwTypeDef = "typedef"
+    KwFunc    = "func"
+    KwType    = "type"
     KwIf      = "if"
     KwElif    = "elif"
     KwElse    = "else"
@@ -67,6 +64,7 @@ type TokenKind* = enum
     KwLoop    = "loop"
     KwDo      = "do"
     KwOf      = "of"
+    KwXdd     = "xdd" # FUS RO DHA
 
     #[ Operators-Keywords ]#
     KwOr      = "or"
@@ -86,6 +84,7 @@ type TokenKind* = enum
     Asterisk   = "*"
     Slash      = "/"
     Percent    = "%"
+    Ampersand  = "&"
     PlusPlus   = "++"
     Shl        = "<<"
     Shr        = ">>"
@@ -97,9 +96,13 @@ type TokenKind* = enum
     Bar        = "|"
     ColonColon = "::"
     Underscore = "_"
-    Hashtag    = "#"
+    At         = "@"
     Dollar     = "$"    ## String interpolation
     DotDotDot  = "..."
+
+    MatchCaseArrow  = "=>"
+    ExclamationMark = "!"
+    QuestionMark    = "?"
 
 const
     UntypedLiteralKinds* = {IntLit, FloatLit}

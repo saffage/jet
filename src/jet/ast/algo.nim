@@ -44,8 +44,8 @@ proc ast2jet*(tree: Node; level: Natural = 0): string =
             fmt"typedef {name} {body}"
         of nkExprDotExpr:
             let
-                left  = ast2Jet(tree[0])
-                right = ast2Jet(tree[1])
+                left  = ast2jet(tree[0])
+                right = ast2jet(tree[1])
 
             fmt"{left}.{right}"
         of nkEqExpr:
@@ -100,8 +100,11 @@ proc ast2jet*(tree: Node; level: Natural = 0): string =
                         if value.len() > 0: tmp & " "
                         else: tmp
                     else: ""
+                prefix =
+                    if nfMut in tree.flags: "var"
+                    else: "val"
 
-            fmt"{names} {typeExpr}{value}"
+            fmt"{prefix} {names} {typeExpr}{value}"
         of nkReturnStmt:
             let expr = ast2jet(tree[0])
             fmt"return {expr}"
@@ -139,8 +142,8 @@ proc ast2jet*(tree: Node; level: Natural = 0): string =
             fmt("{branches}\n{elseBranch}")
         of nkIfBranch:
             let
-                cond = ast2Jet(tree[0])
-                body = ast2Jet(tree[1])
+                cond = ast2jet(tree[0])
+                body = ast2jet(tree[1])
 
             fmt"if {cond} {body}"
         of nkElseBranch:

@@ -1,8 +1,5 @@
 import std/strutils except Newlines
 import std/strformat
-import std/sequtils
-import std/tables
-import std/os
 import std/streams
 import std/options
 
@@ -37,7 +34,6 @@ const
 const
     NewLines = {CR, LF}                ## New line char
     EOL      = {EOF} + NewLines        ## End of Line
-    Spaces   = {TAB, ' '} + NewLines   ## Any char that can be treated as whitespace
     Digits   = {'0' .. '9'}
     Letters  = {'a' .. 'z', 'A' .. 'Z'}
 
@@ -149,20 +145,20 @@ func getOperatorChars(): set[char] {.compileTime.} =
 const operatorChars = getOperatorChars()
 
 func isAnyComment(self: Lexer): bool =
-    return self.peek() == '/' and self.at(self.pos + 1) == '/'
+    return self.peek() == '#'
 
 func isComment(self: Lexer): bool =
-    return self.isAnyComment() and self.at(self.pos + 2) notin {'/', '!'}
+    return self.peek() == '#' and self.at(self.pos + 1) notin {'#', '!'}
 
 func isCommentStmt(self: Lexer): bool =
-    return self.isAnyComment() and self.at(self.pos + 2) in {'/', '!'}
+    return self.peek() == '#' and self.at(self.pos + 1) in {'/', '!'}
 
 proc scanComment(self: var Lexer) =
     ## Scans the doc comment statement (multiline)
     assert(self.isAnyComment())
 
-    self.curr.kind = case self.at(self.pos + 2):
-        of '/':
+    self.curr.kind = case self.at(self.pos + 1):
+        of '#':
             Comment
         of '!':
             TopLevelComment
@@ -171,7 +167,7 @@ proc scanComment(self: var Lexer) =
             self.skipLine()
             return
 
-    self.pos += 3
+    self.pos += 2
 
     let spacesBefore      = self.curr.spacesBefore() |? self.curr.indent().get()
     var firstLine         = true
@@ -213,11 +209,11 @@ proc scanComment(self: var Lexer) =
         if not self.isCommentStmt():
             break
 
-        case self.at(self.pos + 2)
-        of '/': (if self.curr.kind != Comment: break)
+        case self.at(self.pos + 1)
+        of '#': (if self.curr.kind != Comment: break)
         of '!': (if self.curr.kind != TopLevelComment: break)
         else: unreachable()
-        self.pos += 3
+        self.pos += 2
 
     if not firstSpaceSkipped:
         # string reallocation is all you need to be happy
@@ -417,7 +413,7 @@ func scanOperator(self: var Lexer) =
         for kind in TokenKind:
             if kind.isOperator(): kind
 
-    var kind = none(TokenKind)
+    var kind = Invalid
     var pos  = self.pos
 
     for i, operatorKind in operatorKinds.pairs():
@@ -430,23 +426,28 @@ func scanOperator(self: var Lexer) =
 
             # check it was the last character in this operator
             if j == operator.high:
-                kind = some(operatorKind)
+                kind = operatorKind
 
             pos += 1
 
         # if operator was found, check next character
-        if foundKind =? kind:
+        if kind != Invalid:
             if self.at(pos) notin operatorChars:
                 break
             else:
                 # drop value if this operator is longer that found operator
-                kind = none(TokenKind)
-
-    if foundKind =? kind and foundKind.isOperator():
-        self.curr.kind = foundKind
-        self.pos = pos
-    else:
-        panic(fmt"unknown operator '{self.buffer[self.pos ..< pos]}'")
+                kind = Invalid
+    if kind == Invalid:
+        var i  = self.pos
+        var op = ""
+        while self.buffer[i] in operatorChars:
+            op &= self.buffer[i]
+            i  += 1
+        panic(fmt"unknown operator '{op}'")
+        
+    assert(kind.isOperator())
+    self.curr.kind = kind
+    self.pos = pos
 
 func scanNumber(self: var Lexer) =
     assert(self.peek() in Digits + {'-'})
@@ -551,8 +552,8 @@ proc nextToken*(self: var Lexer) =
         unreachable()
     of '`':
         unimplemented("scanAccentId")
-    of '#':
-        self.curr.kind = Hashtag
+    of '@':
+        self.curr.kind = At
         self.pos += 1
     of ',', ';', '(', ')', '{', '}', '[', ']':
         self.curr.kind = fromString($self.peek()).get()
@@ -590,14 +591,11 @@ proc nextToken*(self: var Lexer) =
         else:
             self.curr.kind = Dot
             self.pos += 1
-    of '/':
-        if self.at(self.pos + 1) == '/':
-            if self.at(self.pos + 2) in {'/', '!'}:
-                self.scanComment()
-            else:
-                unreachable("comment are not skiped by 'skipSpaces', fix pls")
+    of '#':
+        if self.at(self.pos + 1) in {'#', '!'}:
+            self.scanComment()
         else:
-            self.scanOperator()
+            unreachable("comment are not skiped by 'skipSpaces', fix pls")
     of '_':
         if self.at(self.pos + 1) in IdChars:
             self.scanIdOrKeyword()

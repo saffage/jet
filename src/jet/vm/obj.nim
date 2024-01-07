@@ -37,7 +37,7 @@ type Object* = ref object of Sym
     of tyAny:
         # should not be instantiated
         nil
-    of tyUnknown, tyNever, tyNull, tyUnit:
+    of tyUnknown, tyNever, tyNil, tyUnit:
         nil
 
 
@@ -91,7 +91,7 @@ proc copyVal*(self, other: Object) =
         self.structFields = other.structFields
     of tyEnum:
         self.enumVal = other.enumVal
-    of tyUnknown, tyUnit, tyNull: discard
+    of tyUnknown, tyUnit, tyNil: discard
     else: unimplemented(fmt"'copyVal' for {self.oType}")
 
 proc `$`*(self: Object): string =
@@ -101,7 +101,7 @@ proc `$`*(self: Object): string =
     result = case self.oType:
         of tyNever  : "(!)"
         of tyUnit   : "()"
-        of tyNull   : "null"
+        of tyNil    : "nil"
         of tyISize  : $self.isizeVal
         of tyUSize  : $self.usizeVal
         of tyI8     : $self.i8Val
@@ -117,7 +117,7 @@ proc `$`*(self: Object): string =
         of tyBool   : $self.boolVal
         of tyChar   : $self.charVal
         of tyString : '"' & self.stringVal & '"'
-        of tyEnum   : self.typ.name & '.' & self.typ.enumFields[self.enumVal]
+        of tyEnum   : self.`type`.name & '.' & self.`type`.enumFields[self.enumVal]
         else        : unimplemented("'$' for Object")
 
 proc inspect*(self: Object): string =
@@ -129,7 +129,7 @@ proc inspect*(self: Object): string =
         result = fmt"var {self.id}"
     of skVal:
         result = fmt"val"
-    of skLit, skReturnVal:
+    of skReturnVal:
         result = "-"
     of skFunc:
         result =  fmt"fn {self.id}"
@@ -141,17 +141,17 @@ proc inspect*(self: Object): string =
     if self.oType == tyFunc:
         var params = newSeq[string]()
         for param in self.fnParams:
-            params &= fmt"{param.typ.kind}"
+            params &= fmt"{param.`type`.kind}"
         let fnParams     = params.join(", ")
-        let fnReturnType = self.typ.funcReturnType
+        let fnReturnType = self.`type`.funcReturnType
         result &= fmt" : func({fnParams}) {fnReturnType}"
     elif self.oType == tyStruct:
-        result &= fmt" : {self.typ.name}"
+        result &= fmt" : {self.`type`.name}"
     else:
         result &= fmt" : {self.oType}"
 
     case self.oType
-    of tyUnit, tyNull, tyUnknown:
+    of tyUnit, tyNil, tyUnknown:
         discard
     of tyI8:
         result &= fmt" = {self.i8Val}"
@@ -195,13 +195,13 @@ proc inspect*(self: Object): string =
     #     result &= fmt" = val {self.retVal.inspect()}"
     # of tyType:
     of tyStruct:
-        if self.typ.kind != tyStruct: unreachable()
+        if self.`type`.kind != tyStruct: unreachable()
         var fieldsStr = newSeq[string]()
         for fieldName, fieldValue in self.structFields.pairs():
             fieldsStr &= fmt"{fieldName} = {fieldValue}"
         let fields = fieldsStr.join(", ")
-        result &= fmt(" = struct {self.typ.name} {{ {fields} }}")
+        result &= fmt(" = struct {self.`type`.name} {{ {fields} }}")
     of tyEnum:
-        result &= fmt(" = {self.typ.name}.{self.typ.enumFields[self.enumVal]}")
+        result &= fmt(" = {self.`type`.name}.{self.`type`.enumFields[self.enumVal]}")
     else:
         unimplemented(fmt"inspect obj type for {self.oType}")

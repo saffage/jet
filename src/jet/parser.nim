@@ -24,12 +24,12 @@ import pkg/questionable
 
 type
     Parser* = ref object
-        lexer      : Lexer
-        token      : Token
-        prevToken  : Token
-        blocks     : Stack[BlockContext]    ## Sequence of block contexts
-        pragmaPool : seq[Node]
-        precedence : ?Precedence
+        lexer       : Lexer
+        token       : Token
+        prevToken   : Token
+        blocks      : Stack[BlockContext]    ## Sequence of block contexts
+        annotations : seq[Node]
+        precedence  : ?Precedence
 
         prefix : OrderedTable[TokenKind, ParseFn]
         infix  : OrderedTable[TokenKind, InfixParseFn]
@@ -68,8 +68,8 @@ proc newParser*(lexer: sink Lexer): Parser
 proc fillTables(self: Parser)
 proc parseAll*(self: Parser): Node
 proc parseExpr(self: Parser): Node
-proc parseDef(self: Parser): Node
-proc parseTypedef(self: Parser): Node
+proc parseFunc(self: Parser): Node
+proc parseType(self: Parser): Node
 proc parseVarDeclStmt(self: Parser): Node
 proc parseReturn(self: Parser): Node
 proc parseIdOrExprDotExpr(self: Parser): Node
@@ -84,7 +84,7 @@ proc parseDoExpr(self: Parser): Node
 proc parseEqExpr(self: Parser): Node
 proc parseParen(self: Parser): Node
 proc parseBrace(self: Parser): Node
-proc parsePragma(self: Parser): Node
+proc parseAnnotation(self: Parser): Node
 proc parseExprParen(self: Parser; left: Node): Node
 proc parseExprBrace(self: Parser; left: Node): Node
 proc parseBar(self: Parser): Node
@@ -148,7 +148,7 @@ proc err(self: Parser; msg: string) =
     raise newException(ParserError, msg)
 
 proc errSyntax(self: Parser; msg: string) =
-    self.err(fmt"Syntax error: {msg}")
+    self.err(fmt"syntax error; {msg}")
 
 proc errExpectedId(self: Parser) =
     self.err(fmt"expected identifier, got {self.token.kind}")
@@ -190,7 +190,7 @@ proc errInvalidBlockContext(self: Parser) =
     self.errInvalidBlockContext(self.blocks.peek())
 
 proc errInvalidNotation(self: Parser; explanation: string) =
-    self.errSyntax(fmt"invalid notation. {explanation}")
+    self.errSyntax(fmt"invalid notation; {explanation}")
 
 proc errInvalidNotation(self: Parser) =
     self.errSyntax(fmt"invalid notation")
@@ -225,7 +225,7 @@ proc isSameLine(self: Parser): bool =
 
 proc expected(self: Parser; kind: TokenKind) =
     if not self.isKind(kind):
-        self.errSyntax(fmt"Syntax error: expected '{kind}', got '{self.token.kind}'")
+        self.errSyntax(fmt"expected '{kind}', got '{self.token.kind}'")
 
 proc expected(self: Parser; kinds: set[TokenKind]) =
     if not self.isKind(kinds):
@@ -351,10 +351,28 @@ proc checkToken(
         self.tokenLastInLine()
         check()
     if notation != {} and self.tokenNotation() notin notation:
-        self.errInvalidNotation()
+        let expected = notation.mapIt($it).join(" or ")
+        self.errInvalidNotation(fmt"expected {expected}, got {self.tokenNotation()}")
     if expectedIndent =? indent:
         self.tokenIndent(expectedIndent)
         check()
+
+
+
+
+
+
+# NEW PROCS
+proc parse2TypeExpr(self: Parser): Node
+proc parse2PrimaryTypeExpr(self: Parser): Node
+proc parse2TypePrefix(self: Parser): Node
+proc parse2SuffixOp(self: Parser): Node
+proc parse2FuncCallArgs(self: Parser): Node
+proc parse2ParamDecl(self: Parser): Node
+proc parse2VarDecl(self: Parser): Node
+proc parse2PrimaryVarDecl(self: Parser): Node
+proc parse2ExprList(self: Parser): Node
+proc parse2ExprOrBlock(self: Parser): Node
 
 
 # ----- API IMPL ----- #
@@ -366,10 +384,9 @@ proc newParser(lexer: sink Lexer): Parser =
     result.nextToken()
 
 proc fillTables(self: Parser) =
-    self.prefix[KwDef]     = parseDef
-    self.prefix[KwTypeDef] = parseTypedef
-    self.prefix[KwLet]     = parseVarDeclStmt
-    self.prefix[KwMut]     = parseVarDeclStmt
+    self.prefix[KwFunc]     = parseFunc
+    self.prefix[KwType] = parseType
+    self.prefix[KwVar]     = parseVarDeclStmt
     self.prefix[KwVal]     = parseVarDeclStmt
     self.prefix[KwMatch]   = parseMatchExpr
     self.prefix[KwIf]      = parseIfExpr
@@ -377,7 +394,7 @@ proc fillTables(self: Parser) =
     self.prefix[KwReturn]  = parseReturn
     self.prefix[Id]        = parseId
     self.prefix[Eq]        = parseEqExpr
-    self.prefix[Hashtag]   = parsePragma
+    self.prefix[At]        = parseAnnotation
     self.prefix[LParen]    = parseParen
     self.prefix[LBrace]    = parseBrace
     self.prefix[Bar]       = parseBar
@@ -434,24 +451,35 @@ proc parseAll(self: Parser): Node =
 
     dbg self, "parseAll"
 
-    while self.token.kind != Last:
-        dbg self, "parseAll loop"
-        let tree = self.parseExpr()
+    try:
+        while self.token.kind != Last:
+            dbg self, "parseAll loop"
+            let tree = self.parseExpr()
 
-        if tree == nil:
-            panic("got null tree for program")
+            if tree == nil:
+                panic("got null tree for program")
 
-        if tree.kind == nkPragmaList:
-            self.pragmaPool.add(tree)
-        elif tree.kind != nkEmpty:
-            if self.pragmaPool.len() > 0 and tree.canHavePragma():
-                if tree.pragma.kind != nkPragmaList:
-                    tree.pragma = newEmptyPragmaList()
+            if tree.kind == nkAnnotationList:
+                self.annotations.add(tree)
+            elif tree.kind != nkEmpty:
 
-                for pragma in self.pragmaPool:
-                    tree.pragma.add(pragma.children)
+                if self.annotations.len() > 0:
+                    if not tree.canHavePragma():
+                        self.err(fmt"can't apply annotation to {tree.kind} node")
 
-            result.add(tree)
+                    assert(tree.annotation != nil)
+
+                    tree.annotation =
+                        if tree.annotation.kind != nkEmpty:
+                            newAnnotationList(tree.annotation.children & move(self.annotations))
+                        else:
+                            newAnnotationList(move(self.annotations))
+
+                result.add(tree)
+    except ParserError as e:
+        echo "# --- partialy-generated AST"
+        echo result.treeRepr
+        raise e
 
     dbg self, "parseAll end"
 
@@ -490,7 +518,8 @@ proc parseExpr(self: Parser): Node =
 
     dbg self, "parseExpr infix"
 
-    while self.precedence.isNone() or !self.precedence < precedences.getOrDefault(self.token.kind, Lowest):
+    while self.precedence.isNone() or
+          !self.precedence < precedences.getOrDefault(self.token.kind, Lowest):
         dbg self, "parseExpr infix loop"
 
         let notation = self.tokenNotation()
@@ -517,21 +546,14 @@ proc parseExpr(self: Parser): Node =
 
     self.precedence = none(Precedence)
 
-proc parseDef(self: Parser): Node =
-    dbg self, "parseDef"
+proc parseFunc(self: Parser): Node =
+    dbg self, "parseFunc"
 
-    self.skip(KwDef)
+    self.skip(KwFunc)
     self.checkToken(sameLine=true)
 
     # parse id or dot expr
-    let head = self.parseIdOrExprDotExpr()
-    head.expectKind({nkId, nkExprDotExpr})
-
-    if head.kind == nkId:
-        discard
-    elif head.kind == nkExprDotExpr:
-        discard
-
+    let head   = self.parseId()
     let params = newParen()
 
     self.checkToken(sameLine=true)
@@ -565,25 +587,23 @@ proc parseDef(self: Parser): Node =
                 self.errExpected(Eq)
             newEmptyNode()
 
-    result = newDefStmt(head, params, returnTypeExpr, body)
+    dbg self, "parseFunc end"
 
-proc parseTypedef(self: Parser): Node
-    {.grammarDocs.} =
-    ## @grammar
-    ## TypedefStmt = KW_TYPEDEF Id EqExpr
-    ## @end
-    dbg self, "parseTypedef"
+    result = newFunc(head, params, returnTypeExpr, body)
 
-    self.skip(KwTypedef)
+proc parseType(self: Parser): Node =
+    dbg self, "parseType"
+
+    self.skip(KwType)
     self.checkToken(sameLine=true)
     let name = self.parseId()
 
     self.checkToken(sameLine=true)
     let body = self.parseEqExpr()
 
-    dbg self, "parseTypedef end"
+    dbg self, "parseType end"
 
-    result = newTypedefStmt(name, body)
+    result = newType(name, body)
 
 proc parseVarDeclStmt(self: Parser): Node
     {.grammarDocs.} =
@@ -594,8 +614,8 @@ proc parseVarDeclStmt(self: Parser): Node
 
     dbg self, "parseLet"
 
-    # TODO: flags for 'mut' and 'val'
-    self.skip({KwLet, KwMut, KwVal})
+    let isMut = self.isKind(KwVar)
+    self.skip({KwVar, KwVal})
     self.checkToken(sameLine=true)
 
     result = self.parseVarDecl()
@@ -695,7 +715,7 @@ proc parseLit(self: Parser): Node
 
 proc parseTypeExpr(self: Parser): Node =
     # Identifier: i32
-    # Generic parameter: <T>
+    # Generic parameter: `T
     # Type with generic parameters: table[string, i32]
     dbg self, "parseTypeExpr"
 
@@ -878,7 +898,7 @@ proc parseInfixOp(self: Parser; left: Node): Node =
 proc parseExprParen(self: Parser; left: Node): Node =
     dbg self, "parseExprParen"
 
-    result = newExprParen(left)
+    result = newEmptyExprParen(left)
 
     self.skip(LParen)
     self.parseList(result[^1], RParen, Comma)
@@ -954,11 +974,7 @@ proc parseBar(self: Parser): Node =
     if result.kind notin {nkVariant, nkCase, nkElseBranch}:
         result = newVariant(result)
 
-proc parseVarDecl(self: Parser): Node
-    {.grammarDocs.} =
-    ## @grammar
-    ## VarDecl <- Id (COMMA Id)* TypeExpr? EqExpr?
-    ## @end
+proc parseVarDecl(self: Parser): Node =
     dbg self, "parseVarDecl"
 
     var names = @[self.parseId()]
@@ -1011,65 +1027,27 @@ proc parseVarDeclNoHead(self: Parser; left: Node): Node =
     result = newVarDecl(names, typeExpr, eqExpr)
 
     if isVarArgs:
-        result[2] = newPragmaList(newPragma(id"VarArgParam", nil))
+        result[2] = newAnnotationList(id"VarArgParam")
 
     dbg self, "parseVarDeclNoHead end"
 
-proc parsePragmaAux(self: Parser): Node =
-    dbg self, "parsePragmaAux"
+proc parseAnnotation(self: Parser): Node =
+    dbg self, "parseAnnotation"
+
+    self.checkToken(notation={Prefix})
+    self.skip(At)
 
     let name = self.parseId()
-    let args = newParen()
 
-    if self.skipMaybe(LParen):
-        self.parseList(args, RParen, Comma)
-        self.skip(RParen)
+    result =
+        if self.skipMaybe(LParen):
+            let args = newParen()
+            self.parseList(args, RParen, Comma)
+            self.skip(RParen)
 
-    dbg self, "parsePragmaAux end"
-
-    result = newPragma(name, args)
-
-proc parsePragma(self: Parser): Node =
-    dbg self, "parsePragma"
-
-    self.skip(Hashtag)
-    self.expected({Id, LBracket})
-
-    if spacesBefore =? self.token.spacesBefore():
-        if spacesBefore != 0:
-            self.errExpected({Id, Hashtag})
-
-    let pragmas: seq[Node]
-
-    if self.isKind(Id):
-        pragmas = @[self.parsePragmaAux()]
-    else:
-        dbg self, "parsePragma before loop"
-        self.skip(LBracket)
-
-        var tmp = newSeq[Node]()
-        while self.token.kind notin {Last, RBracket}:
-            dbg self, "parsePragma loop"
-
-            if not self.isKind(Id):
-                self.errExpectedId()
-
-            let pragma = self.parsePragmaAux()
-            tmp.add(pragma)
-
-            if self.skipMaybe(Comma):
-                discard
-        self.skip(RBracket)
-
-        dbg self, "parsePragma after loop"
-        pragmas = tmp
-
-    if pragmas.len() == 0:
-        self.errSyntax(fmt"empty pragma blocks are invalid")
-
-    dbg self, "parsePragma end"
-
-    result = newPragmaList(pragmas)
+            newAnnotationList(newExprParenFromParen(name, args))
+        else:
+            newAnnotationList(name)
 
 proc isTypeExprStart(self: Parser): bool =
     result = self.isKind({Id, LtOp, DotDotDot})

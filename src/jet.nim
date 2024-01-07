@@ -1,28 +1,25 @@
 import std/os
-import std/tables
-import std/sequtils
-import std/strutils
-import std/strformat
+# import std/tables
+# import std/sequtils
+# import std/strutils
+# import std/strformat
 
 import jet/lexer
 import jet/parser
 import jet/ast
-import jet/ast/algo
-import jet/ast/sym
-import jet/token
-import jet/vm
-import jet/vm/obj
+# import jet/ast/algo
+# import jet/ast/sym
+# import jet/sem
+# import jet/token
+# import jet/vm
+# import jet/vm/obj
 
 import lib/utils
-import lib/utils/text_style
+# import lib/utils/text_style
 
-import pkg/questionable
-
-
-# proc print_node_tree(node: Node) {.importc: "print_node_tree", dynlib: "vm_test.dll", cdecl.}
 
 proc main() =
-    const typeStyle = TextStyle(foreground: BrightCyan, italic: true)
+    # const typeStyle = TextStyle(foreground: BrightCyan, italic: true)
 
     logger.maxErrors = 3
     when defined(release): logger.loggingLevel = Error
@@ -35,17 +32,16 @@ proc main() =
 
     # Pipeline:
     #   - tokenize
-    #   - parse to AST
-    #   - (?) pragma resolve
+    #   - parse AST
+    #   - (?) annonations resolve
     #   - semantic checks
     #   - (?) typed AST
-    #   - (?) deffered pragma resolve (typed pragmas)
+    #   - (?) deffered annonations resolve (typed annonations)
     #   - backend stage
     #
     # Backends:
-    #   - C (WIP)
+    #   - C
     #   - Jet VM
-    #   - Bizzare VM (JIT, WIP)
 
     if paramCount() > 0:
         let argument = paramStr(1)
@@ -54,8 +50,11 @@ proc main() =
         var program  = parser.parseAll()
 
         echo(program.treeRepr)
-        echo("Recreated AST:")
-        echo(ast2jet(program))
+        # echo("Recreated AST:")
+        # echo(ast2jet(program))
+
+        # semGenTreeTypes(program)
+        # semGenTreeSyms(program)
 
         # var vm        = newVm(program)
         # let evaluated = vm.eval()

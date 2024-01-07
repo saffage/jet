@@ -4,9 +4,9 @@ import std/tables
 type TypeKind* = enum
     tyUnknown = "<unknown>" ## Type needs to be inferred
     tyAny     = "<any>"     ## Type is any
-    tyNever   = "<never>"   ## Type of 'return' stmt
-    tyNull    = "null"      ## Type of 'null' literal
-    tyUnit    = "unit"      ## Empty type
+    tyNil     = "nil"       ## Type of 'null' literal
+    tyUnit    = "()"        ## Empty type
+    tyNever   = "(!)"       ## Type of 'return' stmt
     tyISize   = "isize"     ## Pointer-sized signed integer
     tyUSize   = "usize"     ## Pointer-sized unsigned integer
     tyI8      = "i8"        ## Signed 8-bit integer
@@ -19,7 +19,7 @@ type TypeKind* = enum
     tyU64     = "u64"       ## Unsigned 64-bit integer
     tyF32     = "f32"       ## Floating point 32-bit number
     tyF64     = "f64"       ## Floating point 64-bit number
-    tyChar    = "char"      ## Character type (alias for 'u8')
+    tyChar    = "char"      ## Character type
     tyBool    = "bool"      ## Boolean type
     tyString  = "string"    ## String
     tyFunc    = "func"      ## Function type
@@ -30,8 +30,8 @@ type TypeFlag* = enum
     EMPTY
 
 const
-    BuiltInTypes* = {tyNever..tyBool}
-    SizedTypes*   = {tyISize..tyBool}
+    BuiltInTypes* = {tyNil .. tyBool}
+    SizedTypes*   = {tyISize .. tyBool}
 
 type Type* = ref object
     name*  : string
@@ -55,9 +55,9 @@ type Type* = ref object
 
 let unknownType* = Type(name: "", kind: tyUnknown)
 let anyType*     = Type(name: "", kind: tyAny)
+let nilType*     = Type(name: "nil", kind: tyNil)
+let unitType*    = Type(name: "", kind: tyUnit)
 let neverType*   = Type(name: "", kind: tyNever)
-let nullType*    = Type(name: "null", kind: tyNull)
-let unitType*    = Type(name: "unit", kind: tyUnit)
 let isizeType*   = Type(name: "isize", kind: tyISize)
 let usizeType*   = Type(name: "usize", kind: tyUSize)
 let i8Type*      = Type(name: "i8", kind: tyI8)
@@ -75,8 +75,9 @@ let boolType*    = Type(name: "bool", kind: tyBool)
 let stringType*  = Type(name: "string", kind: tyString)
 
 let builtInTypes* = [
-    nullType,
+    nilType,
     unitType,
+    neverType,
     isizeType,
     usizeType,
     i8Type,
@@ -105,9 +106,9 @@ proc `$`*(self: Type): string =
 
 func toTypeKind*(kind: string): TypeKind =
     case kind:
-    of "<never>"   : tyNever
-    of "null"      : tyNull
-    of "unit"      : tyUnit
+    of "nil"       : tyNil
+    of "()"        : tyUnit
+    of "(!)"       : tyNever
     of "isize"     : tyISize
     of "usize"     : tyUSize
     of "i8"        : tyI8
@@ -130,10 +131,10 @@ func toTypeKind*(kind: string): TypeKind =
 proc getType*(kind: TypeKind): Type =
     result = case kind:
         of tyNever  : neverType
-        of tyNull   : nullType
+        of tyNil    : nilType
         of tyUnit   : unitType
-        of tyISize  : i_sizeType
-        of tyUSize  : u_sizeType
+        of tyISize  : isizeType
+        of tyUSize  : usizeType
         of tyI8     : i8Type
         of tyI16    : i16Type
         of tyI32    : i32Type
@@ -177,176 +178,12 @@ proc newFuncType*(name: string; params: seq[Type]; returnType: Type; isVarargs: 
 
 proc newStructType*(name: string; fields: OrderedTable[string, Type]): Type =
     result = Type(
-        name         : name,
-        kind         : tyStruct,
-        structFields : fields)
+        name: name,
+        kind: tyStruct,
+        structFields: fields)
 
 proc newEnumType*(name: string; fields: seq[string]): Type =
     result = Type(
-        name       : name,
-        kind       : tyEnum,
-        enumFields : fields)
-
-#[
-import std/macros
-
-macro variant(head, body: untyped): untyped =
-    echo head.treeRepr
-
-    head.expectKind({nnkIdent, nnkBracketExpr})
-
-    var objectGenericParams = newEmptyNode()
-    let enumVariant   = newNimNode(nnkTypeDef)
-    let objectVariant = newNimNode(nnkTypeDef)
-    let variants      = newNimNode(nnkEnumTy)
-    let objectBody    = newNimNode(nnkObjectTy)
-    variants.add(newEmptyNode())
-    objectBody.add(newEmptyNode())
-    objectBody.add(newEmptyNode())
-
-    let name =
-        if head.kind == nnkIdent: head
-        else:
-            if head.len() > 1:
-                objectGenericParams = newNimNode(nnkGenericParams)
-                for genericParam in head[1..^1]:
-                    genericParam.expectKind({nnkIdent, nnkExprColonExpr})
-                    if genericParam.kind == nnkIdent:
-                        objectGenericParams.add(newIdentDefs(genericParam, newEmptyNode()))
-                    else:
-                        objectGenericParams.add(newIdentDefs(genericParam[0], genericParam[1]))
-            head[0]
-
-    let enumVariantName = ident(name.strVal & "Variant")
-    enumVariantName.copyLineInfo(name)
-
-    enumVariant.add(enumVariantName)
-    enumVariant.add(newEmptyNode()) # pragma
-    enumVariant.add(variants)
-
-    objectVariant.add(name)
-    objectVariant.add(objectGenericParams)
-    objectVariant.add(objectBody)
-
-    let caseIdent = ident"variant"
-    let cases     = newNimNode(nnkRecCase)
-    cases.add(newIdentDefs(caseIdent, enumVariant[0]))
-
-    for variant in body:
-        variant.expectKind({nnkIdent, nnkObjConstr, nnkCall})
-
-        case variant.kind:
-        of nnkIdent:
-            let variantIdent = ident(variant.strVal)
-            variants.add(variantIdent)
-
-            let ofBranch = newNimNode(nnkOfBranch)
-            ofBranch.add(variantIdent)
-            ofBranch.add(newNimNode(nnkNilLit))
-
-            cases.add(ofBranch)
-        of nnkObjConstr:
-            let variantIdent = ident(variant[0].strVal)
-            variants.add(variantIdent)
-
-            let fields = newNimNode(nnkRecList)
-            for field in variant[1..^1]:
-                fields.add(newIdentDefs(field[0], field[1]))
-
-            let ofBranch = newNimNode(nnkOfBranch)
-            ofBranch.add(variantIdent)
-            ofBranch.add(fields)
-
-            cases.add(ofBranch)
-        of nnkCall:
-            let variantIdent = ident(variant[0].strVal)
-            variants.add(variantIdent)
-
-            let fields = newNimNode(nnkRecList)
-            for i, field in variant[1..^1]:
-                fields.add(newIdentDefs(ident("i" & $i & variant[0].strVal), field))
-
-            let ofBranch = newNimNode(nnkOfBranch)
-            ofBranch.add(variantIdent)
-            ofBranch.add(fields)
-
-            cases.add(ofBranch)
-        else:
-            discard
-
-    let recordList = newNimNode(nnkRecList)
-    recordList.add(cases)
-    objectBody.add(recordList)
-
-    let typeSection = newNimNode(nnkTypeSection)
-    typeSection.add(enumVariant)
-    typeSection.add(objectVariant)
-
-    result = newStmtList(typeSection)
- ]#
-#[
-StmtList
-    TypeSection
-        TypeDef
-            Ident "OptionVariant"
-            Empty
-            EnumTy
-                Empty
-                Ident "SomeNamed"
-                Ident "Some"
-                Ident "None"
-        TypeDef
-            Ident "Option"
-            GenericParams
-                IdentDefs
-                Ident "T"
-                Empty
-                Empty
-            ObjectTy
-                Empty
-                Empty
-                RecList
-                    RecCase
-                        IdentDefs
-                            Ident "variant"
-                            Ident "OptionVariant"
-                            Empty
-                        OfBranch
-                            Ident "SomeNamed"
-                            RecList
-                                IdentDefs
-                                    Ident "data"
-                                    Ident "T"
-                                    Empty
-                        OfBranch
-                            Ident "Some"
-                            RecList
-                                IdentDefs
-                                    Ident "i0Some"
-                                    Ident "T"
-                                    Empty
-                            OfBranch
-                                Ident "None"
-                                RecList
-                                    NilLit
-]#
-
-# dumpTree:
-#     type OptionVariant = enum
-#         SomeNamed
-#         Some
-#         None
-# dumpTree:
-#     type Option[T] = object
-#         case variant: OptionVariant
-#         of SomeNamed:
-#             data: T
-#         of Some:
-#             i0Some: T
-#         of None:
-#             nil
-
-# variant Option[T: SomeInteger]:
-#     SomeNamed(data: T)
-#     Some(T)
-#     None
+        name: name,
+        kind: tyEnum,
+        enumFields: fields)

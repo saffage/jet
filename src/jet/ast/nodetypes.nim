@@ -1,6 +1,8 @@
 import std/strformat
 
 import jet/literal
+import jet/ast/types
+import jet/ast/sym
 
 
 type NodeKind* = enum
@@ -17,19 +19,19 @@ type NodeKind* = enum
         ## Some typed literal
 
     #[ Other ]#
-    nkDefStmt
-        ## Id(name) | ExprDotExpr(instance-and-name)
+    nkFunc
+        ## Id(name)
         ## Paren(params)
         ## expr(return-type)
         ## EqExpr(body)
-        ## PragmaList
-    nkTypedefStmt
+        ## AnnotationList
+    nkType
         ## Id(name)
         ## EqExpr(body)
-        ## PragmaList
-    nkReturnStmt
+        ## AnnotationList
+    nkReturn
         ## expr
-    nkIfExpr
+    nkIf
         ## IfBranch+
         ## ElseBranch?
     nkIfBranch
@@ -55,10 +57,15 @@ type NodeKind* = enum
         ## expr(elements)*
     nkBrace
         ## expr(elements)*
+    nkBracket
+        ## expr(elements)*
     nkExprParen
         ## expr(prefix)
         ## Paren(elements)
     nkExprBrace
+        ## expr(prefix)
+        ## Brace(elements)
+    nkExprBracket
         ## expr(prefix)
         ## Brace(elements)
     nkPrefix
@@ -71,11 +78,8 @@ type NodeKind* = enum
         ## Id(op)
         ## expr(left-operand)
         ## expr(right-operand)
-    nkPragma
-        ## Id(name)
-        ## Paren(args)?
-    nkPragmaList
-        ## Pragma*
+    nkAnnotationList
+        ## (Id | ExprParen)*
     nkVarDecl
         ## Id(name)+
         ## expr(type)
@@ -91,7 +95,16 @@ type NodeKind* = enum
     nkVariant
         ## Infix | Id
 
+type NodeFlag* = enum
+    EMPTY
+
+type NodeFlags* = set[NodeFlag]
+
 type Node* = ref object
+    `type`* : Type
+    sym*    : Sym
+    flags*  : NodeFlags
+
     case kind* : NodeKind
     of nkEmpty:
         nil
@@ -115,3 +128,6 @@ func `$`*(self: Node): string =
         result &= fmt(" \"{self.id}\"")
     else:
         discard
+
+    if self.flags != {}:
+        result &= fmt" {$self.flags}"

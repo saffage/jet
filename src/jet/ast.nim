@@ -11,24 +11,24 @@ proc newProgram*(): Node =
 
 
 # ----- Stmt ------ #
-proc newDefStmt*(name, params, returnType, body: Node): Node =
+proc newFunc*(name, params, returnType, body: Node): Node =
     assert(name != nil and name.kind in {nkId, nkExprDotExpr})
     assert(params != nil and params.kind == nkParen)
     assert(returnType != nil)
     assert(body != nil and body.kind in {nkEmpty, nkEqExpr})
 
-    result  = newNode(nkDefStmt)
+    result  = newNode(nkFunc)
     result &= name
     result &= params
     result &= returnType
     result &= body
     result &= newEmptyNode()
 
-proc newTypedefStmt*(name, body: Node): Node =
+proc newType*(name, body: Node): Node =
     assert(name != nil and name.kind == nkId)
     assert(body != nil and body.kind == nkEqExpr)
 
-    result  = newNode(nkTypedefStmt)
+    result  = newNode(nkType)
     result &= name
     result &= body
     result &= newEmptyNode()
@@ -36,19 +36,19 @@ proc newTypedefStmt*(name, body: Node): Node =
 proc newReturnStmt*(expr: Node): Node =
     assert(expr != nil)
 
-    result  = newNode(nkReturnStmt)
+    result  = newNode(nkReturn)
     result &= expr
 
 
 # ----- Expr ------ #
 proc newEmptyIfExpr*(): Node =
-    result = newNode(nkIfExpr)
+    result = newNode(nkIf)
 
 proc newIfExpr*(branches: openArray[Node]; elseBranch: Node = nil): Node =
     assert(branches.len() > 0)
     assert(branches.allIt(it != nil and it.kind == nkIfBranch), $branches.mapIt($it.kind))
 
-    result  = newNode(nkIfExpr)
+    result  = newNode(nkIf)
     result &= branches
 
     if elseBranch != nil:
@@ -159,12 +159,29 @@ proc newExprBrace*(expr: Node): Node =
     result &= expr
     result &= newBrace()
 
-proc newExprParen*(expr: Node): Node =
+proc newEmptyExprParen*(expr: Node): Node =
     assert(expr != nil)
 
     result  = newNode(nkExprParen)
     result &= expr
     result &= newParen()
+
+proc newExprParen*(expr: Node; elems: openArray[Node]): Node =
+    assert(elems.allIt(it != nil))
+
+    result = newEmptyExprParen(expr)
+    result[1].children = @elems
+
+proc newExprParen*(expr: Node; elem: Node): Node =
+    result = newExprParen(expr, [elem])
+
+proc newExprParenFromParen*(expr: Node; paren: Node): Node =
+    assert(expr != nil)
+    assert(paren != nil and paren.kind == nkParen)
+
+    result  = newNode(nkExprParen)
+    result &= expr
+    result &= paren
 
 proc newPrefix*(op: Node; operand: Node): Node =
     assert(op != nil)
@@ -192,30 +209,23 @@ proc newInfix*(op: Node; leftOperand, rightOperand: Node): Node =
     result &= leftOperand
     result &= rightOperand
 
-proc newPragma*(name, args: Node): Node =
-    assert(name != nil and name.kind == nkId)
+proc newAnnotationList*(annotations: openArray[Node]): Node =
+    result = newNode(nkAnnotationList)
 
-    result  = newNode(nkPragma)
-    result &= name
+    for annotation in annotations:
+        assert(annotation != nil and annotation.kind in {nkId, nkExprParen, nkAnnotationList},
+            if annotation == nil: "nil" else: $annotation.kind)
 
-    if args != nil:
-        assert(args.kind == nkParen)
-        result &= args
-    else:
-        result &= newEmptyNode()
+        if annotation.kind == nkAnnotationList:
+            result &= annotation.children
+        else:
+            result &= annotation
 
-proc newPragmaList*(pragmas: openArray[Node]): Node =
-    result = newNode(nkPragmaList)
+proc newAnnotationList*(annotation: Node): Node =
+    result = newAnnotationList([annotation])
 
-    for pragma in pragmas:
-        assert(pragma != nil and pragma.kind == nkPragma)
-        result &= pragma
-
-proc newPragmaList*(pragma: Node): Node =
-    result = newPragmaList([pragma])
-
-proc newEmptyPragmaList*(): Node =
-    result = newPragmaList([])
+proc newEmptyAnnotationList*(): Node =
+    result = newAnnotationList([])
 
 proc newVarDecl*(names: openArray[Node]; typeExpr: Node; eqExpr: Node = nil): Node =
     assert(names.len() > 0)
@@ -231,7 +241,8 @@ proc newVarDecl*(name: Node; typeExpr: Node; eqExpr: Node = nil): Node =
     result = newVarDecl([name], typeExpr, eqExpr)
 
 proc newVariant*(entry: Node): Node =
-    assert(entry != nil and entry.kind in {nkId, nkInfix})
+    assert(entry != nil and entry.kind in {nkId, nkInfix},
+        if entry == nil: "nil" else: $entry.kind)
 
     result  = newNode(nkVariant)
     result &= entry
