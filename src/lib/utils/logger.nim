@@ -46,7 +46,9 @@ func msgStyle(self: LogLevel): TextStyle =
         else: TextStyle()
 
 var
-    loggingLevel*           = LogLevel.All
+    loggingLevel* =
+        when defined(release): LogLevel.Error
+        else: LogLevel.All
     printStackTraceOnError* = false
     printStackTraceOnPanic* = true
 
