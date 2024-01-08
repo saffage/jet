@@ -81,8 +81,8 @@ func skipLine(self: var Lexer) =
     while self.peek() notin EOL:
         self.pos += 1
 
-    if self.buffer[self.pos] != EOF:
-        self.handleNewLine()
+    # if self.buffer[self.pos] != EOF:
+    #     self.handleNewLine()
 
 func lineInfo(self: Lexer): LineInfo =
     result = LineInfo(line: self.line().uint32, column: self.column().uint32)
@@ -123,7 +123,7 @@ const
     HexChars*         = {'0' .. '9', 'a' .. 'f', 'A' .. 'F'}
     IdChars*          = {'_'} + Letters + Digits
     IdStartChars*     = IdChars - Digits
-    UnaryOpWhitelist* = {' ', ',', ';', '(', '[', '{'} + EOL # + '<' if it is a generic params
+    UnaryOpWhitelist* = {' ', ',', ';', '(', '[', '{'} + EOL
 
 func escape*(self: string): string =
     result = self.multiReplace(
@@ -234,7 +234,10 @@ proc skipSpaces(self: var Lexer) =
             panic("tabs are not allowed")
         of SPACE:
             self.pos += 1
-            self.curr.setSpacesBefore(self.curr.spacesBefore().get() + 1)
+            if indent =? self.curr.indent():
+                self.curr.setIndent(indent + 1)
+            if spacesBefore =? self.curr.spacesBefore():
+                self.curr.setSpacesBefore(spacesBefore + 1)
         of Newlines:
             self.handleNewLine()
             self.curr.setFirstInLine(true)
@@ -395,9 +398,9 @@ func scanString(self: var Lexer; raw = false) =
                 self.scanEscapedChar()
         of EOF:
             if multiline:
-                panic("expected \"\"\" but EOF reached")
+                panic("missing closing \"\"\"; end of line reached")
             else:
-                panic("expected \" but EOF reached")
+                panic("missing closing \"; end of line reached")
         of NewLines:
             if multiline:
                 lineIndices.add(self.line())
@@ -444,19 +447,19 @@ func scanOperator(self: var Lexer) =
             op &= self.buffer[i]
             i  += 1
         panic(fmt"unknown operator '{op}'")
-        
+
     assert(kind.isOperator())
     self.curr.kind = kind
     self.pos = pos
 
 func scanNumber(self: var Lexer) =
-    assert(self.peek() in Digits + {'-'})
+    assert(self.peek() in Digits + {'-', '+'})
 
     self.curr.kind  = IntLit
     self.curr.value = newStringOfCap(64) # IDK why 64
 
     block beforeSuffix:
-        if self.peek() == '-':
+        if self.peek() in {'-', '+'}:
             self.eat()
         if self.peek() == '0':
             self.eat()
@@ -566,11 +569,7 @@ proc nextToken*(self: var Lexer) =
             self.curr.kind = Colon
             self.pos += 1
     of '-', '+':
-        if self.at(self.pos + 1) in Digits and
-          (self.at(self.pos - 1) in UnaryOpWhitelist + {'<'}):
-            if self.peek() == '+':
-                self.pos += 1
-                panic("unary + is illegal")
+        if self.at(self.pos + 1) in Digits and self.at(self.pos - 1) in UnaryOpWhitelist:
             self.scanNumber()
         else:
             self.scanOperator()
@@ -650,6 +649,7 @@ proc getAllTokens*(self: var Lexer): seq[Token] =
 
     while token =? self.getToken():
         result &= token
+        if token.kind == Last: break
 
 
 # ----- [] ----- #
