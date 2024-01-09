@@ -3,8 +3,6 @@ import std/strformat
 import std/streams
 import std/options
 
-from std/sugar import collect
-
 import pkg/questionable
 
 import jet/token
@@ -18,7 +16,6 @@ type Lexer* = object
     pos         : int = 0  ## Position in the buffer
     lineStart   : int = 0  ## Position of line start in the buffer
     linePos     : int = 1  ## Current line number
-    lineIndices : seq[int] ## Indices of newline chars for every line
 
     # Language specific fields
     curr* : Token
@@ -81,41 +78,28 @@ func skipLine(self: var Lexer) =
     while self.peek() notin EOL:
         self.pos += 1
 
-    # if self.buffer[self.pos] != EOF:
-    #     self.handleNewLine()
-
 func lineInfo(self: Lexer): LineInfo =
     result = LineInfo(line: self.line().uint32, column: self.column().uint32)
 
-func getLine*(self: Lexer; line: Positive): string
-    {.raises: [ValueError].} =
-    ## `line` must be in range `1 .. <last-buffer-line-num>`.
-    ##
+func getLine*(self: Lexer; lineNum: Positive): Option[string] =
     ## **Returns:** line at `line` in `buffer` (new line character excluded).
-    ##
-    ## **Raises:**
-    ##  - `ValueError` when `line` is not a valid line number.
-    if line > self.lineIndices.len():
-        raise newException(ValueError, fmt"line '{line}' does not exists (max: '{self.lineIndices.len()}')")
-
-    let lineStart = self.lineIndices[line - 1] + 1
-    var i = lineStart
-
-    while self.buffer[i] notin EOL:
+    result = none(string)
+    var i = 1
+    for line in self.buffer.splitLines():
+        if i == lineNum:
+            result = some(line)
+            break
         i += 1
 
-    result = self.buffer[lineStart ..< i]
-
-func getLines*(self: Lexer; lines: openArray[int] | Slice[int]): seq[string]
-    {.raises: [ValueError].} =
+func getLines*(self: Lexer; lineNums: openArray[int] | Slice[int]): Option[seq[string]] =
     ## **Returns:** specified lines from the `buffer`.
-    ##
-    ## **Raises:**
-    ##  - `ValueError` when some line number are invalid.
-    result = @[]
-
-    for line in lines:
-        result &= self.getLine(line)
+    result = some(newSeq[string]())
+    for line in lineNums:
+        let returnedLine = self.getLine(line)
+        if returnedLine.isNone():
+            result = none(seq[string])
+            break
+        result.get() &= returnedLine.get()
 
 const
     BinChars*         = {'0' .. '1'}
@@ -411,10 +395,15 @@ func scanString(self: var Lexer; raw = false) =
         else:
             self.eat()
 
+func getOperatorKinds(): seq[TokenKind]
+    {.compileTime.} =
+    result = @[]
+    for kind in TokenKind:
+        if kind.isOperator():
+            result &= kind
+
 func scanOperator(self: var Lexer) =
-    const operatorKinds = collect do:
-        for kind in TokenKind:
-            if kind.isOperator(): kind
+    const operatorKinds = getOperatorKinds()
 
     var kind = Invalid
     var pos  = self.pos
@@ -555,10 +544,7 @@ proc nextToken*(self: var Lexer) =
         unreachable()
     of '`':
         unimplemented("scanAccentId")
-    of '@':
-        self.curr.kind = At
-        self.pos += 1
-    of ',', ';', '(', ')', '{', '}', '[', ']':
+    of '?', '&', '@', ',', ';', '(', ')', '{', '}', '[', ']':
         self.curr.kind = fromString($self.peek()).get()
         self.pos += 1
     of ':':
@@ -637,7 +623,7 @@ proc getToken*(self: var Lexer): ?Token =
     if self.curr.kind != Last:
         self.nextToken()
 
-    if self.curr.isFirstInLine():
+    if self.curr.isFirstInLine() or self.curr.kind == Last:
         self.prev.setLastInLine(true)
     else:
         self.prev.setSpacesAfter(self.curr.spacesBefore().get())
@@ -653,23 +639,17 @@ proc getAllTokens*(self: var Lexer): seq[Token] =
 
 
 # ----- [] ----- #
-func newLexer*(content: sink string): Lexer
+proc newLexer*(content: sink string): Lexer
     {.raises: [ValueError].} =
-    let lineIndices = collect do:
-        for i, c in content:
-            if c == LF: i
-
     # manualy insert an additional '\0' to be able to index at it
     content.setLen(content.len() + 1)
     content[content.high] = '\0'
 
     result = Lexer(
-        buffer: ensureMove(content),
-        lineIndices: lineIndices,
+        buffer: content,
         curr: newToken(Invalid),
         prev: newToken(Invalid),
     )
-
     result.nextToken()
 
 proc newLexerFromFile*(file: File): Lexer

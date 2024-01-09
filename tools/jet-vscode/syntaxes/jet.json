@@ -130,7 +130,7 @@
 		"fn-call": {
 			"patterns": [
 				{
-					"match": "\\b([_a-zA-Z][_a-zA-Z0-9]*)\\b(?=\\()",
+					"match": "\\b([_a-zA-Z][_a-zA-Z0-9]*)\\b(?=\\s*\\()",
 					"captures": {
 						"1": { "name": "entity.name.function.jet" }
 					}

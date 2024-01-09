@@ -1,4 +1,4 @@
-import pkg/questionable
+import std/options
 
 
 type TokenKind* = enum
@@ -54,6 +54,8 @@ type TokenKind* = enum
     KwVal     = "val"
     KwFunc    = "func"
     KwType    = "type"
+    KwStruct  = "struct"
+    KwEnum    = "enum"
     KwIf      = "if"
     KwElif    = "elif"
     KwElse    = "else"
@@ -84,11 +86,10 @@ type TokenKind* = enum
     Asterisk   = "*"
     Slash      = "/"
     Percent    = "%"
-    Ampersand  = "&"
     PlusPlus   = "++"
     Shl        = "<<"
     Shr        = ">>"
-    Eq         = "="
+    Assign     = "="
     DotDot     = ".."
     DotDotLess = "..<"
 
@@ -103,6 +104,7 @@ type TokenKind* = enum
     MatchCaseArrow  = "=>"
     ExclamationMark = "!"
     QuestionMark    = "?"
+    Ampersand       = "&"
 
 const
     UntypedLiteralKinds* = {IntLit, FloatLit}
@@ -115,15 +117,20 @@ func isKeyword*(kind: TokenKind): bool =
     result = kind in kinds
 
 func isOperator*(kind: TokenKind): bool =
+    ## Note: word-like operators are not checked, use `isWordLikeOperator` instead.
     const kinds = {EqOp .. DotDotLess}
+    result = kind in kinds
+
+func isWordLikeOperator*(kind: TokenKind): bool =
+    const kinds = {KwAnd, KwOr, KwOf}
     result = kind in kinds
 
 func isLiteral*(kind: TokenKind): bool =
     const kinds = {IntLit .. LongRawStringLit, ISizeLit .. F64Lit}
     result = kind in kinds
 
-func fromString*(s: string): ?TokenKind =
-    const stringableKinds = {LParen .. DotDotDot}
+func fromString*(s: string): Option[TokenKind] =
+    const stringableKinds = {LParen .. Ampersand}
     result = none(TokenKind)
 
     for kind in stringableKinds:

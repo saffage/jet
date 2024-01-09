@@ -11,6 +11,8 @@ binDir        = "bin"
 requires "nim >= 2.0.0"
 requires "questionable ~= 0.10.12"
 requires "stew ~= 0.1.0"
+requires "regex ~= 0.24.0"
+requires "patty ~= 0.3.5"
 
 # Tasks
 task buildGrammar, "Build grammar from 'src/jet/parser.nim' into 'grammar.peg' file":

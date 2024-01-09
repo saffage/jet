@@ -1,6 +1,5 @@
 import std/strformat
 import std/sequtils
-import std/math
 
 import jet/ast/nodetypes
 import jet/literal
@@ -45,7 +44,7 @@ proc annotation*(self: Node): Node =
 
 proc `annotation=`*(self: Node; node: Node) =
     assert(node != nil)
-    
+
     case self.kind:
         of nkFunc: self[4] = node
         of nkType: self[2] = node

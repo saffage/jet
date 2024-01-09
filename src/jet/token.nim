@@ -134,10 +134,10 @@ template `indent=`*(self: var Token; value: Natural) =
 func notation*(self: Token; prev = Invalid; next = Invalid): Notation =
     const Whitelist  = {Invalid, Comma, Semicolon, LParen, LBracket, LBrace}
 
-    let spacesBefore = self.spacesBefore() |? -2
-    let spacesAfter  = self.spacesAfter() |? -2
+    let spacesBefore = self.spacesBefore() |? -3
+    let spacesAfter  = self.spacesAfter() |? -3
 
-    if prev == LParen and next == RParen:
+    if prev in Whitelist and next in Whitelist:
         return Unknown
 
     let prefix =
@@ -177,6 +177,8 @@ func human*(self: Token): string
 
     if self.value.len() > 0:
         result.addQuoted(self.value)
+
+    result &= fmt" (first: {self.isFirstInLine()}, last: {self.isLastInLine()})"
 
 func newToken*(kind: TokenKind; info = LineInfo(); value = ""): Token
     {.raises: [].} =

@@ -30,6 +30,9 @@ proc main() =
     var parser   = newParser(lexer)
     var program  = parser.parseAll()
 
+    # for token in lexer.getAllTokens():
+        # echo(token.human())
+
     echo(program.treeRepr)
 
 when isMainModule: main()

@@ -29,6 +29,8 @@ type NodeKind* = enum
         ## Id(name)
         ## EqExpr(body)
         ## AnnotationList
+    nkVar
+    nkVal
     nkReturn
         ## expr
     nkIf
@@ -38,10 +40,6 @@ type NodeKind* = enum
         ## expr(condition)
         ## DoExpr(body)
     nkElseBranch
-        ## stmt+
-    nkDoExpr
-        ## stmt+
-    nkEqExpr
         ## stmt+
     nkExprEqExpr
         ## expr(left)
@@ -92,11 +90,14 @@ type NodeKind* = enum
     nkCase
         ## expr(match-expression)
         ## DoExpr(body) | IfBranch(guard)
-    nkVariant
-        ## Infix | Id
+    nkExprList
+        ## expr+
 
 type NodeFlag* = enum
     EMPTY
+    nfList
+        ## For kinds `nkParen`, `nkBrace`, `nkBracket` means
+        ## that the elements have been separated using `,`
 
 type NodeFlags* = set[NodeFlag]
 
