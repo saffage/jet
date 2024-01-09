@@ -9,10 +9,10 @@ import jet/ast
 import jet/lexer
 import jet/token
 import jet/literal
+import jet/line_info
 
 import lib/stack
 import lib/utils
-import lib/utils/line_info
 
 import pkg/questionable
 

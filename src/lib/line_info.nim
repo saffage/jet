@@ -1,7 +1,7 @@
 type LineInfo* = object
-    line   *: uint32 = 0
-    column *: uint32 = 0
-    length *: uint32 = 0    ## '0' is used when length is unknown or not needed.
+    line*   : uint32 = 0
+    column* : uint32 = 0
+    length* : uint32 = 0
 
 func `$`*(self: LineInfo): string
     {.raises: [].} =
@@ -10,5 +10,5 @@ func `$`*(self: LineInfo): string
     else:
         result = $self.line & ':' & $self.column
 
-func dupNoLength*(self: LineInfo): LineInfo =
+func noLength*(self: LineInfo): LineInfo =
     result = LineInfo(line: self.line, column: self.column)

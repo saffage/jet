@@ -1,4 +1,5 @@
 import std/os
+import std/unicode
 
 import jet/lexer
 import jet/parser
@@ -23,7 +24,7 @@ proc main() =
     #   - backend stage
 
     if paramCount() != 1:
-        quit("expected path to Jet file as 1 argument")
+        panic("expected path to Jet file as 1 argument")
 
     let argument = paramStr(1)
     var lexer    = newLexerFromFileName(argument)

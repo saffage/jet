@@ -1,9 +1,10 @@
+## Very simple logger with a lot of hidden side effects.
+
 import std/strutils
 
-import line_info
-import text_style
+import ./line_info
+import ./text_style
 
-## Very simple logger with a lot of hidden side effects.
 
 type LogLevel* = enum
     All
@@ -17,15 +18,15 @@ type LogLevel* = enum
 
 const
     debugTagStyle* = TextStyle(foreground: Magenta, bold: true)
-    debugMsgStyle* = TextStyle(foreground: White, italic: true)
+    debugMsgStyle* = TextStyle(foreground: White)
     hintTagStyle*  = TextStyle(foreground: Cyan)
-    hintMsgStyle*  = TextStyle(foreground: White, italic: true)
+    hintMsgStyle*  = TextStyle(foreground: White)
     warnTagStyle*  = TextStyle(foreground: Yellow)
-    warnMsgStyle*  = TextStyle(foreground: White, italic: true)
+    warnMsgStyle*  = TextStyle(foreground: White)
     errorTagStyle* = TextStyle(foreground: BrightRed, bold: true)
-    errorMsgStyle* = TextStyle(foreground: White, italic: true)
+    errorMsgStyle* = TextStyle(foreground: White)
     panicTagStyle* = TextStyle(foreground: Red, bold: true)
-    panicMsgStyle* = TextStyle(foreground: Red, italic: true)
+    panicMsgStyle* = TextStyle(foreground: Red)
 
 func tagStyle(self: LogLevel): TextStyle =
     result = case self:

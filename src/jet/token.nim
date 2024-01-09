@@ -1,185 +1,141 @@
 import std/strformat
 import std/enumutils
+import std/options
 
-import pkg/questionable
+import lib/line_info
 
-import jet/token_kind
 
-import lib/utils/line_info
+type TokenKind* = enum
+    #[ Special ]#
+    Empty         = "<empty>"
+    Eof           = "<end-of-file>"
+    Id            = "<identifier>"
+    Comment       = "<comment>"
+    CommentModule = "<comment-module>"
+    HSpace        = "<horizontal-space>"
+    VSpace        = "<vertical-space>"
 
-export token_kind
+    #[ Literals ]#
+    IntLit           = "<int-literal>"
+    FloatLit         = "<float-literal>"
+    CharLit          = "<char-literal>"
+    StringLit        = "<string-literal>"
 
+    #[ Typed Literals ]#
+    ISizeLit = "<isize-literal>"
+    USizeLit = "<iusize-literal>"
+    I8Lit    = "<i8-literal>"
+    I16Lit   = "<i16-literal>"
+    I32Lit   = "<i32-literal>"
+    I64Lit   = "<i64-literal>"
+    U8Lit    = "<u8-literal>"
+    U16Lit   = "<u16-literal>"
+    U32Lit   = "<u32-literal>"
+    U64Lit   = "<u64-literal>"
+    F32Lit   = "<f32-literal>"
+    F64Lit   = "<f64-literal>"
+
+    #[ Brackets ]#
+    LeRound  = "("
+    RiRound  = ")"
+    LeCurly  = "{"
+    RiCurly  = "}"
+    LeSquare = "["
+    RiSquare = "]"
+
+    #[ Keywords ]#
+    KwNil     = "nil"
+    KwTrue    = "true"
+    KwFalse   = "false"
+    KwVar     = "var"
+    KwVal     = "val"
+    KwFunc    = "func"
+    KwType    = "type"
+    KwStruct  = "struct"
+    KwEnum    = "enum"
+    KwIf      = "if"
+    KwElif    = "elif"
+    KwElse    = "else"
+    KwReturn  = "return"
+    KwWhile   = "while"
+    KwDo      = "do"
+
+    #[ Word-like Operators ]#
+    KwOr      = "or"
+    KwAnd     = "and"
+
+    #[ Punctuation ]#
+    Dot       = "."
+    Comma     = ","
+    Colon     = ":"
+    Semicolon = ";"
+
+    #[ Comparison Operators ]#
+    EqOp = "=="
+    NeOp = "!="
+    LtOp = "<"
+    GtOp = ">"
+    LeOp = "<="
+    GeOp = ">="
+
+    #[ Other Operators ]#
+    Plus       = "+"
+    Minus      = "-"
+    Asterisk   = "*"
+    Slash      = "/"
+    Percent    = "%"
+    PlusPlus   = "++"
+    Shl        = "<<"
+    Shr        = ">>"
+    Assign     = "="
+    DotDot     = ".."
+    DotDotLess = "..<"
+
+    #[ Special symbols ]#
+    Bar        = "|"
+    ColonColon = "::"
+    Underscore = "_"
+    At         = "@"
+    Dollar     = "$"    ## String interpolation
+    DotDotDot  = "..."
+
+    MatchCaseArrow  = "=>"
+    ExclamationMark = "!"
+    QuestionMark    = "?"
+    Ampersand       = "&"
+
+const
+    UntypedLiteralKinds*   = {IntLit .. FloatLit}
+    TypedLiteralKinds*     = {ISizeLit .. F64Lit}
+    LiteralKinds*          = {IntLit .. F64Lit}
+    KeywordKinds*          = {KwNil .. KwAnd}
+    OperatorKinds*         = {EqOp .. DotDotLess} ## word-like operators are not included, use `WordLikeOperatorKinds`
+    WordLikeOperatorKinds* = {KwAnd .. KwOr}
+    StringableKinds*       = {LeRound .. Ampersand}
+
+func toTokenKind*(s: string): Option[TokenKind] =
+    result = none(TokenKind)
+
+    for kind in StringableKinds:
+        if $kind == s:
+            result = some(kind)
+            break
 
 type Token* = object
-    value* : string     ## String representation
-    kind*  : TokenKind  ## Kind of the token
-    info*  : LineInfo   ## Line information about token
-
-    scannerPos*     : int = -1      ## A position in the **Scanner**'s buffer
-    spacesBefore    : int = -1      ## Used with spacing (used as indentation if `leadingSpacing`)
-    spacesAfter     : int = -1      ## Used with spacing (not used if `trailingSpacing`)
-    leadingSpacing  : bool = false  ## false -> `<other> this`, true  -> ` this`
-    trailingSpacing : bool = false  ## false -> `this <other>`, true  -> `this `
-
-type Notation* = enum
-    Unknown     ## When `token.firstAndLast()`
-    Infix       ## `a ! ...` or `a!...` or `a !` or `! a`
-    Prefix      ## ` !a` or `(!a` or `,!a` or `;!a`
-    Postfix     ## `a! ` or `a!)` or `a!,` or `a!;`
-
-func isFirstInLine*(self: Token): bool =
-    ## **Returns:** `true` if it's the first token in the line
-    return self.leadingSpacing
-
-func isLastInLine*(self: Token): bool =
-    ## **Returns:** `true` if it's the last token in the line
-    return self.trailingSpacing
-
-func isFirstAndLast*(self: Token): bool =
-    ## **Returns:** `true` if it's both first and last token in the line
-    return self.leadingSpacing and self.trailingSpacing
-
-func isFirstOrLast*(self: Token): bool =
-    ## **Returns:** `true` if have any spacing around this token
-    return self.leadingSpacing or self.trailingSpacing
-
-func spacesBefore*(self: Token): ?int =
-    ## **Returns:** spaces before token, if this token not first in line
-    if not self.isFirstInLine():
-        assert(self.spacesBefore != -1, "spacesBefore can't be -1")
-        return some(self.spacesBefore)
-    else:
-        return none(int)
-
-func spacesAfter*(self: Token): ?int =
-    ## **Returns:** spaces after token, if this token not last in line
-    if not self.isLastInLine():
-        assert(self.spacesAfter != -1, "spacesAfter can't be -1")
-        return some(self.spacesAfter)
-    else:
-        return none(int)
-
-func indent*(self: Token): ?int =
-    ## **Returns:** indentation, if this token first in line
-    if self.isFirstInLine():
-        assert(self.spacesBefore != -1, "spacesBefore can't be -1")
-        return some(self.spacesBefore)
-    else:
-        return none(int)
-
-func setFirstInLine*(self: var Token; value: bool) =
-    ## Sets that it's the first token in the line
-    ##
-    ## Also sets `spacesBefore` to `-1` to prevent using an invalid data
-    if value and not self.leadingSpacing:
-        self.leadingSpacing = true
-        self.spacesBefore   = -1
-    elif self.leadingSpacing:
-        self.leadingSpacing = false
-        self.spacesBefore   = -1
-
-func setLastInLine*(self: var Token; value: bool) =
-    ## Sets that it's the last token in the line
-    ##
-    ## Also sets `spacesAfter` to `-1` to prevent using an invalid data
-    if value and not self.trailingSpacing:
-        self.trailingSpacing = true
-        self.spacesAfter     = -1
-    elif self.trailingSpacing:
-        self.trailingSpacing = false
-        self.spacesAfter     = -1
-
-func setFirstAndLast*(self: var Token; value: bool) =
-    ## Sets that it's the last token in the line
-    if value:
-        self.leadingSpacing  = true
-        self.trailingSpacing = true
-    else:
-        self.leadingSpacing  = false
-        self.trailingSpacing = false
-
-func setSpacesBefore*(self: var Token; value: int) =
-    ## Sets spaces before token and off **Leading** spacing
-    if self.isFirstInLine(): self.setFirstInLine(false)
-    self.spacesBefore = value
-
-func setSpacesAfter*(self: var Token; value: int) =
-    ## Sets spaces after token and off **Trailing** spacing
-    if self.isLastInLine(): self.setLastInLine(false)
-    self.spacesAfter = value
-
-func setIndent*(self: var Token; value: Natural) =
-    ## Sets indentation value and **Leading** spacing
-    if not self.isFirstInLine(): self.setFirstInLine(true)
-    self.spacesBefore = value
-
-template `firstInLine=`*(self: var Token; value: bool) =
-    self.setFirstInLine(value)
-
-template `lastInLine=`*(self: var Token; value: bool) =
-    self.setLastInLine(value)
-
-template `firstAndLast=`*(self: var Token; value: bool) =
-    self.setFirstAndLast(value)
-
-template `spacesBefore=`*(self: var Token; value: int) =
-    self.setSpacesBefore(value)
-
-template `spacesAfter=`*(self: var Token; value: int) =
-    self.setSpacesAfter(value)
-
-template `indent=`*(self: var Token; value: Natural) =
-    self.setIndent(value)
-
-func notation*(self: Token; prev = Invalid; next = Invalid): Notation =
-    const Whitelist  = {Invalid, Comma, Semicolon, LParen, LBracket, LBrace}
-
-    let spacesBefore = self.spacesBefore() |? -3
-    let spacesAfter  = self.spacesAfter() |? -3
-
-    if prev in Whitelist and next in Whitelist:
-        return Unknown
-
-    let prefix =
-        spacesAfter == 0 and
-        (spacesBefore != 0 or prev in WhiteList)
-
-    let postfix =
-        spacesBefore == 0 and
-        (spacesAfter != 0 or next in WhiteList + {Last})
-
-    result =
-        if prefix and postfix or self.isFirstAndLast():
-            Unknown
-        elif prefix:
-            Prefix
-        elif postfix:
-            Postfix
-        else:
-            Infix
-
-func isPrefix*(self: Token): bool =
-    return self.notation() == Prefix
-
-func isPostfix*(self: Token): bool =
-    return self.notation() == Postfix
-
-func isInfix*(self: Token): bool =
-    return self.notation() == Infix
+    data* : string
+    kind* : TokenKind
+    info* : LineInfo
 
 func `$`*(self: Token): string =
-    return self.kind.symbolName()
+    result = self.kind.symbolName()
 
 func human*(self: Token): string
     {.raises: [ValueError].} =
-    ## **Returns:** a human readable string about a token
     result = fmt"Token at {self.info} = {self}"
 
-    if self.value.len() > 0:
-        result.addQuoted(self.value)
+    if self.data.len() > 0:
+        result.addQuoted(self.data)
 
-    result &= fmt" (first: {self.isFirstInLine()}, last: {self.isLastInLine()})"
-
-func newToken*(kind: TokenKind; info = LineInfo(); value = ""): Token
+func initToken*(kind: TokenKind; data = ""; info = LineInfo()): Token
     {.raises: [].} =
-    result = Token(kind: kind, info: info, value: value)
+    result = Token(kind: kind, info: info, data: data)
