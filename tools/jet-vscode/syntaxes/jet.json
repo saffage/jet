@@ -30,20 +30,20 @@
 				{
 					"name": "comment.block.documentation",
 					"contentName": "comment.block.documentation.content.jet",
-					"begin": "##[^#]",
-					"end": "$"
+					"begin": "##(?=\\s)",
+					"end": "(?=$)"
 				},
 				{
 					"name": "comment.block.documentation.module.jet",
 					"contentName": "comment.block.documentation.module.content.jet",
-					"begin": "#!",
-					"end": "$"
+					"begin": "#!(?=\\s)",
+					"end": "(?=$)"
 				},
 				{
 					"name": "comment.line",
 					"contentName": "comment.line.content.jet",
 					"begin": "#",
-					"end": "$"
+					"end": "(?=$)"
 				}
 			]
 		},
