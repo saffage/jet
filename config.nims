@@ -4,6 +4,7 @@
 
 --lineDir
 --stackTrace
+--styleCheck: error
 
 # because its Nim...
 --warning: "Uninit:off"
