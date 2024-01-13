@@ -24,12 +24,6 @@
         "scopeName": "source.jet",
         "path": "./syntaxes/jet.json"
       }
-    ],
-    "snippets": [
-      {
-        "language": "jet",
-        "path": "./snippets/jet.json"
-      }
     ]
   }
 }
