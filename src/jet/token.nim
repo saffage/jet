@@ -113,6 +113,9 @@ const
     WordLikeOperatorKinds* = {KwAnd .. KwOr}
     StringableKinds*       = {LeRound .. Ampersand}
 
+# func `$`*(self: TokenKind): string =
+#     result = self.symbolName()
+
 func toTokenKind*(s: string): Option[TokenKind] =
     result = none(TokenKind)
 
@@ -131,7 +134,7 @@ func `$`*(self: Token): string =
 
 func human*(self: Token): string
     {.raises: [ValueError].} =
-    result = fmt"Token at {self.info} = {self}"
+    result = fmt"at [{self.info}] {self}"
 
     if self.data.len() > 0:
         result.addQuoted(self.data)

@@ -11,7 +11,7 @@ import
 
   pkg/results
 
-type Lexer* = object
+type Lexer* {.byref.} = object
   buffer  : openArray[char]
   pos     : int = 0           ## Position in the buffer
   linePos : int = 0           ## Position in the buffer of the line start character
@@ -24,7 +24,7 @@ type LexResult = object
   parsed : uint = 1
 
 const
-  lexResultDefault = LexResult(token: Result[Token, string].ok(initToken(Empty)))
+  defaultLexResult = LexResult(token: Result[Token, string].ok(initToken(Empty)))
 
 const
   SPACE      = ' '  ## Just a whitespace char, nothing special
@@ -131,24 +131,28 @@ func parseUntil(s: openArray[char]; until: set[char]): string =
 func parseUntil(s: openArray[char]; until: char): string =
   result = parseUntil(s, {until})
 
-func parseWhileWithSeparator(s: openArray[char]; charSet: set[char]; separator: char): (string, bool) =
+func parseWhileWithSeparator(
+  s: openArray[char];
+  charSet: set[char];
+  separator: char
+): tuple[parsedStr: string, underscoreWasDoubled: bool] =
   result = ("", true)
   var wasSeparator = false
   for c in s:
     if c == separator:
-      result[0] &= c
+      result.parsedStr &= c
       if wasSeparator:
-        result[1] = false
+        result.underscoreWasDoubled = false
         return
       wasSeparator = true
     elif c in charSet:
-      result[0] &= c
+      result.parsedStr &= c
       wasSeparator = false
     else:
       break
 
 func lexSpace(buffer: openArray[char]): LexResult =
-  result = lexResultDefault
+  result = defaultLexResult
 
   let kind = if buffer[0] == SPACE: HSpace else: VSpace
   let data = buffer.parseWhile(buffer[0])
@@ -156,7 +160,7 @@ func lexSpace(buffer: openArray[char]): LexResult =
   result.token.ok(initToken(kind, data))
 
 func lexId(buffer: openArray[char]): LexResult =
-  result = lexResultDefault
+  result = defaultLexResult
 
   let data = buffer.parseWhile(IdChars)
   let kind = data.toTokenKind().get(Id)
@@ -169,11 +173,11 @@ func lexId(buffer: openArray[char]): LexResult =
       initToken(kind)
 
 func lexNumber(buffer: openArray[char]): LexResult =
-  result = lexResultDefault
+  result = defaultLexResult
 
-  let (numPart, wasUnderscoreDoubled) = buffer.parseWhileWithSeparator(Digits, '_')
+  let (numPart, underscoreWasDoubled) = buffer.parseWhileWithSeparator(Digits, '_')
 
-  if not wasUnderscoreDoubled:
+  if not underscoreWasDoubled:
     result.token.err("double underscore in number literal is illegal")
     return
 
@@ -200,7 +204,7 @@ func lexNumber(buffer: openArray[char]): LexResult =
       Result[Token, string].ok(initToken(IntLit, numPart))
 
 func lexComment(buffer: openArray[char]): LexResult =
-  result = lexResultDefault
+  result = defaultLexResult
 
   if buffer[1] == '#' and buffer[2] in WHITESPACE:
     result.token.ok(initToken(Comment))
@@ -217,7 +221,7 @@ func lexComment(buffer: openArray[char]): LexResult =
   result.parsed = uint(skipPrefix + result.token.unsafeValue().data.len())
 
 func lexPunctuation(buffer: openArray[char]): LexResult =
-  result = lexResultDefault
+  result = defaultLexResult
 
   let kind = case buffer[0]:
     of '(': LeRound
@@ -233,7 +237,7 @@ func lexPunctuation(buffer: openArray[char]): LexResult =
   result.token.ok(initToken(kind))
 
 func lexOperatorSpecial(buffer: openArray[char]): LexResult =
-  result = lexResultDefault
+  result = defaultLexResult
 
   let kind = case buffer[0]:
     of '@': At
@@ -282,21 +286,49 @@ func nextToken(self: var Lexer) =
     self.curr           = lexResult.token.value()
     self.curr.info      = prevLineInfo
 
+func nextTokenNotEmpty(self: var Lexer) =
+  self.nextToken()
+  while self.curr.kind == Empty: self.nextToken()
+
 func getToken*(self: var Lexer): Option[Token] =
   if self.prev.isSome() and self.prev.get().kind == TokenKind.Eof:
     return none(Token)
+
+  if self.curr.kind == Empty:
+    self.nextTokenNotEmpty()
 
   self.prev = some(self.curr)
 
   if self.curr.kind != TokenKind.Eof:
     self.nextToken()
-    while self.curr.kind == Empty: self.nextToken()
+
+    # while self.prev.get().kind == self.curr.kind and self.curr.kind in {VSpace, HSpace}:
+    #   self.prev.get().data &= self.curr.data
+    #   self.nextTokenNotEmpty()
 
   result = self.prev
 
 func getAllTokens*(self: var Lexer): seq[Token] =
   result = @[]
 
+  while true:
+    let token = self.getToken()
+    if token.isNone(): break
+    result &= token.unsafeGet()
+
+func normalizeTokens*(tokens: seq[Token]): seq[Token] =
+  var prevKind = TokenKind.Eof
+
+  for token in tokens:
+    if token.kind == prevKind and prevKind in {VSpace, HSpace}:
+      result[^1].data &= token.data
+    elif token.kind != Empty:
+      result &= token
+      prevKind = token.kind
+
+  # while self.prev.get().kind == self.curr.kind and self.curr.kind in {VSpace, HSpace}:
+  #   self.prev.get().data &= self.curr.data
+  #   self.nextTokenNotEmpty()
 
 # ----- [] ----- #
 proc newLexer*(buffer: openArray[char]): Lexer =
