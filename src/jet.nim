@@ -38,7 +38,12 @@ proc main() =
 
   hint("lexical analysis...")
   var lexer  = newLexer(file)
-  var tokens = lexer.getAllTokens()
+  var tokens = try:
+    lexer.getAllTokens()
+  except LexerError as e:
+    error(e.msg, e.info)
+    lexer.skipLine()
+    @[]
   let tmp1 = "  " & tokens.mapIt(it.human()).join("\n  ")
   debug(&"tokens: \n{tmp1}")
 

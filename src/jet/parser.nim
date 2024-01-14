@@ -13,8 +13,9 @@ import
   lib/stacks,
   lib/line_info,
 
-  pkg/results,
   pkg/questionable
+
+{.push, raises: [].}
 
 type
   Parser* {.byref.} = object
@@ -39,26 +40,14 @@ type
     Path
     Highest
 
-  ParseError = object
-    message* : string
-    info*    : LineInfo
+  ParserError = object of CatchableError
+    info* : LineInfo
 
   BlockContext = tuple[line, indent: int]
 
-  ParseResult = Result[AstNode, ParseError]
-
-  ParsePrefixFunc = proc(self: var Parser): ParseResult {.nimcall, noSideEffect.}
-  ParseInfixFunc  = proc(self: var Parser; left: AstNode): ParseResult {.nimcall, noSideEffect.}
-  ParseSuffixFunc = proc(self: var Parser; left: AstNode): ParseResult {.nimcall, noSideEffect.}
-
-converter fromString(message: string): ParseError =
-  ParseError(message: message, info: LineInfo())
-
-converter fromTuple(error: (string, LineInfo)): ParseError =
-  ParseError(message: error[0], info: error[1])
-
-func `$`(error: ParseError): string =
-  &"[{error.info}]: {error.message}"
+  ParsePrefixFunc = proc(self: var Parser): AstNode {.nimcall, noSideEffect.}
+  ParseInfixFunc  = proc(self: var Parser; left: AstNode): AstNode {.nimcall, noSideEffect.}
+  ParseSuffixFunc = proc(self: var Parser; left: AstNode): AstNode {.nimcall, noSideEffect.}
 
 func `$`(kind: TokenKind): string =
   kind.symbolName()
@@ -95,78 +84,75 @@ type
     List
     Adaptive
 
-func parseExpr(self: var Parser): ParseResult
-func parseEmpty(self: var Parser): ParseResult
-func parseId(self: var Parser): ParseResult
-func parseFunc(self: var Parser): ParseResult
-func parseVarDecl(self: var Parser): ParseResult
-func parseDo(self: var Parser): ParseResult
-func parseDoOrBlock(self: var Parser): ParseResult
+func parseExpr(self: var Parser): AstNode
+func parseEmpty(self: var Parser): AstNode
+func parseId(self: var Parser): AstNode
+func parseFunc(self: var Parser): AstNode
+func parseVarDecl(self: var Parser): AstNode
+func parseDo(self: var Parser): AstNode
+func parseDoOrBlock(self: var Parser): AstNode
 func parseBlock(
   self: var Parser;
   body: var seq[AstNode];
   mode: ParseMode = Block;
   until: Option[TokenKind] = none(TokenKind);
   fn: ParsePrefixFunc = parseExpr;
-): Result[ParseMode, ParseError]
+): ParseMode {.discardable.}
 
 #
 # Util Functions
 #
 
-type
-  CheckResult = Result[void, string]
-
-func peekToken(self: Parser): Result[Token, string] =
+func peekToken(self: Parser): Token
+  {.raises: [ParserError].} =
   if self.curr > self.tokens.high:
-    err("no token to peek")
-  else:
-    ok(self.tokens[self.curr])
+    raise (ref ParserError)(msg: "no token to peek")
 
-func peekToken(self: Parser; kind: TokenKind): Result[Token, string] =
-  if self.curr > self.tokens.high:
-    err("no token to peek")
-  else:
-    let token = self.tokens[self.curr]
+  result = self.tokens[self.curr]
 
-    if token.kind != kind:
-      return err(&"expected token of kind {kind}, got {token.kind}")
+func peekToken(self: Parser; kind: TokenKind): Token
+  {.raises: [ParserError, ValueError].} =
+  let token = self.peekToken()
 
-    ok(token)
+  if token.kind != kind:
+    raise (ref ParserError)(msg: &"expected token of kind {kind}, got {token.kind}")
 
-func popToken(self: var Parser): Result[Token, string] =
-  if self.curr > self.tokens.high:
-    err("no token to pop")
-  else:
-    self.curr.inc
-    ok(self.tokens[self.curr.pred])
+  result = token
 
-func skipToken(self: var Parser; kinds: set[TokenKind]): CheckResult =
-  let token = ?self.peekToken()
+func popToken(self: var Parser): Token
+  {.raises: [ParserError].} =
+  result = self.peekToken()
+  self.curr += 1
+
+func skipToken(self: var Parser; kinds: set[TokenKind])
+  {.raises: [ParserError, ValueError].} =
+  let token = self.peekToken()
 
   if token.kind notin kinds:
     let message = kinds.toSeq().join(" or ")
-    err(&"expected token of kind {message}, got {token.kind}")
-  else:
-    self.curr.inc
-    ok()
+    raise (ref ParserError)(msg: &"expected token of kind {message}, got {token.kind}")
 
-func skipToken(self: var Parser; kind: TokenKind): CheckResult =
+  self.curr += 1
+
+func skipToken(self: var Parser; kind: TokenKind)
+  {.raises: [ParserError, ValueError].} =
   self.skipToken({kind})
 
 func skipAnyToken(self: var Parser) =
-  self.curr.inc
+  self.curr += 1
 
-func skipTokenMaybe(self: var Parser; kinds: set[TokenKind]): Result[bool, string] =
-  let token = ?self.peekToken()
+func skipTokenMaybe(self: var Parser; kinds: set[TokenKind]): bool
+  {.raises: [ParserError, ValueError].} =
+  let token = self.peekToken()
 
   if token.kind in kinds:
-    ?self.skipToken(kinds)
-    ok(true)
+    self.skipToken(kinds)
+    result = true
   else:
-    ok(false)
+    result = false
 
-func skipTokenMaybe(self: var Parser; kind: TokenKind): Result[bool, string] =
+func skipTokenMaybe(self: var Parser; kind: TokenKind): bool
+  {.raises: [ParserError, ValueError].} =
   self.skipTokenMaybe({kind})
 
 func isNewBlockContext(self: Parser; context: BlockContext): bool =
@@ -176,7 +162,8 @@ func isNewBlockContext(self: Parser; context: BlockContext): bool =
 # API
 #
 
-func parseAll*(self: var Parser): Result[void, ParseError] =
+func parseAll*(self: var Parser)
+  {.raises: [ParserError, ValueError].} =
   debug("parseAll()")
   if self.tokens.len() == 0:
     self.ast = some(AstNode(kind: Empty))
@@ -184,11 +171,8 @@ func parseAll*(self: var Parser): Result[void, ParseError] =
 
   var ast = AstNode(kind: Branch, branchKind: Block, children: @[])
   self.blockStack.push((1, 0))
-
-  discard ?self.parseBlock(ast.children, until = some(Eof))
-
+  self.parseBlock(ast.children, until = some(Eof))
   self.ast = some(ast)
-  ok()
 
 func getAst*(self: Parser): Option[AstNode] =
   self.ast
@@ -204,7 +188,8 @@ func newParser*(tokens: openArray[Token]): Parser =
 # Parse Functions Implementation
 #
 
-func parseExpr(self: var Parser): ParseResult =
+# TODO: fix errors
+func parseExpr(self: var Parser): AstNode =
   debug("parseExpr()")
   var token = ?self.peekToken()
   let fn = self.prefixFuncs.getOrDefault(token.kind)
@@ -319,7 +304,7 @@ func parseBlock(
   mode: ParseMode = Block;
   until: Option[TokenKind];
   fn: ParsePrefixFunc;
-): Result[ParseMode, ParseError] =
+): ParseMode =
   debug("parseBlock()")
   var contextPushed = false
   var wasSemicolon  = false

@@ -7,10 +7,8 @@
 --styleCheck: error
 
 # because its Nim...
---warning: "Uninit:off"
---warning: "ProveInit:off"
+# --warning: "Uninit:off"
+# --warning: "ProveInit:off"
 
 --experimental: strictDefs
 --experimental: views
-
---define: jetDebugParserState

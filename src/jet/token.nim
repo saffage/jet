@@ -142,3 +142,6 @@ func human*(self: Token): string
 func initToken*(kind: TokenKind; data = ""; info = LineInfo()): Token
     {.raises: [].} =
     result = Token(kind: kind, info: info, data: data)
+
+const
+    emptyToken* = initToken(Empty)
