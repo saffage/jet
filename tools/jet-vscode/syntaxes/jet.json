@@ -90,6 +90,10 @@
 					"comment": "Backend types",
 					"name": "storage.type.primitive.special.jet",
 					"match": "\\b(cshort|cint|clong|clonglong|cushort|cuint|culong|culonglong|cfloat|cdouble|clongdouble|csize)\\b"
+				},
+				{
+					"name": "storage.type.builtin.jet",
+					"match": "\\b(string)\\b"
 				}
 			]
 		},
