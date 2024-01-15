@@ -12,6 +12,12 @@ type
 
   AstNodeBranchKind* = enum
     Func
+    If
+    IfBranch
+    ElseBranch
+    While
+    Return
+    ValDecl
     VarDecl
     Tuple   ## (a, b)
     Block   ## (a; b)
@@ -30,6 +36,9 @@ type
       branchKind* : AstNodeBranchKind
       children*   : seq[AstNode]
 
+const
+  emptyNode* = AstNode(kind: Empty)
+
 func isLeaf*(tree: AstNode): bool =
   tree.kind != Branch
 
@@ -44,6 +53,6 @@ func `$`*(tree: AstNode): string =
   of Id:
     result &= &" \"{tree.id}\""
   of Lit:
-    result &= $tree.lit
+    result &= &" {tree.lit.pretty()}"
   else:
     discard

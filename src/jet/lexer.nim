@@ -93,6 +93,16 @@ const
   PrefixWhitelist*  = {' ', ',', ';', '(', '[', '{'} + EOL
   PostfixWhitelist* = {' ', ',', ';', ')', ']', '}', '#'} + EOL
 
+func buildCharSet(): set[char]
+    {.compileTime.} =
+    result = {}
+    for kind in OperatorKinds:
+      for c in $kind:
+        result.incl(c)
+
+const
+  operatorChars = buildCharSet()
+
 func escape*(self: string): string =
   result = self.multiReplace(
     ("\'", "\\'"),
@@ -229,15 +239,6 @@ func lexPunctuation(buffer: openArray[char]; parsed: out uint): Token =
 
 func lexOperator(buffer: openArray[char]; parsed: out uint): Token
   {.raises: [LexerError].} =
-  func buildCharSet(): set[char]
-    {.compileTime.} =
-    result = {}
-    for kind in OperatorKinds:
-      for c in $kind:
-        result.incl(c)
-
-  const operatorChars = buildCharSet()
-
   let op = buffer.parseWhile(operatorChars)
   parsed = op.len().uint
 
@@ -276,7 +277,7 @@ func nextToken(self: var Lexer)
       self.slice().lexPunctuation(parsed)
     of '@', '$':
       self.slice().lexOperatorSpecial(parsed)
-    of '=':
+    of operatorChars:
       self.slice().lexOperator(parsed)
     of ' ', Newlines:
       self.slice().lexSpace(parsed)

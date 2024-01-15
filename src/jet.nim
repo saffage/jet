@@ -54,8 +54,11 @@ proc main() =
 
   hint("syntactic analysis...")
   var parser = newParser(tokens)
-  parser.parseAll().isOkOr do:
-    error(error.message, error.info)
+  try:
+    parser.parseAll()
+  except ParserError as e:
+    error(e.msg, e.info)
+    raise
 
   hint("done")
 

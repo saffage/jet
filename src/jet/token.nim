@@ -87,19 +87,18 @@ type TokenKind* = enum
     PlusPlus   = "++"
     Shl        = "<<"
     Shr        = ">>"
-    Assign     = "="
+    Eq         = "="
     DotDot     = ".."
+    DotDotDot  = "..."
     DotDotLess = "..<"
+    FatArrow   = "=>"
 
     #[ Special symbols ]#
-    Bar        = "|"
-    ColonColon = "::"
-    Underscore = "_"
-    At         = "@"
-    Dollar     = "$"    ## String interpolation
-    DotDotDot  = "..."
-
-    MatchCaseArrow  = "=>"
+    Bar             = "|"
+    ColonColon      = "::"
+    Underscore      = "_"
+    At              = "@"
+    Dollar          = "$"
     ExclamationMark = "!"
     QuestionMark    = "?"
     Ampersand       = "&"
@@ -109,7 +108,7 @@ const
     TypedLiteralKinds*     = {ISizeLit .. F64Lit}
     LiteralKinds*          = {IntLit .. F64Lit}
     KeywordKinds*          = {KwNil .. KwAnd}
-    OperatorKinds*         = {EqOp .. DotDotLess} ## word-like operators are not included, use `WordLikeOperatorKinds`
+    OperatorKinds*         = {EqOp .. FatArrow} ## Word-like operators are not included, use `WordLikeOperatorKinds`
     WordLikeOperatorKinds* = {KwAnd .. KwOr}
     StringableKinds*       = {LeRound .. Ampersand}
 
