@@ -50,6 +50,9 @@ type
   ParseInfixFunc  = proc(self: var Parser; left: AstNode): AstNode {.nimcall, noSideEffect, raises: [ParserError, ValueError].}
   ParseSuffixFunc = proc(self: var Parser; left: AstNode): AstNode {.nimcall, noSideEffect, raises: [ParserError, ValueError].}
 
+func str(kind: TokenKind): string =
+  $kind
+
 func `$`(kind: TokenKind): string =
   kind.symbolName()
 
@@ -98,6 +101,7 @@ func parseValDecl(self: var Parser): AstNode {.raises: [ParserError, ValueError]
 func parseDo(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
 func parseDoOrBlock(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
 func parseDoOrExpr(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
+func parseInfix(self: var Parser; left: AstNode): AstNode {.raises: [ParserError, ValueError].}
 func parseBlock(
   self: var Parser;
   body: var seq[AstNode];
@@ -233,22 +237,23 @@ func parseExpr(self: var Parser): AstNode =
     raise (ref ParserError)(msg: &"expression is expected, got {token.kind}", info: token.info)
 
   result = fn(self)
-  token = self.peekToken()
+  self.skipTokenMaybe(HSpace)
 
-  if token.kind == Eof:
+  if self.peekToken().kind == Eof:
     return
 
   while self.precedence.isNone() or
         self.precedence.get() < precedences.getOrDefault(token.kind, Lowest):
+      let token = self.peekToken()
       let fn = self.infixFuncs.getOrDefault(token.kind)
+
+      debug("parseExpr: infix")
+      debug(&"parseExpr: token {token.human()}")
 
       if fn == nil:
         break
 
-      var newTree = AstNode(kind: Branch, branchKind: Infix, children: newSeqOfCap[AstNode](2))
-      newTree.children &= result
-      newTree.children &= fn(self, result)
-      result = newTree
+      result = fn(self, result)
 
   self.precedence = none(Precedence)
 
@@ -394,6 +399,36 @@ func parseDoOrExpr(self: var Parser): AstNode =
   else:
     result = self.parseExpr()
 
+func parseInfix(self: var Parser; left: AstNode): AstNode =
+  debug("parseInfix")
+  let token = self.popToken()
+
+  if token.kind notin OperatorKinds + WordLikeOperatorKinds:
+    raise (ref ParserError)(
+      msg: &"expected operator, got '{token.kind}'",
+      info: token.info)
+
+  let op = token.kind.str()
+  let opKind = op.toOperatorKind()
+
+  if opKind.isNone():
+    raise (ref ParserError)(
+      msg: &"operator '{op}' not yet supported",
+      info: token.info)
+
+  self.precedence = some do:
+    try:
+      precedences[token.kind]
+    except KeyError as e:
+      raise (ref ParserError)(msg: e.msg, info: token.info)
+  self.skipTokenMaybe(HSpace)
+
+  let opNode = AstNode(kind: Operator, op: opKind.get())
+  result = AstNode(kind: Branch, branchKind: Infix, children: newSeqOfCap[AstNode](3))
+  result.children &= opNode
+  result.children &= left
+  result.children &= self.parseExpr()
+
 func parseBlock(
   self: var Parser;
   body: var seq[AstNode];
@@ -534,19 +569,35 @@ func getAst*(self: Parser): Option[AstNode] =
 
 func newParser*(tokens: openArray[Token]): Parser =
   result = Parser(tokens: @tokens)
-  result.prefixFuncs[Id] = parseId
-  result.prefixFuncs[KwDo] = parseDo
-  result.prefixFuncs[KwFunc] = parseFunc
-  result.prefixFuncs[KwVal] = parseVal
-  result.prefixFuncs[KwVar] = parseVar
-  result.prefixFuncs[KwIf] = parseIf
-  result.prefixFuncs[KwWhile] = parseWhile
+  result.prefixFuncs[Id]       = parseId
+  result.prefixFuncs[KwDo]     = parseDo
+  result.prefixFuncs[KwFunc]   = parseFunc
+  result.prefixFuncs[KwVal]    = parseVal
+  result.prefixFuncs[KwVar]    = parseVar
+  result.prefixFuncs[KwIf]     = parseIf
+  result.prefixFuncs[KwWhile]  = parseWhile
   result.prefixFuncs[KwReturn] = parseReturn
 
-  result.prefixFuncs[KwNil] = parseLit
-  result.prefixFuncs[KwTrue] = parseLit
-  result.prefixFuncs[KwFalse] = parseLit
-  result.prefixFuncs[IntLit] = parseLit
-  result.prefixFuncs[FloatLit] = parseLit
+  result.prefixFuncs[KwNil]     = parseLit
+  result.prefixFuncs[KwTrue]    = parseLit
+  result.prefixFuncs[KwFalse]   = parseLit
+  result.prefixFuncs[IntLit]    = parseLit
+  result.prefixFuncs[FloatLit]  = parseLit
   result.prefixFuncs[StringLit] = parseLit
-  result.prefixFuncs[CharLit] = parseLit
+  result.prefixFuncs[CharLit]   = parseLit
+
+  result.infixFuncs[KwAnd]    = parseInfix
+  result.infixFuncs[KwOr]     = parseInfix
+  result.infixFuncs[EqOp]     = parseInfix
+  result.infixFuncs[NeOp]     = parseInfix
+  result.infixFuncs[LtOp]     = parseInfix
+  result.infixFuncs[GtOp]     = parseInfix
+  result.infixFuncs[LeOp]     = parseInfix
+  result.infixFuncs[GeOp]     = parseInfix
+  result.infixFuncs[Plus]     = parseInfix
+  result.infixFuncs[Minus]    = parseInfix
+  result.infixFuncs[Asterisk] = parseInfix
+  result.infixFuncs[Slash]    = parseInfix
+  result.infixFuncs[Percent]  = parseInfix
+  result.infixFuncs[Shl]      = parseInfix
+  result.infixFuncs[Shr]      = parseInfix
