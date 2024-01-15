@@ -63,6 +63,7 @@ type TokenKind* = enum
     #[ Word-like Operators ]#
     KwOr      = "or"
     KwAnd     = "and"
+    KwNot     = "not"
 
     #[ Punctuation ]#
     Dot       = "."
@@ -107,9 +108,9 @@ const
     UntypedLiteralKinds*   = {IntLit .. FloatLit}
     TypedLiteralKinds*     = {ISizeLit .. F64Lit}
     LiteralKinds*          = {IntLit .. F64Lit}
-    KeywordKinds*          = {KwNil .. KwAnd}
+    KeywordKinds*          = {KwNil .. KwNot}
     OperatorKinds*         = {EqOp .. FatArrow} ## Word-like operators are not included, use `WordLikeOperatorKinds`
-    WordLikeOperatorKinds* = {KwAnd .. KwOr}
+    WordLikeOperatorKinds* = {KwOr .. KwNot}
     StringableKinds*       = {LeRound .. Ampersand}
 
 # func `$`*(self: TokenKind): string =

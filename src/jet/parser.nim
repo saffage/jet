@@ -39,6 +39,7 @@ type
     Product
     Suffix
     Path
+    Prefix
     Highest
 
   ParserError* = object of CatchableError
@@ -75,7 +76,8 @@ const precedences = {
   GeOp       : Ord,
   KwAnd      : And,
   KwOr       : Or,
-  Eq     : Eq,
+  KwNot      : Prefix,
+  Eq         : Eq,
 }.toTable()
 
 #
@@ -91,6 +93,7 @@ type
 func parseLit(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
 func parseExpr(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
 func parseId(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
+func parseNot(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
 func parseFunc(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
 func parseIf(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
 func parseWhile(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
@@ -244,8 +247,9 @@ func parseLit(self: var Parser): AstNode =
 
 func parseExpr(self: var Parser): AstNode =
   debug("parseExpr()")
-  var token = self.peekToken()
-  let fn = self.prefixFuncs.getOrDefault(token.kind)
+  var token      = self.peekToken()
+  let precedence = self.precedence.get(Lowest)
+  let fn         = self.prefixFuncs.getOrDefault(token.kind)
 
   if fn == nil:
     raiseParserError(&"expression is expected, got {token.kind}", token.info)
@@ -257,18 +261,19 @@ func parseExpr(self: var Parser): AstNode =
     return
 
   while true:
-      token = self.peekToken()
+    token = self.peekToken()
 
-      if self.precedence.isSome() and
-         self.precedence.get() >= precedences.getOrDefault(token.kind, Lowest):
-          break
+    debug(&"parseExpr: precedence = {precedence}")
 
-      debug("parseExpr: infix")
-      debug(&"parseExpr: token {token.human()}")
+    if precedence >= precedences.getOrDefault(token.kind, Lowest):
+      break
 
-      let fn = self.infixFuncs.getOrDefault(token.kind)
-      if fn == nil: break
-      result = fn(self, result)
+    debug("parseExpr: infix")
+    debug(&"parseExpr: token {token.human()}")
+
+    let fn = self.infixFuncs.getOrDefault(token.kind)
+    if fn == nil: break
+    result = fn(self, result)
 
   self.precedence = none(Precedence)
 
@@ -280,6 +285,17 @@ func parseId(self: var Parser): AstNode =
     raiseParserError(&"expected identifier, got {token.kind}", token.info)
 
   result = AstNode(kind: Id, id: token.data)
+
+func parseNot(self: var Parser): AstNode =
+  self.skipToken(KwNot)
+  self.skipToken(HSpace)
+
+  self.precedence = some(Precedence.Prefix)
+
+  let expr = self.parseExpr()
+  let notOp = AstNode(kind: Operator, op: OpNot)
+
+  result = AstNode(kind: Branch, branchKind: Prefix, children: @[notOp, expr])
 
 func parseFunc(self: var Parser): AstNode =
   debug("parseFunc()")
@@ -619,6 +635,7 @@ func newParser*(tokens: openArray[Token]): Parser =
   result.prefixFuncs[LeRound]  = parseList
   result.prefixFuncs[LeCurly]  = parseList
   result.prefixFuncs[LeSquare] = parseList
+  result.prefixFuncs[KwNot]    = parseNot
   result.prefixFuncs[KwDo]     = parseDo
   result.prefixFuncs[KwFunc]   = parseFunc
   result.prefixFuncs[KwVal]    = parseVal
