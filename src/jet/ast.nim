@@ -21,7 +21,7 @@ type
     Return
     ValDecl
     VarDecl
-    Tuple   ## (a, b)
+    List   ## (a, b)
     Block   ## (a; b)
     Infix   ## a ~ b
     Prefix  ## ~a
