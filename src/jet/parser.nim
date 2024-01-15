@@ -103,13 +103,14 @@ func parseReturn(self: var Parser): AstNode {.raises: [ParserError, ValueError].
 func parseVar(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
 func parseVal(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
 func parseValDecl(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
-func parseParam(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
+func parseParamOrField(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
 func parseDo(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
 func parseDoOrBlock(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
 func parseDoOrExpr(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
 func parseExprOrBlock(self: var Parser; fn: ParsePrefixFunc = parseExpr): AstNode {.raises: [ParserError, ValueError].}
 func parseInfix(self: var Parser; left: AstNode): AstNode {.raises: [ParserError, ValueError].}
-func parseList(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
+func parseList(self: var Parser; fn: ParsePrefixFunc): AstNode {.raises: [ParserError, ValueError].}
+func parseList(self: var Parser): AstNode {.raises: [ParserError, ValueError].} = self.parseList(parseExpr)
 func parseBlock(
   self: var Parser;
   body: var seq[AstNode];
@@ -169,9 +170,6 @@ func skipToken(self: var Parser; kind: TokenKind)
   {.raises: [ParserError, ValueError].} =
   self.skipToken({kind})
 
-func skipAnyToken(self: var Parser) =
-  self.curr += 1
-
 func skipTokenMaybe(self: var Parser; kinds: set[TokenKind]): bool
   {.discardable, raises: [ParserError, ValueError].} =
   let token = self.peekToken()
@@ -195,21 +193,22 @@ func isNewBlockContext(self: Parser; context: BlockContext): bool =
 
 func parseIfBranch(self: var Parser): AstNode
   {.raises: [ParserError, ValueError].} =
+  debug("parseIfBranch")
+
   self.skipToken({KwIf, KwElif})
-  self.skipToken(HSpace)
+
+  debug(&"parseIfBranch: {self.prevToken().kind}")
 
   let cond = self.parseExpr()
-  self.skipTokenMaybe(HSpace)
   let body = self.parseDoOrBlock()
 
-  result = AstNode(kind: Branch, branchKind: IfBranch, children: newSeqOfCap[AstNode](2))
-  result.children &= cond
-  result.children &= body
+  result = AstNode(kind: Branch, branchKind: IfBranch, children: @[cond, body])
 
 func parseElseBranch(self: var Parser): AstNode
   {.raises: [ParserError, ValueError].} =
+  debug("parseElseBranch")
+
   self.skipToken(KwElse)
-  self.skipTokenMaybe(HSpace)
 
   let body = self.parseExprOrBlock()
 
@@ -220,6 +219,8 @@ func parseElseBranch(self: var Parser): AstNode
 #
 
 func parseLit(self: var Parser): AstNode =
+  debug("parseLit")
+
   let token = self.popToken()
 
   result = case token.kind:
@@ -243,7 +244,8 @@ func parseLit(self: var Parser): AstNode =
       raiseParserError(&"expected literal, got {token.kind}", token.info)
 
 func parseExpr(self: var Parser): AstNode =
-  debug("parseExpr()")
+  debug("parseExpr")
+
   var token      = self.peekToken()
   let precedence = self.precedence.get(Lowest)
   let fn         = self.prefixFuncs.getOrDefault(token.kind)
@@ -252,7 +254,6 @@ func parseExpr(self: var Parser): AstNode =
     raiseParserError(&"expression is expected, got {token.kind}", token.info)
 
   result = fn(self)
-  self.skipTokenMaybe(HSpace)
 
   if self.peekToken().kind == Eof:
     return
@@ -275,7 +276,8 @@ func parseExpr(self: var Parser): AstNode =
   self.precedence = none(Precedence)
 
 func parseId(self: var Parser): AstNode =
-  debug("parseId()")
+  debug("parseId")
+
   let token = self.popToken()
 
   if token.kind != Id:
@@ -284,9 +286,9 @@ func parseId(self: var Parser): AstNode =
   result = AstNode(kind: Id, id: token.data)
 
 func parseNot(self: var Parser): AstNode =
-  self.skipToken(KwNot)
-  self.skipToken(HSpace)
+  debug("parseNot")
 
+  self.skipToken(KwNot)
   self.precedence = some(Precedence.Prefix)
 
   let expr = self.parseExpr()
@@ -295,61 +297,50 @@ func parseNot(self: var Parser): AstNode =
   result = AstNode(kind: Branch, branchKind: Prefix, children: @[notOp, expr])
 
 func parseStruct(self: var Parser): AstNode =
-  self.skipToken(KwStruct)
-  self.skipTokenMaybe(HSpace)
+  debug("parseStruct")
 
-  let body = self.parseExprOrBlock(fn = parseParam)
+  self.skipToken(KwStruct)
+
+  let body = self.parseExprOrBlock(fn = parseParamOrField)
   result = AstNode(kind: Branch, branchKind: Struct, children: @[body])
 
 func parseType(self: var Parser): AstNode =
+  debug("parseType")
+
   self.skipToken(KwType)
-  self.skipToken(HSpace)
 
   let id = self.parseId()
-  self.skipToken(HSpace)
   let typeExpr = self.parseExpr()
 
   result = AstNode(kind: Branch, branchKind: Type, children: @[id, typeExpr])
 
 func parseFunc(self: var Parser): AstNode =
-  debug("parseFunc()")
+  debug("parseFunc")
+
   self.skipToken(KwFunc)
-  self.skipToken(HSpace)
 
-  var id = self.parseId()
-  var params = AstNode(kind: Branch, branchKind: List)
+  let id = self.parseId()
+  let params = self.parseList(fn = parseParamOrField)
+  let returnType =
+    if self.prevToken().spaces.trailing != spacingLast and
+       self.peekToken().kind != KwDo: self.parseExpr()
+    else: emptyNode
+  let body = self.parseDoOrBlock()
 
-  self.skipToken(LeRound)
-  self.parseBlock(
-    params.children,
-    mode = List,
-    until = some(RiRound),
-    fn = parseParam)
-  self.skipToken(RiRound)
-
-  discard self.skipTokenMaybe(HSpace)
-  var returnType = AstNode(kind: Empty)
-  var body = self.parseDoOrBlock()
-
-  result = AstNode(kind: Branch, branchKind: Func, children: newSeqOfCap[AstNode](4))
-  result.children &= id
-  result.children &= params
-  result.children &= returnType
-  result.children &= body
+  result = AstNode(kind: Branch, branchKind: Func, children: @[id, params, returnType, body])
 
 func parseIf(self: var Parser): AstNode =
+  debug("parseIf")
+
   var branches = newSeq[AstNode]()
 
   while true:
     branches &= self.parseIfBranch()
-    self.skipTokenMaybe({HSpace, VSpace})
     if self.peekToken().kind != KwElif: break
 
   let elseBranch =
-    if self.peekToken().kind == KwElse:
-      self.parseElseBranch()
-    else:
-      emptyNode
+    if self.peekToken().kind == KwElse: self.parseElseBranch()
+    else: emptyNode
 
   result = AstNode(kind: Branch, branchKind: If, children: branches)
 
@@ -357,31 +348,29 @@ func parseIf(self: var Parser): AstNode =
     result.children &= elseBranch
 
 func parseWhile(self: var Parser): AstNode =
+  debug("parseWhile")
+
   self.skipToken(KwWhile)
-  self.skipToken(HSpace)
 
   let cond = self.parseExpr()
-  self.skipTokenMaybe(HSpace)
   let body = self.parseDoOrBlock()
 
-  result = AstNode(kind: Branch, branchKind: While, children: newSeqOfCap[AstNode](2))
-  result.children &= cond
-  result.children &= body
+  result = AstNode(kind: Branch, branchKind: While, children: @[cond, body])
 
 func parseReturn(self: var Parser): AstNode =
+  debug("parseReturn")
+
   self.skipToken(KwReturn)
-  self.skipToken(HSpace)
 
   let expr = self.parseExpr()
 
-  result = AstNode(kind: Branch, branchKind: Return, children: newSeqOfCap[AstNode](1))
-  result.children &= expr
+  result = AstNode(kind: Branch, branchKind: Return, children: @[expr])
 
 func parseVar(self: var Parser): AstNode =
   debug("parseVar()")
 
   self.skipToken(KwVar)
-  self.skipToken(HSpace)
+
   result = self.parseValDecl()
   result = AstNode(kind: Branch, branchKind: VarDecl, children: result.children)
 
@@ -389,77 +378,67 @@ func parseVal(self: var Parser): AstNode =
   debug("parseVal()")
 
   self.skipToken(KwVal)
-  self.skipToken(HSpace)
+
   result = self.parseValDecl()
 
 func parseValDecl(self: var Parser): AstNode =
-  debug("parseValDecl()")
+  debug("parseValDecl")
 
   let id = self.parseId()
-  self.skipToken(HSpace)
-  let typeExpr = self.parseId()
-  self.skipTokenMaybe(HSpace)
+  let typeExpr = self.parseExpr()
   let body =
-    if self.skipTokenMaybe(Eq):
-      self.skipTokenMaybe(HSpace)
-      self.parseDoOrExpr()
-    else:
-      emptyNode
+    if self.skipTokenMaybe(Eq): self.parseDoOrExpr()
+    else: emptyNode
 
-  result = AstNode(kind: Branch, branchKind: ValDecl, children: newSeqOfCap[AstNode](3))
-  result.children &= id
-  result.children &= typeExpr
-  result.children &= body
+  result = AstNode(kind: Branch, branchKind: ValDecl, children: @[id, typeExpr, body])
 
-func parseParam(self: var Parser): AstNode =
-  debug("parseParam")
+func parseParamOrField(self: var Parser): AstNode =
+  debug("parseParamOrField")
+
   result = case self.peekToken().kind:
     of KwVar: self.parseVar()
     of KwVal: self.parseVal()
     else: self.parseValDecl()
 
 func parseDo(self: var Parser): AstNode =
-  debug("parseDo()")
+  debug("parseDo")
 
   self.skipToken(KwDo)
-  let wasSpace {.used.} = self.skipTokenMaybe(HSpace) # lambda?
-  result = self.parseExprOrBlock()
+
+  let expr = self.parseExprOrBlock()
+
+  result =
+    if expr.kind == Branch and expr.branchKind == Block: expr
+    else: AstNode(kind: Branch, branchKind: Block, children: @[expr])
 
 func parseDoOrBlock(self: var Parser): AstNode =
-  debug("parseDoOrBlock()")
+  debug("parseDoOrBlock")
 
-  if (self.peekToken()).kind == KwDo:
+  if self.peekToken().kind == KwDo:
     result = self.parseDo()
   else:
     result = AstNode(kind: Branch, branchKind: Block)
     self.parseBlock(result.children)
 
 func parseDoOrExpr(self: var Parser): AstNode =
-  debug("parseDoOrExpr()")
+  debug("parseDoOrExpr")
 
-  if (self.peekToken()).kind == KwDo:
-    result = self.parseDo()
-  else:
-    result = self.parseExpr()
+  result =
+    if self.peekToken().kind == KwDo: self.parseDo()
+    else: self.parseExpr()
 
 func parseExprOrBlock(self: var Parser; fn: ParsePrefixFunc): AstNode =
-  self.skipTokenMaybe(HSpace)
+  debug("parseExprOrBlock")
 
-  case self.peekToken().kind
-  of VSpace:
-    result = AstNode(kind: Branch, branchKind: Block, children: newSeq[AstNode]())
+  if self.peekToken().spaces.wasLF:
+    result = AstNode(kind: Branch, branchKind: Block, children: @[])
     self.parseBlock(result.children, fn = fn)
-  of LeRound:
-    result = AstNode(kind: Branch, branchKind: Block, children: newSeq[AstNode]())
-    self.skipToken(LeRound)
-    self.parseBlock(result.children, fn = fn)
-    # TODO: check indentation
-    self.skipToken(RiRound)
   else:
     result = fn(self)
 
 func parseInfix(self: var Parser; left: AstNode): AstNode =
   debug("parseInfix")
+
   let token = self.popToken()
 
   if token.kind notin OperatorKinds + WordLikeOperatorKinds:
@@ -474,41 +453,35 @@ func parseInfix(self: var Parser; left: AstNode): AstNode =
   self.precedence = some do:
     try:
       precedences[token.kind]
-    except KeyError as e:
-      raiseParserError(e.msg, token.info)
-  self.skipTokenMaybe(HSpace)
+    except KeyError:
+      unreachable()
 
   let opNode = AstNode(kind: Operator, op: opKind.get())
-  result = AstNode(kind: Branch, branchKind: Infix, children: newSeqOfCap[AstNode](3))
-  result.children &= opNode
-  result.children &= left
-  result.children &= self.parseExpr()
+  let right = self.parseExpr()
 
-func parseList(self: var Parser): AstNode =
-  let token = self.peekToken()
+  result = AstNode(kind: Branch, branchKind: Infix, children: @[opNode, left, right])
 
-  let until = case token.kind:
+func parseList(self: var Parser; fn: ParsePrefixFunc): AstNode =
+  debug("parseList")
+
+  let until = case self.peekToken().kind:
     of LeRound: RiRound
     of LeCurly: RiCurly
     of LeSquare: RiSquare
-    else: raiseParserError(&"expected ( or [ of {{, got {token.kind}", token.info)
+    else: raiseParserError(&"expected ( or [ of {{, got {self.peekToken().kind}", self.peekToken().info)
 
-  self.skipToken(token.kind)
+  self.skipToken(self.peekToken().kind)
   var elems = newSeq[AstNode]()
-  let mode = self.parseBlock(elems, mode = Adaptive, until = some(until))
+  let mode = self.parseBlock(elems, mode = Adaptive, until = some(until), fn = fn)
   # TODO: check indentation
   self.skipToken(until)
 
   result = case mode
     of Block:
-      if elems.len() == 1:
-        elems[0]
-      else:
-        AstNode(kind: Branch, branchKind: Block, children: elems)
-    of List:
-      AstNode(kind: Branch, branchKind: List, children: elems)
-    else:
-      unreachable()
+      if elems.len() == 1: elems[0]
+      else: AstNode(kind: Branch, branchKind: Block, children: elems)
+    of List: AstNode(kind: Branch, branchKind: List, children: elems)
+    else: unreachable()
 
 func parseBlock(
   self: var Parser;
@@ -517,7 +490,8 @@ func parseBlock(
   until: Option[TokenKind];
   fn: ParsePrefixFunc;
 ): ParseMode =
-  debug("parseBlock()")
+  debug("parseBlock")
+
   var contextPushed = false
   var wasSemicolon  = false
   var mode          = mode
@@ -526,61 +500,48 @@ func parseBlock(
     if untilKind =? until: {Eof, untilKind}
     else: {Eof}
 
-  var isNewLine = false
-  var indent    = -1
+  if self.blockStack.isEmpty():
+    self.blockStack.push((1, 0))
+    contextPushed = true
 
   while true:
-    if self.skipTokenMaybe(VSpace) or self.curr == 0:
-      isNewLine = true
+    let token = self.peekToken()
 
-    if (self.peekToken()).kind in untilKinds:
+    if token.kind in untilKinds:
       break
 
     debug(&"parseBlock: token {self.peekToken().human()}")
-    debug(&"parseBlock: isNewLine = {isNewLine}")
 
-    if isNewLine:
+    if token.spaces.wasLF:
       let token = self.peekToken()
+      let indent = token.spaces.leading
 
       if mode == Block and wasSemicolon:
         raiseParserError("expected expression after semicolon", token.info)
-
-      # compute indentation
-      indent = block:
-        if token.kind != HSpace: 0
-        else:
-          assert(token.data.len() > 0)
-          token.data.len()
 
       if contextPushed:
         # check indentation of token
         if indent > self.blockStack.peek().indent:
           raiseParserError(
-            &"token {token.human()} is offside the context started at {self.blockStack.peek()}",
+            &"invalid indentation, expected {self.blockStack.peek().indent}, got {indent}",
             token.info)
         elif indent < self.blockStack.peek().indent:
           # end of block
-          if isNewLine: self.curr -= 1
           break
-        else:
-          discard
       else:
         # create a new context
         let newContext = (line: token.info.line.int, indent: indent)
 
         # validate new context
-        if not self.isNewBlockContext(newContext) and self.blockStack.len() != 0 and indent != 0:
+        if not self.isNewBlockContext(newContext):
           raiseParserError(
             &"a new block context expected, but got {newContext}, " &
             &"which is the same or lower with previous context {self.blockStack.peek()}",
             token.info)
 
-        # push it
+        # push a new context
         self.blockStack.push(newContext)
         contextPushed = true
-
-      if indent > 0:
-        self.skipToken(HSpace)
     else:
       let token = self.peekToken()
       if mode == Block and not wasSemicolon:
@@ -589,15 +550,10 @@ func parseBlock(
           token.info)
       wasSemicolon = false
 
-    assert((self.peekToken()).kind != HSpace, $isNewLine)
-
     let tree = fn(self)
 
     if tree.kind != Empty:
       body &= tree
-
-    isNewLine = false
-    let token = self.peekToken()
 
     # TODO: validate expression end
 
@@ -616,8 +572,6 @@ func parseBlock(
           raiseParserError(&"expected comma after expression", self.prevToken().info)
 
         break
-
-    while self.skipTokenMaybe(HSpace): discard
 
   if mode == Adaptive:
     # something like `()` or `[]`
@@ -643,7 +597,6 @@ func parseAll*(self: var Parser)
     return
 
   var ast = AstNode(kind: Branch, branchKind: Block, children: @[])
-  self.blockStack.push((1, 0))
   self.parseBlock(ast.children, until = some(Eof))
   self.ast = some(ast)
 
