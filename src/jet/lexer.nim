@@ -326,13 +326,43 @@ func getAllTokens*(self: var Lexer): seq[Token]
 func normalizeTokens*(tokens: seq[Token]): seq[Token] =
   result = @[]
   var prevKind = TokenKind.Eof
+  var spaces   = 0
+  var wasLF    = false
 
   for token in tokens:
-    if token.kind == prevKind and prevKind in {VSpace, HSpace}:
-      result[^1].data &= token.data
-    elif token.kind != Empty:
+    case token.kind
+    of Empty:
+      continue
+    of Eof:
+      if result.len() > 0:
+        result[^1].spaces.trailing = 0
+      break
+    of VSpace:
+      wasLF = true
+      spaces = 0
+    of HSpace:
+      spaces += token.data.len()
+    else:
+      var token = token
+      token.spaces.wasLF = wasLF
+
+      case prevKind
+      of VSpace, Eof:
+        token.spaces.leading = 0
+      of HSpace:
+        token.spaces.leading = spaces
+      else:
+        discard
+
+      if result.len() > 0:
+        result[^1].spaces.trailing =
+          if wasLF: 0
+          else: token.spaces.leading
+
       result &= token
-      prevKind = token.kind
+      wasLF = false
+      spaces = 0
+    prevKind = token.kind
 
 #
 # API
