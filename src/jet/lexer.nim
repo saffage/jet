@@ -227,10 +227,26 @@ func lexPunctuation(buffer: openArray[char]; parsed: out uint): Token =
   parsed = 1
   result = initToken(kind)
 
-func lexOperator(buffer: openArray[char]; parsed: out uint): Token =
-  parsed = 1
-  result = emptyToken
-  todo()
+func lexOperator(buffer: openArray[char]; parsed: out uint): Token
+  {.raises: [LexerError].} =
+  func buildCharSet(): set[char]
+    {.compileTime.} =
+    result = {}
+    for kind in OperatorKinds:
+      for c in $kind:
+        result.incl(c)
+
+  const operatorChars = buildCharSet()
+
+  let op = buffer.parseWhile(operatorChars)
+  parsed = op.len().uint
+
+  let kind = toTokenKind(op)
+
+  if kind.isNone():
+    raise (ref LexerError)(msg: "unknown operator: '" & op & "'")
+
+  result = initToken(kind.get())
 
 func lexOperatorSpecial(buffer: openArray[char]; parsed: out uint): Token =
   let kind = case buffer[0]:
