@@ -333,10 +333,6 @@ func normalizeTokens*(tokens: seq[Token]): seq[Token] =
     case token.kind
     of Empty:
       continue
-    of Eof:
-      if result.len() > 0:
-        result[^1].spaces.trailing = 0
-      break
     of VSpace:
       wasLF = true
       spaces = 0
@@ -356,12 +352,16 @@ func normalizeTokens*(tokens: seq[Token]): seq[Token] =
 
       if result.len() > 0:
         result[^1].spaces.trailing =
-          if wasLF: 0
+          if wasLF: spacingLast
           else: token.spaces.leading
 
       result &= token
       wasLF = false
       spaces = 0
+
+      if token.kind == Eof:
+        result[^1].spaces.trailing = spacingLast
+        break
     prevKind = token.kind
 
 #

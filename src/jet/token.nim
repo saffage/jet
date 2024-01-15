@@ -126,6 +126,7 @@ func toTokenKind*(s: string): Option[TokenKind] =
 
 const
   spacingNotSet* = -1
+  spacingLast* = -2
 
 type
   TokenSpacing* = tuple
