@@ -83,17 +83,21 @@
 			"patterns": [
 				{
 					"comment": "Primitive types",
-					"name": "storage.type.primitive.jet",
+					"name": "storage.type.builtin.primitive.jet",
 					"match": "\\b([ui](8|16|32|64|size)|f(32|64)|char|bool|any)\\b"
 				},
 				{
 					"comment": "Backend types",
-					"name": "storage.type.primitive.special.jet",
+					"name": "storage.type.builtin.c.jet",
 					"match": "\\b(cshort|cint|clong|clonglong|cushort|cuint|culong|culonglong|cfloat|cdouble|clongdouble|csize)\\b"
 				},
 				{
-					"name": "storage.type.builtin.jet",
+					"name": "storage.type.builtin.std.jet",
 					"match": "\\b(string)\\b"
+				},
+				{
+					"name": "storage.type.builtin.meta.jet",
+					"match": "\\b(typedesc)\\b"
 				}
 			]
 		},
@@ -106,7 +110,7 @@
 				},
 				{
 					"name": "support.function.builtin.jet",
-					"match": "\\b(print|println|panic)\\b"
+					"match": "\\$\\b([_a-zA-Z][_a-zA-Z0-9]*)\\b"
 				},
 				{
 					"name": "keyword.operator.colon-colon.jet",
@@ -350,6 +354,19 @@
 		},
 		"brackets": {
 			"patterns": [
+				{
+					"begin": "(?<=\\$\\b([_a-zA-Z][_a-zA-Z0-9]*)\\b)\\(",
+					"beginCaptures": {
+						"0": { "name": "support.function.builtin.brackets.jet" }
+					},
+					"end": "\\)",
+					"endCaptures": {
+						"0": { "name": "support.function.builtin.brackets.jet" }
+					},
+					"patterns": [
+						{ "include": "source.jet" }
+					]
+				},
 				{
 					"begin": "\\(",
 					"beginCaptures": {
