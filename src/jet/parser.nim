@@ -242,17 +242,18 @@ func parseExpr(self: var Parser): AstNode =
   if self.peekToken().kind == Eof:
     return
 
-  while self.precedence.isNone() or
-        self.precedence.get() < precedences.getOrDefault(token.kind, Lowest):
-      let token = self.peekToken()
-      let fn = self.infixFuncs.getOrDefault(token.kind)
+  while true:
+      token = self.peekToken()
+
+      if self.precedence.isSome() and
+         self.precedence.get() >= precedences.getOrDefault(token.kind, Lowest):
+          break
 
       debug("parseExpr: infix")
       debug(&"parseExpr: token {token.human()}")
 
-      if fn == nil:
-        break
-
+      let fn = self.infixFuncs.getOrDefault(token.kind)
+      if fn == nil: break
       result = fn(self, result)
 
   self.precedence = none(Precedence)
