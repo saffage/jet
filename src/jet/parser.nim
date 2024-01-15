@@ -94,6 +94,8 @@ func parseLit(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
 func parseExpr(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
 func parseId(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
 func parseNot(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
+func parseStruct(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
+func parseType(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
 func parseFunc(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
 func parseIf(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
 func parseWhile(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
@@ -105,6 +107,7 @@ func parseParam(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
 func parseDo(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
 func parseDoOrBlock(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
 func parseDoOrExpr(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
+func parseExprOrBlock(self: var Parser; fn: ParsePrefixFunc = parseExpr): AstNode {.raises: [ParserError, ValueError].}
 func parseInfix(self: var Parser; left: AstNode): AstNode {.raises: [ParserError, ValueError].}
 func parseList(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
 func parseBlock(
@@ -208,13 +211,7 @@ func parseElseBranch(self: var Parser): AstNode
   self.skipToken(KwElse)
   self.skipTokenMaybe(HSpace)
 
-  let body =
-    if self.peekToken().kind == VSpace:
-      var body = newSeq[AstNode]()
-      self.parseBlock(body)
-      AstNode(kind: Branch, branchKind: Block, children: body)
-    else:
-      self.parseExpr()
+  let body = self.parseExprOrBlock()
 
   result = AstNode(kind: Branch, branchKind: ElseBranch, children: @[body])
 
@@ -296,6 +293,23 @@ func parseNot(self: var Parser): AstNode =
   let notOp = AstNode(kind: Operator, op: OpNot)
 
   result = AstNode(kind: Branch, branchKind: Prefix, children: @[notOp, expr])
+
+func parseStruct(self: var Parser): AstNode =
+  self.skipToken(KwStruct)
+  self.skipTokenMaybe(HSpace)
+
+  let body = self.parseExprOrBlock(fn = parseParam)
+  result = AstNode(kind: Branch, branchKind: Struct, children: @[body])
+
+func parseType(self: var Parser): AstNode =
+  self.skipToken(KwType)
+  self.skipToken(HSpace)
+
+  let id = self.parseId()
+  self.skipToken(HSpace)
+  let typeExpr = self.parseExpr()
+
+  result = AstNode(kind: Branch, branchKind: Type, children: @[id, typeExpr])
 
 func parseFunc(self: var Parser): AstNode =
   debug("parseFunc()")
@@ -408,17 +422,8 @@ func parseDo(self: var Parser): AstNode =
   debug("parseDo()")
 
   self.skipToken(KwDo)
-
-  let wasSpace = self.skipTokenMaybe(HSpace)
-  result = AstNode(kind: Branch, branchKind: Block)
-
-  if (self.peekToken()).kind == VSpace:
-    self.parseBlock(result.children)
-  else:
-    if wasSpace:
-      result.children &= self.parseExpr()
-    else:
-      todo() # lambda?
+  let wasSpace {.used.} = self.skipTokenMaybe(HSpace) # lambda?
+  result = self.parseExprOrBlock()
 
 func parseDoOrBlock(self: var Parser): AstNode =
   debug("parseDoOrBlock()")
@@ -436,6 +441,22 @@ func parseDoOrExpr(self: var Parser): AstNode =
     result = self.parseDo()
   else:
     result = self.parseExpr()
+
+func parseExprOrBlock(self: var Parser; fn: ParsePrefixFunc): AstNode =
+  self.skipTokenMaybe(HSpace)
+
+  case self.peekToken().kind
+  of VSpace:
+    result = AstNode(kind: Branch, branchKind: Block, children: newSeq[AstNode]())
+    self.parseBlock(result.children, fn = fn)
+  of LeRound:
+    result = AstNode(kind: Branch, branchKind: Block, children: newSeq[AstNode]())
+    self.skipToken(LeRound)
+    self.parseBlock(result.children, fn = fn)
+    # TODO: check indentation
+    self.skipToken(RiRound)
+  else:
+    result = fn(self)
 
 func parseInfix(self: var Parser; left: AstNode): AstNode =
   debug("parseInfix")
@@ -637,6 +658,8 @@ func newParser*(tokens: openArray[Token]): Parser =
   result.prefixFuncs[LeSquare] = parseList
   result.prefixFuncs[KwNot]    = parseNot
   result.prefixFuncs[KwDo]     = parseDo
+  result.prefixFuncs[KwStruct] = parseStruct
+  result.prefixFuncs[KwType]   = parseType
   result.prefixFuncs[KwFunc]   = parseFunc
   result.prefixFuncs[KwVal]    = parseVal
   result.prefixFuncs[KwVar]    = parseVar

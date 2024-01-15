@@ -13,6 +13,9 @@ type
     Branch
 
   AstNodeBranchKind* = enum
+    Struct
+    Enum
+    Type
     Func
     If
     IfBranch
