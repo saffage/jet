@@ -122,19 +122,19 @@ func parseUntil(s: openArray[char]; until: char): string =
 func parseWhileWithSeparator(
   s: openArray[char];
   charSet: set[char];
-  separator: char
-): tuple[parsedStr: string, underscoreWasDoubled: bool] =
-  result = ("", true)
+  separator: char;
+  allowDoubledSeparator: bool = false
+): string {.raises: [ValueError].} =
+  result = ""
   var wasSeparator = false
   for c in s:
     if c == separator:
-      result.parsedStr &= c
-      if wasSeparator:
-        result.underscoreWasDoubled = false
-        return
+      result &= c
+      if wasSeparator and not allowDoubledSeparator:
+        raise (ref ValueError)(msg: "more than 1 separator in a row is not allowed")
       wasSeparator = true
     elif c in charSet:
-      result.parsedStr &= c
+      result &= c
       wasSeparator = false
     else:
       break
@@ -167,10 +167,10 @@ func lexNumber(buffer: openArray[char]; parsed: out uint): Token
   {.raises: [LexerError].} =
   result = emptyToken
 
-  let (numPart, underscoreWasDoubled) = buffer.parseWhileWithSeparator(Digits, '_')
-
-  if not underscoreWasDoubled:
-    raise (ref LexerError)(msg: "double underscore in number literal is illegal")
+  let numPart = try:
+    buffer.parseWhileWithSeparator(Digits, '_')
+  except ValueError as e:
+    raise (ref LexerError)(msg: e.msg)
 
   if numPart.endsWith('_'):
     raise (ref LexerError)(msg: "trailing underscore in number literal is illegal")
