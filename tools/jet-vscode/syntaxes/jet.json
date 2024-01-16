@@ -110,7 +110,10 @@
 				},
 				{
 					"name": "support.function.builtin.jet",
-					"match": "\\$\\b([_a-zA-Z][_a-zA-Z0-9]*)\\b"
+					"match": "(\\$)\\b([_a-zA-Z][_a-zA-Z0-9]*)\\b",
+					"captures": {
+						"1": { "name": "support.function.builtin.prefix.jet" }
+					}
 				},
 				{
 					"name": "keyword.operator.colon-colon.jet",
