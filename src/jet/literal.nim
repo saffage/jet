@@ -1,4 +1,6 @@
 import
+  std/strutils,
+
   lib/utils
 
 type
@@ -30,8 +32,8 @@ func `$`*(self: Literal): string =
 
 func pretty*(self: Literal): string =
   return case self.kind:
-    of lkString : '"' & self.stringVal & '"'
-    of lkChar   : "'" & $self.charVal & "'"
+    of lkString : escape(self.stringVal)
+    of lkChar   : escape($self.charVal, "'", "'")
     of lkInt    : $self.intVal
     of lkFloat  : $self.floatVal
     of lkBool   : $self.boolVal

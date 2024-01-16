@@ -2,6 +2,7 @@ import
   std/strutils,
   std/options,
   std/parseutils,
+  std/unicode,
 
   jet/token,
 
@@ -23,19 +24,27 @@ type
     info* : LineInfo
 
 const
-  EOL        = {'\0'} + Newlines  ## End of Line characters
-  WHITESPACE = {' '} + EOL
+  Eol        = {'\0'} + Newlines
+  Whitespace = {' '} + Eol
 
-func peek(self: Lexer): char =
-  ## Returns character as the position `pos` in the `buffer`.
+template raiseLexerError(message: string; lineInfo: LineInfo = LineInfo()): untyped =
+  raise (ref LexerError)(msg: message, info: lineInfo)
+
+func peek(self: Lexer; offset: int = 0): char =
+  ## Returns character at the position `pos + offset` in the `buffer`.
+  assert(self.pos + offset >= 0)
   result =
-    if self.pos > self.buffer.high: '\0'
-    else: self.buffer[self.pos]
+    if self.pos + offset > self.buffer.high:
+      '\0'
+    else:
+      self.buffer[self.pos + offset]
 
-func slice(self: Lexer): openArray[char] =
-  ## Returns buffer content from `pos` to the end of the buffer.
-  assert(self.pos <= self.buffer.high)
-  result = self.buffer.toOpenArray(self.pos, self.buffer.high)
+func pop(self: var Lexer): char
+  {.discardable.} =
+  ## Returns character at the position `pos` in the `buffer`
+  ## and increments `pos`.
+  result = self.peek()
+  if result != '\0': self.pos += 1
 
 func line(self: Lexer): int =
   ## Returns line number.
@@ -54,6 +63,8 @@ func handleNewline(self: var Lexer): bool
   result = self.peek() in Newlines
 
   if result:
+    debug("lexer: new line at pos " & $self.pos)
+
     if self.peek() == '\r':
       self.pos += 1
 
@@ -64,7 +75,7 @@ func handleNewline(self: var Lexer): bool
     self.linePos  = self.pos
 
 func skipLine*(self: var Lexer) =
-  while self.peek() notin EOL:
+  while self.peek() notin Newlines:
     self.pos += 1
 
 func getLine*(self: Lexer; lineNum: Positive): string
@@ -84,14 +95,34 @@ func getLines*(self: Lexer; lineNums: openArray[int] | Slice[int]): seq[string]
   for line in lineNums:
     result &= self.getLine(line)
 
+template parseWhile(self: var Lexer; fn: untyped; startOffset = 0; lastIdx = -1): string =
+  block:
+    var result = newStringOfCap(16)
+    let until  = if lastIdx < 0: self.buffer.high else: min(self.buffer.high, lastIdx)
+    
+    self.pos += startOffset
+    var it {.inject.} = self.peek()
+
+    warn("parseWhile: until = " & $until)
+    warn("parseWhile: pos = " & $self.pos)
+    warn("parseWhile: it = " & escape($it, "'", "'"))
+
+    while self.pos <= until and fn:
+      result &= self.pop()
+      it = self.peek()
+      warn("parseWhile: pos = " & $self.pos)
+      warn("parseWhile: it = " & escape($it, "'", "'"))
+    
+    result
+
+template parseUntil(self: var Lexer; fn: untyped; startOffset = 0; lastIdx = -1): string =
+  self.parseWhile(not(fn), startOffset, lastIdx)
+
 const
-  BinChars*         = {'0'..'1'}
-  OctChars*         = {'0'..'7'}
-  HexChars*         = {'0'..'9', 'a'..'f', 'A'..'F'}
   IdChars*          = IdentChars
   IdStartChars*     = IdentStartChars
-  PrefixWhitelist*  = {' ', ',', ';', '(', '[', '{'} + EOL
-  PostfixWhitelist* = {' ', ',', ';', ')', ']', '}', '#'} + EOL
+  # PrefixWhitelist*  = {' ', ',', ';', '(', '[', '{'} + Newlines
+  # PostfixWhitelist* = {' ', ',', ';', ')', ']', '}', '#'} + Newlines
 
 func buildCharSet(): set[char]
     {.compileTime.} =
@@ -103,197 +134,240 @@ func buildCharSet(): set[char]
 const
   operatorChars = buildCharSet()
 
-func escape*(self: string): string =
-  result = self.multiReplace(
-    ("\'", "\\'"),
-    ("\"", "\\\""),
-    ("\\", "\\\\"),
-    ("\0", "\\0"),
-    ("\t", "\\t"),
-    ("\n", "\\n"),
-    ("\r", "\\r"),
-  )
+func lexHSpace(self: var Lexer): Token =
+  let data = self.parseWhile(it == ' ')
 
-# Why STD does not provide this functions?
-func parseWhile(s: openArray[char]; validChars: set[char]): string =
-  result = ""
-  discard s.parseWhile(result, validChars)
+  result = Token(kind: HSpace, data: data)
 
-func parseWhile(s: openArray[char]; validChar: char): string =
-  result = parseWhile(s, {validChar})
+func lexVSpace(self: var Lexer): Token =
+  result = Token(kind: VSpace)
 
-func parseUntil(s: openArray[char]; until: set[char]): string =
-  result = ""
-  discard s.parseUntil(result, until)
+  while self.handleNewline():
+    result.data &= '\n'
 
-func parseUntil(s: openArray[char]; until: char): string =
-  result = parseUntil(s, {until})
-
-func parseWhileWithSeparator(
-  s: openArray[char];
-  charSet: set[char];
-  separator: char;
-  allowDoubledSeparator: bool = false
-): string {.raises: [ValueError].} =
-  result = ""
-  var wasSeparator = false
-  for c in s:
-    if c == separator:
-      result &= c
-      if wasSeparator and not allowDoubledSeparator:
-        raise (ref ValueError)(msg: "more than 1 separator in a row is not allowed")
-      wasSeparator = true
-    elif c in charSet:
-      result &= c
-      wasSeparator = false
-    else:
-      break
-
-func lexSpace(buffer: openArray[char]; parsed: out uint): Token =
-  result = emptyToken
-
-  let kind = if buffer[0] == ' ': HSpace else: VSpace
-  let data = buffer.parseWhile(buffer[0])
-
-  parsed = data.len().uint
-
-  result = initToken(kind, data)
-
-func lexId(buffer: openArray[char]; parsed: out uint): Token =
-  result = emptyToken
-
-  let data = buffer.parseWhile(IdChars)
+func lexId(self: var Lexer): Token =
+  let data = self.parseWhile(it in IdChars)
   let kind = data.toTokenKind().get(Id)
 
-  parsed = data.len().uint
-
   result =
-    if kind == Id:
-      initToken(Id, data)
-    else:
-      initToken(kind)
+    if kind == Id: Token(kind: Id, data: data)
+    else: Token(kind: kind)
 
-func lexNumber(buffer: openArray[char]; parsed: out uint): Token
+func lexNumber(self: var Lexer): Token
   {.raises: [LexerError].} =
-  result = emptyToken
+  var wasSeparator = false
 
-  let numPart = try:
-    buffer.parseWhileWithSeparator(Digits, '_')
-  except ValueError as e:
-    raise (ref LexerError)(msg: e.msg)
+  template withSeparatorCheck(): bool =
+    debug($wasSeparator)
+    if it == '_':
+      if wasSeparator:
+        raiseLexerError(
+          "more than 1 separator in a row is not allowed",
+          self.lineInfo().withLength(1))
+      wasSeparator = true
+      true
+    else:
+      wasSeparator = false
+      it in Digits
+
+  let numPart = self.parseWhile(withSeparatorCheck)
 
   if numPart.endsWith('_'):
-    raise (ref LexerError)(msg: "trailing underscore in number literal is illegal")
+    raiseLexerError(
+      "trailing underscores in number literal is illegal",
+      self.lineInfo().withLength(1))
 
   # TODO: hex, oct, bin numbers
   # TODO: handle '1e10' notation
   # TODO: suffix
 
-  if numPart.len() <= buffer.high and buffer[numPart.len()] == '.':
-    let fracPart = buffer
-      .toOpenArray(numPart.len() + 1, buffer.high)
-      .parseWhile(Digits)
+  result = 
+    if self.peek() == '.':
+      self.pop()
+      let dotInfo = self.lineInfo()
+      let fracPart = self.parseWhile(withSeparatorCheck)
 
-    if fracPart.len() == 0:
-      raise (ref LexerError)(msg: "expected number after '.' in float literal")
+      if fracPart.len() == 0 or Digits notin fracPart:
+        raiseLexerError("expected number after '.' in float literal", dotInfo + 1)
+      
+      if fracPart.startsWith('_'):
+        raiseLexerError(
+          "leading underscores in number literal is illegal",
+          withLength(dotInfo + 1, 1))
+      
+      if fracPart.endsWith('_') or fracPart.startsWith('_'):
+        raiseLexerError(
+          "trailing underscores in number literal is illegal",
+          self.lineInfo().withLength(1))
+      
+      Token(kind: FloatLit, data: numPart & '.' & fracPart)
     else:
-      parsed = numPart.len().uint + fracPart.len().uint + 1
-      result = initToken(FloatLit, numPart & "." & fracPart)
-  else:
-    parsed = numPart.len().uint
-    result = initToken(IntLit, numPart)
+      Token(kind: IntLit, data: numPart)
 
-func lexComment(buffer: openArray[char]; parsed: out uint): Token =
-  result = emptyToken
+func lexComment(self: var Lexer): Token =
+  self.pop()
 
-  if buffer[1] == '#' and buffer[2] in WHITESPACE:
-    result = initToken(Comment)
-  elif buffer[1] == '!' and buffer[2] in WHITESPACE:
-    result = initToken(CommentModule)
-  else:
-    parsed = buffer.findIt(it == '\n').uint
-    return
+  result =
+    if self.peek() == '#' and self.peek(1) in Whitespace:
+      self.pop()
+      Token(kind: Comment)
+    elif self.peek() == '!' and self.peek(1) in Whitespace:
+      self.pop()
+      Token(kind: CommentModule)
+    else:
+      self.skipLine()
+      return
+  
+  if self.peek() == ' ':
+    self.pop()
+  
+  result.data = self.parseUntil(it in Eol)
 
-  let skipPrefix = if buffer[2] in EOL: 2 else: 3
+func lexPunctuation(self: var Lexer): Token =
+  let kind = self.pop().toTokenKind().get()
 
-  result.data = buffer
-    .toOpenArray(skipPrefix, buffer.high)
-    .parseUntil(Newlines)
+  result = Token(kind: kind)
 
-  parsed = uint(skipPrefix + result.data.len())
-
-func lexPunctuation(buffer: openArray[char]; parsed: out uint): Token =
-  let kind = case buffer[0]:
-    of '(': LeRound
-    of ')': RiRound
-    of '{': LeCurly
-    of '}': RiCurly
-    of '[': LeSquare
-    of ']': RiSquare
-    of ',': Comma
-    of ';': Semicolon
-    else: return
-
-  parsed = 1
-  result = initToken(kind)
-
-func lexOperator(buffer: openArray[char]; parsed: out uint): Token
+func lexOperator(self: var Lexer): Token
   {.raises: [LexerError].} =
-  let op = buffer.parseWhile(operatorChars)
-  parsed = op.len().uint
-
+  let info = self.lineInfo()
+  let op   = self.parseWhile(it in operatorChars)
   let kind = toTokenKind(op)
 
   if kind.isNone():
-    raise (ref LexerError)(msg: "unknown operator: '" & op & "'")
+    raiseLexerError("unknown operator: '" & op & "'", info.withLength(op.len().uint32))
 
-  result = initToken(kind.get())
+  result = Token(kind: kind.get())
 
-func lexOperatorSpecial(buffer: openArray[char]; parsed: out uint): Token =
-  let kind = case buffer[0]:
-    of '@': At
-    of '$': Dollar
-    else: return
+func escapeString(s: string; startLineInfo: LineInfo): string
+  {.raises: [LexerError].} =
+  result = ""
+  var i = 0
 
-  parsed = 1
-  result = initToken(kind)
+  while i <= s.high:
+    if s[i] == '\\':
+      if i == s.high:
+        raiseLexerError("invalid character escape; expected character after \\")
+      
+      let info = startLineInfo + i
+      
+      i += 1
+      result.add case s[i]:
+        of 'n': "\n"
+        of 'r': "\r"
+        of 't': "\t"
+        of '\\': "\\"
+        of '\'': "\'"
+        of '\"': "\""
+        of 'x', 'u', 'U': todo()
+        of Digits:
+          if i+2 <= s.high and s[i+1] in Digits and s[i+2] in Digits:
+            var num = 0
+            num = (num * 10) + (ord(s[i+0]) - ord('0'))
+            num = (num * 10) + (ord(s[i+1]) - ord('0'))
+            num = (num * 10) + (ord(s[i+2]) - ord('0'))
+
+            if num > 255:
+              raiseLexerError(
+                "invalid character escape; constant must be in range 0..255",
+                info.withLength(4))
+
+            i += 2
+            $char(num)
+          else:
+            if s[1] != '0':
+              raiseLexerError(
+                "invalid character escape: '" & s[1] & "'",
+                info.withLength(2))
+
+            "\0"
+        else:
+          raiseLexerError("invalid character escape: '\\" & s[i] & "'")
+    elif s[i] in PrintableChars:
+      result &= s[i]
+    else:
+      raiseLexerError("invalid character: " & escape($s[i], "'\\", "'"))
+
+    i += 1
+
+func lexString(self: var Lexer): Token
+  {.raises: [LexerError].} =
+  self.pop()
+  let infoInsideLit = self.lineInfo()
+  let data = self.parseUntil(it == '\"' and self.peek(-1) != '\\' or it in Eol)
+  
+  if self.peek() in Eol:
+    raiseLexerError("missing closing \"", self.lineInfo())
+
+  self.pop()
+
+  result = Token(kind: StringLit, data: data.escapeString(infoInsideLit))
+
+func lexChar(self: var Lexer): Token
+  {.raises: [LexerError].} =
+  self.pop()
+  let infoInsideLit = self.lineInfo()
+  var data = self.parseUntil(it == '\'' and self.peek(-1) != '\\' or it in Eol)
+  let origLen = data.len()
+
+  if self.peek() in Eol:
+    raiseLexerError("missing closing \'", self.lineInfo())
+
+  self.pop()
+  
+  if data.len() == 0:
+    raiseLexerError("empty character literals are not allowed", infoInsideLit)
+  
+  if data[0] == '\\':
+    data = data.escapeString(infoInsideLit)
+
+  if data.len() > 1:
+    raiseLexerError(
+      "character is too long; use string literals for UTF-8 characters",
+      infoInsideLit.withLength(origLen.uint32))
+
+  result = Token(kind: CharLit, data: data)
 
 func nextToken(self: var Lexer)
   {.raises: [LexerError].} =
   if self.pos > self.buffer.high:
-    self.curr = initToken(TokenKind.Eof, info = self.lineInfo())
+    self.curr = Token(kind: TokenKind.Eof, info: self.lineInfo())
     return
 
+  warn("pos = " & $self.pos & "; " & escape($self.peek(), "next: '", "'"))
   var prevLineInfo = self.lineInfo()
-  var parsed = 1'u
+  let oldPos = self.pos
+  
   let token = case self.peek():
     of '#':
-      self.slice().lexComment(parsed)
+      self.lexComment()
     of IdStartChars:
-      self.slice().lexId(parsed)
+      self.lexId()
     of Digits:
-      self.slice().lexNumber(parsed)
-    of '(', ')', '{', '}', '[', ']', ',', ';':
-      self.slice().lexPunctuation(parsed)
-    of '@', '$':
-      self.slice().lexOperatorSpecial(parsed)
-    of operatorChars:
-      self.slice().lexOperator(parsed)
-    of ' ', Newlines:
-      self.slice().lexSpace(parsed)
+      self.lexNumber()
+    of '@', '$', '(', ')', '{', '}', '[', ']', ',', ';', ':':
+      self.lexPunctuation()
+    of '.':
+      if self.peek(1) in operatorChars:
+        self.lexOperator()
+      else:
+        self.lexPunctuation()
+    of operatorChars - {'.'}:
+      self.lexOperator()
+    of ' ':
+      self.lexHSpace()
+    of Newlines:
+      self.lexVSpace()
+    of '\"':
+      self.lexString()
+    of '\'':
+      self.lexChar()
     of '\0':
-      initToken(TokenKind.Eof, info = self.lineInfo())
-    of '\t':
-      raise (ref LexerError)(msg: "tabs are not allowed")
+      Token(kind: TokenKind.Eof, info: self.lineInfo())
     else:
-      raise (ref LexerError)(msg: "invalid character: " & strutils.escape($self.peek()), info: self.lineInfo())
+      raiseLexerError("invalid character: " & strutils.escape($self.peek()), self.lineInfo())
 
-  if self.handleNewline():
-    while self.handleNewline(): discard
-  else:
-    self.pos += parsed.int
-
-  prevLineInfo.length = parsed.uint32
+  prevLineInfo.length = uint32(self.pos - oldPos)
   self.curr           = token
   self.curr.info      = prevLineInfo
 
@@ -301,6 +375,15 @@ func nextTokenNotEmpty(self: var Lexer)
   {.raises: [LexerError].} =
   self.nextToken()
   while self.curr.kind == Empty: self.nextToken()
+
+#
+# API
+#
+
+proc newLexer*(buffer: openArray[char]): Lexer
+  {.raises: [LexerError].} =
+  result = Lexer(buffer: buffer.toOpenArray(0, buffer.high), curr: Token(kind: TokenKind.Eof))
+  result.nextToken()
 
 func getToken*(self: var Lexer): Token
   {.raises: [LexerError].} =
@@ -363,29 +446,3 @@ func normalizeTokens*(tokens: seq[Token]): seq[Token] =
         result[^1].spaces.trailing = spacingLast
         break
     prevKind = token.kind
-
-#
-# API
-#
-
-proc newLexer*(buffer: openArray[char]): Lexer
-  {.raises: [LexerError].} =
-  result = Lexer(buffer: buffer.toOpenArray(0, buffer.high), curr: initToken(TokenKind.Eof))
-  result.nextToken()
-
-
-when isMainModule:
-  let file = open("tests_local/lexer/test.jet", fmRead).readAll()
-
-  echo "---"
-  echo file
-  echo "---"
-
-  maxErrors = 3
-
-  var lexer = newLexer(file)
-  var tok = lexer.getToken()
-
-  while tok.kind != Eof:
-    echo(tok.human())
-    tok = lexer.getToken()

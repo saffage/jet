@@ -12,3 +12,16 @@ func `$`*(self: LineInfo): string
 
 func noLength*(self: LineInfo): LineInfo =
     result = LineInfo(line: self.line, column: self.column)
+
+func withLength*(self: LineInfo; length: uint32): LineInfo =
+    result = LineInfo(line: self.line, column: self.column, length: length)
+
+func `+`*(self: LineInfo; columnOffset: int): LineInfo =
+    result = self
+    assert(result.column.int + columnOffset >= 0)
+    result.column = uint32(result.column.int + columnOffset)
+
+func `-`*(self: LineInfo; columnOffset: int): LineInfo =
+    result = self
+    assert(result.column.int - columnOffset >= 0)
+    result.column = uint32(result.column.int - columnOffset)
