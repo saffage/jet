@@ -2,7 +2,9 @@ import
   std/strformat,
   std/options,
 
-  jet/literal
+  jet/literal,
+
+  lib/line_info
 
 type
   AstNodeKind* = enum
@@ -44,6 +46,7 @@ type
     of Branch:
       branchKind* : AstNodeBranchKind
       children*   : seq[AstNode]
+    info* : LineInfo
 
   OperatorKind* = enum
     OpNot    = "not"
@@ -64,9 +67,6 @@ type
     OpShl    = "<<"
     OpShr    = ">>"
 
-const
-  emptyNode* = AstNode(kind: Empty)
-
 func toOperatorKind*(value: string): Option[OperatorKind] =
   result = none(OperatorKind)
   for kind in OperatorKind:
@@ -84,12 +84,33 @@ func len*(tree: AstNode): int =
 func `$`*(tree: AstNode): string =
   result = $tree.kind
 
+  if tree.info != LineInfo():
+    result &= &"[{tree.info}]"
+
   case tree.kind
   of Id:
-    result &= &" \"{tree.id}\""
+    result &= &" = \"{tree.id}\""
   of Lit:
-    result &= &" {tree.lit.pretty()}"
+    result &= &" = {tree.lit.pretty()}"
   of Operator:
-    result &= &" {tree.op}"
+    result &= &" = {tree.op}"
   else:
     discard
+
+func initAstNode*(kind: AstNodeKind; info = LineInfo()): AstNode =
+  result = AstNode(kind: kind, info: info)
+
+func initAstNodeEmpty*(info = LineInfo()): AstNode =
+  result = AstNode(kind: Empty, info: info)
+
+func initAstNodeId*(id: sink string; info = LineInfo()): AstNode =
+  result = AstNode(kind: Id, id: id, info: info)
+
+func initAstNodeLit*(lit: Literal; info = LineInfo()): AstNode =
+  result = AstNode(kind: Lit, lit: lit, info: info)
+
+func initAstNodeOperator*(op: OperatorKind; info = LineInfo()): AstNode =
+  result = AstNode(kind: Operator, op: op, info: info)
+
+func initAstNodeBranch*(branchKind: AstNodeBranchKind; children = newSeq[AstNode](); info = LineInfo()): AstNode =
+  result = AstNode(kind: Branch, branchKind: branchKind, children: children, info: info)
