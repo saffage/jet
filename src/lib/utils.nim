@@ -1,12 +1,12 @@
-from std/math import log10, ceil
+## Most of bad ideas are located here.
 
+from std/math import log10, ceil
 import std/macros
 
-import lib/utils/logger
+import lib/logger
 
 export logger
 
-## Most of bad ideas are located here.
 
 type
     UnreachableDefect        = object of Defect
@@ -101,7 +101,7 @@ template rfindIt*(collection: typed; pred: untyped): untyped =
             # this is so stupid but works
     result
 
-template notNil*(x: untyped): untyped =
+template notNil*(x: typed) =
     var y = x
     if y.isNil():
         unreachable()

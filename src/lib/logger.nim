@@ -1,9 +1,10 @@
-import std/strutils
-
-import line_info
-import text_style
-
 ## Very simple logger with a lot of hidden side effects.
+
+import
+    std/strformat,
+
+    ./line_info,
+    ./text_style
 
 type LogLevel* = enum
     All
@@ -17,15 +18,15 @@ type LogLevel* = enum
 
 const
     debugTagStyle* = TextStyle(foreground: Magenta, bold: true)
-    debugMsgStyle* = TextStyle(foreground: White, italic: true)
+    debugMsgStyle* = TextStyle(foreground: White)
     hintTagStyle*  = TextStyle(foreground: Cyan)
-    hintMsgStyle*  = TextStyle(foreground: White, italic: true)
+    hintMsgStyle*  = TextStyle(foreground: White)
     warnTagStyle*  = TextStyle(foreground: Yellow)
-    warnMsgStyle*  = TextStyle(foreground: White, italic: true)
+    warnMsgStyle*  = TextStyle(foreground: White)
     errorTagStyle* = TextStyle(foreground: BrightRed, bold: true)
-    errorMsgStyle* = TextStyle(foreground: White, italic: true)
+    errorMsgStyle* = TextStyle(foreground: White)
     panicTagStyle* = TextStyle(foreground: Red, bold: true)
-    panicMsgStyle* = TextStyle(foreground: Red, italic: true)
+    panicMsgStyle* = TextStyle(foreground: Red)
 
 func tagStyle(self: LogLevel): TextStyle =
     result = case self:
@@ -57,10 +58,6 @@ var
     errors*    = 0
     maxErrors* = 1
 
-const
-    lineInfoFmt = "[$#] "
-    logLevelFmt = "$#: "
-
 template hasColors(): bool =
     true
 
@@ -68,11 +65,11 @@ func formatStackTrace(entries: seq[StackTraceEntry]): string =
     result = ""
 
     for entry in entries:
-        let str = try: "at \"$#($#)\" in '$#'\n" % [
-            $entry.filename,
-            $entry.line,
-            $entry.procname,
-        ] except ValueError: "<fmt-error>\n"
+        let str =
+            try:
+                &"at \"{entry.filename}({entry.line})\" in '{entry.procname}'\n"
+            except ValueError:
+                "<fmt-error>\n"
         result.add(str)
 
 func printStackTrace() =
@@ -90,13 +87,16 @@ func print(level: static[LogLevel]; tag, msg: string; colors: bool) =
     else:
         debugEcho(tag & msg)
 
-func log(level: static[LogLevel]; msg: string; colors: bool) =
-    const tag = logLevelFmt % $level
+func log(level: static[LogLevel]; msg: string; colors: bool)
+    {.raises: [].} =
+    const tag = &"{level:>5} "
     print(level, tag, msg, colors)
 
-func log(level: static[LogLevel]; msg: string; colors: bool; info: LineInfo) =
-    const tag = logLevelFmt % $level
-    print(level, (lineInfoFmt % $info) & tag, msg, colors)
+func log(level: static[LogLevel]; msg: string; colors: bool; info: LineInfo)
+    {.raises: [].} =
+    const levelTag = &"{level:>5}"
+    let tag = try: &"{levelTag}[{info}] " except ValueError: "<fmt-error>"
+    print(level, tag, msg, colors)
 
 func debug*(msg: string; info: LineInfo) =
     log(Debug, msg, hasColors(), info)

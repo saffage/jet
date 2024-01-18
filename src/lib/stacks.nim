@@ -3,7 +3,7 @@ import std/sequtils
 import std/lists
 
 
-type StackError* = ref object of CatchableError
+type StackDefect* = object of Defect
 
 type Stack*[T] = object
     data* : SinglyLinkedList[T]
@@ -51,25 +51,19 @@ func clear*[T](self: var Stack[T]) =
     self.data = initSinglyLinkedList[T]()
 
 func peekUnchecked*[T](self: Stack[T]): T =
+    assert(not self.isEmpty(), "stack is empty")
     result = self.data.head.value
-
-func peek2Unchecked*[T](self: Stack[T]): T =
-    result = self.data.head.next.value
 
 func peek*[T](self: Stack[T]): T =
-    if self.isEmpty(): raise StackError(msg: "peek failed, stack is empty")
+    if self.isEmpty(): raise newException(StackDefect, "peek failed, stack is empty")
     result = self.data.head.value
-
-func peek2*[T](self: Stack[T]): T =
-    if self.len() < 2: raise StackError(msg: "peek2 failed, stack is empty")
-    result = self.data.head.next.value
 
 func popUnchecked*[T](self: var Stack[T]): T =
     result = self.peekUnchecked()
     self.data.remove(self.data.head)
 
 func pop*[T](self: var Stack[T]): T =
-    if self.isEmpty(): raise StackError(msg: "pop failed, stack is empty")
+    if self.isEmpty(): raise newException(StackDefect, "pop failed, stack is empty")
     result = self.peekUnchecked()
     self.data.remove(self.data.head)
 
@@ -88,10 +82,11 @@ template `[]=`*[T](self: var Stack[T]; n: Natural; item: sink T) =
     self.replaceAt(n, item)
 
 func dropUnchecked*[T](self: var Stack[T]) =
+    assert(not self.isEmpty(), "stack is empty")
     self.data.remove(self.data.head)
 
 func drop*[T](self: var Stack[T]) =
-    if self.isEmpty(): raise StackError(msg: "drop failed, stack is empty")
+    if self.isEmpty(): raise newException(StackDefect, "drop failed, stack is empty")
     self.data.remove(self.data.head)
 
 func drop*[T](self: var Stack[T]; count: Natural) =

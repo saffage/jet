@@ -1,939 +1,645 @@
-import std/sugar
-import std/tables
-import std/strformat
-import std/strutils
-import std/sequtils
-import std/options
+import
+  std/strformat,
+  std/strutils,
+  std/sequtils,
+  std/tables,
+  std/options,
+  std/enumutils,
 
-import jet/ast
-import jet/lexer
-import jet/token
-import jet/literal
+  jet/token,
+  jet/ast,
+  jet/literal,
 
-import lib/stack
-import lib/utils
-import lib/utils/line_info
+  lib/utils,
+  lib/stacks,
+  lib/line_info,
 
-import pkg/questionable
+  pkg/questionable
 
+{.push, raises: [].}
 
 type
-    BlockContext = tuple[line, column: int]
+  Parser* {.byref.} = object
+    tokens      : seq[Token]
+    curr        : int = 0
+    ast         : Option[AstNode] = none(AstNode)
+    blockStack  : Stack[BlockContext]
+    prefixFuncs : OrderedTable[TokenKind, ParsePrefixFunc]
+    infixFuncs  : OrderedTable[TokenKind, ParseInfixFunc]
+    suffixFuncs : OrderedTable[TokenKind, ParseSuffixFunc]
+    precedence  : Option[Precedence]
 
-    Precedence = enum
-        Lowest
-        Assign
-        Or
-        And
-        Cmp
-        Postfix
-        Sum
-        Product
-        Call
-        Index
-        Member
-        Highest
+  Precedence = enum
+    Lowest
+    Eq
+    Or
+    And
+    Ord
+    Sum
+    Product
+    Suffix
+    Path
+    Prefix
+    Highest
 
-    Parser* = ref object
-        lexer      : Lexer
-        curr       : Token
-        prev       : Token
-        blocks     : Stack[BlockContext]
-        precedence : Option[Precedence]
-        prefix     : OrderedTable[TokenKind, ParseFn]
-        infix      : OrderedTable[TokenKind, InfixParseFn]
+  ParserError* = object of CatchableError
+    info* : LineInfo
 
-    ParserError* = object of CatchableError
-        lineInfo : LineInfo
+  BlockContext = tuple[line, indent: int]
 
-    ParseFn       = proc(self: Parser): Node {.nimcall.}
-    InfixParseFn  = proc(self: Parser; left: Node): Node {.nimcall.}
+  ParsePrefixFunc = proc(self: var Parser): AstNode {.nimcall, noSideEffect, raises: [ParserError, ValueError].}
+  ParseInfixFunc  = proc(self: var Parser; left: AstNode): AstNode {.nimcall, noSideEffect, raises: [ParserError, ValueError].}
+  ParseSuffixFunc = proc(self: var Parser; left: AstNode): AstNode {.nimcall, noSideEffect, raises: [ParserError, ValueError].}
+
+func str(kind: TokenKind): string =
+  $kind
+
+func `$`(kind: TokenKind): string =
+  kind.symbolName()
 
 const precedences = {
-    LParen     : Call,
-    LBracket   : Index,
-    LBrace     : Highest,
-    Dot        : Member,
-    ColonColon : Member,
-    Asterisk   : Product,
-    Slash      : Product,
-    Percent    : Product,
-    Plus       : Sum,
-    Minus      : Sum,
-    PlusPlus   : Sum,
-    EqOp       : Cmp,
-    NeOp       : Cmp,
-    LtOp       : Cmp,
-    GtOp       : Cmp,
-    LeOp       : Cmp,
-    GeOp       : Cmp,
-    KwAnd      : And,
-    KwOr       : Or,
-    KwOf       : Member, # IDK
-    Assign     : Assign,
+  LeRound    : Highest,
+  LeSquare   : Highest,
+  LeCurly    : Highest,
+  Dot        : Path,
+  Asterisk   : Product,
+  Slash      : Product,
+  Percent    : Product,
+  Plus       : Sum,
+  Minus      : Sum,
+  PlusPlus   : Sum,
+  EqOp       : Ord,
+  NeOp       : Ord,
+  LtOp       : Ord,
+  GtOp       : Ord,
+  LeOp       : Ord,
+  GeOp       : Ord,
+  KwAnd      : And,
+  KwOr       : Or,
+  KwNot      : Prefix,
+  Eq         : Eq,
 }.toTable()
 
-proc newParser*(lexer: sink Lexer): Parser
-proc fillTables(self: Parser)
-proc parseAll*(self: Parser): Node
-proc parseExpr(self: Parser): Node
-proc parseId(self: Parser): Node
-proc parseLit(self: Parser): Node
-proc parseAnnotation(self: Parser): Node
-proc parseNegation(self: Parser): Node
-
-proc parseInfixOp(self: Parser; left: Node): Node
-proc parseArgs(self: Parser; left: Node): Node
-
-proc expectSameIndent(self: Parser)
-
-
-when defined(jetDebugParserState):
-    import std/importutils
-    import lib/utils/text_style
-
-    proc dbg(self: Parser; msg: string = "") =
-        const dbgStyle = TextStyle(foreground: Cyan, underlined: true)
-        let msg = if msg == "": "" else: (msg @ dbgStyle) & ": "
-
-        privateAccess(Lexer)
-        debug(
-            fmt"{msg}Parser state:" &
-            fmt("\n\tprev: {self.prev.human()}") &
-            fmt("\n\tcurr: {self.curr.human()}") &
-            fmt("\n\tscanner:") &
-                fmt("\n\t\tprev: {self.lexer.prev.human()}") &
-                fmt("\n\t\tcurr: {self.lexer.curr.human()}") &
-            fmt("\n\tblocks: {$self.blocks}")
-        )
-else:
-    template dbg(self: Parser; msg: string = "") = discard
-
-proc checkIndent(token: Token; context: BlockContext): int
-proc nextToken(self: Parser; checkIndent: bool = true)
-
-proc isNewBlockContext(self: Parser; context: BlockContext): bool =
-    result = context.column > self.blocks.peek().column
-
-
-# ----- ERRORS ----- #
-{.push, used, noreturn.}
-
-proc err(self: Parser; msg: string; info: LineInfo) =
-    error(msg, info)
-    raise (ref ParserError)(msg: msg, lineInfo: info)
-
-proc err(self: Parser; msg: string) =
-    self.err(msg, self.curr.info)
-
-proc errSyntax(self: Parser; msg: string) =
-    self.err(fmt"syntax error; {msg}")
-
-proc errExpectedId(self: Parser) =
-    self.err(fmt"expected identifier, got {self.curr.kind}")
-
-proc errExpectedLit(self: Parser) =
-    self.err(fmt"expected literal, got {self.curr.kind}")
-
-proc errExpectedExprStart(self: Parser) =
-    self.errSyntax(fmt"token '{self.curr.kind}' is not an expression start")
-
-proc errExpectedNodeOf(self: Parser; kind: NodeKind) =
-    self.errSyntax(fmt"expected node of kind {kind}, got {self.curr.kind} instead")
-
-proc errExpectedNodeOf(self: Parser; kinds: set[NodeKind]) =
-    self.errSyntax(fmt"expected node of kinds {kinds}, got {self.curr.kind} instead")
-
-proc errExpected(self: Parser; kind: TokenKind) =
-    self.errSyntax(fmt"expected token {kind}, got {self.curr.kind} instead")
-
-proc errExpected(self: Parser; kinds: set[TokenKind]) =
-    let kinds = kinds.mapIt($it).join(" or ")
-    self.errSyntax(fmt"expected token {kinds}, got {self.curr.kind} instead")
-
-proc errExpectedSameLine(self: Parser) =
-    self.errSyntax(fmt"expected expression on the same line")
-
-proc errInvalidIndent(self: Parser; explanation: string) =
-    self.errSyntax(fmt"invalid indentation; {explanation}")
-
-proc errInvalidIndent(self: Parser) =
-    self.errSyntax(fmt"invalid indentation")
-
-proc errInvalidBlockContext(self: Parser; context: BlockContext) =
-    self.errInvalidIndent(
-        fmt"this token is offside the context started at [{context[0]}:{context[1]}], " &
-        fmt"token position is [{self.curr.info.dupNoLength()}]")
-
-proc errInvalidBlockContext(self: Parser) =
-    self.errInvalidBlockContext(self.blocks.peek())
-
-proc errInvalidNotation(self: Parser; explanation: string) =
-    self.errSyntax(fmt"invalid notation; {explanation}")
-
-proc errInvalidNotation(self: Parser) =
-    self.errSyntax(fmt"invalid notation")
-
-proc errExpectedFirstInLine(self: Parser; explanation: string) =
-    self.errSyntax(fmt"token {self.curr} must be first in line. {explanation}")
-
-proc errExpectedFirstInLine(self: Parser) =
-    self.errSyntax(fmt"token {self.curr} must be first in line")
-
-proc errExpectedLastInLine(self: Parser; explanation: string) =
-    self.errSyntax(fmt"token {self.curr} must be last in line. {explanation}")
-
-proc errExpectedLastInLine(self: Parser) =
-    self.errSyntax(fmt"token {self.curr} must be last in line")
-
-proc errUnknownOp(self: Parser; op, explanation: string) =
-    self.err(fmt"Unknown operator: '{op}'. {explanation}")
-
-proc errUnknownOp(self: Parser; op: string) =
-    self.err(fmt"Unknown operator: '{op}'")
-
-{.pop.} # used, noreturn
-
-
-# ----- PRIVATE ----- #
-template isKind(self: Parser; tokenKind: TokenKind): bool = self.curr.kind == tokenKind
-template isKind(self: Parser; tokenKinds: set[TokenKind]): bool = self.curr.kind in tokenKinds
-
-proc isSameLine(self: Parser): bool =
-    return self.prev.info.line == self.curr.info.line
-
-proc expected(self: Parser; kind: TokenKind) =
-    if not self.isKind(kind):
-        self.errSyntax(fmt"expected '{kind}', got '{self.curr.kind}'")
-
-proc expected(self: Parser; kinds: set[TokenKind]) =
-    if not self.isKind(kinds):
-        let kindsStr = kinds.mapIt(fmt"'{it}'").join(", ")
-        self.errSyntax(fmt"expected one of {kindsStr}, got '{self.curr.kind}'")
-
-proc tokenNotation(self: Parser): Notation =
-    return self.curr.notation(self.prev.kind, self.lexer.curr.kind)
-
-proc skipToken(self: Parser) =
-    debug fmt"token {self.curr.kind} at {self.curr.info} was skipped"
-    self.curr = self.lexer.getToken().get()
-
-proc skip(self: Parser; kind: TokenKind) =
-    self.expected(kind)
-    self.nextToken()
-
-proc skip(self: Parser; kinds: set[TokenKind]) =
-    self.expected(kinds)
-    self.nextToken()
-
-proc skipMaybe(self: Parser; kind: TokenKind): bool =
-    result = self.isKind(kind)
-    if result: self.nextToken() # skip expected
-
-proc skipMaybe(self: Parser; kinds: set[TokenKind]): bool =
-    result = self.isKind(kinds)
-    if result: self.nextToken() # skip expected
-
-proc skipLine(self: Parser; line: uint32) =
-    dbg self, fmt"skipLine {line}"
-
-    while self.curr.kind != Last:
-        let token = self.lexer.getToken().get()
-
-        if token.info.line > line:
-            self.curr = token
-            break
-
-        debug fmt"token {token.kind} at {token.info} was skipped"
-
-    dbg self, fmt"skipLine {line} end"
-
-proc skipLine(self: Parser) =
-    self.skipLine(self.curr.info.line)
-
-proc checkIndent(token: Token; context: BlockContext): int =
-    ## **Returns:**
-    ## - -1 if `token.indent < context` - drop block
-    ## - 1 if `token.indent > context` - error
-    ## - 0 if `token.indent == context` - ok
-    result = 0
-
-    if indent =? token.indent():
-        if indent > context.column:
-            return 1
-        elif indent < context.column:
-            return -1
-        else:
-            return 0
-
-proc nextToken(self: Parser; checkIndent: bool) =
-    let token = self.lexer.getToken().get()
-
-    self.prev = self.curr
-    self.curr     = token
-
-proc tokenSameLine(self: Parser) =
-    if not self.isSameLine():
-        self.errExpectedSameLine()
-
-proc tokenFirstInLine(self: Parser) =
-    if not self.curr.isFirstInLine(): self.errExpectedFirstInLine()
-
-proc tokenLastInLine(self: Parser) =
-    if not self.curr.isLastInLine(): self.errExpectedLastInLine()
-
-proc tokenIndent(self: Parser; expectedIndent: Natural) =
-    without indent =? self.curr.indent(): self.errInvalidIndent()
-    if indent != expectedIndent: self.errInvalidIndent()
-
-proc blockContextFromCurrentToken(self: Parser): BlockContext =
-    result =
-        if self.curr.isFirstInLine():
-            (self.curr.info.line.int, !self.curr.indent())
-        else:
-            (self.curr.info.line.int, self.curr.info.column.int)
-
-    hint fmt"new block context created: {result}"
-
-proc checkToken(
-    self        : Parser;
-    notation    : set[Notation] = {};
-    sameLine    : bool = false;
-    firstInLine : bool = false;
-    lastInLine  : bool = false;
-    indent      : ?int = none(int);
-    failureFn   : (Parser) -> void = skipLine
-) =
-    debug fmt"check {notation = }, {sameLine = }, {firstInLine = }, {lastInLine = }, {indent = }"
-    let wasErrors = logger.errors
-
-    template check() =
-        if wasErrors != logger.errors and failureFn != nil:
-            failureFn(self)
-
-    if sameLine:
-        self.tokenSameLine()
-        check()
-    if firstInLine:
-        self.tokenFirstInLine()
-        check()
-    if lastInLine:
-        self.tokenLastInLine()
-        check()
-    if notation != {} and self.tokenNotation() notin notation:
-        let expected = notation.mapIt($it).join(" or ")
-        self.errInvalidNotation(fmt"expected {expected}, got {self.tokenNotation()}")
-    if expectedIndent =? indent:
-        self.tokenIndent(expectedIndent)
-        check()
-
-
-proc getIntLit(self: Parser): Literal =
-    {.warning[ProveInit]: off.}
-
-    try:
-        result = newLit(parseBiggestInt(self.curr.value))
-    except ValueError:
-        panic(
-            fmt"invalid value '{self.curr.value}' for integer literal, " &
-            fmt"range is {BiggestInt.low}..{BiggestInt.high}",
-            self.curr.info)
-
-proc getUIntLit(self: Parser): Literal =
-    {.warning[ProveInit]: off.}
-
-    try:
-        result = newLit(parseBiggestUInt(self.curr.value))
-    except ValueError:
-        panic(
-            fmt"invalid value '{self.curr.value}' for unsigned integer literal, " &
-            fmt"range is {BiggestUInt.low}..{BiggestUInt.high}",
-            self.curr.info)
-
-proc getFloatLit(self: Parser): Literal =
-    {.warning[ProveInit]: off.}
-
-    try:
-        result = newLit(parseFloat(self.curr.value))
-    except ValueError:
-        panic(fmt"try again (idk float is dumb)", self.curr.info)
-
-
-
-
-type ParseMode = enum
+#
+# Parse Functions
+#
+
+type
+  ParseMode = enum
     Block
     List
-    Auto
+    Adaptive
 
-# NEW PROCS
-proc parseBlock(
-    self: Parser;
-    blockTree: var Node;
-    mode: ParseMode = Block;
-    until: Option[TokenKind] = none(TokenKind);
-    context: Option[BlockContext] = none(BlockContext);
-    fn: ParseFn = parseExpr;
-): ParseMode {.discardable.} =
-    ## Parses a block of code with the same indentation until it encounters
-    ## a token with an indentation different from the current context of the block.
-    ##
-    ## If a token with an indentation smaller than the indentation of the current block
-    ## context is found, parsing of this block will be completed.
-    ##
-    ## Expressions can be separated with `;`, but the next expression must be immediately after it.
-    ##
-    ## If no block context is given, creates its own context when the token with indentation is found.
-    ## Does nothing with the `until` token, only parses the block until it.
-    dbg self, fmt"parseBlock mode = {mode}"
+func parseLit(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
+func parseExpr(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
+func parseId(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
+func parseNot(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
+func parseStruct(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
+func parseType(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
+func parseFunc(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
+func parseIf(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
+func parseWhile(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
+func parseReturn(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
+func parseVar(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
+func parseVal(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
+func parseValDecl(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
+func parseParamOrField(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
+func parseDo(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
+func parseDoOrBlock(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
+func parseDoOrExpr(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
+func parseExprOrBlock(self: var Parser; fn: ParsePrefixFunc = parseExpr): AstNode {.raises: [ParserError, ValueError].}
+func parseInfix(self: var Parser; left: AstNode): AstNode {.raises: [ParserError, ValueError].}
+func parseList(self: var Parser; fn: ParsePrefixFunc): AstNode {.raises: [ParserError, ValueError].}
+func parseList(self: var Parser): AstNode {.raises: [ParserError, ValueError].} = self.parseList(parseExpr)
+func parseBlock(
+  self: var Parser;
+  body: var seq[AstNode];
+  mode: ParseMode = Block;
+  until: Option[TokenKind] = none(TokenKind);
+  fn: ParsePrefixFunc = parseExpr;
+): ParseMode {.discardable, raises: [ParserError, ValueError].}
 
-    if mode == Block and not self.curr.isFirstInLine():
-        self.err("expected block of code")
+#
+# Util Functions
+#
 
-    var contextPushed = false
-    var wasSemicolon  = false
+template raiseParserError(message: string; lineInfo: LineInfo) =
+  raise (ref ParserError)(msg: message, info: lineInfo)
 
-    result = mode
+func peekToken(self: Parser): Token
+  {.raises: [ParserError].} =
+  if self.curr > self.tokens.high:
+    raiseParserError("no token to peek", self.tokens[^1].info)
 
-    if context.isSome():
-        self.blocks.push(context.unsafeGet())
-        contextPushed = true
+  result = self.tokens[self.curr]
 
-    let lastKinds =
-        if untilKind =? until: {Last, untilKind}
-        else: {Last}
+func peekToken(self: Parser; kind: TokenKind): Token
+  {.raises: [ParserError, ValueError].} =
+  let token = self.peekToken()
 
-    while self.curr.kind notin lastKinds:
-        dbg self, "parseBlock loop"
+  if token.kind != kind:
+    raiseParserError(&"expected token of kind {kind}, got {token.kind}", token.info)
 
-        if contextPushed:
-            hint fmt"check indentation for block at {self.blocks.peek()}"
+  result = token
 
-            case self.curr.checkIndent(self.blocks.peek())
-            of 1: self.errInvalidBlockContext()
-            of -1: break
-            else: hint fmt"indentation is ok: {self.curr.indent() |? -1}"
+func prevToken*(self: Parser): Token
+  {.raises: [ParserError].} =
+  let idx = self.curr - 1
 
-        if self.curr.isFirstInLine():
-            if result == Block and wasSemicolon:
-                self.err("expected expression after ';'")
-            if not contextPushed:
-                let newContext = self.blockContextFromCurrentToken()
-                if not self.isNewBlockContext(newContext):
-                    self.err(
-                        fmt"a new block context was expected, got {newContext}, " &
-                        fmt"which is the same or lower than the previous {self.blocks.peek()}")
-                self.blocks.push(newContext)
-                contextPushed = true
-        else:
-            if mode == Block and not wasSemicolon:
-                self.err("the other expression must be on a new line or separated by ';'")
-            wasSemicolon = false
+  if idx < 0 or idx >= self.tokens.high:
+    raiseParserError("no previous token to peek", self.tokens[0].info)
 
-        let node = fn(self)
-        if node.kind != nkEmpty:
-            blockTree &= node
+  result = self.tokens[idx]
 
-        if result == Auto:
-            result = if self.isKind(Comma): List else: Block
-            hint fmt"determine mode of block parsing: {result}"
+func popToken(self: var Parser): Token
+  {.raises: [ParserError].} =
+  result = self.peekToken()
+  self.curr += 1
 
-        case result
-        of Block:
-            if self.skipMaybe(Semicolon):
-                wasSemicolon = true
-        of List:
-            if not self.skipMaybe(Comma):
-                if self.curr.kind notin lastKinds:
-                    self.err(fmt"expected ',' after expression", self.prev.info)
-                break
-        else: discard
+func skipToken(self: var Parser; kinds: set[TokenKind])
+  {.raises: [ParserError, ValueError].} =
+  let token = self.peekToken()
 
-    if result == Auto:
-        # something like `()`
-        result = List
+  if token.kind notin kinds:
+    let message = kinds.toSeq().join(" or ")
+    raiseParserError(&"expected token of kind {message}, got {token.kind}", token.info)
 
-    if result == Block and wasSemicolon:
-        self.err("expected expression after ';'")
+  self.curr += 1
 
-    if contextPushed:
-        self.blocks.drop()
+func skipToken(self: var Parser; kind: TokenKind)
+  {.raises: [ParserError, ValueError].} =
+  self.skipToken({kind})
 
-    dbg self, "parseBlock end"
+func skipTokenMaybe(self: var Parser; kinds: set[TokenKind]): bool
+  {.discardable, raises: [ParserError, ValueError].} =
+  let token = self.peekToken()
 
-proc parseIf(self: Parser): Node
-proc parseIfBranch(self: Parser): Node
-proc parseElse(self: Parser): Node
-proc parseList(self: Parser): Node
-proc parseType(self: Parser): Node
-proc parseTypeExpr(self: Parser): Node
+  if token.kind in kinds:
+    self.skipToken(kinds)
+    result = true
+  else:
+    result = false
 
-proc parseVarDecl(self: Parser; left: Node): Node
+func skipTokenMaybe(self: var Parser; kind: TokenKind): bool
+  {.discardable, raises: [ParserError, ValueError].} =
+  self.skipTokenMaybe({kind})
 
-proc parseDo(self: Parser): Node
-proc parseDoOrBlock(self: Parser): Node
-proc parseExprOrBlock(self: Parser): Node
+func isNewBlockContext(self: Parser; context: BlockContext): bool =
+  self.blockStack.isEmpty() or context.indent > self.blockStack.peek().indent
 
+#
+# Parse Functions AUX
+#
 
+func parseIfBranch(self: var Parser): AstNode
+  {.raises: [ParserError, ValueError].} =
+  debug("parseIfBranch")
 
-# ----- API IMPL ----- #
-proc newParser(lexer: sink Lexer): Parser =
-    result = Parser(
-        lexer: ensureMove(lexer),
-        blocks: newStack[BlockContext]())
+  self.skipToken({KwIf, KwElif})
 
-    result.fillTables()
-    result.nextToken()
+  debug(&"parseIfBranch: {self.prevToken().kind}")
 
-proc fillTables(self: Parser) =
-    self.prefix[Id]       = parseId
-    self.prefix[KwIf]     = parseIf
-    self.prefix[KwDo]     = parseDo
-    self.prefix[KwType]   = parseType
-    self.prefix[Minus]    = parseNegation
-    self.prefix[LBracket] = parseList
-    self.prefix[LParen]   = parseList
+  let cond = self.parseExpr()
+  let body = self.parseDoOrBlock()
 
-    self.prefix[IntLit]           = parseLit
-    self.prefix[FloatLit]         = parseLit
-    self.prefix[CharLit]          = parseLit
-    self.prefix[StringLit]        = parseLit
-    self.prefix[RawStringLit]     = parseLit
-    self.prefix[LongStringLit]    = parseLit
-    self.prefix[LongRawStringLit] = parseLit
-    self.prefix[ISizeLit]         = parseLit
-    self.prefix[USizeLit]         = parseLit
-    self.prefix[I8Lit]            = parseLit
-    self.prefix[I16Lit]           = parseLit
-    self.prefix[I32Lit]           = parseLit
-    self.prefix[I64Lit]           = parseLit
-    self.prefix[U8Lit]            = parseLit
-    self.prefix[U16Lit]           = parseLit
-    self.prefix[U32Lit]           = parseLit
-    self.prefix[U64Lit]           = parseLit
-    self.prefix[F32Lit]           = parseLit
-    self.prefix[F64Lit]           = parseLit
-    self.prefix[KwTrue]           = parseLit
-    self.prefix[KwFalse]          = parseLit
+  result = AstNode(kind: Branch, branchKind: IfBranch, children: @[cond, body])
 
-    self.infix[LParen]       = parseArgs
-    self.infix[Id]           = parseVarDecl
-    self.infix[LBracket]     = parseVarDecl
-    self.infix[QuestionMark] = parseVarDecl
-    self.infix[Ampersand]    = parseVarDecl
+func parseElseBranch(self: var Parser): AstNode
+  {.raises: [ParserError, ValueError].} =
+  debug("parseElseBranch")
 
-    self.infix[DotDot]     = parseInfixOp
-    self.infix[DotDotLess] = parseInfixOp
-    self.infix[KwAnd]      = parseInfixOp
-    self.infix[KwOr]       = parseInfixOp
-    self.infix[KwOf]       = parseInfixOp
-    self.infix[EqOp]       = parseInfixOp
-    self.infix[NeOp]       = parseInfixOp
-    self.infix[LtOp]       = parseInfixOp
-    self.infix[GtOp]       = parseInfixOp
-    self.infix[LeOp]       = parseInfixOp
-    self.infix[GeOp]       = parseInfixOp
-    self.infix[Plus]       = parseInfixOp
-    self.infix[Minus]      = parseInfixOp
-    self.infix[Asterisk]   = parseInfixOp
-    self.infix[Slash]      = parseInfixOp
-    self.infix[Percent]    = parseInfixOp
-    self.infix[PlusPlus]   = parseInfixOp
+  self.skipToken(KwElse)
 
-proc parseAll(self: Parser): Node =
-    dbg self, "parseAll"
+  let body = self.parseExprOrBlock()
 
-    result = newProgram()
-    let fileBlockContext = (0, 0)
+  result = AstNode(kind: Branch, branchKind: ElseBranch, children: @[body])
 
+#
+# Parse Functions Implementation
+#
+
+func parseLit(self: var Parser): AstNode =
+  debug("parseLit")
+
+  let token = self.popToken()
+
+  result = case token.kind:
+    of KwNil:
+      AstNode(kind: Lit, lit: newLit(nil))
+    of KwTrue:
+      AstNode(kind: Lit, lit: newLit(true))
+    of KwFalse:
+      AstNode(kind: Lit, lit: newLit(false))
+    of StringLit:
+      AstNode(kind: Lit, lit: newLit(token.data))
+    of CharLit:
+      if token.data.len() != 1:
+        raise (ref ValueError)(msg: &"invalid character: '{token.data}'")
+      AstNode(kind: Lit, lit: newLit(token.data[0]))
+    of IntLit:
+      AstNode(kind: Lit, lit: newLit(token.data.parseBiggestInt()))
+    of FloatLit:
+      AstNode(kind: Lit, lit: newLit(token.data.parseFloat()))
+    else:
+      raiseParserError(&"expected literal, got {token.kind}", token.info)
+
+func parseExpr(self: var Parser): AstNode =
+  debug("parseExpr")
+
+  var token      = self.peekToken()
+  let precedence = self.precedence.get(Lowest)
+  let fn         = self.prefixFuncs.getOrDefault(token.kind)
+
+  if fn == nil:
+    raiseParserError(&"expression is expected, got {token.kind}", token.info)
+
+  result = fn(self)
+
+  if self.peekToken().kind == Eof:
+    return
+
+  while true:
+    token = self.peekToken()
+
+    debug(&"parseExpr: precedence = {precedence}")
+
+    if precedence >= precedences.getOrDefault(token.kind, Lowest):
+      break
+
+    debug("parseExpr: infix")
+    debug(&"parseExpr: token {token.human()}")
+
+    let fn = self.infixFuncs.getOrDefault(token.kind)
+    if fn == nil: break
+    result = fn(self, result)
+
+  self.precedence = none(Precedence)
+
+func parseId(self: var Parser): AstNode =
+  debug("parseId")
+
+  let token = self.popToken()
+
+  if token.kind != Id:
+    raiseParserError(&"expected identifier, got {token.kind}", token.info)
+
+  result = AstNode(kind: Id, id: token.data)
+
+func parseNot(self: var Parser): AstNode =
+  debug("parseNot")
+
+  self.skipToken(KwNot)
+  self.precedence = some(Precedence.Prefix)
+
+  let expr = self.parseExpr()
+  let notOp = AstNode(kind: Operator, op: OpNot)
+
+  result = AstNode(kind: Branch, branchKind: Prefix, children: @[notOp, expr])
+
+func parseStruct(self: var Parser): AstNode =
+  debug("parseStruct")
+
+  self.skipToken(KwStruct)
+
+  let body = self.parseExprOrBlock(fn = parseParamOrField)
+  result = AstNode(kind: Branch, branchKind: Struct, children: @[body])
+
+func parseType(self: var Parser): AstNode =
+  debug("parseType")
+
+  self.skipToken(KwType)
+
+  let id = self.parseId()
+  let typeExpr = self.parseExpr()
+
+  result = AstNode(kind: Branch, branchKind: Type, children: @[id, typeExpr])
+
+func parseFunc(self: var Parser): AstNode =
+  debug("parseFunc")
+
+  self.skipToken(KwFunc)
+
+  let id = self.parseId()
+  let params = self.parseList(fn = parseParamOrField)
+  let returnType =
+    if self.prevToken().spaces.trailing != spacingLast and
+       self.peekToken().kind != KwDo: self.parseExpr()
+    else: emptyNode
+  let body = self.parseDoOrBlock()
+
+  result = AstNode(kind: Branch, branchKind: Func, children: @[id, params, returnType, body])
+
+func parseIf(self: var Parser): AstNode =
+  debug("parseIf")
+
+  var branches = newSeq[AstNode]()
+
+  while true:
+    branches &= self.parseIfBranch()
+    if self.peekToken().kind != KwElif: break
+
+  let elseBranch =
+    if self.peekToken().kind == KwElse: self.parseElseBranch()
+    else: emptyNode
+
+  result = AstNode(kind: Branch, branchKind: If, children: branches)
+
+  if elseBranch.kind != Empty:
+    result.children &= elseBranch
+
+func parseWhile(self: var Parser): AstNode =
+  debug("parseWhile")
+
+  self.skipToken(KwWhile)
+
+  let cond = self.parseExpr()
+  let body = self.parseDoOrBlock()
+
+  result = AstNode(kind: Branch, branchKind: While, children: @[cond, body])
+
+func parseReturn(self: var Parser): AstNode =
+  debug("parseReturn")
+
+  self.skipToken(KwReturn)
+
+  let expr = self.parseExpr()
+
+  result = AstNode(kind: Branch, branchKind: Return, children: @[expr])
+
+func parseVar(self: var Parser): AstNode =
+  debug("parseVar()")
+
+  self.skipToken(KwVar)
+
+  result = self.parseValDecl()
+  result = AstNode(kind: Branch, branchKind: VarDecl, children: result.children)
+
+func parseVal(self: var Parser): AstNode =
+  debug("parseVal()")
+
+  self.skipToken(KwVal)
+
+  result = self.parseValDecl()
+
+func parseValDecl(self: var Parser): AstNode =
+  debug("parseValDecl")
+
+  let id = self.parseId()
+  let typeExpr = self.parseExpr()
+  let body =
+    if self.skipTokenMaybe(Eq): self.parseDoOrExpr()
+    else: emptyNode
+
+  result = AstNode(kind: Branch, branchKind: ValDecl, children: @[id, typeExpr, body])
+
+func parseParamOrField(self: var Parser): AstNode =
+  debug("parseParamOrField")
+
+  result = case self.peekToken().kind:
+    of KwVar: self.parseVar()
+    of KwVal: self.parseVal()
+    else: self.parseValDecl()
+
+func parseDo(self: var Parser): AstNode =
+  debug("parseDo")
+
+  self.skipToken(KwDo)
+
+  let expr = self.parseExprOrBlock()
+
+  result =
+    if expr.kind == Branch and expr.branchKind == Block: expr
+    else: AstNode(kind: Branch, branchKind: Block, children: @[expr])
+
+func parseDoOrBlock(self: var Parser): AstNode =
+  debug("parseDoOrBlock")
+
+  if self.peekToken().kind == KwDo:
+    result = self.parseDo()
+  else:
+    result = AstNode(kind: Branch, branchKind: Block)
+    self.parseBlock(result.children)
+
+func parseDoOrExpr(self: var Parser): AstNode =
+  debug("parseDoOrExpr")
+
+  result =
+    if self.peekToken().kind == KwDo: self.parseDo()
+    else: self.parseExpr()
+
+func parseExprOrBlock(self: var Parser; fn: ParsePrefixFunc): AstNode =
+  debug("parseExprOrBlock")
+
+  if self.peekToken().spaces.wasLF:
+    result = AstNode(kind: Branch, branchKind: Block, children: @[])
+    self.parseBlock(result.children, fn = fn)
+  else:
+    result = fn(self)
+
+func parseInfix(self: var Parser; left: AstNode): AstNode =
+  debug("parseInfix")
+
+  let token = self.popToken()
+
+  if token.kind notin OperatorKinds + WordLikeOperatorKinds:
+    raiseParserError(&"expected operator, got '{token.kind}'", token.info)
+
+  let op = token.kind.str()
+  let opKind = op.toOperatorKind()
+
+  if opKind.isNone():
+    raiseParserError(&"operator '{op}' not yet supported", token.info)
+
+  self.precedence = some do:
     try:
-        discard self.parseBlock(result, context = some(fileBlockContext), until = some(Last))
-    except ParserError as e:
-        let
-            line       = e.lineInfo.line.int
-            column     = e.lineInfo.column.int
-            length     = max(1, e.lineInfo.length.int)
-            linePrefix = $line
-            lineStr    = block:
-                let returnedLine = self.lexer.getLine(line)
-                if returnedLine.isNone(): "<end-of-file>"
-                else: returnedLine.get()
-
-        echo &" {linePrefix} |{lineStr}\n {spaces(linePrefix.len())} |{spaces(column)}{repeat('^', length)} {e.msg}"
-        echo "# --- partialy-generated AST"
-        echo result.treeRepr
-        raise e
-
-    dbg self, "parseAll end"
-
-proc parseExpr(self: Parser): Node =
-    dbg self, "parseExpr"
-
-    let indentErrorCode = self.curr.checkIndent(self.blocks.peek())
-
-    if indentErrorCode == 1:
-        if self.blocks.len() == 1:
-            self.errInvalidIndent(fmt"This token must have 0 indentation, but has {!self.curr.indent()}")
-        else:
-            self.errInvalidIndent(
-                fmt"This token is offside the context started at position " &
-                fmt"[{self.blocks.peek().line}:{self.blocks.peek().column}], " &
-                fmt"token position is [{self.curr.info.dupNoLength()}]. This line will be skipped")
-
-        self.skipLine()
-        return newEmptyNode()
-    elif indentErrorCode == -1:
-        self.blocks.drop()
-
-    let prefixFn = self.prefix.getOrDefault(self.curr.kind)
-
-    if prefixFn == nil:
-        self.errExpectedExprStart()
-
-    result = prefixFn(self)
-
-    if self.isKind(Last):
-        return
-
-    dbg self, "parseExpr infix"
-
-    while self.precedence.isNone() or
-          !self.precedence < precedences.getOrDefault(self.curr.kind, Lowest):
-        dbg self, "parseExpr infix loop"
-
-        # let notation = self.currNotation()
-        # hint fmt"notation is {notation}"
-
-        # if notation notin {Infix, Postfix}:
-        #     # WARNING: 'Unknown' is ignored
-        #     hint "not an Infix or Postfix"
-        #     break
-
-        if self.curr.isFirstInLine() and not self.curr.kind.isOperator():
-            hint fmt"not an operator"
-            break
-
-        hint fmt"current is {self.precedence |? Lowest}, got {precedences.getOrDefault(self.curr.kind, Lowest)}"
-
-        let infixFn = self.infix.getOrDefault(self.curr.kind)
-
-        if infixFn == nil:
-            hint fmt"{self.curr.kind} is not infix"
-            break
-
-        result = infixFn(self, result)
-
-    self.precedence = none(Precedence)
-
-proc parseId(self: Parser): Node =
-    dbg self, "parseId"
-
-    self.skip({Id, Underscore})
-    result = id(self.prev.value)
-
-proc parseLit(self: Parser): Node =
-    dbg self, "parseLit"
-
-    result = case self.curr.kind:
-        of KwTrue:
-            newLitNode(newLit(true))
-        of KwFalse:
-            newLitNode(newLit(false))
-        of StringLiteralKinds:
-            newLitNode(newLit(self.curr.value))
-        of TypedLiteralKinds, UntypedLiteralKinds, CharLit:
-            let lit = case self.curr.kind:
-                of IntLit, I8Lit, I16Lit, I32Lit, I64Lit : self.getIntLit()
-                of U8Lit, U16Lit, U32Lit, U64Lit         : self.getUIntLit()
-                of FloatLit, F32Lit, F64Lit              : self.getFloatLit()
-                of CharLit: newLit(self.curr.value[0]) # TOOBAD: why only 1
-                else: unreachable()
-            let typedLit = case self.curr.kind:
-                of ISizeLit : lit.tryIntoTyped(tlkISize)
-                of USizeLit : lit.tryIntoTyped(tlkISize)
-                of I8Lit    : lit.tryIntoTyped(tlkI8)
-                of I16Lit   : lit.tryIntoTyped(tlkI16)
-                of I32Lit   : lit.tryIntoTyped(tlkI32)
-                of I64Lit   : lit.tryIntoTyped(tlkI64)
-                of U8Lit    : lit.tryIntoTyped(tlkU8)
-                of U16Lit   : lit.tryIntoTyped(tlkU16)
-                of U32Lit   : lit.tryIntoTyped(tlkU32)
-                of U64Lit   : lit.tryIntoTyped(tlkU64)
-                of F32Lit   : lit.tryIntoTyped(tlkF32)
-                of F64Lit   : lit.tryIntoTyped(tlkF64)
-                of CharLit  : lit.tryIntoTyped(tlkChar)
-                of IntLit, FloatLit : lit.toTypedLit()
-                else: unreachable()
-            newLitNode(typedLit)
-        else:
-            self.errExpectedLit()
-    self.nextToken()
-
-proc parseNegation(self: Parser): Node =
-    dbg self, "parseNegation"
-
-    self.skip(Minus)
-
-    result = newPrefix(id"-", self.parseExpr())
-
-proc parseAnnotation(self: Parser): Node =
-    dbg self, "parseAnnotation"
-
-    self.checkToken(notation={Prefix})
-    self.skip(At)
-
-    let name = self.parseId()
-
-    result =
-        if self.skipMaybe(LParen):
-            var args = newEmptyParen()
-            self.parseBlock(args, mode = List, until = some(RParen))
-            self.skip(RParen)
-
-            newAnnotationList(newExprParenFromParen(name, args))
-        else:
-            newAnnotationList(name)
-
-
-proc parseInfixOp(self: Parser; left: Node): Node =
-    dbg self, "parseInfixOp"
-
-    if not self.curr.kind.isOperator() and not self.curr.kind.isWordLikeOperator():
-        self.errUnknownOp(if self.curr.kind == Id: "id " & self.curr.value else: $self.curr.kind)
-
-    let op = id($self.curr.kind)
-
-    self.precedence = some(precedences[self.curr.kind])
-    self.skipToken()
-
-    dbg self, "parseInfixOp right"
-
-    result = newInfix(op, left, self.parseExpr())
-
-    dbg self, "parseInfixOp end"
-
-proc parseArgs(self: Parser; left: Node): Node =
-    dbg self, "parseArgs"
-
-    if left.kind != nkId:
-        self.errExpectedNodeOf(nkId)
-
-    self.skip(LParen)
-    result = newEmptyExprParen(left)
-    self.parseBlock(result, mode = List, until = some(RParen))
-    self.expectSameIndent()
-    self.skip(RParen)
-
-
-
-
-proc parseIf(self: Parser): Node =
-    dbg self, "parseIf"
-
-    let mainBranch = self.parseIfBranch()
-    var branches = @[mainBranch]
-
-    dbg self, "parseIf before loop"
-
-    while self.isKind(KwElif):
-        dbg self, "parseIf loop"
-
-        self.expectSameIndent()
-        branches &= self.parseIfBranch()
-
-    dbg self, "parseIf after loop"
-
-    let elseBranch =
-        if self.isKind(KwElse): self.parseElse()
-        else: nil.Node
-
-    dbg self, "parseIf end"
-
-    result = newIfExpr(branches, elseBranch)
-
-proc parseIfBranch(self: Parser): Node =
-    ## Parses `if` or `elif` branch
-    self.skip({KwIf, KwElif})
-
-    dbg self, "parseIfBranch"
-
-    let condition = self.parseExprOrBlock()
-
-    dbg self, "parseIfBranch body"
-
-    let body = self.parseDoOrBlock()
-
-    dbg self, "parseIfBranch end"
-
-    result = newIfBranch(condition, body)
-
-proc parseElse(self: Parser): Node =
-    dbg self, "parseElse"
-
-    self.skip(KwElse)
-
-    result =
-        if self.curr.isFirstInLine():
-            var body = newEmptyExprList()
-            self.parseBlock(body)
-            newElseBranch(body)
-        else:
-            let expr = self.parseExpr()
-            newElseBranch(expr)
-
-proc parseList(self: Parser): Node =
-    dbg self, "parseList"
-
-    self.skip({LBracket, LParen, LBrace})
-    let untilKind: TokenKind
-    result = case self.prev.kind:
-        of LBracket:
-            untilKind = RBracket
-            newEmptyBracket()
-        of LParen:
-            untilKind = RParen
-            newEmptyParen()
-        of LBrace:
-            untilKind = RBrace
-            newEmptyBrace()
-        else: unreachable()
-    let mode = self.parseBlock(result, mode = Auto, until = some(untilKind))
-    self.expectSameIndent()
-    self.skip(untilKind)
-
-    case mode
-    of List:
-        result.flags.incl(nfList)
+      precedences[token.kind]
+    except KeyError:
+      unreachable()
+
+  let opNode = AstNode(kind: Operator, op: opKind.get())
+  let right = self.parseExpr()
+
+  result = AstNode(kind: Branch, branchKind: Infix, children: @[opNode, left, right])
+
+func parseList(self: var Parser; fn: ParsePrefixFunc): AstNode =
+  debug("parseList")
+
+  let until = case self.peekToken().kind:
+    of LeRound: RiRound
+    of LeCurly: RiCurly
+    of LeSquare: RiSquare
+    else: raiseParserError(&"expected ( or [ of {{, got {self.peekToken().kind}", self.peekToken().info)
+
+  self.skipToken(self.peekToken().kind)
+  var elems = newSeq[AstNode]()
+  let mode = self.parseBlock(elems, mode = Adaptive, until = some(until), fn = fn)
+  # TODO: check indentation
+  self.skipToken(until)
+
+  result = case mode
     of Block:
-        if result.kind == nkParen:
-            result = newExprList(result.children)
-    else: discard
+      if elems.len() == 1: elems[0]
+      else: AstNode(kind: Branch, branchKind: Block, children: elems)
+    of List: AstNode(kind: Branch, branchKind: List, children: elems)
+    else: unreachable()
 
-proc parseType(self: Parser): Node =
-    dbg self, "parseType"
+func parseBlock(
+  self: var Parser;
+  body: var seq[AstNode];
+  mode: ParseMode = Block;
+  until: Option[TokenKind];
+  fn: ParsePrefixFunc;
+): ParseMode =
+  debug("parseBlock")
 
-    self.skip(KwType)
+  var contextPushed = false
+  var wasSemicolon  = false
+  var mode          = mode
 
-    var id = self.parseId()
-    let genericParams =
-        if self.curr.kind == LBracket: self.parseList()
-        else: nil.Node
+  let untilKinds =
+    if untilKind =? until: {Eof, untilKind}
+    else: {Eof}
 
-    if genericParams != nil:
-        id = newExprBracketFromBracket(id, genericParams)
+  if self.blockStack.isEmpty():
+    self.blockStack.push((1, 0))
+    contextPushed = true
 
-    dbg self, "parseType typedesc"
+  while true:
+    let token = self.peekToken()
 
-    let expr =
-        if self.skipMaybe(Assign):
-            self.parseTypeExpr()
-        else:
-            self.skip({KwStruct, KwEnum})
-            let body = self.parseExprOrBlock()
-            body.expectKind(nkExprList)
-            body
+    if token.kind in untilKinds:
+      break
 
-    result = newType(id, expr)
+    debug(&"parseBlock: token {self.peekToken().human()}")
 
-proc parseTypeExpr(self: Parser): Node =
-    unimplemented()
+    if token.spaces.wasLF:
+      let token = self.peekToken()
+      let indent = token.spaces.leading
 
+      if mode == Block and wasSemicolon:
+        raiseParserError("expected expression after semicolon", token.info)
 
+      if contextPushed:
+        # check indentation of token
+        if indent > self.blockStack.peek().indent:
+          raiseParserError(
+            &"invalid indentation, expected {self.blockStack.peek().indent}, got {indent}",
+            token.info)
+        elif indent < self.blockStack.peek().indent:
+          # end of block
+          break
+      else:
+        # create a new context
+        let newContext = (line: token.info.line.int, indent: indent)
 
-proc parseDo(self: Parser): Node =
-    self.skip(KwDo)
+        # validate new context
+        if not self.isNewBlockContext(newContext):
+          raiseParserError(
+            &"a new block context expected, but got {newContext}, " &
+            &"which is the same or lower with previous context {self.blockStack.peek()}",
+            token.info)
 
-    result = newEmptyExprList()
-
-    if self.curr.isFirstInLine():
-        self.parseBlock(result)
-    # elif self.curr.kind == LParen and self.curr.spacesAfter().get() == 0:
-    #     # do(...expressions)
-    #     self.skip(LParen)
-    #     self.parseBlock(result, none(BlockContext), RParen)
-    #     self.skip(RParen)
+        # push a new context
+        self.blockStack.push(newContext)
+        contextPushed = true
     else:
-        result &= self.parseExpr()
+      let token = self.peekToken()
+      if mode == Block and not wasSemicolon:
+        raiseParserError(
+          "the other expression must be on a new line or separated by semicolon",
+          token.info)
+      wasSemicolon = false
 
-proc parseDoOrBlock(self: Parser): Node =
-    dbg self, "parseDoOrBlock"
+    let tree = fn(self)
 
-    if self.curr.kind == KwDo:
-        dbg self, "parseDoOrBlock do"
+    if tree.kind != Empty:
+      body &= tree
 
-        result = self.parseDo()
-    else:
-        dbg self, "parseDoOrBlock block"
+    # TODO: validate expression end
 
-        result = newEmptyExprList()
-        self.parseBlock(result)
+    if mode == Adaptive:
+      mode = if token.kind == Comma: List else: Block
+      hint fmt"determine mode of block parsing: {mode}"
 
-proc parseExprOrBlock(self: Parser): Node =
-    dbg self, "parseExprOrBlock"
+    if mode == Block:
+      if self.skipTokenMaybe(Semicolon):
+        wasSemicolon = true
+    if mode == List:
+      if not self.skipTokenMaybe(Comma):
+        let token = self.peekToken()
 
-    if self.curr.isFirstInLine():
-        dbg self, "parseExprOrBlock block"
+        if token.kind notin untilKinds:
+          raiseParserError(&"expected comma after expression", self.prevToken().info)
 
-        result = newEmptyExprList()
-        self.parseBlock(result)
-    else:
-        dbg self, "parseExprOrBlock expr"
+        break
 
-        result = self.parseExpr()
+  if mode == Adaptive:
+    # something like `()` or `[]`
+    mode = List
 
+  if mode == Block and wasSemicolon:
+    raiseParserError("expected expression after semicolon", self.prevToken().info)
 
+  if contextPushed:
+    self.blockStack.drop()
 
-proc parseVarDecl(self: Parser; left: Node): Node =
-    dbg self, "parseVarDecl"
+  result = mode
 
-    left.expectKind({nkId, nkVar, nkVal})
+#
+# API
+#
 
-    var prefix = nil.Node
-    var id     = nil.Node
+func parseAll*(self: var Parser)
+  {.raises: [ParserError, ValueError].} =
+  debug("parseAll()")
+  if self.tokens.len() == 0:
+    self.ast = some(AstNode(kind: Empty))
+    return
 
-    while true:
-        dbg self, "parseVarDecl loop"
+  var ast = AstNode(kind: Branch, branchKind: Block, children: @[])
+  self.parseBlock(ast.children, until = some(Eof))
+  self.ast = some(ast)
 
-        case self.curr.kind
-        of Ampersand:
-            self.skip(Ampersand)
-            prefix =
-                if prefix == nil: id"&"
-                else: newPrefix(prefix, id"&")
-        of QuestionMark:
-            self.skip(QuestionMark)
-            prefix =
-                if prefix == nil: id"?"
-                else: newPrefix(prefix, id"?")
-        of LBracket:
-            prefix =
-                if prefix == nil: self.parseList()
-                else: newPrefix(prefix, self.parseList())
-        of Id:
-            id = self.parseId()
-            break
-        else:
-            break
+func getAst*(self: Parser): Option[AstNode] =
+  self.ast
 
-    if id == nil:
-        self.err("expected identifier for type expression")
+func newParser*(tokens: openArray[Token]): Parser =
+  result = Parser(tokens: @tokens)
+  result.prefixFuncs[Id]       = parseId
+  result.prefixFuncs[LeRound]  = parseList
+  result.prefixFuncs[LeCurly]  = parseList
+  result.prefixFuncs[LeSquare] = parseList
+  result.prefixFuncs[KwNot]    = parseNot
+  result.prefixFuncs[KwDo]     = parseDo
+  result.prefixFuncs[KwStruct] = parseStruct
+  result.prefixFuncs[KwType]   = parseType
+  result.prefixFuncs[KwFunc]   = parseFunc
+  result.prefixFuncs[KwVal]    = parseVal
+  result.prefixFuncs[KwVar]    = parseVar
+  result.prefixFuncs[KwIf]     = parseIf
+  result.prefixFuncs[KwWhile]  = parseWhile
+  result.prefixFuncs[KwReturn] = parseReturn
 
-    dbg self, "parseVarDecl genericInst"
+  result.prefixFuncs[KwNil]     = parseLit
+  result.prefixFuncs[KwTrue]    = parseLit
+  result.prefixFuncs[KwFalse]   = parseLit
+  result.prefixFuncs[IntLit]    = parseLit
+  result.prefixFuncs[FloatLit]  = parseLit
+  result.prefixFuncs[StringLit] = parseLit
+  result.prefixFuncs[CharLit]   = parseLit
 
-    let genericInst =
-        if self.curr.kind == LBracket: self.parseList()
-        else: nil.Node
-
-    if genericInst != nil:
-        id = newExprBracketFromBracket(id, genericInst)
-
-    dbg self, "parseVarDecl end"
-
-    result =
-        if prefix != nil: newPrefix(prefix, id)
-        else: id
-
-
-proc expectSameIndent(self: Parser) =
-    if self.curr.checkIndent(self.blocks.peek()) != 0:
-        self.errInvalidBlockContext()
+  result.infixFuncs[KwAnd]    = parseInfix
+  result.infixFuncs[KwOr]     = parseInfix
+  result.infixFuncs[EqOp]     = parseInfix
+  result.infixFuncs[NeOp]     = parseInfix
+  result.infixFuncs[LtOp]     = parseInfix
+  result.infixFuncs[GtOp]     = parseInfix
+  result.infixFuncs[LeOp]     = parseInfix
+  result.infixFuncs[GeOp]     = parseInfix
+  result.infixFuncs[Plus]     = parseInfix
+  result.infixFuncs[Minus]    = parseInfix
+  result.infixFuncs[Asterisk] = parseInfix
+  result.infixFuncs[Slash]    = parseInfix
+  result.infixFuncs[Percent]  = parseInfix
+  result.infixFuncs[Shl]      = parseInfix
+  result.infixFuncs[Shr]      = parseInfix
