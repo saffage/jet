@@ -103,15 +103,9 @@ template parseWhile(self: var Lexer; fn: untyped; startOffset = 0; lastIdx = -1)
     self.pos += startOffset
     var it {.inject.} = self.peek()
 
-    warn("parseWhile: until = " & $until)
-    warn("parseWhile: pos = " & $self.pos)
-    warn("parseWhile: it = " & escape($it, "'", "'"))
-
     while self.pos <= until and fn:
       result &= self.pop()
       it = self.peek()
-      warn("parseWhile: pos = " & $self.pos)
-      warn("parseWhile: it = " & escape($it, "'", "'"))
     
     result
 
@@ -334,7 +328,6 @@ func nextToken(self: var Lexer)
     self.curr = Token(kind: TokenKind.Eof, info: self.lineInfo())
     return
 
-  warn("pos = " & $self.pos & "; " & escape($self.peek(), "next: '", "'"))
   var prevLineInfo = self.lineInfo()
   let oldPos = self.pos
   
