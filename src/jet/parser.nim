@@ -456,6 +456,9 @@ func parseInfix(self: var Parser; left: AstNode): AstNode =
   if opKind.isNone():
     raiseParserError(&"operator '{op}' not yet supported", token.info)
 
+  if OperatorNotation.Infix notin opKind.get().notation():
+    raiseParserError(&"operator '{op}' is not infix", token.info)
+
   self.precedence = some do:
     try:
       precedences[token.kind]

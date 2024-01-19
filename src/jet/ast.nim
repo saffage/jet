@@ -67,12 +67,37 @@ type
     OpShl    = "<<"
     OpShr    = ">>"
 
+  OperatorNotation* = enum
+    Infix
+    Prefix
+    Postfix
+
 func toOperatorKind*(value: string): Option[OperatorKind] =
   result = none(OperatorKind)
   for kind in OperatorKind:
     if $kind == value:
       result = some(kind)
       break
+
+func notation*(kind: OperatorKind): set[OperatorNotation] =
+  result = case kind:
+    of OpNot: {Prefix}
+    of OpAnd: {Infix}
+    of OpOr: {Infix}
+    of OpEq: {Infix}
+    of OpNe: {Infix}
+    of OpLt: {Infix}
+    of OpLe: {Infix}
+    of OpGt: {Infix}
+    of OpGe: {Infix}
+    of OpAdd: {Infix}
+    of OpSub: {Infix}
+    of OpMul: {Infix}
+    of OpDiv: {Infix}
+    of OpDivInt: {Infix}
+    of OpMod: {Infix}
+    of OpShl: {Infix}
+    of OpShr: {Infix}
 
 func isLeaf*(tree: AstNode): bool =
   tree.kind != Branch
