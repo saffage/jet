@@ -74,6 +74,7 @@ proc main() =
   var rootTree = parser.getAst().get()
   var mainModule = newModule(rootTree)
   mainModule.traverseSymbols()
-  echo mainModule.rootScope.repr
+
+  debug("Root scope symbols:\n    " & mainModule.rootScope.symbols.join("\n    "))
 
 when isMainModule: main()

@@ -1,4 +1,6 @@
 import
+  std/strformat,
+
   lib/utils
 
 
@@ -13,6 +15,13 @@ type
 #
 # Type
 #
+
+func `$`*(self: TypeRef): string =
+  result =
+    if self == nil:
+      "nil"
+    else:
+      $self.kind
 
 func sizeInBits*(self: TypeRef): int =
   result = case self.kind
@@ -73,3 +82,10 @@ func getSymbolRec*(self: ScopeRef; id: string): SymbolRef =
 #
 # Symbol
 #
+
+func `$`*(self: SymbolRef): string =
+  result =
+    if self == nil:
+      "nil"
+    else:
+      &"{self.kind}: {self.id} {self.`type`}"
