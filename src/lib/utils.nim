@@ -85,7 +85,7 @@ macro abstract*(fn: untyped): untyped =
 
 template findIt*(collection: typed; pred: untyped): untyped =
     type Item = typeof( default( typeof(pairs(collection), typeOfIter) )[0] )
-    var result = default(Item)
+    var result = -1
     for i, it {.inject.} in pairs(collection):
         if pred:
             result = i
@@ -94,7 +94,7 @@ template findIt*(collection: typed; pred: untyped): untyped =
 
 template rfindIt*(collection: typed; pred: untyped): untyped =
     type Item = typeof( default( typeof(pairs(collection), typeOfIter) )[0] )
-    var result = default(Item)
+    var result = -1
     for i, it {.inject.} in pairs(collection):
         if pred:
             result = i
