@@ -6,7 +6,10 @@ import
 
 type
   TypeKind* = enum
+    tyI8
+    tyI16
     tyI32
+    tyI64
 
   TypeRef* = ref Type
   Type* = object
@@ -25,11 +28,19 @@ func `$`*(self: TypeRef): string =
 
 func sizeInBits*(self: TypeRef): int =
   result = case self.kind
+    of tyI8: 8
+    of tyI16: 16
     of tyI32: 32
+    of tyI64: 64
+    else: 0
 
 func sizeInBytes*(self: TypeRef): int =
   result = case self.kind
+    of tyI8: 1
+    of tyI16: 2
     of tyI32: 4
+    of tyI64: 8
+    else: 0
 
 type
   ScopeRef* = ref Scope
