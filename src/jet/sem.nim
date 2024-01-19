@@ -1,43 +1,43 @@
-import jet/ast
-import jet/ast/sym
-import jet/ast/types
+import
+  jet/ast,
+  jet/symbol,
+  jet/module,
 
-import lib/utils
+  lib/utils
 
+{.push, raises: [].}
 
-proc getTreeType(tree: Node): Type =
-    result = case tree.kind:
-        of nkDefStmt, nkVarDecl:
-            types.unitType
-        of nkExprParen, nkExprBrace:
-            tree[0].getTreeType()
-        of nkId, nkLit:
-            tree.`type`
-        else: unimplemented($tree.kind)
+func isSymDecl(tree: AstNode): bool =
+  result =
+    tree.kind == Branch and
+    tree.branchKind in {ValDecl, VarDecl}
 
-proc getType(tree: Node): Type =
-    result = case tree.kind:
-        of nkDefStmt:
-            types.unitType
-        of nkExprParen, nkExprBrace:
-            tree[0].getTreeType()
-        of nkId, nkLit:
-            tree.`type`
-        else: unimplemented($tree.kind)
+proc typeFromExpr(module: ModuleRef; expr: AstNode): TypeRef =
+  # что может быть лучше этого?
+  result = module.rootScope.getSymbol(expr.id).`type`
 
-proc genVarDeclSym(tree: Node) =
-    let `type` = tree.getType()
-    let sym = Sym()
+func genSym(module: ModuleRef; tree: AstNode): SymbolRef =
+  result = nil
 
-proc semGenTreeTypes*(tree: Node) =
-    discard
+  if not tree.isSymDecl():
+    return
 
-proc semGenTreeSyms*(tree: Node) =
-    case tree.kind
-    of nkEmpty, nkId, nkGenericId, nkLit:
-        discard
-    of nkVarDecl:
-        tree.genVarDeclSym()
-    else:
-        for child in tree.children:
-            semGenTreeSyms(child)
+  case tree.branchKind
+  of VarDecl:
+    let id = tree.children[0].id
+    let typeExpr = tree.children[1]
+
+    result = SymbolRef(
+      id: id,
+      kind: skVar,
+      `type`: module.typeFromExpr(typeExpr),
+      # scope: module.rootScope, # recursive
+    )
+  else:
+    unimplemented()
+
+proc traverseSymbols*(module: ModuleRef)
+  {.raises: [ModuleError, ValueError].} =
+  for tree in module.rootTree.children:
+    let sym = module.genSym(tree)
+    module.registerSymbol(sym)

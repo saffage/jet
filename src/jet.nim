@@ -5,10 +5,13 @@ import
   std/os,
   std/options,
 
+  jet/astalgo,
+  jet/token,
   jet/lexer,
   jet/parser,
-  jet/token,
-  jet/astalgo,
+  jet/symbol,
+  jet/module,
+  jet/sem,
 
   lib/utils,
 
@@ -66,5 +69,11 @@ proc main() =
     parser.getAst().get().printTree()
   else:
     debug("AST is not generated")
+
+  hint("semantic analysis...")
+  var rootTree = parser.getAst().get()
+  var mainModule = newModule(rootTree)
+  mainModule.traverseSymbols()
+  echo mainModule.rootScope.repr
 
 when isMainModule: main()
