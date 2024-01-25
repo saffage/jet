@@ -3,17 +3,19 @@ import
 
   lib/utils
 
-
 type
   TypeKind* = enum
     tyI8
     tyI16
     tyI32
     tyI64
+    tyRef
+    tyNil
 
   TypeRef* = ref Type
   Type* = object
-    kind* : TypeKind
+    kind*   : TypeKind
+    parent* : TypeRef = nil
 
 #
 # Type
@@ -23,6 +25,8 @@ func `$`*(self: TypeRef): string =
   result =
     if self == nil:
       "nil"
+    elif self.parent != nil:
+      $self.kind & " " & $self.parent
     else:
       $self.kind
 
@@ -32,6 +36,7 @@ func sizeInBits*(self: TypeRef): int =
     of tyI16: 16
     of tyI32: 32
     of tyI64: 64
+    of tyRef: sizeof(pointer) * 8
     else: 0
 
 func sizeInBytes*(self: TypeRef): int =
@@ -40,7 +45,23 @@ func sizeInBytes*(self: TypeRef): int =
     of tyI16: 2
     of tyI32: 4
     of tyI64: 8
+    of tyRef: sizeof(pointer)
     else: 0
+
+func isCompatibleTypes*(self, other: TypeRef): bool =
+  if self == nil or other == nil:
+    return false
+
+  result = case self.kind:
+    of tyI8, tyI16, tyI32, tyI64:
+      other.kind == self.kind
+    of tyRef:
+      other.kind == tyNil or (
+        other.kind == tyRef and
+        other.parent.kind == self.parent.kind
+      )
+    else:
+      false
 
 type
   ScopeRef* = ref Scope

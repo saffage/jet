@@ -92,6 +92,7 @@ type
 
 func parseLit(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
 func parseExpr(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
+func parseTypeExpr(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
 func parseId(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
 func parseNot(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
 func parseStruct(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
@@ -283,6 +284,18 @@ func parseExpr(self: var Parser): AstNode =
     result = fn(self, result)
 
   self.precedence = none(Precedence)
+
+func parseTypeExpr(self: var Parser): AstNode =
+  let token = self.popToken({Ampersand, Id})
+
+  result = case token.kind:
+    of Ampersand:
+      let refOp = AstNode(kind: Operator, op: OpRef)
+      let typeId = self.parseId()
+      initAstNodeBranch(Prefix, @[refOp, typeId])
+    of Id:
+      initAstNodeId(token.data, token.info)
+    else: unreachable()
 
 func parseId(self: var Parser): AstNode =
   debug("parseId")
@@ -630,6 +643,7 @@ func newParser*(tokens: openArray[Token]): Parser =
   result.prefixFuncs[KwWhile]  = parseWhile
   result.prefixFuncs[KwReturn] = parseReturn
 
+  result.prefixFuncs[Ampersand] = parseTypeExpr
   result.prefixFuncs[KwNil]     = parseLit
   result.prefixFuncs[KwTrue]    = parseLit
   result.prefixFuncs[KwFalse]   = parseLit

@@ -24,14 +24,21 @@ proc checkOperandTypes(module: ModuleRef; op: OperatorKind; left, right: TypeRef
   {.raises: [SemanticError].} =
   assert(left != nil and right != nil)
   result = case op:
-    of OpAdd, OpSub:
+    of OpAdd, OpSub, OpMul:
+      if left.kind notin {tyI8, tyI16, tyI32, tyI64}:
+        raiseSemanticError("invalid type for " & $op & " operator")
+
+      if right.kind notin {tyI8, tyI16, tyI32, tyI64}:
+        raiseSemanticError("invalid type for " & $op & " operator")
+
       if left.kind != right.kind:
         raiseSemanticError(
           "both expressions must be of the same type, got '" &
-          $left.kind & "' and '" & $right.kind & "'")
+          $left & "' and '" & $right & "'")
 
       left
-    else: todo()
+    else:
+      todo()
 
 proc typeOfExpr(module: ModuleRef; expr: AstNode; expectedType = nil.TypeRef): TypeRef
   {.raises: [SemanticError, ModuleError].} =
@@ -51,11 +58,16 @@ proc typeOfExpr(module: ModuleRef; expr: AstNode; expectedType = nil.TypeRef): T
     of Lit:
       case expr.lit.kind
       of lkInt:
-        if expectedType == nil:
-          module.getBuiltinType(tyI32)
-        else:
+        if expectedType != nil and
+           expectedType.kind in {tyI8, tyI16, tyI32, tyI64}:
           # TODO: check int range
-          expectedType
+          return expectedType
+        module.getBuiltinType(tyI32)
+      of lkNil:
+        # if expectedType != nil and
+        #    expectedType.kind == tyRef:
+        #     return expectedType
+        module.getBuiltinType(tyNil)
       else:
         todo($expr.lit.kind)
     of Operator:
@@ -67,7 +79,16 @@ proc typeOfExpr(module: ModuleRef; expr: AstNode; expectedType = nil.TypeRef): T
         let left = module.typeOfExpr(expr.children[1])
         let right = module.typeOfExpr(expr.children[2])
         module.checkOperandTypes(opKind, left, right)
-      else: todo()
+      of Prefix:
+        let opKind = expr.children[0].op
+        let operand = module.typeOfExpr(expr.children[1])
+
+        if opKind == OpRef:
+          TypeRef(kind: tyRef, parent: operand)
+        else:
+          todo()
+      else:
+        todo()
 
 func genSym(module: ModuleRef; tree: AstNode): SymbolRef
   {.raises: [SemanticError, ValueError, ModuleError].} =
@@ -77,7 +98,7 @@ func genSym(module: ModuleRef; tree: AstNode): SymbolRef
     return
 
   case tree.branchKind
-  of VarDecl:
+  of VarDecl, ValDecl:
     let id = tree.children[0].id
     let typeExpr = tree.children[1]
     let body = tree.children[2]
@@ -85,19 +106,30 @@ func genSym(module: ModuleRef; tree: AstNode): SymbolRef
     var `type` = module.typeOfExpr(typeExpr)
     let bodyType = module.typeOfExpr(body, `type`)
 
+    debugEcho(`type`)
+    debugEcho(bodyType)
+
     if `type` == nil:
       `type` = module.typeOfExpr(body)
     else:
       # check body type
-      if `type`.kind != bodyType.kind:
-        raiseSemanticError(&"invalid type for '{id}'; expected {`type`.kind}, got {bodyType.kind}")
+      if not isCompatibleTypes(`type`, bodyType):
+        raiseSemanticError(&"invalid type for '{id}'; expected {`type`}, got {bodyType}")
 
     if `type` == nil:
       raiseSemanticError(&"unable to infer type for '{id}'")
 
+    let symKind = case tree.branchKind:
+      of VarDecl: skVar
+      of ValDecl: skVal
+      else: unreachable()
+
+    if `type`.kind == tyNil:
+      raiseSemanticError("variable cannot have type nil")
+
     result = SymbolRef(
       id: id,
-      kind: skVar,
+      kind: symKind,
       `type`: `type`,
       scope: module.rootScope, # recursive
     )

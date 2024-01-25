@@ -99,14 +99,14 @@ template parseWhile(self: var Lexer; fn: untyped; startOffset = 0; lastIdx = -1)
   block:
     var result = newStringOfCap(16)
     let until  = if lastIdx < 0: self.buffer.high else: min(self.buffer.high, lastIdx)
-    
+
     self.pos += startOffset
     var it {.inject.} = self.peek()
 
     while self.pos <= until and fn:
       result &= self.pop()
       it = self.peek()
-    
+
     result
 
 template parseUntil(self: var Lexer; fn: untyped; startOffset = 0; lastIdx = -1): string =
@@ -175,7 +175,7 @@ func lexNumber(self: var Lexer): Token
   # TODO: handle '1e10' notation
   # TODO: suffix
 
-  result = 
+  result =
     if self.peek() == '.':
       self.pop()
       let dotInfo = self.lineInfo()
@@ -183,17 +183,17 @@ func lexNumber(self: var Lexer): Token
 
       if fracPart.len() == 0 or Digits notin fracPart:
         raiseLexerError("expected number after '.' in float literal", dotInfo + 1)
-      
+
       if fracPart.startsWith('_'):
         raiseLexerError(
           "leading underscores in number literal is illegal",
           withLength(dotInfo + 1, 1))
-      
+
       if fracPart.endsWith('_') or fracPart.startsWith('_'):
         raiseLexerError(
           "trailing underscores in number literal is illegal",
           self.lineInfo().withLength(1))
-      
+
       Token(kind: FloatLit, data: numPart & '.' & fracPart)
     else:
       Token(kind: IntLit, data: numPart)
@@ -211,10 +211,10 @@ func lexComment(self: var Lexer): Token =
     else:
       self.skipLine()
       return
-  
+
   if self.peek() == ' ':
     self.pop()
-  
+
   result.data = self.parseUntil(it in Eol)
 
 func lexPunctuation(self: var Lexer): Token =
@@ -242,9 +242,9 @@ func escapeString(s: string; startLineInfo: LineInfo): string
     if s[i] == '\\':
       if i == s.high:
         raiseLexerError("invalid character escape; expected character after \\")
-      
+
       let info = startLineInfo + i
-      
+
       i += 1
       result.add case s[i]:
         of 'n': "\n"
@@ -289,7 +289,7 @@ func lexString(self: var Lexer): Token
   self.pop()
   let infoInsideLit = self.lineInfo()
   let data = self.parseUntil(it == '\"' and self.peek(-1) != '\\' or it in Eol)
-  
+
   if self.peek() in Eol:
     raiseLexerError("missing closing \"", self.lineInfo())
 
@@ -308,10 +308,10 @@ func lexChar(self: var Lexer): Token
     raiseLexerError("missing closing \'", self.lineInfo())
 
   self.pop()
-  
+
   if data.len() == 0:
     raiseLexerError("empty character literals are not allowed", infoInsideLit)
-  
+
   if data[0] == '\\':
     data = data.escapeString(infoInsideLit)
 
@@ -330,7 +330,7 @@ func nextToken(self: var Lexer)
 
   var prevLineInfo = self.lineInfo()
   let oldPos = self.pos
-  
+
   let token = case self.peek():
     of '#':
       self.lexComment()
@@ -338,7 +338,7 @@ func nextToken(self: var Lexer)
       self.lexId()
     of Digits:
       self.lexNumber()
-    of '@', '$', '(', ')', '{', '}', '[', ']', ',', ';', ':':
+    of '&', '@', '$', '(', ')', '{', '}', '[', ']', ',', ';', ':':
       self.lexPunctuation()
     of '.':
       if self.peek(1) in operatorChars:

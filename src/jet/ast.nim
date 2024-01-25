@@ -66,6 +66,7 @@ type
     OpMod    = "%"
     OpShl    = "<<"
     OpShr    = ">>"
+    OpRef    = "&"
 
   OperatorNotation* = enum
     Infix
@@ -98,6 +99,7 @@ func notation*(kind: OperatorKind): set[OperatorNotation] =
     of OpMod: {Infix}
     of OpShl: {Infix}
     of OpShr: {Infix}
+    of OpRef: {Prefix}
 
 func isLeaf*(tree: AstNode): bool =
   tree.kind != Branch
