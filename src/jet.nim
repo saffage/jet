@@ -72,9 +72,12 @@ proc main() =
 
   hint("semantic analysis...")
   var rootTree = parser.getAst().get()
-  var mainModule = newModule(rootTree)
-  mainModule.traverseSymbols()
-
-  debug("Root scope symbols:\n    " & mainModule.rootScope.symbols.join("\n    "))
+  try:
+    var mainModule = newModule(rootTree)
+    mainModule.traverseSymbols()
+    debug("Root scope symbols:\n    " & mainModule.rootScope.symbols.join("\n    "))
+  except SemanticError as e:
+    error(e.msg, e.info)
+    raise
 
 when isMainModule: main()
