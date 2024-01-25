@@ -290,12 +290,13 @@ func parseTypeExpr(self: var Parser): AstNode =
 
   result = case token.kind:
     of Ampersand:
-      let refOp = AstNode(kind: Operator, op: OpRef)
+      let refOp = initAstNodeOperator(OpRef, token.info)
       let typeId = self.parseId()
-      initAstNodeBranch(Prefix, @[refOp, typeId])
+      initAstNodeBranch(Prefix, @[refOp, typeId], merge(token.info, typeId.info))
     of Id:
       initAstNodeId(token.data, token.info)
-    else: unreachable()
+    else:
+      unreachable()
 
 func parseId(self: var Parser): AstNode =
   debug("parseId")
@@ -311,7 +312,7 @@ func parseNot(self: var Parser): AstNode =
 
   let token = self.popToken(KwNot)
   let expr  = self.parseExpr()
-  let notOp = initAstNodeOperator(OpNot)
+  let notOp = initAstNodeOperator(OpNot, token.info)
 
   result = initAstNodeBranch(Prefix, @[notOp, expr], token.info)
 
