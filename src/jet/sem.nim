@@ -15,7 +15,7 @@ type
     info* : LineInfo
 
 template raiseSemanticError*(message: string; lineInfo: LineInfo) =
-  raise (ref SemanticError)(msg: message)
+  raise (ref SemanticError)(msg: message, info: lineInfo)
 
 func isSymDecl(tree: AstNode): bool =
   result =
@@ -114,9 +114,6 @@ func genSym(module: ModuleRef; tree: AstNode): SymbolRef
     var `type` = module.typeOfExpr(typeExpr)
     let bodyType = module.typeOfExpr(body, `type`)
 
-    debugEcho(`type`)
-    debugEcho(bodyType)
-
     if `type` == nil:
       `type` = module.typeOfExpr(body)
     else:
@@ -133,7 +130,7 @@ func genSym(module: ModuleRef; tree: AstNode): SymbolRef
       else: unreachable()
 
     if `type`.kind == tyNil:
-      raiseSemanticError("variable cannot have type nil", idNode.info)
+      raiseSemanticError("variable cannot be of type nil", idNode.info)
 
     result = SymbolRef(
       id: id,
