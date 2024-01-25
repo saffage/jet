@@ -5,14 +5,16 @@ import
   jet/symbol,
   jet/module,
 
-  lib/utils
+  lib/utils,
+  lib/line_info
 
 {.push, raises: [].}
 
 type
   SemanticError* = object of CatchableError
+    info* : LineInfo
 
-template raiseSemanticError*(message: string) =
+template raiseSemanticError*(message: string; lineInfo: LineInfo) =
   raise (ref SemanticError)(msg: message)
 
 func isSymDecl(tree: AstNode): bool =
@@ -20,21 +22,26 @@ func isSymDecl(tree: AstNode): bool =
     tree.kind == Branch and
     tree.branchKind in {ValDecl, VarDecl}
 
-proc checkOperandTypes(module: ModuleRef; op: OperatorKind; left, right: TypeRef): TypeRef
+proc checkOperandTypes(module: ModuleRef; opNode: AstNode; left, right: TypeRef): TypeRef
   {.raises: [SemanticError].} =
+  assert(opNode.kind == Operator)
   assert(left != nil and right != nil)
+
+  let op = opNode.op
+
   result = case op:
     of OpAdd, OpSub, OpMul:
       if left.kind notin {tyI8, tyI16, tyI32, tyI64}:
-        raiseSemanticError("invalid type for " & $op & " operator")
+        raiseSemanticError("invalid type for " & $op & " operator", opNode.info)
 
       if right.kind notin {tyI8, tyI16, tyI32, tyI64}:
-        raiseSemanticError("invalid type for " & $op & " operator")
+        raiseSemanticError("invalid type for " & $op & " operator", opNode.info)
 
       if left.kind != right.kind:
         raiseSemanticError(
           "both expressions must be of the same type, got '" &
-          $left & "' and '" & $right & "'")
+          $left & "' and '" & $right & "'",
+          opNode.info)
 
       left
     else:
@@ -49,10 +56,10 @@ proc typeOfExpr(module: ModuleRef; expr: AstNode; expectedType = nil.TypeRef): T
       var sym = module.getSym(expr.id)
 
       if sym == nil:
-        raiseSemanticError("unbound identifier: '" & expr.id & "'")
+        raiseSemanticError("unbound identifier: '" & expr.id & "'", expr.info)
 
       if sym.kind != skType and sym.`type` == nil:
-        raiseSemanticError("expression '" & expr.id & "' has no type")
+        raiseSemanticError("expression '" & expr.id & "' has no type", expr.info)
 
       sym.`type`
     of Lit:
@@ -75,10 +82,10 @@ proc typeOfExpr(module: ModuleRef; expr: AstNode; expectedType = nil.TypeRef): T
     of Branch:
       case expr.branchKind
       of Infix:
-        let opKind = expr.children[0].op
+        let opNode = expr.children[0]
         let left = module.typeOfExpr(expr.children[1])
         let right = module.typeOfExpr(expr.children[2])
-        module.checkOperandTypes(opKind, left, right)
+        module.checkOperandTypes(opNode, left, right)
       of Prefix:
         let opKind = expr.children[0].op
         let operand = module.typeOfExpr(expr.children[1])
@@ -99,7 +106,8 @@ func genSym(module: ModuleRef; tree: AstNode): SymbolRef
 
   case tree.branchKind
   of VarDecl, ValDecl:
-    let id = tree.children[0].id
+    let idNode = tree.children[0]
+    let id = idNode.id
     let typeExpr = tree.children[1]
     let body = tree.children[2]
 
@@ -114,10 +122,10 @@ func genSym(module: ModuleRef; tree: AstNode): SymbolRef
     else:
       # check body type
       if not isCompatibleTypes(`type`, bodyType):
-        raiseSemanticError(&"invalid type for '{id}'; expected {`type`}, got {bodyType}")
+        raiseSemanticError(&"invalid type for '{id}'; expected {`type`}, got {bodyType}", idNode.info)
 
     if `type` == nil:
-      raiseSemanticError(&"unable to infer type for '{id}'")
+      raiseSemanticError(&"unable to infer type for '{id}'", idNode.info)
 
     let symKind = case tree.branchKind:
       of VarDecl: skVar
@@ -125,7 +133,7 @@ func genSym(module: ModuleRef; tree: AstNode): SymbolRef
       else: unreachable()
 
     if `type`.kind == tyNil:
-      raiseSemanticError("variable cannot have type nil")
+      raiseSemanticError("variable cannot have type nil", idNode.info)
 
     result = SymbolRef(
       id: id,
