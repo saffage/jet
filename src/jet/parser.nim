@@ -291,8 +291,8 @@ func parseTypeExpr(self: var Parser): AstNode =
   result = case token.kind:
     of Ampersand:
       let refOp = initAstNodeOperator(OpRef, token.info)
-      let typeId = self.parseId()
-      initAstNodeBranch(Prefix, @[refOp, typeId], merge(token.info, typeId.info))
+      let typeExpr = self.parseTypeExpr()
+      initAstNodeBranch(Prefix, @[refOp, typeExpr], merge(token.info, typeExpr.info))
     of Id:
       initAstNodeId(token.data, token.info)
     else:
