@@ -384,17 +384,18 @@ func parseReturn(self: var Parser): AstNode =
 func parseVar(self: var Parser): AstNode =
   debug("parseVar")
 
-  self.skipToken(KwVar)
+  let token = self.popToken(KwVar)
 
   result = self.parseValDecl()
-  result = initAstNodeBranch(VarDecl, result.children, result.info)
+  result = initAstNodeBranch(VarDecl, result.children, token.info)
 
 func parseVal(self: var Parser): AstNode =
   debug("parseVal")
 
-  self.skipToken(KwVal)
+  let token = self.popToken(KwVal)
 
   result = self.parseValDecl()
+  result.info = token.info
 
 func parseValDecl(self: var Parser): AstNode =
   debug("parseValDecl")
@@ -402,7 +403,7 @@ func parseValDecl(self: var Parser): AstNode =
   let id = self.parseId()
   let typeExpr =
     if self.peekToken().kind == Eq: initAstNodeEmpty()
-    else: self.parseExpr()
+    else: self.parseTypeExpr()
   let body =
     if self.skipTokenMaybe(Eq): self.parseDoOrExpr()
     else: initAstNodeEmpty()
