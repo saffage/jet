@@ -1,6 +1,7 @@
 ## Very simple logger with a lot of hidden side effects.
 
 import
+    std/strutils,
     std/strformat,
 
     ./line_info,
@@ -89,13 +90,13 @@ func print(level: static[LogLevel]; tag, msg: string; colors: bool) =
 
 func log(level: static[LogLevel]; msg: string; colors: bool)
     {.raises: [].} =
-    const tag = &"{level:>5} "
+    const tag = toLowerAscii($level) & ": "
     print(level, tag, msg, colors)
 
 func log(level: static[LogLevel]; msg: string; colors: bool; info: LineInfo)
     {.raises: [].} =
-    const levelTag = &"{level:>5}"
-    let tag = try: &"{levelTag}[{info}] " except ValueError: "<fmt-error>"
+    const levelTag = toLowerAscii($level)
+    let tag = try: &"{levelTag}[{info}]: " except ValueError: "<fmt-error>"
     print(level, tag, msg, colors)
 
 func debug*(msg: string; info: LineInfo) =
