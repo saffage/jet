@@ -92,7 +92,6 @@ type
 
 func parseLit(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
 func parseExpr(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
-func parseTypeExpr(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
 func parseId(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
 func parseNot(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
 func parseStruct(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
@@ -109,6 +108,7 @@ func parseDo(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
 func parseDoOrBlock(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
 func parseDoOrExpr(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
 func parseExprOrBlock(self: var Parser; fn: ParsePrefixFunc = parseExpr): AstNode {.raises: [ParserError, ValueError].}
+func parsePrefix(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
 func parseInfix(self: var Parser; left: AstNode): AstNode {.raises: [ParserError, ValueError].}
 func parseList(self: var Parser; fn: ParsePrefixFunc): AstNode {.raises: [ParserError, ValueError].}
 func parseList(self: var Parser): AstNode {.raises: [ParserError, ValueError].} = self.parseList(parseExpr)
@@ -285,19 +285,6 @@ func parseExpr(self: var Parser): AstNode =
 
   self.precedence = none(Precedence)
 
-func parseTypeExpr(self: var Parser): AstNode =
-  let token = self.popToken({Ampersand, Id})
-
-  result = case token.kind:
-    of Ampersand:
-      let refOp = initAstNodeOperator(OpRef, token.info)
-      let typeExpr = self.parseTypeExpr()
-      initAstNodeBranch(Prefix, @[refOp, typeExpr], merge(token.info, typeExpr.info))
-    of Id:
-      initAstNodeId(token.data, token.info)
-    else:
-      unreachable()
-
 func parseId(self: var Parser): AstNode =
   debug("parseId")
 
@@ -404,7 +391,7 @@ func parseValDecl(self: var Parser): AstNode =
   let id = self.parseId()
   let typeExpr =
     if self.peekToken().kind == Eq: initAstNodeEmpty()
-    else: self.parseTypeExpr()
+    else: self.parseExpr()
   let body =
     if self.skipTokenMaybe(Eq): self.parseDoOrExpr()
     else: initAstNodeEmpty()
@@ -456,6 +443,21 @@ func parseExprOrBlock(self: var Parser; fn: ParsePrefixFunc): AstNode =
     self.parseBlock(result.children, fn = fn)
   else:
     result = fn(self)
+
+func parsePrefix(self: var Parser): AstNode =
+  let token = self.popToken(Ampersand)
+
+  # TODO: precedence
+
+  result = case token.kind:
+    of Ampersand:
+      let refOp = initAstNodeOperator(OpRef, token.info)
+      let expr = self.parseExpr()
+      initAstNodeBranch(Prefix, @[refOp, expr], merge(token.info, expr.info))
+    of Id:
+      initAstNodeId(token.data, token.info)
+    else:
+      unreachable()
 
 func parseInfix(self: var Parser; left: AstNode): AstNode =
   debug("parseInfix")
@@ -645,7 +647,7 @@ func newParser*(tokens: openArray[Token]): Parser =
   result.prefixFuncs[KwWhile]  = parseWhile
   result.prefixFuncs[KwReturn] = parseReturn
 
-  result.prefixFuncs[Ampersand] = parseTypeExpr
+  result.prefixFuncs[Ampersand] = parsePrefix
   result.prefixFuncs[KwNil]     = parseLit
   result.prefixFuncs[KwTrue]    = parseLit
   result.prefixFuncs[KwFalse]   = parseLit
