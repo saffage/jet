@@ -14,12 +14,9 @@ func printTreeAux(tree: AstNode; buffer: var string; indent: string; last: bool)
     const space     = "   "
 
   buffer &= indent & (if last: lastLeaf else: leaf)
+  buffer &= $tree & "\n"
 
-  if tree.isLeaf():
-    buffer &= $tree & "\n"
-  else:
-    buffer &= $tree.branchKind & "\n"
-
+  if not tree.isLeaf():
     let indent = indent & (if last: space else: connector)
 
     for i, node in tree.children:

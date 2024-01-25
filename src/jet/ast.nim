@@ -109,18 +109,20 @@ func len*(tree: AstNode): int =
   else: tree.children.len()
 
 func `$`*(tree: AstNode): string =
-  result = $tree.kind
+  result =
+    if tree.kind != Branch: $tree.kind
+    else: $tree.branchKind
 
   if tree.info != LineInfo():
     result &= &"[{tree.info}]"
 
   case tree.kind
   of Id:
-    result &= &" = \"{tree.id}\""
+    result &= &" = `{tree.id}`"
   of Lit:
     result &= &" = {tree.lit.pretty()}"
   of Operator:
-    result &= &" = {tree.op}"
+    result &= &" = {$tree.op}"
   else:
     discard
 
