@@ -31,6 +31,7 @@ type
     Infix   ## a ~ b
     Prefix  ## ~a
     Postfix ## a~
+    ExprCurly
 
   AstNodeRef* = ref AstNode
   AstNode* {.byref.} = object

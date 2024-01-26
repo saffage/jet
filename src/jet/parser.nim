@@ -110,6 +110,9 @@ func parseDoOrExpr(self: var Parser): AstNode {.raises: [ParserError, ValueError
 func parseExprOrBlock(self: var Parser; fn: ParsePrefixFunc = parseExpr): AstNode {.raises: [ParserError, ValueError].}
 func parsePrefix(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
 func parseInfix(self: var Parser; left: AstNode): AstNode {.raises: [ParserError, ValueError].}
+func parseInfixCurly(self: var Parser; left: AstNode): AstNode {.raises: [ParserError, ValueError].}
+func parseInfixRound(self: var Parser; left: AstNode): AstNode {.raises: [ParserError, ValueError].}
+func parseInfixSquare(self: var Parser; left: AstNode): AstNode {.raises: [ParserError, ValueError].}
 func parseList(self: var Parser; fn: ParsePrefixFunc): AstNode {.raises: [ParserError, ValueError].}
 func parseList(self: var Parser): AstNode {.raises: [ParserError, ValueError].} = self.parseList(parseExpr)
 func parseBlock(
@@ -487,6 +490,27 @@ func parseInfix(self: var Parser; left: AstNode): AstNode =
 
   result = initAstNodeBranch(Infix, @[opNode, left, right], opNode.info)
 
+func parseInfixCurly(self: var Parser; left: AstNode): AstNode =
+  let args = self.parseList()
+
+  case left.kind:
+  of Id:
+    discard
+  of Branch:
+    if left.branchKind != Prefix:
+      raiseParserError("expected identifier or prefix expression", left.info)
+  else:
+    todo($left.kind)
+
+  # FIXME: line info is not correct
+  result = initAstNodeBranch(ExprCurly, @[left, args], merge(left.info, args.info))
+
+func parseInfixRound(self: var Parser; left: AstNode): AstNode =
+  todo()
+
+func parseInfixSquare(self: var Parser; left: AstNode): AstNode =
+  todo()
+
 func parseList(self: var Parser; fn: ParsePrefixFunc): AstNode =
   debug("parseList")
 
@@ -573,7 +597,7 @@ func parseBlock(
       let token = self.peekToken()
       if mode == Block and not wasSemicolon:
         raiseParserError(
-          "the other expression must be on a new line or separated by semicolon",
+          &"expected semicolon or newline after expression, got {token.kind}",
           token.info)
       wasSemicolon = false
 
@@ -671,3 +695,7 @@ func newParser*(tokens: openArray[Token]): Parser =
   result.infixFuncs[Percent]  = parseInfix
   result.infixFuncs[Shl]      = parseInfix
   result.infixFuncs[Shr]      = parseInfix
+
+  result.infixFuncs[LeCurly]  = parseInfixCurly
+  result.infixFuncs[LeRound]  = parseInfixRound
+  result.infixFuncs[LeSquare] = parseInfixSquare

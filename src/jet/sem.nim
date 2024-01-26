@@ -47,6 +47,25 @@ proc checkOperandTypes(module: ModuleRef; opNode: AstNode; left, right: TypeRef)
     else:
       todo()
 
+proc getTypeDesc(module: ModuleRef; expr: AstNode): TypeRef =
+  result = nil
+
+  case expr.kind
+  of Id:
+    let sym = module.getSym(expr.id)
+    if sym.kind == skType:
+      return sym.`type`
+  of Branch:
+    case expr.branchKind:
+    of Prefix:
+      if expr.children[0].kind == Operator and
+          expr.children[0].op == OpRef:
+        return TypeRef(kind: tyRef, parent: module.getTypeDesc(expr.children[1]))
+    else:
+      return
+  else:
+    return
+
 proc typeOfExpr(module: ModuleRef; expr: AstNode; expectedType = nil.TypeRef): TypeRef
   {.raises: [SemanticError, ModuleError].} =
   result = case expr.kind:
@@ -94,8 +113,13 @@ proc typeOfExpr(module: ModuleRef; expr: AstNode; expectedType = nil.TypeRef): T
           TypeRef(kind: tyRef, parent: operand)
         else:
           todo()
+      of ExprCurly:
+        let typeDesc = module.getTypeDesc(expr.children[0])
+        if typeDesc == nil:
+          raiseSemanticError("expected typedesc, got expression", expr.info)
+        typeDesc
       else:
-        todo()
+        todo($expr.branchKind)
 
 func genSym(module: ModuleRef; tree: AstNode): SymbolRef
   {.raises: [SemanticError, ValueError, ModuleError].} =
