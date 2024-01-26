@@ -141,8 +141,17 @@ func genSym(module: ModuleRef; tree: AstNode): SymbolRef
   else:
     unimplemented()
 
+proc traverseSymbols*(module: ModuleRef; rootTree: AstNode)
+  {.raises: [ModuleError, SemanticError, ValueError].} =
+  for tree in rootTree.children:
+    if tree.kind == Branch and tree.branchKind == Block:
+      module.traverseSymbols(tree)
+    else:
+      let sym = module.genSym(tree)
+
+      if sym != nil:
+        module.registerSymbol(sym)
+
 proc traverseSymbols*(module: ModuleRef)
   {.raises: [ModuleError, SemanticError, ValueError].} =
-  for tree in module.rootTree.children:
-    let sym = module.genSym(tree)
-    module.registerSymbol(sym)
+  module.traverseSymbols(module.rootTree)
