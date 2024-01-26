@@ -4,6 +4,7 @@ import
   std/sequtils,
   std/os,
   std/options,
+  std/json,
 
   jet/astalgo,
   jet/token,
@@ -17,6 +18,10 @@ import
   lib/line_info,
 
   pkg/results
+
+# WHY???
+proc `%`*(v: char): JsonNode =
+  result = JsonNode(kind: JString, str: $v)
 
 proc main() =
   logger.maxErrors = 3
@@ -72,6 +77,7 @@ proc main() =
   if parser.getAst().isSome():
     debug("generated AST")
     parser.getAst().get().printTree()
+    writeFile("tests_local/ast.json", (%parser.getAst().get()).pretty())
   else:
     debug("AST is not generated")
 
