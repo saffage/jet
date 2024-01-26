@@ -490,12 +490,12 @@ func parseInfix(self: var Parser; left: AstNode): AstNode =
 func parseList(self: var Parser; fn: ParsePrefixFunc): AstNode =
   debug("parseList")
 
-  let token = self.peekToken()
+  let token = self.peekToken({LeRound, LeCurly, LeSquare})
   let until = case token.kind:
     of LeRound: RiRound
     of LeCurly: RiCurly
     of LeSquare: RiSquare
-    else: raiseParserError(&"expected ( or [ of {{, got {token.kind}", token.info)
+    else: unreachable()
 
   self.skipToken(token.kind)
   var elems = newSeq[AstNode]()
