@@ -284,43 +284,22 @@ func escapeString(s: string; startLineInfo: LineInfo): string
 
     i += 1
 
-func lexString(self: var Lexer): Token
+func lexString(self: var Lexer; raw = false): Token
   {.raises: [LexerError].} =
+  let quote =
+    if raw: '\"'
+    else: '\''
+  let info = self.lineInfo()
   self.pop()
   let infoInsideLit = self.lineInfo()
-  let data = self.parseUntil(it == '\"' and self.peek(-1) != '\\' or it in Eol)
+  let data = self.parseUntil(it == quote and self.peek(-1) != '\\')
 
-  if self.peek() in Eol:
-    raiseLexerError("missing closing \"", self.lineInfo())
+  if self.peek() == '\0':
+    raiseLexerError("missing closing " & quote, info)
 
   self.pop()
 
   result = Token(kind: StringLit, data: data.escapeString(infoInsideLit))
-
-func lexChar(self: var Lexer): Token
-  {.raises: [LexerError].} =
-  self.pop()
-  let infoInsideLit = self.lineInfo()
-  var data = self.parseUntil(it == '\'' and self.peek(-1) != '\\' or it in Eol)
-  let origLen = data.len()
-
-  if self.peek() in Eol:
-    raiseLexerError("missing closing \'", self.lineInfo())
-
-  self.pop()
-
-  if data.len() == 0:
-    raiseLexerError("empty character literals are not allowed", infoInsideLit)
-
-  if data[0] == '\\':
-    data = data.escapeString(infoInsideLit)
-
-  if data.len() > 1:
-    raiseLexerError(
-      "character is too long; use string literals for UTF-8 characters",
-      infoInsideLit.withLength(origLen.uint32))
-
-  result = Token(kind: CharLit, data: data)
 
 func nextToken(self: var Lexer)
   {.raises: [LexerError].} =
@@ -352,9 +331,9 @@ func nextToken(self: var Lexer)
     of Newlines:
       self.lexVSpace()
     of '\"':
-      self.lexString()
+      self.lexString(raw = true)
     of '\'':
-      self.lexChar()
+      self.lexString()
     of '\0':
       Token(kind: TokenKind.Eof, info: self.lineInfo())
     else:
