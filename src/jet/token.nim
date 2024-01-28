@@ -3,7 +3,7 @@ import
   std/enumutils,
   std/options,
 
-  lib/line_info
+  lib/lineinfo
 
 {.push, raises: [].}
 
@@ -143,7 +143,7 @@ type
   Token* = object
     kind*   : TokenKind
     data*   : string = ""
-    info*   : LineInfo = LineInfo()
+    rng*    : FileRange = FileRange()
     spaces* : TokenSpacing = TokenSpacing()
 
 const
@@ -154,7 +154,7 @@ func `$`*(self: Token): string =
 
 func human*(self: Token): string
   {.raises: [ValueError].} =
-  result = &"at [{self.info}] {self}"
+  result = &"at [{self.rng}] {self}"
 
   if self.data.len() > 0:
     result.addQuoted(self.data)

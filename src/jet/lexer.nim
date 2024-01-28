@@ -6,7 +6,7 @@ import
 
   jet/token,
 
-  lib/line_info,
+  lib/lineinfo,
   lib/utils
 
 {.push, raises: [].}
@@ -21,14 +21,17 @@ type
     prev*   : Token
 
   LexerError* = object of CatchableError
-    info* : LineInfo
+    rng* : FileRange
 
 const
   Eol        = {'\0'} + Newlines
   Whitespace = {' '} + Eol
 
-template raiseLexerError(message: string; lineInfo: LineInfo = LineInfo()): untyped =
-  raise (ref LexerError)(msg: message, info: lineInfo)
+template raiseLexerError(message: string; fileRange: FileRange): untyped =
+  raise (ref LexerError)(msg: message, rng: fileRange)
+
+template raiseLexerError(message: string; filePos: FilePosition): untyped =
+  raise (ref LexerError)(msg: message, rng: filePos.withLength(0))
 
 func peek(self: Lexer; offset: int = 0): char =
   ## Returns character at the position `pos + offset` in the `buffer`.
@@ -54,9 +57,9 @@ func column(self: Lexer): int =
   ## Returns column number in the current line.
   result = (self.pos + 1) - self.linePos
 
-func lineInfo(self: Lexer): LineInfo =
-  ## Returns current line info.
-  result = LineInfo(line: self.line().uint32, column: self.column().uint32)
+func peekPos(self: Lexer): FilePosition =
+  ## Returns current character position.
+  result = FilePosition(line: self.line().uint32, column: self.column().uint32)
 
 func handleNewline(self: var Lexer): bool
   {.discardable.} =
@@ -157,7 +160,7 @@ func lexNumber(self: var Lexer): Token
       if wasSeparator:
         raiseLexerError(
           "more than 1 separator in a row is not allowed",
-          self.lineInfo().withLength(1))
+          self.peekPos().withLength(1))
       wasSeparator = true
       true
     else:
@@ -169,30 +172,29 @@ func lexNumber(self: var Lexer): Token
   if numPart.endsWith('_'):
     raiseLexerError(
       "trailing underscores in number literal is illegal",
-      self.lineInfo().withLength(1))
+      self.peekPos().withLength(1))
 
   # TODO: hex, oct, bin numbers
   # TODO: handle '1e10' notation
-  # TODO: suffix
 
   result =
     if self.peek() == '.':
       self.pop()
-      let dotInfo = self.lineInfo()
+      let dotInfo = self.peekPos()
       let fracPart = self.parseWhile(withSeparatorCheck)
 
       if fracPart.len() == 0 or Digits notin fracPart:
-        raiseLexerError("expected number after '.' in float literal", dotInfo + 1)
+        raiseLexerError("expected number after '.' in float literal", dotInfo.withLength(1))
 
       if fracPart.startsWith('_'):
         raiseLexerError(
           "leading underscores in number literal is illegal",
-          withLength(dotInfo + 1, 1))
+          dotInfo.withOffset(1).withLength(1))
 
       if fracPart.endsWith('_') or fracPart.startsWith('_'):
         raiseLexerError(
           "trailing underscores in number literal is illegal",
-          self.lineInfo().withLength(1))
+          self.peekPos().withLength(1))
 
       Token(kind: FloatLit, data: numPart & '.' & fracPart)
     else:
@@ -224,7 +226,7 @@ func lexPunctuation(self: var Lexer): Token =
 
 func lexOperator(self: var Lexer): Token
   {.raises: [LexerError].} =
-  let info = self.lineInfo()
+  let info = self.peekPos()
   let op   = self.parseWhile(it in operatorChars)
   let kind = toTokenKind(op)
 
@@ -233,17 +235,19 @@ func lexOperator(self: var Lexer): Token
 
   result = Token(kind: kind.get())
 
-func escapeString(s: string; startLineInfo: LineInfo): string
+func escapeString(s: string; startPos: FilePosition): string
   {.raises: [LexerError].} =
   result = ""
   var i = 0
 
   while i <= s.high:
+    let info = startPos.withOffset(i)
+
     if s[i] == '\\':
       if i == s.high:
-        raiseLexerError("invalid character escape; expected character after \\")
-
-      let info = startLineInfo + i
+        raiseLexerError(
+          "invalid character escape; expected character after `\\`, got end of string literal",
+          info)
 
       i += 1
       result.add case s[i]:
@@ -276,11 +280,11 @@ func escapeString(s: string; startLineInfo: LineInfo): string
 
             "\0"
         else:
-          raiseLexerError("invalid character escape: '\\" & s[i] & "'")
+          raiseLexerError("invalid character escape: '\\" & s[i] & "'", info.withOffset(-1).withLength(2))
     elif s[i] in PrintableChars:
       result &= s[i]
     else:
-      raiseLexerError("invalid character: " & escape($s[i], "'\\", "'"))
+      raiseLexerError("invalid character: " & escape($s[i], "'\\", "'"), info)
 
     i += 1
 
@@ -289,26 +293,29 @@ func lexString(self: var Lexer; raw = false): Token
   let quote =
     if raw: '\"'
     else: '\''
-  let info = self.lineInfo()
+  let info = self.peekPos()
   self.pop()
-  let infoInsideLit = self.lineInfo()
+
+  # TODO: parse string literals inside `${}`
+  let infoInsideLit = self.peekPos()
   let data = self.parseUntil(it == quote and self.peek(-1) != '\\')
 
   if self.peek() == '\0':
     raiseLexerError("missing closing " & quote, info)
-
   self.pop()
 
-  result = Token(kind: StringLit, data: data.escapeString(infoInsideLit))
+  result =
+    if raw: Token(kind: StringLit, data: data)
+    else: Token(kind: StringLit, data: data.escapeString(infoInsideLit))
 
 func nextToken(self: var Lexer)
   {.raises: [LexerError].} =
   if self.pos > self.buffer.high:
-    self.curr = Token(kind: TokenKind.Eof, info: self.lineInfo())
+    self.curr = Token(kind: TokenKind.Eof, rng: self.peekPos().withLength(0))
     return
 
-  var prevLineInfo = self.lineInfo()
-  let oldPos = self.pos
+  var prevFilePos = self.peekPos()
+  let oldPos  = self.pos
 
   let token = case self.peek():
     of '#':
@@ -335,13 +342,13 @@ func nextToken(self: var Lexer)
     of '\'':
       self.lexString()
     of '\0':
-      Token(kind: TokenKind.Eof, info: self.lineInfo())
+      Token(kind: TokenKind.Eof, rng: self.peekPos().withLength(0))
     else:
-      raiseLexerError("invalid character: " & strutils.escape($self.peek()), self.lineInfo())
+      raiseLexerError("invalid character: " & strutils.escape($self.peek()), self.peekPos())
 
-  prevLineInfo.length = uint32(self.pos - oldPos)
-  self.curr           = token
-  self.curr.info      = prevLineInfo
+  let rng = prevFilePos.withLength(self.pos - oldPos)
+  self.curr     = token
+  self.curr.rng = rng
 
 func nextTokenNotEmpty(self: var Lexer)
   {.raises: [LexerError].} =
