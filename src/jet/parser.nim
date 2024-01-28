@@ -546,7 +546,10 @@ func parseList(self: var Parser; fn: ParsePrefixFunc): AstNode =
 
   self.skipToken(token.kind)
   var elems = newSeq[AstNode]()
+  let prevPrecedence = self.precedence
+  self.precedence = none(Precedence)
   let mode = self.parseBlock(elems, mode = Adaptive, until = some(until), fn = fn)
+  self.precedence = prevPrecedence
   # TODO: check indentation
   let closeBracketInfo = self.popToken(until).rng
   let rng = openBracketInfo.a .. closeBracketInfo.b
@@ -632,16 +635,23 @@ func parseBlock(
     if tree.kind != Empty:
       body &= tree
 
-    case mode
-    of Adaptive:
+    if mode == Adaptive:
       mode = case token.kind:
-        of Comma: List
-        of Semicolon: Block
-        elif token.spaces.wasLF: Block
-        else: raiseParserError(
-          &"expected comma, semicolon or newline after expression, got {token.kind}",
-          token.rng)
+        of Comma:
+          List
+        of Semicolon:
+          Block
+        elif token.kind in untilKinds:
+          List
+        elif token.spaces.wasLF:
+          Block
+        else:
+          raiseParserError(
+            &"expected comma, semicolon or newline after expression, got {token.kind}",
+            token.rng)
       hint(&"determine mode of block parsing: {mode}, token is {token.kind} {token.human()}")
+
+    case mode
     of Block:
       if self.skipTokenMaybe(Semicolon):
         wasSemicolon = true
@@ -653,6 +663,8 @@ func parseBlock(
           raiseParserError(&"expected comma after expression", self.prevToken().rng)
 
         break
+    else:
+      unreachable()
 
   if mode == Adaptive:
     # something like `()` or `[]`
