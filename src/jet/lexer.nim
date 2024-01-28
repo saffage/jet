@@ -210,7 +210,7 @@ func lexComment(self: var Lexer): Token =
       Token(kind: CommentModule)
     else:
       self.skipLine()
-      return
+      return emptyToken
 
   if self.peek() == ' ':
     self.pop()
