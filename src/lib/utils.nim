@@ -7,6 +7,9 @@ import
 
   lib/logger
 
+export
+  logger
+
 {.push, raises: [].}
 
 type
