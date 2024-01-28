@@ -1,7 +1,5 @@
 import
   std/strformat,
-  std/strutils,
-  std/sequtils,
 
   jet/ast,
   jet/symbol,
@@ -85,3 +83,5 @@ func getSym*(self: ModuleRef; id: string): SymbolRef =
 proc newModule*(rootTree: AstNode): ModuleRef =
   result = ModuleRef(rootTree: rootTree, rootScope: newScope())
   result.registerPrimitives()
+
+{.pop.} # raises: []

@@ -420,3 +420,5 @@ func normalizeTokens*(tokens: seq[Token]): seq[Token] =
         result[^1].spaces.trailing = spacingLast
         break
     prevKind = token.kind
+
+{.pop.} # raises: []

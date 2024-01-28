@@ -185,3 +185,5 @@ proc traverseSymbols*(module: ModuleRef; rootTree: AstNode)
 proc traverseSymbols*(module: ModuleRef)
   {.raises: [ModuleError, SemanticError, ValueError].} =
   module.traverseSymbols(module.rootTree)
+
+{.pop.} # raises: []

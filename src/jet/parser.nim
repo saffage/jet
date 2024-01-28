@@ -743,3 +743,5 @@ func newParser*(tokens: openArray[Token]): Parser =
   result.infixFuncs[LeCurly]  = parseInfixCurly
   result.infixFuncs[LeRound]  = parseInfixRound
   result.infixFuncs[LeSquare] = parseInfixSquare
+
+{.pop.} # raises: []

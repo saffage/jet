@@ -161,3 +161,5 @@ func human*(self: Token): string
     result.addQuoted(self.data)
 
   result &= $self.spaces
+
+{.pop.} # raises: []
