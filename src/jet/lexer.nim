@@ -403,7 +403,7 @@ func normalizeTokens*(tokens: seq[Token]): seq[Token] =
   result = @[]
   var prevKind = TokenKind.Eof
   var spaces   = 0
-  var wasLF    = false
+  var wasLF    = true
 
   for token in tokens:
     case token.kind
@@ -417,14 +417,9 @@ func normalizeTokens*(tokens: seq[Token]): seq[Token] =
     else:
       var token = token
       token.spaces.wasLF = wasLF
-
-      case prevKind
-      of VSpace, Eof:
-        token.spaces.leading = 0
-      of HSpace:
-        token.spaces.leading = spaces
-      else:
-        discard
+      token.spaces.leading =
+        if prevKind == HSpace: spaces
+        else: 0
 
       if result.len() > 0:
         result[^1].spaces.trailing =
