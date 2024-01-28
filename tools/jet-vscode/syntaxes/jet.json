@@ -12,7 +12,6 @@
 		{ "include": "#string-lit" },
 		{ "include": "#number-lit" },
 		{ "include": "#fn-call" },
-		{ "include": "#generic-identifier" },
 		{ "include": "#type-identifier" },
 		{ "include": "#brackets" }
 	],
@@ -84,20 +83,16 @@
 				{
 					"comment": "Primitive types",
 					"name": "storage.type.builtin.primitive.jet",
-					"match": "\\b([ui](8|16|32|64|size)|f(32|64)|char|bool|any)\\b"
+					"match": "\\b([ui](8|16|32|64|size)|f(32|64)|char|rune|bool|any)\\b"
 				},
 				{
 					"comment": "Backend types",
 					"name": "storage.type.builtin.c.jet",
-					"match": "\\b(cshort|cint|clong|clonglong|cushort|cuint|culong|culonglong|cfloat|cdouble|clongdouble|csize)\\b"
+					"match": "\\b(cshort|cint|clong|clonglong|cushort|cuint|culong|culonglong|cfloat|cdouble|clongdouble|cchar|cuchar)\\b"
 				},
 				{
 					"name": "storage.type.builtin.std.jet",
 					"match": "\\b(string)\\b"
-				},
-				{
-					"name": "storage.type.builtin.meta.jet",
-					"match": "\\b(typedesc)\\b"
 				}
 			]
 		},
@@ -141,28 +136,14 @@
 		"fn-call": {
 			"patterns": [
 				{
-					"match": "\\b([_a-zA-Z][_a-zA-Z0-9]*)\\b(?=\\s*\\()",
+					"match": "\\b([_a-zA-Z][_a-zA-Z0-9]*)\\b(\\[.*\\])?(?=\\s*\\()",
 					"captures": {
-						"1": { "name": "entity.name.function.jet" }
-					}
-				}
-			]
-		},
-		"generic-identifier": {
-			"patterns": [
-				{
-					"match": "(?<!\\`)\\`[a-zA-Z_0-9]+\\b",
-					"name": "meta.template.jet"
-				}
-			]
-		},
-		"type-identifier": {
-			"patterns": [
-				{
-					"match": "\\b([A-Z][A-Za-z_0-9]*)\\b(\\?)?",
-					"captures": {
-						"1": { "name": "entity.name.type.jet" },
-						"2": { "name": "keyword.operator.jet" }
+						"1": { "name": "entity.name.function.jet" },
+						"2": {
+							"patterns": [
+								{ "include": "source.jet" }
+							]
+						}
 					}
 				}
 			]
@@ -170,95 +151,20 @@
 		"string-lit": {
 			"patterns": [
 				{
-					"name": "string.quoted.double.jet",
-					"begin": "([fF])\"\"\"",
-					"beginCaptures": {
-						"1": { "name": "string.interpolated.prefix.jet" }
-					},
-					"end": "\"\"\"(?!\")",
+					"name": "string.quoted.single.jet",
+					"begin": "'",
+					"end": "'",
 					"patterns": [
 						{ "include": "#string-fmt" },
 						{ "include": "#char-escape" }
 					]
-				},
-				{
-					"name": "string.quoted.double.jet",
-					"begin": "([fF])\"",
-					"beginCaptures": {
-						"1": { "name": "string.interpolated.prefix.jet" }
-					},
-					"end": "\"|$",
-					"patterns": [
-						{ "include": "#string-fmt" },
-						{ "include": "#char-escape" }
-					]
-				},
-				{
-					"name": "string.quoted.double.jet",
-					"begin": "([fF])([rR])\"\"\"",
-					"beginCaptures": {
-						"1": { "name": "string.interpolated.prefix.jet" },
-						"2": { "name": "string.raw.prefix.jet" }
-					},
-					"end": "\"\"\"(?!\")",
-					"patterns": [
-						{ "include": "#string-fmt" }
-					]
-				},
-				{
-					"name": "string.quoted.double.jet",
-					"begin": "([fF])([rR])\"",
-					"beginCaptures": {
-						"1": { "name": "string.interpolated.prefix.jet" },
-						"2": { "name": "string.raw.prefix.jet" }
-					},
-					"end": "\"|$",
-					"patterns": [
-						{ "include": "#string-fmt" }
-					]
-				},
-				{
-					"name": "string.quoted.triple.jet",
-					"begin": "([rR])\"\"\"",
-					"beginCaptures": {
-						"1": { "name": "string.raw.prefix.jet" }
-					},
-					"end": "\"\"\"(?!\")"
-				},
-				{
-					"name": "string.quoted.triple.jet",
-					"begin": "\"\"\"",
-					"end": "\"\"\"(?!\")",
-					"patterns": [
-						{ "include": "#char-escape" }
-					]
-				},
-				{
-					"name": "string.quoted.double.jet",
-					"begin": "([rR])\"",
-					"beginCaptures": {
-						"1": { "name": "string.raw.prefix.jet" }
-					},
-					"end": "\"(?!\")|$"
 				},
 				{
 					"name": "string.quoted.double.jet",
 					"begin": "\"",
-					"end": "\"|$",
+					"end": "\"",
 					"patterns": [
-						{ "include": "#char-escape" }
-					]
-				}
-			]
-		},
-		"char-lit": {
-			"patterns": [
-				{
-					"name": "string.quoted.single.jet",
-					"begin": "\\'",
-					"end": "\\'|$",
-					"patterns": [
-						{ "include": "#char-escape" }
+						{ "include": "#string-fmt" }
 					]
 				}
 			]
@@ -267,47 +173,41 @@
 			"patterns": [
 				{
 					"name": "constant.numeric.float.jet",
-					"match": "(-)?\\b[0-9][_0-9]*((\\.[0-9][_0-9]*)?([eE][+-]?[0-9][_0-9]*)?)([a-zA-Z]\\w*)?\\b",
+					"match": "(-)?\\b[0-9][_0-9]*((\\.[0-9][_0-9]*)?(([eE][+-]?)[0-9][_0-9]*)?)\\b",
 					"captures": {
 						"1": { "name": "keyword.operator.jet" },
-						"4": { "name": "keyword.operator.jet" },
-						"5": { "name": "constant.numeric.suffix.jet" }
+						"5": { "name": "keyword.operator.jet" }
 					}
 				},
 				{
 					"name": "constant.numeric.hexadecimal.jet",
-					"match": "(-)?\\b(0[xX])[0-9a-fA-F][_0-9a-fA-F]*([a-zA-Z]\\w*)?\\b",
+					"match": "(-)?\\b(0x)[0-9a-fA-F][_0-9a-fA-F]*\\b",
 					"captures": {
 						"1": { "name": "keyword.operator.jet" },
-						"2": { "name": "constant.numeric.prefix.jet" },
-						"3": { "name": "constant.numeric.suffix.jet" }
+						"2": { "name": "constant.numeric.prefix.jet" }
 					}
 				},
 				{
 					"name": "constant.numeric.octal.jet",
-					"match": "(-)?\\b(0o|(0O))[0-7][_0-7]*([a-zA-Z]\\w*)?\\b",
+					"match": "(-)?\\b(0o)[0-7][_0-7]*\\b",
 					"captures": {
 						"1": { "name": "keyword.operator.jet" },
-						"2": { "name": "constant.numeric.prefix.jet" },
-						"3": { "name": "invalid.illegal.numeric.prefix.jet" },
-						"4": { "name": "constant.numeric.suffix.jet" }
+						"2": { "name": "constant.numeric.prefix.jet" }
 					}
 				},
 				{
 					"name": "constant.numeric.binary.jet",
-					"match": "(-)?\\b(0[bB])[01][_01]*([a-zA-Z]\\w*)?\\b",
+					"match": "(-)?\\b(0b)[01][_01]*\\b",
 					"captures": {
 						"1": { "name": "keyword.operator.jet" },
-						"2": { "name": "constant.numeric.prefix.jet" },
-						"3": { "name": "constant.numeric.suffix.jet" }
+						"2": { "name": "constant.numeric.prefix.jet" }
 					}
 				},
 				{
 					"name": "constant.numeric.decimal.jet",
-					"match": "(-)?\\b[0-9][_0-9]*([a-zA-Z]\\w*)?\\b",
+					"match": "(-)?\\b[0-9][_0-9]*\\b",
 					"captures": {
-						"1": { "name": "keyword.operator.jet" },
-						"2": { "name": "constant.numeric.suffix.jet" }
+						"1": { "name": "keyword.operator.jet" }
 					}
 				}
 			]
@@ -316,7 +216,7 @@
 			"patterns": [
 				{
 					"name": "constant.character.escape.jet",
-					"match": "\\\\([0-9]{3}|[0nrt'\\\"\\\\]|x\\h{2}|u\\h{4}|U\\h{8}|u\\{\\h+\\})"
+					"match": "\\\\([0-9]{3}|[nrt'\\\"\\\\]|x\\h{2}|x\\{\\h+\\}|u\\h{4}|U\\h{8})"
 				},
 				{
 					"name": "invalid.escape.jet",
@@ -328,11 +228,11 @@
 			"patterns": [
 				{
 					"name": "constant.character.escape.jet",
-					"match": "\\}\\}|\\{\\{"
+					"match": "\\$\\$"
 				},
 				{
 					"name": "meta.template.expression.jet",
-					"begin": "\\{",
+					"begin": "\\$\\{",
 					"beginCaptures": {
 						"0": { "name": "string.interpolated.jet" }
 					},
@@ -344,20 +244,23 @@
 						{
 							"name": "meta.template.format-specifier.jet",
 							"begin": ":",
-							"end": "(?=\\})"
+							"end": "(?=\\})",
+							"patterns": [
+								{
+									"name": "invalid.illegal.format-specifier.jet",
+									"match": "[^_0-9a-zA-Z\\-\\+<>]"
+								}
+							]
 						},
 						{ "include": "source.jet" }
 					]
-				},
-				{
-					"name": "invalid.illegal.escape.jet",
-					"match": "\\{|\\}"
 				}
 			]
 		},
 		"brackets": {
 			"patterns": [
 				{
+					"comment": "Builtin function call brackets has distinct color",
 					"begin": "(?<=\\$\\b([_a-zA-Z][_a-zA-Z0-9]*)\\b)\\(",
 					"beginCaptures": {
 						"0": { "name": "support.function.builtin.brackets.jet" }
