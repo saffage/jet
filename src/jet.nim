@@ -15,7 +15,7 @@ import
   jet/sem,
 
   lib/utils,
-  lib/line_info,
+  lib/lineinfo,
 
   pkg/results
 
@@ -51,7 +51,7 @@ proc main() =
     lexer.getAllTokens()
   except LexerError as e:
     # TODO: file id
-    stdout.write(argument & ":" & $e.info.noLength() & ": ")
+    stdout.write(argument & ":" & $e.rng.a & ": ")
     error(e.msg)
     raise
   let tmp1 = "  " & tokens.mapIt(it.human()).join("\n  ")
@@ -68,7 +68,7 @@ proc main() =
     parser.parseAll()
   except ParserError as e:
     # TODO: file id
-    stdout.write(argument & ":" & $e.info.noLength() & ": ")
+    stdout.write(argument & ":" & $e.rng.a & ": ")
     error(e.msg)
     raise
 
@@ -89,7 +89,7 @@ proc main() =
     debug("Root scope symbols:\n    " & mainModule.rootScope.symbols.join("\n    "))
   except SemanticError as e:
     # TODO: file id
-    stdout.write(argument & ":" & $e.info.noLength() & ": ")
+    stdout.write(argument & ":" & $e.rng.a & ": ")
     error(e.msg)
     raise
 

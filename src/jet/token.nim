@@ -52,6 +52,7 @@ type
     KwFalse   = "false"
     KwVar     = "var"
     KwVal     = "val"
+    KwRec     = "rec"
     KwFunc    = "func"
     KwType    = "type"
     KwStruct  = "struct"

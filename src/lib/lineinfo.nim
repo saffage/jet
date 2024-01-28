@@ -7,6 +7,11 @@ type
 
   FileRange* = Slice[FilePosition]
 
+const
+  # for `==` & `!=` because its more readable that a method call
+  emptyFilePos*   = FilePosition()
+  emptyFileRange* = FileRange()
+
 func `$`*(self: FilePosition): string =
   result = $self.line & ':' & $self.column
 

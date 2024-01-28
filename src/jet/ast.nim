@@ -4,7 +4,7 @@ import
 
   jet/literal,
 
-  lib/line_info
+  lib/lineinfo
 
 type
   AstNodeKind* = enum
@@ -18,6 +18,7 @@ type
     Struct
     Enum
     Type
+    RecFunc
     Func
     If
     IfBranch
@@ -26,12 +27,13 @@ type
     Return
     ValDecl
     VarDecl
-    List   ## (a, b)
-    Block   ## (a; b)
-    Infix   ## a ~ b
-    Prefix  ## ~a
-    Postfix ## a~
-    ExprCurly
+    List        ## (a, b)
+    Block       ## (a; b)
+    Infix       ## a ~ b
+    Prefix      ## ~a
+    Postfix     ## a~
+    ExprCurly   ## a{...}
+    ExprRound   ## a(...)
 
   AstNodeRef* = ref AstNode
   AstNode* {.byref.} = object
@@ -47,7 +49,7 @@ type
     of Branch:
       branchKind* : AstNodeBranchKind
       children*   : seq[AstNode]
-    info* : LineInfo
+    rng* : FileRange
 
   OperatorKind* = enum
     OpNot    = "not"
@@ -68,6 +70,7 @@ type
     OpShl    = "<<"
     OpShr    = ">>"
     OpRef    = "&"
+    OpDollar = "$"
 
   OperatorNotation* = enum
     Infix
@@ -101,6 +104,7 @@ func notation*(kind: OperatorKind): set[OperatorNotation] =
     of OpShl: {Infix}
     of OpShr: {Infix}
     of OpRef: {Prefix}
+    of OpDollar: {Prefix}
 
 func isLeaf*(tree: AstNode): bool =
   tree.kind != Branch
@@ -114,8 +118,8 @@ func `$`*(tree: AstNode): string =
     if tree.kind != Branch: $tree.kind
     else: $tree.branchKind
 
-  if tree.info != LineInfo():
-    result &= &"[{tree.info}]"
+  if tree.rng != emptyFileRange:
+    result &= &"[{tree.rng}]"
 
   case tree.kind
   of Id:
@@ -127,20 +131,20 @@ func `$`*(tree: AstNode): string =
   else:
     discard
 
-func initAstNode*(kind: AstNodeKind; info = LineInfo()): AstNode =
-  result = AstNode(kind: kind, info: info)
+func initAstNode*(kind: AstNodeKind; rng = emptyFileRange): AstNode =
+  result = AstNode(kind: kind, rng: rng)
 
-func initAstNodeEmpty*(info = LineInfo()): AstNode =
-  result = AstNode(kind: Empty, info: info)
+func initAstNodeEmpty*(rng = emptyFileRange): AstNode =
+  result = AstNode(kind: Empty, rng: rng)
 
-func initAstNodeId*(id: sink string; info = LineInfo()): AstNode =
-  result = AstNode(kind: Id, id: id, info: info)
+func initAstNodeId*(id: sink string; rng = emptyFileRange): AstNode =
+  result = AstNode(kind: Id, id: id, rng: rng)
 
-func initAstNodeLit*(lit: Literal; info = LineInfo()): AstNode =
-  result = AstNode(kind: Lit, lit: lit, info: info)
+func initAstNodeLit*(lit: Literal; rng = emptyFileRange): AstNode =
+  result = AstNode(kind: Lit, lit: lit, rng: rng)
 
-func initAstNodeOperator*(op: OperatorKind; info = LineInfo()): AstNode =
-  result = AstNode(kind: Operator, op: op, info: info)
+func initAstNodeOperator*(op: OperatorKind; rng = emptyFileRange): AstNode =
+  result = AstNode(kind: Operator, op: op, rng: rng)
 
-func initAstNodeBranch*(branchKind: AstNodeBranchKind; children = newSeq[AstNode](); info = LineInfo()): AstNode =
-  result = AstNode(kind: Branch, branchKind: branchKind, children: children, info: info)
+func initAstNodeBranch*(branchKind: AstNodeBranchKind; children = newSeq[AstNode](); rng = emptyFileRange): AstNode =
+  result = AstNode(kind: Branch, branchKind: branchKind, children: children, rng: rng)

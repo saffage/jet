@@ -12,7 +12,7 @@ import
 
   lib/utils,
   lib/stacks,
-  lib/line_info,
+  lib/lineinfo,
 
   pkg/questionable
 
@@ -43,7 +43,7 @@ type
     Highest
 
   ParserError* = object of CatchableError
-    info* : LineInfo
+    rng* : FileRange
 
   BlockContext = tuple[line, indent: int]
 
@@ -127,13 +127,19 @@ func parseBlock(
 # Util Functions
 #
 
-template raiseParserError(message: string; lineInfo: LineInfo) =
-  raise (ref ParserError)(msg: message, info: lineInfo)
+template raiseParserError(message: string; node: AstNode) =
+  raise (ref ParserError)(msg: message, rng: node.rng)
+
+template raiseParserError(message: string; fileRange: FileRange) =
+  raise (ref ParserError)(msg: message, rng: fileRange)
+
+template raiseParserError(message: string; filePos: FilePosition) =
+  raise (ref ParserError)(msg: message, rng: filePos.withLength(0))
 
 func peekToken(self: Parser): Token
   {.raises: [ParserError].} =
   if self.curr > self.tokens.high:
-    raiseParserError("no token to peek", self.tokens[^1].info)
+    raiseParserError("no token to peek", self.tokens[^1].rng)
 
   result = self.tokens[self.curr]
 
@@ -143,7 +149,7 @@ func peekToken(self: Parser; kinds: set[TokenKind]): Token
 
   if result.kind notin kinds:
     let kindsStr = kinds.toSeq().join(" or ")
-    raiseParserError(&"expected token of kind {kindsStr}, got {result.kind}", result.info)
+    raiseParserError(&"expected token of kind {kindsStr}, got {result.kind}", result.rng)
 
 func peekToken(self: Parser; kind: TokenKind): Token
   {.raises: [ParserError, ValueError].} =
@@ -154,7 +160,7 @@ func prevToken*(self: Parser): Token
   let idx = self.curr - 1
 
   if idx < 0 or idx >= self.tokens.high:
-    raiseParserError("no previous token to peek", self.tokens[0].info)
+    raiseParserError("no previous token to peek", self.tokens[0].rng)
 
   result = self.tokens[idx]
 
@@ -178,7 +184,7 @@ func skipToken(self: var Parser; kinds: set[TokenKind])
 
   if token.kind notin kinds:
     let kindsStr = kinds.toSeq().join(" or ")
-    raiseParserError(&"expected token of kind {kindsStr}, got {token.kind}", token.info)
+    raiseParserError(&"expected token of kind {kindsStr}, got {token.kind}", token.rng)
 
   self.curr += 1
 
@@ -216,7 +222,7 @@ func parseIfBranch(self: var Parser): AstNode
   let cond = self.parseExpr()
   let body = self.parseDoOrBlock()
 
-  result = initAstNodeBranch(IfBranch, @[cond, body], token.info)
+  result = initAstNodeBranch(IfBranch, @[cond, body], token.rng)
 
 func parseElseBranch(self: var Parser): AstNode
   {.raises: [ParserError, ValueError].} =
@@ -225,7 +231,7 @@ func parseElseBranch(self: var Parser): AstNode
   let token = self.popToken(KwElse)
   let body = self.parseExprOrBlock()
 
-  result = initAstNodeBranch(ElseBranch, @[body], token.info)
+  result = initAstNodeBranch(ElseBranch, @[body], token.rng)
 
 #
 # Parse Functions Implementation
@@ -238,23 +244,23 @@ func parseLit(self: var Parser): AstNode =
 
   result = case token.kind:
     of KwNil:
-      initAstNodeLit(newLit(nil), token.info)
+      initAstNodeLit(newLit(nil), token.rng)
     of KwTrue:
-      initAstNodeLit(newLit(true), token.info)
+      initAstNodeLit(newLit(true), token.rng)
     of KwFalse:
-      initAstNodeLit(newLit(false), token.info)
+      initAstNodeLit(newLit(false), token.rng)
     of StringLit:
-      initAstNodeLit(newLit(token.data), token.info)
+      initAstNodeLit(newLit(token.data), token.rng)
     of CharLit:
       if token.data.len() != 1:
         raise (ref ValueError)(msg: &"invalid character: '{token.data}'")
-      initAstNodeLit(newLit(token.data[0]), token.info)
+      initAstNodeLit(newLit(token.data[0]), token.rng)
     of IntLit:
-      initAstNodeLit(newLit(token.data.parseBiggestInt()), token.info)
+      initAstNodeLit(newLit(token.data.parseBiggestInt()), token.rng)
     of FloatLit:
-      initAstNodeLit(newLit(token.data.parseFloat()), token.info)
+      initAstNodeLit(newLit(token.data.parseFloat()), token.rng)
     else:
-      raiseParserError(&"expected literal, got {token.kind}", token.info)
+      raiseParserError(&"expected literal, got {token.kind}", token.rng)
 
 func parseExpr(self: var Parser): AstNode =
   debug("parseExpr")
@@ -264,7 +270,7 @@ func parseExpr(self: var Parser): AstNode =
   let fn         = self.prefixFuncs.getOrDefault(token.kind)
 
   if fn == nil:
-    raiseParserError(&"expression is expected, got {token.kind}", token.info)
+    raiseParserError(&"expression is expected, got {token.kind}", token.rng)
 
   result = fn(self)
 
@@ -293,7 +299,7 @@ func parseId(self: var Parser): AstNode =
 
   let token = self.popToken(Id)
 
-  result = initAstNodeId(token.data, token.info)
+  result = initAstNodeId(token.data, token.rng)
 
 func parseNot(self: var Parser): AstNode =
   debug("parseNot")
@@ -302,9 +308,9 @@ func parseNot(self: var Parser): AstNode =
 
   let token = self.popToken(KwNot)
   let expr  = self.parseExpr()
-  let notOp = initAstNodeOperator(OpNot, token.info)
+  let notOp = initAstNodeOperator(OpNot, token.rng)
 
-  result = initAstNodeBranch(Prefix, @[notOp, expr], token.info)
+  result = initAstNodeBranch(Prefix, @[notOp, expr], token.rng)
 
 func parseStruct(self: var Parser): AstNode =
   debug("parseStruct")
@@ -312,7 +318,7 @@ func parseStruct(self: var Parser): AstNode =
   let token = self.popToken(KwStruct)
   let body  = self.parseExprOrBlock(fn = parseParamOrField)
 
-  result = initAstNodeBranch(Struct, @[body], token.info)
+  result = initAstNodeBranch(Struct, @[body], token.rng)
 
 func parseType(self: var Parser): AstNode =
   debug("parseType")
@@ -321,11 +327,12 @@ func parseType(self: var Parser): AstNode =
   let id       = self.parseId()
   let typeExpr = self.parseExpr()
 
-  result = initAstNodeBranch(Type, @[id, typeExpr], token.info)
+  result = initAstNodeBranch(Type, @[id, typeExpr], token.rng)
 
 func parseFunc(self: var Parser): AstNode =
   debug("parseFunc")
 
+  let isRec  = self.skipTokenMaybe(KwRec)
   let token  = self.popToken(KwFunc)
   let id     = self.parseId()
   let params = self.parseList(fn = parseParamOrField)
@@ -334,8 +341,11 @@ func parseFunc(self: var Parser): AstNode =
        self.peekToken().kind != KwDo: self.parseExpr()
     else: initAstNodeEmpty()
   let body = self.parseDoOrBlock()
+  let nodeKind =
+    if isRec: RecFunc
+    else: Func
 
-  result = initAstNodeBranch(Func, @[id, params, returnType, body], token.info)
+  result = initAstNodeBranch(nodeKind, @[id, params, returnType, body], token.rng)
 
 func parseIf(self: var Parser): AstNode =
   debug("parseIf")
@@ -362,7 +372,7 @@ func parseWhile(self: var Parser): AstNode =
   let cond  = self.parseExpr()
   let body  = self.parseDoOrBlock()
 
-  result = initAstNodeBranch(While, @[cond, body], token.info)
+  result = initAstNodeBranch(While, @[cond, body], token.rng)
 
 func parseReturn(self: var Parser): AstNode =
   debug("parseReturn")
@@ -370,7 +380,7 @@ func parseReturn(self: var Parser): AstNode =
   let token = self.popToken(KwReturn)
   let expr  = self.parseExpr()
 
-  result = initAstNodeBranch(Return, @[expr], token.info)
+  result = initAstNodeBranch(Return, @[expr], token.rng)
 
 func parseVar(self: var Parser): AstNode =
   debug("parseVar")
@@ -378,7 +388,7 @@ func parseVar(self: var Parser): AstNode =
   let token = self.popToken(KwVar)
 
   result = self.parseValDecl()
-  result = initAstNodeBranch(VarDecl, result.children, token.info)
+  result = initAstNodeBranch(VarDecl, result.children, token.rng)
 
 func parseVal(self: var Parser): AstNode =
   debug("parseVal")
@@ -386,7 +396,7 @@ func parseVal(self: var Parser): AstNode =
   let token = self.popToken(KwVal)
 
   result = self.parseValDecl()
-  result.info = token.info
+  result.rng = token.rng
 
 func parseValDecl(self: var Parser): AstNode =
   debug("parseValDecl")
@@ -400,9 +410,9 @@ func parseValDecl(self: var Parser): AstNode =
     else: initAstNodeEmpty()
 
   if typeExpr.kind == Empty and body.kind == Empty:
-    raiseParserError("variable declaration must have type or expression", id.info)
+    raiseParserError("variable declaration must have type or expression", id.rng)
 
-  result = initAstNodeBranch(ValDecl, @[id, typeExpr, body], id.info)
+  result = initAstNodeBranch(ValDecl, @[id, typeExpr, body], id.rng)
 
 func parseParamOrField(self: var Parser): AstNode =
   debug("parseParamOrField")
@@ -420,7 +430,7 @@ func parseDo(self: var Parser): AstNode =
 
   result =
     if expr.kind == Branch and expr.branchKind == Block: expr
-    else: initAstNodeBranch(Block, @[expr], token.info)
+    else: initAstNodeBranch(Block, @[expr], token.rng)
 
 func parseDoOrBlock(self: var Parser): AstNode =
   debug("parseDoOrBlock")
@@ -448,17 +458,23 @@ func parseExprOrBlock(self: var Parser; fn: ParsePrefixFunc): AstNode =
     result = fn(self)
 
 func parsePrefix(self: var Parser): AstNode =
-  let token = self.popToken(Ampersand)
+  let token = self.popToken({Ampersand, Dollar})
 
   # TODO: precedence
 
   result = case token.kind:
     of Ampersand:
-      let refOp = initAstNodeOperator(OpRef, token.info)
+      let refOp = initAstNodeOperator(OpRef, token.rng)
       let expr = self.parseExpr()
-      initAstNodeBranch(Prefix, @[refOp, expr], merge(token.info, expr.info))
+      initAstNodeBranch(Prefix, @[refOp, expr], token.rng.a .. expr.rng.b)
+    of Dollar:
+      let dollarOp = initAstNodeOperator(OpDollar, token.rng)
+      let id = self.parseId()
+      let args = self.parseList()
+      let prefix = initAstNodeBranch(Prefix, @[dollarOp, id], token.rng.a .. id.rng.b)
+      initAstNodeBranch(ExprRound, @[prefix, args], prefix.rng.a .. args.rng.b)
     of Id:
-      initAstNodeId(token.data, token.info)
+      initAstNodeId(token.data, token.rng)
     else:
       unreachable()
 
@@ -468,16 +484,16 @@ func parseInfix(self: var Parser; left: AstNode): AstNode =
   let token = self.popToken()
 
   if token.kind notin OperatorKinds + WordLikeOperatorKinds:
-    raiseParserError(&"expected operator, got '{token.kind}'", token.info)
+    raiseParserError(&"expected operator, got '{token.kind}'", token.rng)
 
   let op = token.kind.str()
   let opKind = op.toOperatorKind()
 
   if opKind.isNone():
-    raiseParserError(&"operator '{op}' not yet supported", token.info)
+    raiseParserError(&"operator '{op}' not yet supported", token.rng)
 
   if OperatorNotation.Infix notin opKind.get().notation():
-    raiseParserError(&"operator '{op}' is not infix", token.info)
+    raiseParserError(&"operator '{op}' is not infix", token.rng)
 
   self.precedence = some do:
     try:
@@ -485,10 +501,10 @@ func parseInfix(self: var Parser; left: AstNode): AstNode =
     except KeyError:
       unreachable()
 
-  let opNode = initAstNodeOperator(opKind.get(), token.info)
+  let opNode = initAstNodeOperator(opKind.get(), token.rng)
   let right = self.parseExpr()
 
-  result = initAstNodeBranch(Infix, @[opNode, left, right], opNode.info)
+  result = initAstNodeBranch(Infix, @[opNode, left, right], opNode.rng)
 
 func parseInfixCurly(self: var Parser; left: AstNode): AstNode =
   let args = self.parseList()
@@ -498,23 +514,30 @@ func parseInfixCurly(self: var Parser; left: AstNode): AstNode =
     discard
   of Branch:
     if left.branchKind != Prefix:
-      raiseParserError("expected identifier or prefix expression", left.info)
+      raiseParserError("expected identifier or prefix expression", left.rng)
   else:
     todo($left.kind)
 
-  # FIXME: line info is not correct
-  result = initAstNodeBranch(ExprCurly, @[left, args], merge(left.info, args.info))
+  # FIXME: line rng is not correct
+  result = initAstNodeBranch(ExprCurly, @[left, args], left.rng.a .. args.rng.b)
 
 func parseInfixRound(self: var Parser; left: AstNode): AstNode =
-  todo()
+  let args = self.parseList()
+
+  result = case left.kind:
+    of Id:
+      initAstNodeBranch(ExprRound, @[left, args], left.rng.a .. args.rng.b)
+    else:
+      raiseParserError(&"expected Id node, got {left.kind}", self.peekToken().rng)
 
 func parseInfixSquare(self: var Parser; left: AstNode): AstNode =
-  todo()
+  raiseParserError("todo", self.peekToken().rng)
 
 func parseList(self: var Parser; fn: ParsePrefixFunc): AstNode =
   debug("parseList")
 
   let token = self.peekToken({LeRound, LeCurly, LeSquare})
+  let openBracketInfo = token.rng
   let until = case token.kind:
     of LeRound: RiRound
     of LeCurly: RiCurly
@@ -525,13 +548,14 @@ func parseList(self: var Parser; fn: ParsePrefixFunc): AstNode =
   var elems = newSeq[AstNode]()
   let mode = self.parseBlock(elems, mode = Adaptive, until = some(until), fn = fn)
   # TODO: check indentation
-  self.skipToken(until)
+  let closeBracketInfo = self.popToken(until).rng
+  let rng = openBracketInfo.a .. closeBracketInfo.b
 
   result = case mode
     of Block:
       if elems.len() == 1: elems[0]
-      else: initAstNodeBranch(Block, elems)
-    of List: initAstNodeBranch(List, elems)
+      else: initAstNodeBranch(Block, elems, rng)
+    of List: initAstNodeBranch(List, elems, rng)
     else: unreachable()
 
 func parseBlock(
@@ -556,71 +580,77 @@ func parseBlock(
     contextPushed = true
 
   while true:
-    let token = self.peekToken()
+    var token = self.peekToken()
 
     if token.kind in untilKinds:
       break
 
-    debug(&"parseBlock: token {self.peekToken().human()}")
+    debug(&"parseBlock: mode {mode}, token {self.peekToken().human()}")
 
     if token.spaces.wasLF:
       let token = self.peekToken()
       let indent = token.spaces.leading
 
       if mode == Block and wasSemicolon:
-        raiseParserError("expected expression after semicolon", token.info)
+        raiseParserError("expected expression after semicolon", token.rng)
 
       if contextPushed:
         # check indentation of token
         if indent > self.blockStack.peek().indent:
           raiseParserError(
             &"invalid indentation, expected {self.blockStack.peek().indent}, got {indent}",
-            token.info)
+            token.rng)
         elif indent < self.blockStack.peek().indent:
           # end of block
           break
       else:
         # create a new context
-        let newContext = (line: token.info.line.int, indent: indent)
+        let newContext = (line: token.rng.a.line.int, indent: indent)
 
         # validate new context
         if not self.isNewBlockContext(newContext):
           raiseParserError(
             &"a new block context expected, but got {newContext}, " &
             &"which is the same or lower with previous context {self.blockStack.peek()}",
-            token.info)
+            token.rng)
 
         # push a new context
         self.blockStack.push(newContext)
         contextPushed = true
     else:
+      # FIXME: a lot of bugs here
       let token = self.peekToken()
       if mode == Block and not wasSemicolon:
         raiseParserError(
           &"expected semicolon or newline after expression, got {token.kind}",
-          token.info)
+          token.rng)
       wasSemicolon = false
 
     let tree = fn(self)
+    token = self.peekToken()
 
     if tree.kind != Empty:
       body &= tree
 
-    # TODO: validate expression end
-
-    if mode == Adaptive:
-      mode = if token.kind == Comma: List else: Block
-      hint fmt"determine mode of block parsing: {mode}"
-
-    if mode == Block:
+    case mode
+    of Adaptive:
+      mode = case token.kind:
+        of Comma: List
+        of Semicolon: Block
+        elif token.spaces.wasLF: Block
+        else: raiseParserError(
+          &"expected comma, semicolon or newline after expression, got {token.kind}",
+          token.rng)
+      hint(&"determine mode of block parsing: {mode}, token is {token.kind} {token.human()}")
+    of Block:
       if self.skipTokenMaybe(Semicolon):
         wasSemicolon = true
-    if mode == List:
+    of List:
       if not self.skipTokenMaybe(Comma):
         let token = self.peekToken()
 
         if token.kind notin untilKinds:
-          raiseParserError(&"expected comma after expression", self.prevToken().info)
+          raiseParserError(&"expected comma after expression", self.prevToken().rng)
 
         break
 
@@ -629,7 +659,7 @@ func parseBlock(
     mode = List
 
   if mode == Block and wasSemicolon:
-    raiseParserError("expected expression after semicolon", self.prevToken().info)
+    raiseParserError("expected expression after semicolon", self.prevToken().rng)
 
   if contextPushed:
     self.blockStack.drop()
@@ -664,6 +694,7 @@ func newParser*(tokens: openArray[Token]): Parser =
   result.prefixFuncs[KwDo]     = parseDo
   result.prefixFuncs[KwStruct] = parseStruct
   result.prefixFuncs[KwType]   = parseType
+  result.prefixFuncs[KwRec]    = parseFunc
   result.prefixFuncs[KwFunc]   = parseFunc
   result.prefixFuncs[KwVal]    = parseVal
   result.prefixFuncs[KwVar]    = parseVar
@@ -671,6 +702,7 @@ func newParser*(tokens: openArray[Token]): Parser =
   result.prefixFuncs[KwWhile]  = parseWhile
   result.prefixFuncs[KwReturn] = parseReturn
 
+  result.prefixFuncs[Dollar]    = parsePrefix
   result.prefixFuncs[Ampersand] = parsePrefix
   result.prefixFuncs[KwNil]     = parseLit
   result.prefixFuncs[KwTrue]    = parseLit
