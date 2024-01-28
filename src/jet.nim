@@ -30,12 +30,15 @@ proc main() =
     panic("can't find core library directory: \"$jet/lib\"")
 
   # Pipeline:
-  #   - tokenize
-  #   - parse AST
-  #   - (?) annonations resolve
-  #   - semantic checks
-  #   - (?) typed AST
-  #   - (?) deffered annonations resolve (typed annonations)
+  #   - read file
+  #   - lexical analysis
+  #   - normalizing tokens
+  #   - syntactic analysis
+  #   - generate AST
+  #   - (?) resolve macros
+  #   - semantic analysis
+  #   - generate typed AST
+  #   - (?) resolve annotations
   #   - backend stage
 
   if paramCount() != 1:
