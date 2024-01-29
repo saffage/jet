@@ -1,132 +1,36 @@
 import
   std/strutils,
   std/options,
-  std/parseutils,
   std/unicode,
 
+  jet/lexerbase,
   jet/token,
 
   lib/lineinfo,
   lib/utils
 
+export
+  LexerError
+
 {.push, raises: [].}
 
 type
-  Lexer* {.byref.} = object
-    buffer  : openArray[char]
-    pos     : int = 0           ## Position in the buffer
-    linePos : int = 0           ## Position in the buffer of the line start character
-    lineNum : int = 1
-    curr*   : Token
-    prev*   : Token
-
-  LexerError* = object of CatchableError
-    rng* : FileRange
+  Lexer* = object of LexerBase
+    curr* : Token
+    prev* : Token
 
 const
-  Eol        = {'\0'} + Newlines
-  Whitespace = {' '} + Eol
-
-template raiseLexerError(message: string; fileRange: FileRange): untyped =
-  raise (ref LexerError)(msg: message, rng: fileRange)
-
-template raiseLexerError(message: string; filePos: FilePosition): untyped =
-  raise (ref LexerError)(msg: message, rng: filePos.withLength(0))
-
-func peek(self: Lexer; offset: int = 0): char =
-  ## Returns character at the position `pos + offset` in the `buffer`.
-  assert(self.pos + offset >= 0)
-  result =
-    if self.pos + offset > self.buffer.high:
-      '\0'
-    else:
-      self.buffer[self.pos + offset]
-
-func pop(self: var Lexer): char
-  {.discardable.} =
-  ## Returns character at the position `pos` in the `buffer`
-  ## and increments `pos`.
-  result = self.peek()
-  if result != '\0': self.pos += 1
-
-func line(self: Lexer): int =
-  ## Returns line number.
-  result = self.lineNum
-
-func column(self: Lexer): int =
-  ## Returns column number in the current line.
-  result = (self.pos + 1) - self.linePos
-
-func peekPos(self: Lexer): FilePosition =
-  ## Returns current character position.
-  result = FilePosition(line: self.line().uint32, column: self.column().uint32)
-
-func handleNewline(self: var Lexer): bool
-  {.discardable.} =
-  result = self.peek() in Newlines
-
-  if result:
-    debug("lexer: new line at pos " & $self.pos)
-
-    if self.peek() == '\r':
-      self.pos += 1
-
-    if self.peek() == '\n':
-      self.pos += 1
-
-    self.lineNum += 1
-    self.linePos  = self.pos
-
-func skipLine*(self: var Lexer) =
-  while self.peek() notin Newlines:
-    self.pos += 1
-
-func getLine*(self: Lexer; lineNum: Positive): string
-  {.raises: [ValueError], warning[ProveInit]: off.} =
-  ## Returns line at `line` in `buffer` (new line character excluded).
-  var i = 1
-  # TODO: use `find`
-  for line in ($self.buffer).splitLines():
-    if i == lineNum: return line
-    i += 1
-  raise (ref ValueError)(msg: "line " & $lineNum & "does not exist")
-
-func getLines*(self: Lexer; lineNums: openArray[int] | Slice[int]): seq[string]
-  {.raises: [ValueError].} =
-  ## Returns specified lines from the `buffer`.
-  result = @[]
-  for line in lineNums:
-    result &= self.getLine(line)
-
-template parseWhile(self: var Lexer; fn: untyped; startOffset = 0; lastIdx = -1): string =
-  block:
-    var result = newStringOfCap(16)
-    let until  = if lastIdx < 0: self.buffer.high else: min(self.buffer.high, lastIdx)
-
-    self.pos += startOffset
-    var it {.inject.} = self.peek()
-
-    while self.pos <= until and fn:
-      result &= self.pop()
-      it = self.peek()
-
-    result
-
-template parseUntil(self: var Lexer; fn: untyped; startOffset = 0; lastIdx = -1): string =
-  self.parseWhile(not(fn), startOffset, lastIdx)
-
-const
-  IdChars*          = IdentChars
-  IdStartChars*     = IdentStartChars
-  # PrefixWhitelist*  = {' ', ',', ';', '(', '[', '{'} + Newlines
-  # PostfixWhitelist* = {' ', ',', ';', ')', ']', '}', '#'} + Newlines
+  IdChars*      = IdentChars
+  IdStartChars* = IdentStartChars
+  Eol           = {'\0'} + Newlines
+  Whitespace    = {' '} + Eol
 
 func buildCharSet(): set[char]
-    {.compileTime.} =
-    result = {}
-    for kind in OperatorKinds:
-      for c in $kind:
-        result.incl(c)
+  {.compileTime.} =
+  result = {}
+  for kind in OperatorKinds:
+    for c in $kind:
+      result.incl(c)
 
 const
   operatorChars = buildCharSet()
@@ -204,10 +108,10 @@ func lexComment(self: var Lexer): Token =
   self.pop()
 
   result =
-    if self.peek() == '#' and self.peek(1) in Whitespace:
+    if self.peek() == '#' and self.peekOffset(1) in Whitespace:
       self.pop()
       Token(kind: Comment)
-    elif self.peek() == '!' and self.peek(1) in Whitespace:
+    elif self.peek() == '!' and self.peekOffset(1) in Whitespace:
       self.pop()
       Token(kind: CommentModule)
     else:
@@ -296,9 +200,8 @@ func lexString(self: var Lexer; raw = false): Token
   let info = self.peekPos()
   self.pop()
 
-  # TODO: parse string literals inside `${}`
   let infoInsideLit = self.peekPos()
-  let data = self.parseUntil(it == quote and self.peek(-1) != '\\')
+  let data = self.parseUntil(it == quote and self.peekOffset(-1) != '\\')
 
   if self.peek() == '\0':
     raiseLexerError("missing closing " & quote, info)
@@ -310,12 +213,12 @@ func lexString(self: var Lexer; raw = false): Token
 
 func nextToken(self: var Lexer)
   {.raises: [LexerError].} =
-  if self.pos > self.buffer.high:
+  if self.idx > self.buffer.high:
     self.curr = Token(kind: TokenKind.Eof, rng: self.peekPos().withLength(0))
     return
 
   var prevFilePos = self.peekPos()
-  let oldPos  = self.pos
+  let oldPos  = self.idx
 
   let token = case self.peek():
     of '#':
@@ -327,7 +230,7 @@ func nextToken(self: var Lexer)
     of '&', '@', '$', '(', ')', '{', '}', '[', ']', ',', ';', ':':
       self.lexPunctuation()
     of '.':
-      if self.peek(1) in operatorChars:
+      if self.peekOffset(1) in operatorChars:
         self.lexOperator()
       else:
         self.lexPunctuation()
@@ -346,7 +249,7 @@ func nextToken(self: var Lexer)
     else:
       raiseLexerError("invalid character: " & strutils.escape($self.peek()), self.peekPos())
 
-  let rng = prevFilePos.withLength(self.pos - oldPos)
+  let rng = prevFilePos.withLength(self.idx - oldPos)
   self.curr     = token
   self.curr.rng = rng
 
@@ -359,9 +262,13 @@ func nextTokenNotEmpty(self: var Lexer)
 # API
 #
 
-proc newLexer*(buffer: openArray[char]): Lexer
+proc newLexer*(buffer: openArray[char]; posOffset = emptyFilePos): Lexer
   {.raises: [LexerError].} =
-  result = Lexer(buffer: buffer.toOpenArray(0, buffer.high), curr: Token(kind: TokenKind.Eof))
+  result = Lexer(
+    buffer: buffer.toOpenArray(0, buffer.high),
+    curr: Token(kind: TokenKind.Eof),
+    posOffset: posOffset,
+  )
   result.nextToken()
 
 func getToken*(self: var Lexer): Token
@@ -384,6 +291,11 @@ func getAllTokens*(self: var Lexer): seq[Token]
     let token = self.getToken()
     result &= token
     if token.kind == TokenKind.Eof: break
+
+func getAllTokens*(input: string; posOffset = emptyFilePos): seq[Token]
+  {.raises: [LexerError].} =
+  var lexer = newLexer(input, posOffset)
+  result = lexer.getAllTokens()
 
 func normalizeTokens*(tokens: seq[Token]): seq[Token] =
   result = @[]
