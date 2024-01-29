@@ -128,13 +128,13 @@ func parseBlock(
 # Util Functions
 #
 
-template raiseParserError(message: string; node: AstNode) =
+template raiseParserError*(message: string; node: AstNode) =
   raise (ref ParserError)(msg: message, rng: node.rng)
 
-template raiseParserError(message: string; fileRange: FileRange) =
+template raiseParserError*(message: string; fileRange: FileRange) =
   raise (ref ParserError)(msg: message, rng: fileRange)
 
-template raiseParserError(message: string; filePos: FilePosition) =
+template raiseParserError*(message: string; filePos: FilePosition) =
   raise (ref ParserError)(msg: message, rng: filePos.withLength(0))
 
 func peekToken(self: Parser): Token
@@ -722,20 +722,6 @@ func parseBlock(
 # API
 #
 
-func parseAll*(self: var Parser)
-  {.raises: [ParserError, ValueError].} =
-  debug("parseAll()")
-  if self.tokens.len() == 0:
-    self.ast = some(initAstNodeEmpty())
-    return
-
-  var ast = initAstNodeBranch(Block, @[])
-  self.parseBlock(ast.children, until = some(Eof))
-  self.ast = some(ast)
-
-func getAst*(self: Parser): Option[AstNode] =
-  self.ast
-
 func newParser*(tokens: openArray[Token]): Parser =
   result = Parser(tokens: @tokens)
   result.prefixFuncs[Id]       = parseId
@@ -783,5 +769,35 @@ func newParser*(tokens: openArray[Token]): Parser =
   result.infixFuncs[LeCurly]   = parseInfixCurly
   result.infixFuncs[LeRound]   = parseInfixRound
   result.infixFuncs[LeSquare]  = parseInfixSquare
+
+func getAst*(self: Parser): Option[AstNode] =
+  self.ast
+
+import
+  jet/lexer
+
+func parseAll*(self: var Parser)
+  {.raises: [ParserError, ValueError].} =
+  debug("parseAll()")
+  if self.tokens.len() == 0:
+    self.ast = some(initAstNodeEmpty())
+    return
+
+  var ast = initAstNodeBranch(Block, @[])
+  self.parseBlock(ast.children, until = some(Eof))
+  self.ast = some(ast)
+
+func parseAll*(input: string; posOffset = emptyFilePos): Option[AstNode]
+  {.raises: [LexerError, ParserError, ValueError].} =
+  let tokens = input.getAllTokens(posOffset).normalizeTokens()
+  var parser = newParser(tokens)
+  parser.parseAll()
+  result = parser.getAst()
+
+func parseExpr*(input: string; posOffset = emptyFilePos): AstNode
+  {.raises: [LexerError, ParserError, ValueError].} =
+  let tokens = input.getAllTokens(posOffset).normalizeTokens()
+  var parser = newParser(tokens)
+  result = parser.parseExpr()
 
 {.pop.} # raises: []

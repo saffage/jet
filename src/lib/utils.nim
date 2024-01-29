@@ -112,4 +112,14 @@ template notNil*(x: typed) =
   else:
     y
 
+func toString*[T](buf: openArray[char]; bounds: Slice[T]): string
+  {.raises: [ValueError].} =
+  assert(bounds.a <= bounds.b)
+  let len = bounds.b - bounds.a
+  if buf.high < bounds.a or buf.len() - bounds.a < len:
+    raise newException(ValueError, "buffer is to small")
+  result = newStringOfCap(bounds.b - bounds.a)
+  for i in bounds:
+    result &= buf[i]
+
 {.pop.} # raises: []
