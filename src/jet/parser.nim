@@ -92,6 +92,7 @@ type
 
 func parseLit(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
 func parseExpr(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
+func parseTypeExpr(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
 func parseId(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
 func parseNot(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
 func parseStruct(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
@@ -294,6 +295,38 @@ func parseExpr(self: var Parser): AstNode =
 
   self.precedence = none(Precedence)
 
+func parseTypeExpr(self: var Parser): AstNode =
+  result = self.parseExpr()
+
+  let isType = case result.kind:
+    of Id:
+      true
+    of Branch:
+      case result.branchKind
+      of Prefix:
+        case result.children[0].kind:
+        of Operator:
+          case result.children[0].op:
+          of OpRef, OpRefVar:
+            true
+          else:
+            false
+        else:
+          false
+
+        # case result.children[1].kind:
+        # of Id:
+        #   true
+        # else:
+        #   false
+      else:
+        false
+    else:
+      false
+
+  if not isType:
+    raiseParserError("expected type here", result.rng)
+
 func parseId(self: var Parser): AstNode =
   debug("parseId")
 
@@ -337,7 +370,7 @@ func parseFunc(self: var Parser): AstNode =
   let id     = self.parseId()
   let params = self.parseList(fn = parseParamOrField)
   let returnType =
-    if self.prevToken().spaces.trailing != spacingLast and
+    if self.prevToken().spaces.trailing != spacesLast and
        self.peekToken().kind != KwDo: self.parseExpr()
     else: initAstNodeEmpty()
   let body = self.parseDoOrBlock()
@@ -402,15 +435,19 @@ func parseValDecl(self: var Parser): AstNode =
   debug("parseValDecl")
 
   let id = self.parseId()
+
+  if self.prevToken().spaces.trailing == spacesLast:
+    raiseParserError("expected type or initializer after identifier", id.rng)
+
   let typeExpr =
     if self.peekToken().kind == Eq: initAstNodeEmpty()
-    else: self.parseExpr()
+    else: self.parseTypeExpr()
   let body =
     if self.skipTokenMaybe(Eq): self.parseDoOrExpr()
     else: initAstNodeEmpty()
 
   if typeExpr.kind == Empty and body.kind == Empty:
-    raiseParserError("variable declaration must have type or expression", id.rng)
+    raiseParserError("variable declaration must have type or initializer", id.rng)
 
   result = initAstNodeBranch(ValDecl, @[id, typeExpr, body], id.rng)
 
@@ -464,7 +501,10 @@ func parsePrefix(self: var Parser): AstNode =
 
   result = case token.kind:
     of Ampersand:
-      let refOp = initAstNodeOperator(OpRef, token.rng)
+      let opKind =
+        if self.skipTokenMaybe(KwVar): OpRefVar
+        else: OpRef
+      let refOp = initAstNodeOperator(opKind, token.rng)
       let expr = self.parseExpr()
       initAstNodeBranch(Prefix, @[refOp, expr], token.rng.a .. expr.rng.b)
     of Dollar:
@@ -740,8 +780,8 @@ func newParser*(tokens: openArray[Token]): Parser =
   result.infixFuncs[Shl]      = parseInfix
   result.infixFuncs[Shr]      = parseInfix
 
-  result.infixFuncs[LeCurly]  = parseInfixCurly
-  result.infixFuncs[LeRound]  = parseInfixRound
-  result.infixFuncs[LeSquare] = parseInfixSquare
+  result.infixFuncs[LeCurly]   = parseInfixCurly
+  result.infixFuncs[LeRound]   = parseInfixRound
+  result.infixFuncs[LeSquare]  = parseInfixSquare
 
 {.pop.} # raises: []

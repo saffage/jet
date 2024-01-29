@@ -132,13 +132,13 @@ func toTokenKind*(c: char): Option[TokenKind] =
   result = toTokenKind($c)
 
 const
-  spacingNotSet* = -1
-  spacingLast* = -2
+  spacesNotSet* = -1
+  spacesLast* = -2
 
 type
   TokenSpacing* = object
-    leading*  : int = spacingNotSet
-    trailing* : int = spacingNotSet
+    leading*  : int = spacesNotSet
+    trailing* : int = spacesNotSet
     wasLF*    : bool = false
 
   Token* = object

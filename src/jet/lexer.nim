@@ -409,7 +409,7 @@ func normalizeTokens*(tokens: seq[Token]): seq[Token] =
 
       if result.len() > 0:
         result[^1].spaces.trailing =
-          if wasLF: spacingLast
+          if wasLF: spacesLast
           else: token.spaces.leading
 
       result &= token
@@ -417,7 +417,7 @@ func normalizeTokens*(tokens: seq[Token]): seq[Token] =
       spaces = 0
 
       if token.kind == Eof:
-        result[^1].spaces.trailing = spacingLast
+        result[^1].spaces.trailing = spacesLast
         break
     prevKind = token.kind
 
