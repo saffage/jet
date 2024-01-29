@@ -30,11 +30,11 @@
 	},
     "onEnterRules": [
         {
-          "beforeText": "^\\s*(?:if|elif|else|match|while|for|func|type).*?\\s*$",
+          "beforeText": "^\\s*(?:if|elif|else|match|while|for|(rec)?\\s*func|type).*\\s*$",
           "action": { "indent": "indent" }
         },
         {
-          "beforeText": "^\\s*.*?(?:struct|enum)\\s*$",
+          "beforeText": "^\\s*.*(?:struct|enum|trait)\\s*$",
           "action": { "indent": "indent" }
         },
         {

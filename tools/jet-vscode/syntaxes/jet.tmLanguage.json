@@ -248,12 +248,24 @@
 							"patterns": [
 								{
 									"name": "invalid.illegal.format-specifier.jet",
-									"match": "[^_0-9a-zA-Z\\-\\+<>]"
+									"match": "[^._0-9a-zA-Z\\-\\+<>=!?]"
 								}
 							]
 						},
 						{ "include": "source.jet" }
 					]
+				},
+				{
+					"name": "meta.template.expression.jet",
+					"match": "(\\$)([a-zA-Z_][0-9a-zA-Z_]*)",
+					"captures": {
+						"1": { "name": "string.interpolated.jet" },
+						"2": {
+							"patterns": [
+								{ "include": "source.jet" }
+							]
+						}
+					}
 				}
 			]
 		},

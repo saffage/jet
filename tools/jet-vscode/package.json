@@ -1,7 +1,7 @@
 {
   "name": "jet-vscode",
   "displayName": "Jet",
-  "description": "Jet language support for Visual Studio Code",
+  "description": "Jet language support for VS Code",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.81.0"
@@ -22,7 +22,7 @@
       {
         "language": "jet",
         "scopeName": "source.jet",
-        "path": "./syntaxes/jet.json"
+        "path": "./syntaxes/jet.tmLanguage.json"
       }
     ]
   }
