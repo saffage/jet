@@ -9,6 +9,8 @@ import
   jet/token,
   jet/ast,
   jet/literal,
+  jet/lexer,
+  jet/lexerbase,
 
   lib/utils,
   lib/stacks,
@@ -45,11 +47,18 @@ type
   ParserError* = object of CatchableError
     rng* : FileRange
 
+  FmtLexer = object of LexerBase
+
+  FmtLexerError* = object of CatchableError
+
   BlockContext = tuple[line, indent: int]
 
-  ParsePrefixFunc = proc(self: var Parser): AstNode {.nimcall, noSideEffect, raises: [ParserError, ValueError].}
-  ParseInfixFunc  = proc(self: var Parser; left: AstNode): AstNode {.nimcall, noSideEffect, raises: [ParserError, ValueError].}
-  ParseSuffixFunc = proc(self: var Parser; left: AstNode): AstNode {.nimcall, noSideEffect, raises: [ParserError, ValueError].}
+  ParsePrefixFunc = proc(self: var Parser): AstNode
+    {.nimcall, noSideEffect, raises: [LexerError, FmtLexerError, ParserError, ValueError].}
+  ParseInfixFunc  = proc(self: var Parser; left: AstNode): AstNode
+    {.nimcall, noSideEffect, raises: [LexerError, FmtLexerError, ParserError, ValueError].}
+  ParseSuffixFunc = proc(self: var Parser; left: AstNode): AstNode
+    {.nimcall, noSideEffect, raises: [LexerError, FmtLexerError, ParserError, ValueError].}
 
 func str(kind: TokenKind): string =
   $kind
@@ -90,39 +99,169 @@ type
     List
     Adaptive
 
-func parseLit(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
-func parseExpr(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
-func parseTypeExpr(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
-func parseId(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
-func parseNot(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
-func parseStruct(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
-func parseType(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
-func parseFunc(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
-func parseIf(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
-func parseWhile(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
-func parseReturn(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
-func parseVar(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
-func parseVal(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
-func parseValDecl(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
-func parseParamOrField(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
-func parseDo(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
-func parseDoOrBlock(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
-func parseDoOrExpr(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
-func parseExprOrBlock(self: var Parser; fn: ParsePrefixFunc = parseExpr): AstNode {.raises: [ParserError, ValueError].}
-func parsePrefix(self: var Parser): AstNode {.raises: [ParserError, ValueError].}
-func parseInfix(self: var Parser; left: AstNode): AstNode {.raises: [ParserError, ValueError].}
-func parseInfixCurly(self: var Parser; left: AstNode): AstNode {.raises: [ParserError, ValueError].}
-func parseInfixRound(self: var Parser; left: AstNode): AstNode {.raises: [ParserError, ValueError].}
-func parseInfixSquare(self: var Parser; left: AstNode): AstNode {.raises: [ParserError, ValueError].}
-func parseList(self: var Parser; fn: ParsePrefixFunc): AstNode {.raises: [ParserError, ValueError].}
-func parseList(self: var Parser): AstNode {.raises: [ParserError, ValueError].} = self.parseList(parseExpr)
+{.pop.} # raises: []
+{.push, raises: [LexerError, FmtLexerError, ParserError, ValueError].}
+
+func parseLit(self: var Parser): AstNode
+func parseExpr(self: var Parser): AstNode
+func parseTypeExpr(self: var Parser): AstNode
+func parseId(self: var Parser): AstNode
+func parseNot(self: var Parser): AstNode
+func parseStruct(self: var Parser): AstNode
+func parseType(self: var Parser): AstNode
+func parseFunc(self: var Parser): AstNode
+func parseIf(self: var Parser): AstNode
+func parseWhile(self: var Parser): AstNode
+func parseReturn(self: var Parser): AstNode
+func parseVar(self: var Parser): AstNode
+func parseVal(self: var Parser): AstNode
+func parseValDecl(self: var Parser): AstNode
+func parseParamOrField(self: var Parser): AstNode
+func parseDo(self: var Parser): AstNode
+func parseDoOrBlock(self: var Parser): AstNode
+func parseDoOrExpr(self: var Parser): AstNode
+func parseExprOrBlock(self: var Parser; fn: ParsePrefixFunc = parseExpr): AstNode
+func parsePrefix(self: var Parser): AstNode
+func parseInfix(self: var Parser; left: AstNode): AstNode
+func parseInfixCurly(self: var Parser; left: AstNode): AstNode
+func parseInfixRound(self: var Parser; left: AstNode): AstNode
+func parseInfixSquare(self: var Parser; left: AstNode): AstNode
+func parseList(self: var Parser; fn: ParsePrefixFunc): AstNode
+func parseList(self: var Parser): AstNode = self.parseList(parseExpr)
 func parseBlock(
   self: var Parser;
   body: var seq[AstNode];
   mode: ParseMode = Block;
   until: Option[TokenKind] = none(TokenKind);
   fn: ParsePrefixFunc = parseExpr;
-): ParseMode {.discardable, raises: [ParserError, ValueError].}
+): ParseMode {.discardable.}
+
+func parseAll*(input: string; posOffset = emptyFilePos): Option[AstNode]
+func parseExpr*(input: string; posOffset = emptyFilePos): AstNode
+
+{.pop.} # raises: [LexerError, FmtLexerError, ParserError, ValueError]
+{.push, raises: [].}
+
+#
+# FmtString lexer
+#
+
+const
+  fmtSpecifierChars* = Letters + Digits + {'.', '_', '-', '+', '<', '>', '=', '!', '?'}
+
+template raiseFmtLexerError(message: string) =
+  raise (ref FmtLexerError)(msg: message)
+
+func newFmtLexer*(node: AstNode): FmtLexer =
+  assert(node.kind == Lit)
+  assert(node.lit.kind == lkString)
+
+  result = FmtLexer(
+    buffer: node.lit.stringVal.toOpenArray(0, node.lit.stringVal.high),
+    posOffset: node.rng.a.withOffset(1) - initialFilePos,
+  )
+
+func parseFmtString*(self: var FmtLexer): AstNode
+  {.raises: [LexerError, FmtLexerError, ParserError, ValueError].} =
+  var exprs = newSeq[AstNode]()
+  var buf = ""
+  var bufStartPos = emptyFilePos
+
+  # TODO: lineinfo is broken in multiline literals
+
+  func genFmtCall(result: var seq[AstNode]; expr, spec: string; exprPosOffset: FilePosition; specRange: FileRange)
+    {.raises: [LexerError, FmtLexerError, ParserError, ValueError].} =
+    # We procude code like this:
+    # | $formatValue(`expr`, `spec`)
+    let exprNode = parseExpr(expr, exprPosOffset)
+    let specLit = initAstNodeLit(newLit(spec), specRange)
+    let fmtFunc = initAstNodeBranch(Prefix, @[
+      initAstNodeOperator(OpDollar),
+      initAstNodeId("formatValue"),
+    ])
+    let fmtFuncArgs = initAstNodeBranch(List, @[exprNode, specLit])
+    let formatValueCall = initAstNodeBranch(ExprRound, @[fmtFunc, fmtFuncArgs])
+    result &= formatValueCall
+
+  func genBuf(result: var seq[AstNode]; buf: string; rng: FileRange) =
+    let expr = initAstNodeLit(newLit(buf))
+    result &= expr
+
+  while true:
+    if self.popChar('$'):
+      var expr = ""
+      var spec = ""
+      var exprPosOffset = emptyFilePos
+      var specRange = emptyFileRange
+
+      case self.peek()
+      of '{':
+        self.pop()
+        exprPosOffset = self.peekPos() - initialFilePos
+        expr = self.parseWhile(it notin {'}', ':'})
+
+        if self.popChar(':'):
+          let specStartPos = self.peekPos()
+          spec = self.parseUntil(it == '}')
+          specRange = specStartPos .. self.peekPos()
+
+          if spec.len() == 0:
+            raiseFmtLexerError("empty format specifier are not alloved")
+
+          for c in spec:
+            if c notin fmtSpecifierChars:
+              raiseFmtLexerError(&"invalid character in format specifier: '{c}'")
+
+        if not self.popChar('}'):
+          raiseFmtLexerError("missing closing }")
+      of IdStartChars:
+        exprPosOffset = self.peekPos() - initialFilePos
+        expr = self.parseWhile(it in IdChars)
+      of '$':
+        discard
+      of '\0':
+        raiseFmtLexerError("expected format specifier after '$', got end of string literal")
+      else:
+        raiseFmtLexerError(&"unexpected character after '$': '{self.peek()}'; for single '$' symbol write it twice")
+
+      if expr.len() > 0:
+        if buf.len() > 0:
+          genBuf(exprs, move(buf), bufStartPos .. self.peekPos())
+          buf = ""
+          bufStartPos = emptyFilePos
+        let posOffset = exprPosOffset
+        genFmtCall(exprs, expr, spec, posOffset, specRange)
+
+    if self.isEmpty():
+      break
+
+    if self.peek() in Newlines:
+      self.handleNewLine()
+
+    buf &= self.pop()
+
+    if bufStartPos == emptyFilePos:
+      bufStartPos = self.peekPos()
+
+  if buf.len() > 0:
+    genBuf(exprs, move(buf), bufStartPos .. self.peekPos())
+
+  # TODO: prealloc string
+  result = initAstNodeLit(newLit(""))
+
+  for i, expr in exprs:
+    result =
+      if i == 0: expr
+      else: initAstNodeBranch(Infix, @[
+        initAstNodeOperator(OpAdd),
+        result,
+        expr,
+      ])
+
+func parseFmtString*(node: AstNode): AstNode
+  {.raises: [LexerError, FmtLexerError, ParserError, ValueError].} =
+  var lexer = newFmtLexer(node)
+  result = lexer.parseFmtString()
 
 #
 # Util Functions
@@ -215,7 +354,7 @@ func isNewBlockContext(self: Parser; context: BlockContext): bool =
 #
 
 func parseIfBranch(self: var Parser): AstNode
-  {.raises: [ParserError, ValueError].} =
+  {.raises: [LexerError, FmtLexerError, ParserError, ValueError].} =
   debug("parseIfBranch")
   debug(&"parseIfBranch: {self.peekToken().kind}")
 
@@ -226,7 +365,7 @@ func parseIfBranch(self: var Parser): AstNode
   result = initAstNodeBranch(IfBranch, @[cond, body], token.rng)
 
 func parseElseBranch(self: var Parser): AstNode
-  {.raises: [ParserError, ValueError].} =
+  {.raises: [LexerError, FmtLexerError, ParserError, ValueError].} =
   debug("parseElseBranch")
 
   let token = self.popToken(KwElse)
@@ -251,7 +390,8 @@ func parseLit(self: var Parser): AstNode =
     of KwFalse:
       initAstNodeLit(newLit(false), token.rng)
     of StringLit:
-      initAstNodeLit(newLit(token.data), token.rng)
+      let lit = initAstNodeLit(newLit(token.data), token.rng)
+      parseFmtString(lit)
     of CharLit:
       if token.data.len() != 1:
         raise (ref ValueError)(msg: &"invalid character: '{token.data}'")
@@ -773,11 +913,8 @@ func newParser*(tokens: openArray[Token]): Parser =
 func getAst*(self: Parser): Option[AstNode] =
   self.ast
 
-import
-  jet/lexer
-
 func parseAll*(self: var Parser)
-  {.raises: [ParserError, ValueError].} =
+  {.raises: [LexerError, FmtLexerError, ParserError, ValueError].} =
   debug("parseAll()")
   if self.tokens.len() == 0:
     self.ast = some(initAstNodeEmpty())
@@ -787,15 +924,13 @@ func parseAll*(self: var Parser)
   self.parseBlock(ast.children, until = some(Eof))
   self.ast = some(ast)
 
-func parseAll*(input: string; posOffset = emptyFilePos): Option[AstNode]
-  {.raises: [LexerError, ParserError, ValueError].} =
+func parseAll(input: string; posOffset: FilePosition): Option[AstNode] =
   let tokens = input.getAllTokens(posOffset).normalizeTokens()
   var parser = newParser(tokens)
   parser.parseAll()
   result = parser.getAst()
 
-func parseExpr*(input: string; posOffset = emptyFilePos): AstNode
-  {.raises: [LexerError, ParserError, ValueError].} =
+func parseExpr(input: string; posOffset: FilePosition): AstNode =
   let tokens = input.getAllTokens(posOffset).normalizeTokens()
   var parser = newParser(tokens)
   result = parser.parseExpr()
