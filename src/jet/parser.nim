@@ -29,9 +29,9 @@ type
     prefixFuncs : OrderedTable[TokenKind, ParsePrefixFunc]
     infixFuncs  : OrderedTable[TokenKind, ParseInfixFunc]
     suffixFuncs : OrderedTable[TokenKind, ParseSuffixFunc]
-    precedence  : Option[Precedence]
+    priority    : Option[Priority]
 
-  Precedence = enum
+  Priority = enum
     Lowest
     Eq
     Or
@@ -66,7 +66,7 @@ func str(kind: TokenKind): string =
 func `$`(kind: TokenKind): string =
   kind.symbolName()
 
-const precedences = {
+const priorities = {
   LeRound    : Highest,
   LeSquare   : Highest,
   LeCurly    : Highest,
@@ -415,9 +415,10 @@ func parseLit(self: var Parser): AstNode =
 func parseExpr(self: var Parser): AstNode =
   debug("parseExpr")
 
-  var token      = self.peekToken()
-  let precedence = self.precedence.get(Lowest)
-  let fn         = self.prefixFuncs.getOrDefault(token.kind)
+  var token     = self.peekToken()
+  let fn        = self.prefixFuncs.getOrDefault(token.kind)
+  let priority  = self.priority.get(Lowest)
+  self.priority = none(Priority)
 
   if fn == nil:
     raiseParserError(&"expression is expected, got {token.kind}", token.rng)
@@ -430,9 +431,9 @@ func parseExpr(self: var Parser): AstNode =
   while true:
     token = self.peekToken()
 
-    debug(&"parseExpr: precedence = {precedence}")
+    debug(&"parseExpr: priority = {priority}")
 
-    if precedence >= precedences.getOrDefault(token.kind, Lowest):
+    if priority >= priorities.getOrDefault(token.kind, Lowest):
       break
 
     debug("parseExpr: infix")
@@ -441,8 +442,6 @@ func parseExpr(self: var Parser): AstNode =
     let fn = self.infixFuncs.getOrDefault(token.kind)
     if fn == nil: break
     result = fn(self, result)
-
-  self.precedence = none(Precedence)
 
 func parseTypeExpr(self: var Parser): AstNode =
   result = self.parseExpr()
@@ -486,7 +485,7 @@ func parseId(self: var Parser): AstNode =
 func parseNot(self: var Parser): AstNode =
   debug("parseNot")
 
-  self.precedence = some(Precedence.Prefix)
+  self.priority = some(Priority.Prefix)
 
   let token = self.popToken(KwNot)
   let expr  = self.parseExpr()
@@ -646,7 +645,7 @@ func parseExprOrBlock(self: var Parser; fn: ParsePrefixFunc): AstNode =
 func parsePrefix(self: var Parser): AstNode =
   let token = self.popToken({Ampersand, Dollar})
 
-  # TODO: precedence
+  # TODO: priority
 
   result = case token.kind:
     of Ampersand:
@@ -684,9 +683,9 @@ func parseInfix(self: var Parser; left: AstNode): AstNode =
   if OperatorNotation.Infix notin opKind.get().notation():
     raiseParserError(&"operator '{op}' is not infix", token.rng)
 
-  self.precedence = some do:
+  self.priority = some do:
     try:
-      precedences[token.kind]
+      priorities[token.kind]
     except KeyError:
       unreachable()
 
@@ -734,12 +733,14 @@ func parseList(self: var Parser; fn: ParsePrefixFunc): AstNode =
     else: unreachable()
 
   self.skipToken(token.kind)
-  var elems = newSeq[AstNode]()
-  let prevPrecedence = self.precedence
-  self.precedence = none(Precedence)
-  let mode = self.parseBlock(elems, mode = Adaptive, until = some(until), fn = fn)
-  self.precedence = prevPrecedence
+  var elems        = newSeq[AstNode]()
+  let prevPriority = self.priority
+
+  self.priority = none(Priority)
+  let mode      = self.parseBlock(elems, mode = Adaptive, until = some(until), fn = fn)
+  self.priority = prevPriority
   # TODO: check indentation
+
   let closeBracketInfo = self.popToken(until).rng
   let rng = openBracketInfo.a .. closeBracketInfo.b
 
