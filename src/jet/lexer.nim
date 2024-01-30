@@ -56,53 +56,82 @@ func lexId(self: var Lexer): Token =
 
 func lexNumber(self: var Lexer): Token
   {.raises: [LexerError].} =
-  var wasSeparator = false
+  template withSeparatorCheck(charSet: set[char]): bool =
+    block:
+      var wasSeparator = false
+      if it == '_':
+        if wasSeparator:
+          raiseLexerError(
+            "more than 1 separator in a row is not allowed",
+            self.peekPos().withLength(1))
+        wasSeparator = true
+        true
+      else:
+        wasSeparator = false
+        it in charSet
 
-  template withSeparatorCheck(): bool =
-    debug($wasSeparator)
-    if it == '_':
-      if wasSeparator:
+  func parseNumberChecked(self: var Lexer; charSet: set[char]): string
+    {.raises: [LexerError].} =
+    if self.peek() notin charSet:
+      raiseLexerError("expected number here", self.peekPos().withLength(1))
+
+    let startPos = self.peekPos()
+    result = self.parseWhile(withSeparatorCheck(charSet))
+
+    if result.startsWith('_'):
+      raiseLexerError(
+        "leading underscores in number literal is illegal",
+        startPos.withLength(1))
+
+    if result.endsWith('_'):
+      raiseLexerError(
+        "trailing underscores in number literal is illegal",
+        self.peekPos().withLength(1))
+
+  let numPart =
+    if self.popChar('0'):
+      case self.peek()
+      of 'x':
+        self.pop()
+        "0x" & self.parseNumberChecked(HexDigits)
+      of 'b':
+        self.pop()
+        "0b" & self.parseNumberChecked({'0'..'1'})
+      of 'o':
+        self.pop()
+        "0o" & self.parseNumberChecked({'0'..'7'})
+      of '.', 'e', 'E':
+        "0"
+      else:
         raiseLexerError(
-          "more than 1 separator in a row is not allowed",
+          "'0' as first character of a number literal are not allowed",
           self.peekPos().withLength(1))
-      wasSeparator = true
-      true
     else:
-      wasSeparator = false
-      it in Digits
+      self.parseNumberChecked(Digits)
 
-  let numPart = self.parseWhile(withSeparatorCheck)
+  var fracPart = ""
+  var expPart = ""
 
-  if numPart.endsWith('_'):
-    raiseLexerError(
-      "trailing underscores in number literal is illegal",
-      self.peekPos().withLength(1))
+  if self.popChar('.'):
+    fracPart &= self.parseNumberChecked(Digits)
 
-  # TODO: hex, oct, bin numbers
-  # TODO: handle '1e10' notation
+  if self.popChar({'e', 'E'}):
+    expPart &= 'e'
 
-  result =
-    if self.peek() == '.':
-      self.pop()
-      let dotInfo = self.peekPos()
-      let fracPart = self.parseWhile(withSeparatorCheck)
+    if self.peek() in {'-', '+'}:
+      expPart &= self.pop()
 
-      if fracPart.len() == 0 or Digits notin fracPart:
-        raiseLexerError("expected number after '.' in float literal", dotInfo.withLength(1))
+    expPart &= self.parseNumberChecked(Digits)
 
-      if fracPart.startsWith('_'):
-        raiseLexerError(
-          "leading underscores in number literal is illegal",
-          dotInfo.withOffset(1).withLength(1))
+  result = Token(kind: IntLit, data: numPart)
 
-      if fracPart.endsWith('_') or fracPart.startsWith('_'):
-        raiseLexerError(
-          "trailing underscores in number literal is illegal",
-          self.peekPos().withLength(1))
+  if fracPart.len() > 0:
+    result.kind  = FloatLit
+    result.data &= '.' & fracPart
 
-      Token(kind: FloatLit, data: numPart & '.' & fracPart)
-    else:
-      Token(kind: IntLit, data: numPart)
+  if expPart.len() > 0:
+    result.kind  = FloatLit
+    result.data &= expPart
 
 func lexComment(self: var Lexer): Token =
   self.pop()

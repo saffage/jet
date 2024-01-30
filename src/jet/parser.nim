@@ -397,7 +397,16 @@ func parseLit(self: var Parser): AstNode =
         raise (ref ValueError)(msg: &"invalid character: '{token.data}'")
       initAstNodeLit(newLit(token.data[0]), token.rng)
     of IntLit:
-      initAstNodeLit(newLit(token.data.parseBiggestInt()), token.rng)
+      let number =
+        if token.data.len() > 2 and token.data[0] == '0' and token.data[1] in {'x', 'b', 'o'}:
+          case token.data[1]
+          of 'x': token.data.parseHexInt()
+          of 'b': token.data.parseBinInt()
+          of 'o': token.data.parseOctInt()
+          else: unreachable()
+        else:
+          token.data.parseBiggestInt()
+      initAstNodeLit(newLit(number), token.rng)
     of FloatLit:
       initAstNodeLit(newLit(token.data.parseFloat()), token.rng)
     else:
