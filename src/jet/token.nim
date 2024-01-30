@@ -139,7 +139,7 @@ type
   TokenSpacing* = object
     leading*  : int = spacesNotSet
     trailing* : int = spacesNotSet
-    wasLF*    : bool = false
+    wasEndl*  : bool = false
 
   Token* = object
     kind*   : TokenKind

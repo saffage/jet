@@ -636,7 +636,7 @@ func parseDoOrExpr(self: var Parser): AstNode =
 func parseExprOrBlock(self: var Parser; fn: ParsePrefixFunc): AstNode =
   debug("parseExprOrBlock")
 
-  if self.peekToken().spaces.wasLF:
+  if self.peekToken().spaces.wasEndl:
     result = initAstNodeBranch(Block, @[])
     self.parseBlock(result.children, fn = fn)
   else:
@@ -780,7 +780,7 @@ func parseBlock(
 
     debug(&"parseBlock: mode {mode}, token {self.peekToken().human()}")
 
-    if token.spaces.wasLF:
+    if token.spaces.wasEndl:
       let token = self.peekToken()
       let indent = token.spaces.leading
 
@@ -833,7 +833,7 @@ func parseBlock(
           Block
         elif token.kind in untilKinds:
           List
-        elif token.spaces.wasLF:
+        elif token.spaces.wasEndl:
           Block
         else:
           raiseParserError(

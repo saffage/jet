@@ -330,32 +330,32 @@ func normalizeTokens*(tokens: seq[Token]): seq[Token] =
   result = @[]
   var prevKind = TokenKind.Eof
   var spaces   = 0
-  var wasLF    = true
+  var wasEndl  = true
 
   for token in tokens:
     case token.kind
     of Empty:
       continue
     of VSpace:
-      wasLF = true
-      spaces = 0
+      wasEndl = true
+      spaces  = 0
     of HSpace:
       spaces += token.data.len()
     else:
       var token = token
-      token.spaces.wasLF = wasLF
+      token.spaces.wasEndl = wasEndl
       token.spaces.leading =
         if prevKind == HSpace: spaces
         else: 0
 
       if result.len() > 0:
         result[^1].spaces.trailing =
-          if wasLF: spacesLast
+          if wasEndl: spacesLast
           else: token.spaces.leading
 
       result &= token
-      wasLF = false
-      spaces = 0
+      wasEndl = false
+      spaces  = 0
 
       if token.kind == Eof:
         result[^1].spaces.trailing = spacesLast
