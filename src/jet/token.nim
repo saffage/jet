@@ -19,10 +19,11 @@ type
     VSpace        = "<vertical-space>"
 
     #[ Literals ]#
-    IntLit           = "<int-literal>"
-    FloatLit         = "<float-literal>"
-    CharLit          = "<char-literal>"
-    StringLit        = "<string-literal>"
+    IntLit       = "<int-literal>"
+    FloatLit     = "<float-literal>"
+    CharLit      = "<char-literal>"
+    StringLit    = "<string-literal>"
+    RawStringLit = "<raw-string-literal>"
 
     #[ Typed Literals ]#
     ISizeLit = "<isize-literal>"

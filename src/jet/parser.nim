@@ -146,6 +146,59 @@ func parseExpr*(input: string; posOffset = emptyFilePos): AstNode
 # FmtString lexer
 #
 
+func escapeString(s: string; startPos: FilePosition): string
+  {.raises: [LexerError].} =
+  result = ""
+  var i = 0
+
+  while i <= s.high:
+    let info = startPos.withOffset(i)
+
+    if s[i] == '\\':
+      if i == s.high:
+        raiseLexerError(
+          "invalid character escape; expected character after `\\`, got end of string literal",
+          info)
+
+      i += 1
+      result.add case s[i]:
+        of 'n': "\n"
+        of 'r': "\r"
+        of 't': "\t"
+        of '\\': "\\"
+        of '\'': "\'"
+        of '\"': "\""
+        of 'x', 'u', 'U': todo()
+        of Digits:
+          if i+2 <= s.high and s[i+1] in Digits and s[i+2] in Digits:
+            var num = 0
+            num = (num * 10) + (ord(s[i+0]) - ord('0'))
+            num = (num * 10) + (ord(s[i+1]) - ord('0'))
+            num = (num * 10) + (ord(s[i+2]) - ord('0'))
+
+            if num > 255:
+              raiseLexerError(
+                "invalid character escape; constant must be in range 0..255",
+                info.withLength(4))
+
+            i += 2
+            $char(num)
+          else:
+            if s[1] != '0':
+              raiseLexerError(
+                "invalid character escape: '" & s[1] & "'",
+                info.withLength(2))
+
+            "\0"
+        else:
+          raiseLexerError("invalid character escape: '\\" & s[i] & "'", info.withOffset(-1).withLength(2))
+    elif s[i] in PrintableChars:
+      result &= s[i]
+    else:
+      raiseLexerError("invalid character: " & escape($s[i], "'\\", "'"), info)
+
+    i += 1
+
 const
   fmtSpecifierChars* = Letters + Digits + {'.', '_', '-', '+', '<', '>', '=', '!', '?'}
 
@@ -389,9 +442,12 @@ func parseLit(self: var Parser): AstNode =
       initAstNodeLit(newLit(true), token.rng)
     of KwFalse:
       initAstNodeLit(newLit(false), token.rng)
-    of StringLit:
-      let lit = initAstNodeLit(newLit(token.data), token.rng)
-      parseFmtString(lit)
+    of StringLit, RawStringLit:
+      var lit = initAstNodeLit(newLit(token.data), token.rng)
+      lit = parseFmtString(lit)
+      if token.kind != RawStringLit:
+        lit.lit.stringVal = escapeString(lit.lit.stringVal, token.rng.a)
+      lit
     of CharLit:
       if token.data.len() != 1:
         raise (ref ValueError)(msg: &"invalid character: '{token.data}'")

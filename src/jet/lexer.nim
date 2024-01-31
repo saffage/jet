@@ -168,59 +168,6 @@ func lexOperator(self: var Lexer): Token
 
   result = Token(kind: kind.get())
 
-func escapeString(s: string; startPos: FilePosition): string
-  {.raises: [LexerError].} =
-  result = ""
-  var i = 0
-
-  while i <= s.high:
-    let info = startPos.withOffset(i)
-
-    if s[i] == '\\':
-      if i == s.high:
-        raiseLexerError(
-          "invalid character escape; expected character after `\\`, got end of string literal",
-          info)
-
-      i += 1
-      result.add case s[i]:
-        of 'n': "\n"
-        of 'r': "\r"
-        of 't': "\t"
-        of '\\': "\\"
-        of '\'': "\'"
-        of '\"': "\""
-        of 'x', 'u', 'U': todo()
-        of Digits:
-          if i+2 <= s.high and s[i+1] in Digits and s[i+2] in Digits:
-            var num = 0
-            num = (num * 10) + (ord(s[i+0]) - ord('0'))
-            num = (num * 10) + (ord(s[i+1]) - ord('0'))
-            num = (num * 10) + (ord(s[i+2]) - ord('0'))
-
-            if num > 255:
-              raiseLexerError(
-                "invalid character escape; constant must be in range 0..255",
-                info.withLength(4))
-
-            i += 2
-            $char(num)
-          else:
-            if s[1] != '0':
-              raiseLexerError(
-                "invalid character escape: '" & s[1] & "'",
-                info.withLength(2))
-
-            "\0"
-        else:
-          raiseLexerError("invalid character escape: '\\" & s[i] & "'", info.withOffset(-1).withLength(2))
-    elif s[i] in PrintableChars:
-      result &= s[i]
-    else:
-      raiseLexerError("invalid character: " & escape($s[i], "'\\", "'"), info)
-
-    i += 1
-
 func lexString(self: var Lexer; raw = false): Token
   {.raises: [LexerError].} =
   let quote =
@@ -228,17 +175,17 @@ func lexString(self: var Lexer; raw = false): Token
     else: '\''
   let info = self.peekPos()
   self.pop()
-
-  let infoInsideLit = self.peekPos()
   let data = self.parseUntil(it == quote and self.peekOffset(-1) != '\\')
 
   if self.peek() == '\0':
     raiseLexerError("missing closing " & quote, info)
   self.pop()
 
-  result =
-    if raw: Token(kind: StringLit, data: data)
-    else: Token(kind: StringLit, data: data.escapeString(infoInsideLit))
+  let kind =
+    if raw: RawStringLit
+    else: StringLit
+
+  result = Token(kind: kind, data: data)
 
 func nextToken(self: var Lexer)
   {.raises: [LexerError].} =
