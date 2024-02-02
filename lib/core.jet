@@ -1,25 +1,24 @@
-@CompilerBuiltIn type isize
-@CompilerBuiltIn type usize
-@CompilerBuiltIn type i8
-@CompilerBuiltIn type i16
-@CompilerBuiltIn type i32
-@CompilerBuiltIn type i64
-@CompilerBuiltIn type u8
-@CompilerBuiltIn type u16
-@CompilerBuiltIn type u32
-@CompilerBuiltIn type u64
-@CompilerBuiltIn type f32
-@CompilerBuiltIn type f64
-@CompilerBuiltIn type char
-@CompilerBuiltIn type bool
-@CompilerBuiltIn type any
+# type isize  @Magic('TypeIsize')
+# type usize  @Magic('TypeUsize')
+type i8     @Magic('TypeI8')
+type i16    @Magic('TypeI16')
+type i32    @Magic('TypeI32')
+type i64    @Magic('TypeI64')
+# type u8     @Magic('TypeU8')
+# type u16    @Magic('TypeU16')
+# type u32    @Magic('TypeU32')
+# type u64    @Magic('TypeU64')
+# type f32    @Magic('TypeF32')
+# type f64    @Magic('TypeF64')
+# type char   @Magic('TypeChar')
+# type bool   @Magic('TypeBool')
+# type any    @Magic('TypeAny')
 
+# func print(messages ...any)
+#   @Magic('FuncPrint')
 
-@CompilerBuiltIn
-func print(messages ...any)
+# func println(messages ...any)
+#   @Magic('FuncPrintln')
 
-@CompilerBuiltIn
-func println(messages ...any)
-
-@CompilerBuiltIn
-func panic(message ...any) (!)
+# func panic(message ...any) (!)
+#   @Magic('FuncPanic')
