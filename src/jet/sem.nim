@@ -1,9 +1,12 @@
 import
   std/strformat,
+  std/strutils,
 
   jet/ast,
   jet/symbol,
   jet/module,
+  jet/magics,
+  jet/semutil,
 
   lib/utils,
   lib/lineinfo
@@ -26,7 +29,7 @@ template raiseSemanticError*(message: string; filePos: FilePosition) =
 func isSymDecl(tree: AstNode): bool =
   result =
     tree.kind == Branch and
-    tree.branchKind in {ValDecl, VarDecl}
+    tree.branchKind in {ValDecl, VarDecl, Type}
 
 proc checkOperandTypes(module: ModuleRef; opNode: AstNode; left, right: TypeRef): TypeRef
   {.raises: [SemanticError].} =
@@ -94,12 +97,12 @@ proc typeOfExpr(module: ModuleRef; expr: AstNode; expectedType = nil.TypeRef): T
            expectedType.kind in {tyI8, tyI16, tyI32, tyI64}:
           # TODO: check int range
           return expectedType
-        module.getBuiltinType(tyI32)
+        module.getSym("i32").`type`
       of lkNil:
         # if expectedType != nil and
         #    expectedType.kind == tyRef:
         #     return expectedType
-        module.getBuiltinType(tyNil)
+        module.getMagicSym(mTypeNil).`type`
       else:
         todo($expr.lit.kind)
     of Operator:
@@ -127,7 +130,7 @@ proc typeOfExpr(module: ModuleRef; expr: AstNode; expectedType = nil.TypeRef): T
       else:
         todo($expr.branchKind)
 
-func genSym(module: ModuleRef; tree: AstNode): SymbolRef
+proc genSym(module: ModuleRef; tree: AstNode): SymbolRef
   {.raises: [SemanticError, ValueError, ModuleError].} =
   result = nil
 
@@ -135,6 +138,43 @@ func genSym(module: ModuleRef; tree: AstNode): SymbolRef
     return
 
   case tree.branchKind
+  of Type:
+    let name = tree.children[0]
+    if name.kind != Id:
+      unimplemented("name is not Id")
+
+    let body = tree.children[1]
+
+    case body.kind:
+    of Branch:
+      case body.branchKind:
+      of ExprRound:
+        if not body.isAnnotation(): unimplemented()
+        if body.getAnnotationName() != "Magic": todo()
+
+        let args = body.getAnnotationArgs()
+        if args.len() != 1: todo()
+
+        let arg = args[0].lit.stringVal
+        let magic = try:
+          parseEnum[MagicKind]('m' & arg)
+        except ValueError:
+          raiseSemanticError("unknown magic: '" & arg & "'", args[0].rng)
+        let magicSym = module.getMagicSym(magic)
+
+        magic.markAsResolved()
+
+        result = SymbolRef(
+          id: name.id,
+          kind: skType,
+          `type`: magicSym.`type`,
+          scope: nil, # idk
+        )
+      else:
+        unimplemented()
+    else:
+      unimplemented()
+
   of VarDecl, ValDecl:
     let idNode = tree.children[0]
     let id = idNode.id

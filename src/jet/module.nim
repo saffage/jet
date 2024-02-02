@@ -1,10 +1,10 @@
 import
   std/strformat,
+  std/tables,
 
   jet/ast,
   jet/symbol,
-
-  lib/utils
+  jet/magics
 
 {.push, raises: [].}
 
@@ -35,7 +35,7 @@ type
   Module = object
     rootScope* : ScopeRef
     rootTree*  : AstNode
-    builtins*  : seq[SymbolRef]
+    magics*    : Table[MagicKind, SymbolRef]
     isMain*    : bool
 
   ModuleError* = object of CatchableError
@@ -50,38 +50,26 @@ func registerSymbol*(self: ModuleRef; symbol: SymbolRef)
 
   self.rootScope.symbols &= symbol
 
-proc registerPrimitives(self: ModuleRef) =
-  self.builtins = @[
-    i8Sym,
-    i16Sym,
-    i32Sym,
-    i64Sym,
-    nilSym
-  ]
+proc registerMagicSyms(self: ModuleRef) =
+  self.magics = {
+    mTypeI8: i8Sym,
+    mTypeI16: i16Sym,
+    mTypeI32: i32Sym,
+    mTypeI64: i64Sym,
+    mTypeNil: nilSym,
+  }.toTable()
 
-func getBuiltinSym*(self: ModuleRef; id: string): SymbolRef
-  {.raises: [ModuleError].} =
-  let idx = self.builtins.findIt(it.id == id)
-  result =
-    if idx < 0: raiseModuleError("unknown builtin symbol: '" & id & "'")
-    else: self.builtins[idx]
-
-func getBuiltinType*(self: ModuleRef; kind: TypeKind): TypeRef
-  {.raises: [ModuleError].} =
-  let idx = self.builtins.findIt(it.`type`.kind == kind)
-  result =
-    if idx < 0: raiseModuleError("unknown builtin type: '" & $kind & "'")
-    else: self.builtins[idx].`type`
+func getMagicSym*(self: ModuleRef; magic: MagicKind): SymbolRef =
+  result = try:
+    self.magics[magic]
+  except KeyError:
+    raise newException(Defect, "unimplemented magic: '" & $magic & "'")
 
 func getSym*(self: ModuleRef; id: string): SymbolRef =
-  result =
-    try:
-      self.getBuiltinSym(id)
-    except ModuleError:
-      self.rootScope.getSymbolRec(id)
+  result = self.rootScope.getSymbolRec(id)
 
 proc newModule*(rootTree: AstNode): ModuleRef =
   result = ModuleRef(rootTree: rootTree, rootScope: newScope())
-  result.registerPrimitives()
+  result.registerMagicSyms()
 
 {.pop.} # raises: []
