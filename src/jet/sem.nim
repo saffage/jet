@@ -187,8 +187,7 @@ proc genSym(module: ModuleRef; tree: AstNode): SymbolRef
     if `type` == nil:
       `type` = module.typeOfExpr(body)
     else:
-      # check body type
-      if not isCompatibleTypes(`type`, bodyType):
+      if bodyType != nil and not isCompatibleTypes(`type`, bodyType):
         raiseSemanticError(&"invalid type for '{id}'; expected {`type`}, got {bodyType}", idNode)
 
     if `type` == nil:
