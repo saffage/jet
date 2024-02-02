@@ -1,3 +1,5 @@
+# module core
+
 # type isize  @Magic('TypeIsize')
 # type usize  @Magic('TypeUsize')
 type i8     @Magic('TypeI8')
