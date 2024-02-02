@@ -19,7 +19,7 @@ $ nimble build -d:release
 
 # Build switches
 
-Any build switch can be enabled via **Nimble** with `-d:<flag>` flag, for example:
+Any build switch can be enabled via **Nimble** with `-d:<NIM_FLAG>` flag, for example:
 
 ```bash
 $ nimble build -d:jetBuildGrammar
@@ -33,4 +33,5 @@ All available build switches:
 # TODO
 
 - Testing framework for Jet's scanner, parser, checker and backend
+- Store the `-` sign in the literal, make literals **untyped** so that a literal outside the maximum range will be stored, but when converting the literal to real code the range of values will be checked
 - C code generator
