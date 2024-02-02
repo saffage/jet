@@ -73,6 +73,7 @@ type
     OpRefVar = "&var"
     OpDollar = "$"
     OpDot    = "."
+    OpAnnot  = "@"
 
   OperatorNotation* = enum
     Infix
@@ -109,6 +110,7 @@ func notation*(kind: OperatorKind): set[OperatorNotation] =
     of OpRefVar: {Prefix}
     of OpDollar: {Prefix}
     of OpDot: {Infix}
+    of OpAnnot: {Prefix}
 
 func isLeaf*(tree: AstNode): bool =
   tree.kind != Branch

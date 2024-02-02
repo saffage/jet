@@ -126,6 +126,7 @@ func parseInfix(self: var Parser; left: AstNode): AstNode
 func parseInfixCurly(self: var Parser; left: AstNode): AstNode
 func parseInfixRound(self: var Parser; left: AstNode): AstNode
 func parseInfixSquare(self: var Parser; left: AstNode): AstNode
+func parseAnnotation(self: var Parser): AstNode
 func parseList(self: var Parser; fn: ParsePrefixFunc): AstNode
 func parseList(self: var Parser): AstNode = self.parseList(parseExpr)
 func parseBlock(
@@ -141,6 +142,9 @@ func parseExpr*(input: string; posOffset = emptyFilePos): AstNode
 
 {.pop.} # raises: [LexerError, FmtLexerError, ParserError, ValueError]
 {.push, raises: [].}
+
+const # errors
+  ErrExpectedId = "expected identifier"
 
 #
 # FmtString lexer
@@ -777,6 +781,24 @@ func parseInfixRound(self: var Parser; left: AstNode): AstNode =
 func parseInfixSquare(self: var Parser; left: AstNode): AstNode =
   raiseParserError("todo", self.peekToken().rng)
 
+func parseAnnotation(self: var Parser): AstNode =
+  let atToken = self.popToken(At)
+
+  if atToken.spaces.trailing != 0:
+    raiseParserError(ErrExpectedId, atToken.rng)
+
+  let annotPrefix = initAstNodeOperator(OpAnnot, atToken.rng)
+  let id = self.parseId()
+  let annot = initAstNodeBranch(Prefix, @[annotPrefix, id], annotPrefix.rng.a .. id.rng.b)
+  let args = block:
+    let token = self.peekToken()
+    if token.kind == LeRound and token.spaces.leading == 0 and not token.spaces.wasEndl:
+      self.parseList()
+    else:
+      initAstNodeEmpty()
+
+  result = initAstNodeBranch(ExprRound, @[annot, args])
+
 func parseList(self: var Parser; fn: ParsePrefixFunc): AstNode =
   debug("parseList")
 
@@ -934,6 +956,7 @@ func newParser*(tokens: openArray[Token]): Parser =
   result.prefixFuncs[LeRound]  = parseList
   result.prefixFuncs[LeCurly]  = parseList
   result.prefixFuncs[LeSquare] = parseList
+  result.prefixFuncs[At]       = parseAnnotation
   result.prefixFuncs[KwNot]    = parseNot
   result.prefixFuncs[KwDo]     = parseDo
   result.prefixFuncs[KwStruct] = parseStruct
