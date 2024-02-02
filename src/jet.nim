@@ -26,7 +26,9 @@ proc `%`*(v: char): JsonNode =
 proc main() =
   logger.maxErrors = 3
 
-  if not dirExists(getAppDir().parentDir() / "lib"):
+  let libDir = getAppDir().parentDir() / "lib"
+
+  if not dirExists(libDir):
     panic("can't find core library directory: \"$jet/lib\"")
 
   # Pipeline:
