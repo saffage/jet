@@ -1,5 +1,6 @@
 import
   std/strformat,
+  std/enumutils,
 
   lib/utils
 
@@ -86,6 +87,9 @@ type
     kind*   : SymbolKind
     `type`* : TypeRef
     scope*  : ScopeRef
+
+func `$`*(self: SymbolKind): string =
+  result = self.symbolName()[2 ..^ 1]
 
 #
 # Scope
