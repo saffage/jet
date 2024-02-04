@@ -1,6 +1,7 @@
 import
   std/strformat,
   std/strutils,
+  std/options,
 
   jet/ast,
   jet/symbol,
@@ -169,6 +170,7 @@ proc genSym(module: ModuleRef; tree: AstNode): SymbolRef
           kind: skType,
           `type`: magicSym.`type`,
           scope: nil, # idk
+          magic: some(magic),
         )
       else:
         unimplemented()

@@ -1,6 +1,9 @@
 import
   std/strformat,
   std/enumutils,
+  std/options,
+
+  jet/magics,
 
   lib/utils
 
@@ -87,6 +90,7 @@ type
     kind*   : SymbolKind
     `type`* : TypeRef
     scope*  : ScopeRef
+    magic*  : Option[MagicKind]   ## Related magic
 
 func `$`*(self: SymbolKind): string =
   result = self.symbolName()[2 ..^ 1]
