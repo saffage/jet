@@ -65,7 +65,7 @@ type
     OpSub    = "-"
     OpMul    = "*"
     OpDiv    = "/"
-    OpDivInt = ""
+    OpDivInt = "" # TODO: integer division operator
     OpMod    = "%"
     OpShl    = "<<"
     OpShr    = ">>"

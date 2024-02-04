@@ -6,8 +6,7 @@ import
   jet/lexerbase,
   jet/token,
 
-  lib/lineinfo,
-  lib/utils
+  lib/lineinfo
 
 export
   LexerError

@@ -15,9 +15,7 @@ import
   jet/sem,
 
   lib/utils,
-  lib/lineinfo,
-
-  pkg/results
+  lib/lineinfo
 
 # WHY???
 proc `%`*(v: char): JsonNode =
@@ -88,14 +86,17 @@ proc main() =
 
   hint("semantic analysis...")
   var rootTree = parser.getAst().get()
+  var mainModule = newModule(rootTree)
   try:
-    var mainModule = newModule(rootTree)
     mainModule.traverseSymbols()
     debug("Root scope symbols:\n    " & mainModule.rootScope.symbols.join("\n    "))
-  except SemanticError as e:
+  except SemanticError, ModuleError, ValueError:
+    let err = getCurrentException()
     # TODO: file id
-    stdout.write(argument & ":" & $e.rng.a & ": ")
-    error(e.msg)
+    if err of (ref SemanticError):
+      let err = cast[ref SemanticError](err)
+      stdout.write(argument & ":" & $err.rng.a & ": ")
+    error("[" & $err.name & "]: " & err.msg)
     raise
 
 when isMainModule: main()
