@@ -77,7 +77,7 @@ proc getTypeDesc(module: ModuleRef; expr: AstNode): TypeRef =
     return
 
 proc typeOfExpr(module: ModuleRef; expr: AstNode; expectedType = nil.TypeRef): TypeRef
-  {.raises: [SemanticError, ModuleError].} =
+  {.raises: [SemanticError].} =
   result = case expr.kind:
     of Empty:
       nil
@@ -98,7 +98,7 @@ proc typeOfExpr(module: ModuleRef; expr: AstNode; expectedType = nil.TypeRef): T
            expectedType.kind in {tyI8, tyI16, tyI32, tyI64}:
           # TODO: check int range
           return expectedType
-        module.getSym("i32").`type`
+        module.getMagicSym(mTypeI32).`type`
       of lkNil:
         # if expectedType != nil and
         #    expectedType.kind == tyRef:
@@ -132,7 +132,7 @@ proc typeOfExpr(module: ModuleRef; expr: AstNode; expectedType = nil.TypeRef): T
         todo($expr.branchKind)
 
 proc genSym(module: ModuleRef; tree: AstNode): SymbolRef
-  {.raises: [SemanticError, ValueError, ModuleError].} =
+  {.raises: [SemanticError, ValueError].} =
   result = nil
 
   if not tree.isSymDecl():
