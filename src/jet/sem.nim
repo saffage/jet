@@ -101,10 +101,7 @@ proc typeOfExpr(module: ModuleRef; expr: AstNode; expectedType = nil.TypeRef): T
           return expectedType
         module.getMagicSym(mTypeI32).`type`
       of lkNil:
-        # if expectedType != nil and
-        #    expectedType.kind == tyRef:
-        #     return expectedType
-        module.getMagicSym(mTypeNil).`type`
+        unimplemented("nil")
       else:
         todo($expr.lit.kind)
     of Operator:

@@ -17,14 +17,12 @@ let
   i16Type* = TypeRef(kind: tyI16)
   i32Type* = TypeRef(kind: tyI32)
   i64Type* = TypeRef(kind: tyI64)
-  nilType* = TypeRef(kind: tyNil)
 
 let
   i8Sym* = SymbolRef(kind: skType, `type`: i8Type)
   i16Sym* = SymbolRef(kind: skType, `type`: i16Type)
   i32Sym* = SymbolRef(kind: skType, `type`: i32Type)
   i64Sym* = SymbolRef(kind: skType, `type`: i64Type)
-  nilSym* = SymbolRef(kind: skType, `type`: nilType)
 
 #
 # Module
@@ -56,7 +54,6 @@ proc registerMagicSyms(self: ModuleRef) =
     mTypeI16: i16Sym,
     mTypeI32: i32Sym,
     mTypeI64: i64Sym,
-    mTypeNil: nilSym,
   }.toTable()
 
 func getMagicSym*(self: ModuleRef; magic: MagicKind): SymbolRef =

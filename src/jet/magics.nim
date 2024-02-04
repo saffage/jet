@@ -22,7 +22,7 @@ type
     # mTypeChar
     # mTypeBool
     # mTypeAny
-    mTypeNil
+    # mTypeNil
     # mFuncPrint
     # mFuncPrintln
     # mFuncPanic
