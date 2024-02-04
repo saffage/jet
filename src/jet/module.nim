@@ -20,11 +20,11 @@ let
   nilType* = TypeRef(kind: tyNil)
 
 let
-  i8Sym* = SymbolRef(id: "i8", kind: skType, `type`: i8Type)
-  i16Sym* = SymbolRef(id: "i16", kind: skType, `type`: i16Type)
-  i32Sym* = SymbolRef(id: "i32", kind: skType, `type`: i32Type)
-  i64Sym* = SymbolRef(id: "i64", kind: skType, `type`: i64Type)
-  nilSym* = SymbolRef(id: "nil", kind: skType, `type`: nilType)
+  i8Sym* = SymbolRef(kind: skType, `type`: i8Type)
+  i16Sym* = SymbolRef(kind: skType, `type`: i16Type)
+  i32Sym* = SymbolRef(kind: skType, `type`: i32Type)
+  i64Sym* = SymbolRef(kind: skType, `type`: i64Type)
+  nilSym* = SymbolRef(kind: skType, `type`: nilType)
 
 #
 # Module
