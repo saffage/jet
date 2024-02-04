@@ -35,7 +35,7 @@ type
   Module = object
     rootScope* : ScopeRef
     rootTree*  : AstNode
-    magics*    : Table[MagicKind, SymbolRef]
+    magics*    : Table[MagicKind, SymbolRef] ## Keep in sync with `magics.MagicKind`
     isMain*    : bool
 
   ModuleError* = object of CatchableError

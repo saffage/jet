@@ -6,25 +6,26 @@ import
 
 type
   MagicKind* = enum
-    mTypeIsize
-    mTypeUsize
+    ## Keep in sync with `modules.Module.magics`
+    # mTypeIsize
+    # mTypeUsize
     mTypeI8
     mTypeI16
     mTypeI32
     mTypeI64
-    mTypeU8
-    mTypeU16
-    mTypeU32
-    mTypeU64
-    mTypeF32
-    mTypeF64
-    mTypeChar
-    mTypeBool
-    mTypeAny
+    # mTypeU8
+    # mTypeU16
+    # mTypeU32
+    # mTypeU64
+    # mTypeF32
+    # mTypeF64
+    # mTypeChar
+    # mTypeBool
+    # mTypeAny
     mTypeNil
-    mFuncPrint
-    mFuncPrintln
-    mFuncPanic
+    # mFuncPrint
+    # mFuncPrintln
+    # mFuncPanic
 
 func `$`*(self: MagicKind): string =
   result = self.symbolName()[1 ..^ 1]
@@ -37,6 +38,9 @@ proc isResolved*(magic: MagicKind): bool =
 
 proc getUnresolvedMagics*(): set[MagicKind] =
   result = resolvedMagics.complement()
+
+proc getResolvedMagics*(): set[MagicKind] =
+  result = resolvedMagics
 
 proc markAsResolved*(magic: MagicKind)
   {.raises: [ValueError].} =

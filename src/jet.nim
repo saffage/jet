@@ -95,7 +95,11 @@ proc main() =
     # TODO: file id
     if err of (ref SemanticError):
       let err = cast[ref SemanticError](err)
-      stdout.write(argument & ":" & $err.rng.a & ": ")
+      let pos = err.rng.a
+      if pos != emptyFilePos:
+        stdout.write(argument & ":" & $pos & ": ")
+      else:
+        stdout.write(argument & ": ")
     error("[" & $err.name & "]: " & err.msg)
     raise
 

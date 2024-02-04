@@ -1,6 +1,7 @@
 import
   std/strformat,
   std/strutils,
+  std/sequtils,
   std/options,
 
   jet/ast,
@@ -212,6 +213,16 @@ proc genSym(module: ModuleRef; tree: AstNode): SymbolRef
   else:
     unimplemented()
 
+proc assertMagicsResolved(module: ModuleRef)
+  {.raises: [SemanticError, ValueError].} =
+  let unresolvedMagics = getUnresolvedMagics()
+
+  if unresolvedMagics != {}:
+    let magicsAsStr = unresolvedMagics.toSeq().join(", ")
+    raiseSemanticError(
+      &"the following magics was not resolved: {magicsAsStr}",
+      emptyFilePos)
+
 proc traverseSymbols*(module: ModuleRef; rootTree: AstNode)
   {.raises: [ModuleError, SemanticError, ValueError].} =
   for tree in rootTree.children:
@@ -226,5 +237,6 @@ proc traverseSymbols*(module: ModuleRef; rootTree: AstNode)
 proc traverseSymbols*(module: ModuleRef)
   {.raises: [ModuleError, SemanticError, ValueError].} =
   module.traverseSymbols(module.rootTree)
+  module.assertMagicsResolved() # TODO: it's not supposed to be here
 
 {.pop.} # raises: []
