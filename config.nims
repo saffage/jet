@@ -1,6 +1,4 @@
---path: "."
 --path: "./src"
---outDir: "./bin"
 
 --lineDir
 --stackTrace
