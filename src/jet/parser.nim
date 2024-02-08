@@ -573,7 +573,6 @@ func parseType(self: var Parser): AstNode =
 func parseFunc(self: var Parser): AstNode =
   debug("parseFunc")
 
-  let isRec  = self.skipTokenMaybe(KwRec)
   let token  = self.popToken(KwFunc)
   let id     = self.parseId()
   let params = self.parseList(fn = parseParamOrField)
@@ -582,11 +581,8 @@ func parseFunc(self: var Parser): AstNode =
        self.peekToken().kind != KwDo: self.parseExpr()
     else: initAstNodeEmpty()
   let body = self.parseDoOrBlock()
-  let nodeKind =
-    if isRec: RecFunc
-    else: Func
 
-  result = initAstNodeBranch(nodeKind, @[id, params, returnType, body], token.rng)
+  result = initAstNodeBranch(Func, @[id, params, returnType, body], token.rng)
 
 func parseIf(self: var Parser): AstNode =
   debug("parseIf")
@@ -961,7 +957,6 @@ func newParser*(tokens: openArray[Token]): Parser =
   result.prefixFuncs[KwDo]     = parseDo
   result.prefixFuncs[KwStruct] = parseStruct
   result.prefixFuncs[KwType]   = parseType
-  result.prefixFuncs[KwRec]    = parseFunc
   result.prefixFuncs[KwFunc]   = parseFunc
   result.prefixFuncs[KwVal]    = parseVal
   result.prefixFuncs[KwVar]    = parseVar

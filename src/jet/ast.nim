@@ -17,7 +17,6 @@ type
     Struct
     Enum
     Type
-    RecFunc
     Func
     If
     IfBranch
@@ -80,7 +79,7 @@ type
 
 func toOperatorKind*(value: string): Option[OperatorKind] =
   result = none(OperatorKind)
-  
+
   for kind in OperatorKind:
     if $kind == value:
       result = some(kind)

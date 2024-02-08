@@ -1,4 +1,4 @@
-rec func fib(n i32) i32
+func fib(n i32) i32
     if n < 0 do $panic('`n` must be natural, but `n` is ${n}')
     if n < 2 do return n
     return fib(n-1) + fib(n-2)
