@@ -60,21 +60,16 @@
 		"keywords": {
 			"patterns": [
 				{
-					"name": "keyword.operator.wordlike.jet",
+					"name": "keyword.operator.word-like.jet",
 					"match": "\\b(not|or|and|is|as|in|of)\\b"
 				},
 				{
 					"name": "keyword.control.jet",
-					"match": "\\b(if|elif|else|match|while|loop|for|continue|break|return)\\b"
+					"match": "\\b(if|elif|else|while|for|continue|break|return)\\b"
 				},
 				{
 					"name": "keyword.jet",
-					"match": "\\b(module|use|rec|func|type|struct|enum|var|val|const|do|impl|[Ss]elf)\\b"
-				},
-				{
-					"comment": "Reserved keywords",
-					"name": "invalid.illegal.keyword.jet",
-					"match": "\\b(signal|trait|dynamic|static|lazy|when|with|where)\\b"
+					"match": "\\b(module|using|func|type|struct|enum|var|val|const|do|self)\\b"
 				}
 			]
 		},
@@ -92,7 +87,7 @@
 				},
 				{
 					"name": "storage.type.builtin.std.jet",
-					"match": "\\b(string)\\b"
+					"match": "\\b(string|seq|table)\\b"
 				}
 			]
 		},
@@ -100,8 +95,16 @@
 			"patterns": [
 				{ "include": "#builtin-types" },
 				{
-					"name": "constant.language.jet",
-					"match": "\\b(true|false|nil|undefined)\\b"
+					"name": "constant.language.boolean.jet",
+					"match": "\\b(true|false)\\b"
+				},
+				{
+					"name": "constant.language.nil.jet",
+					"match": "\\b(nil)\\b"
+				},
+				{
+					"name": "constant.language.none.jet",
+					"match": "\\b(none)\\b"
 				},
 				{
 					"name": "support.function.builtin.jet",
@@ -129,7 +132,7 @@
 				{
 					"comment": "Operators",
 					"name": "keyword.operator.jet",
-					"match": "(\\!|\\?|\\>|\\<|\\=|\\+|\\-|\\*|\\/|\\%|\\&|\\$|\\^|\\@|\\|)"
+					"match": "(\\~|\\!|\\?|\\>|\\<|\\=|\\+|\\-|\\*|\\/|\\%|\\&|\\$|\\^|\\@|\\|)"
 				}
 			]
 		},
@@ -227,10 +230,6 @@
 		"string-fmt": {
 			"patterns": [
 				{
-					"name": "constant.character.escape.jet",
-					"match": "\\$\\$"
-				},
-				{
 					"name": "meta.template.expression.jet",
 					"begin": "\\$\\{",
 					"beginCaptures": {
@@ -266,6 +265,14 @@
 							]
 						}
 					}
+				},
+				{
+					"name": "constant.character.escape.jet",
+					"match": "\\$\\$"
+				},
+				{
+					"name": "invalid.illegal.string.interpolation.jet",
+					"match": "\\$."
 				}
 			]
 		},
