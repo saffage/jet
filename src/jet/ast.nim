@@ -1,5 +1,4 @@
 import
-  std/strformat,
   std/options,
 
   jet/literal,
@@ -35,7 +34,6 @@ type
     ExprCurly   ## a{...}
     ExprRound   ## a(...)
 
-  AstNodeRef* = ref AstNode
   AstNode* {.byref.} = object
     case kind* : AstNodeKind
     of Empty:
@@ -82,6 +80,7 @@ type
 
 func toOperatorKind*(value: string): Option[OperatorKind] =
   result = none(OperatorKind)
+  
   for kind in OperatorKind:
     if $kind == value:
       result = some(kind)
@@ -113,27 +112,32 @@ func notation*(kind: OperatorKind): set[OperatorNotation] =
     of OpAnnot: {Prefix}
 
 func isLeaf*(tree: AstNode): bool =
-  tree.kind != Branch
+  result = tree.kind != Branch
 
 func len*(tree: AstNode): int =
-  if tree.isLeaf(): 0
-  else: tree.children.len()
+  result =
+    if tree.isLeaf():
+      0
+    else:
+      tree.children.len()
 
 func `$`*(tree: AstNode): string =
   result =
-    if tree.kind != Branch: $tree.kind
-    else: $tree.branchKind
+    if tree.kind != Branch:
+      $tree.kind
+    else:
+      $tree.branchKind
 
   if tree.rng != emptyFileRange:
-    result &= &"[{tree.rng}]"
+    result &= "[" & $tree.rng & "]"
 
   case tree.kind
   of Id:
-    result &= &" = `{tree.id}`"
+    result &= " = `" & tree.id & "`"
   of Lit:
-    result &= &" = {tree.lit.pretty()}"
+    result &= " = " & tree.lit.pretty()
   of Operator:
-    result &= &" = {$tree.op}"
+    result &= " = " & $tree.op
   else:
     discard
 

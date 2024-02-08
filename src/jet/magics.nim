@@ -27,11 +27,11 @@ type
     # mFuncPrintln
     # mFuncPanic
 
-func `$`*(self: MagicKind): string =
-  result = self.symbolName()[1 ..^ 1]
-
 var
   resolvedMagics: set[MagicKind]
+
+func `$`*(self: MagicKind): string =
+  result = self.symbolName()[1 ..^ 1]
 
 proc isResolved*(magic: MagicKind): bool =
   result = magic in resolvedMagics
@@ -45,7 +45,7 @@ proc getResolvedMagics*(): set[MagicKind] =
 proc markAsResolved*(magic: MagicKind)
   {.raises: [ValueError].} =
   if magic.isResolved():
-    raise (ref ValueError)(msg: "magic '" & $magic & "' is already resolved")
+    raise newException(ValueError, "magic '" & $magic & "' is already resolved")
 
   resolvedMagics.incl(magic)
 

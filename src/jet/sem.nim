@@ -65,7 +65,7 @@ proc getTypeDesc(module: ModuleRef; expr: AstNode): TypeRef =
   of Id:
     let sym = module.getSym(expr.id)
     if sym.kind == skType:
-      return sym.`type`
+      return sym.typ
   of Branch:
     case expr.branchKind:
     of Prefix:
@@ -88,10 +88,10 @@ proc typeOfExpr(module: ModuleRef; expr: AstNode; expectedType = nil.TypeRef): T
       if sym == nil:
         raiseSemanticError("unbound identifier: '" & expr.id & "'", expr)
 
-      if sym.kind != skType and sym.`type` == nil:
+      if sym.kind != skType and sym.typ == nil:
         raiseSemanticError("expression '" & expr.id & "' has no type", expr)
 
-      sym.`type`
+      sym.typ
     of Lit:
       case expr.lit.kind
       of lkInt:
@@ -99,7 +99,7 @@ proc typeOfExpr(module: ModuleRef; expr: AstNode; expectedType = nil.TypeRef): T
            expectedType.kind in {tyI8, tyI16, tyI32, tyI64}:
           # TODO: check int range
           return expectedType
-        module.getMagicSym(mTypeI32).`type`
+        module.getMagicSym(mTypeI32).typ
       of lkNil:
         unimplemented("nil")
       else:
@@ -166,7 +166,7 @@ proc genSym(module: ModuleRef; tree: AstNode): SymbolRef
         result = SymbolRef(
           id: name.id,
           kind: skType,
-          `type`: magicSym.`type`,
+          typ: magicSym.typ,
           scope: nil, # idk
           magic: some(magic),
         )
@@ -181,16 +181,16 @@ proc genSym(module: ModuleRef; tree: AstNode): SymbolRef
     let typeExpr = tree.children[1]
     let body = tree.children[2]
 
-    var `type` = module.typeOfExpr(typeExpr)
-    let bodyType = module.typeOfExpr(body, `type`)
+    var typ = module.typeOfExpr(typeExpr)
+    let bodyType = module.typeOfExpr(body, typ)
 
-    if `type` == nil:
-      `type` = module.typeOfExpr(body)
+    if typ == nil:
+      typ = module.typeOfExpr(body)
     else:
-      if bodyType != nil and not isCompatibleTypes(`type`, bodyType):
-        raiseSemanticError(&"invalid type for '{id}'; expected {`type`}, got {bodyType}", idNode)
+      if bodyType != nil and not isCompatibleTypes(typ, bodyType):
+        raiseSemanticError(&"invalid type for '{id}'; expected {typ}, got {bodyType}", idNode)
 
-    if `type` == nil:
+    if typ == nil:
       raiseSemanticError(&"unable to infer type for '{id}'", idNode)
 
     let symKind = case tree.branchKind:
@@ -198,13 +198,13 @@ proc genSym(module: ModuleRef; tree: AstNode): SymbolRef
       of ValDecl: skVal
       else: unreachable()
 
-    if `type`.kind == tyNil:
+    if typ.kind == tyNil:
       raiseSemanticError("variable cannot be of type nil", idNode)
 
     result = SymbolRef(
       id: id,
       kind: symKind,
-      `type`: `type`,
+      typ: typ,
       scope: module.rootScope, # recursive
     )
   else:

@@ -103,4 +103,5 @@ proc main() =
     error("[" & $err.name & "]: " & err.msg)
     raise
 
-when isMainModule: main()
+when isMainModule:
+  main()

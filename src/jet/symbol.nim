@@ -1,11 +1,12 @@
 import
-  std/strformat,
   std/enumutils,
   std/options,
 
   jet/magics,
 
   lib/utils
+
+{.push, raises: [].}
 
 type
   TypeKind* = enum
@@ -17,7 +18,7 @@ type
     tyNil
 
   TypeRef* = ref Type
-  Type* = object
+  Type = object
     kind*   : TypeKind
     parent* : TypeRef = nil
 
@@ -69,7 +70,6 @@ func isCompatibleTypes*(self, other: TypeRef): bool =
 
 type
   ScopeRef* = ref Scope
-
   Scope = object
     parent*  : ScopeRef
     symbols* : seq[SymbolRef]
@@ -85,12 +85,12 @@ type
     EMPTY
 
   SymbolRef* = ref Symbol
-  Symbol* = object
-    id*     : string
-    kind*   : SymbolKind
-    `type`* : TypeRef
-    scope*  : ScopeRef
-    magic*  : Option[MagicKind]   ## Related magic
+  Symbol = object
+    id*    : string
+    kind*  : SymbolKind
+    typ*   : TypeRef
+    scope* : ScopeRef
+    magic* : Option[MagicKind]  ## Related magic
 
 func `$`*(self: SymbolKind): string =
   result = self.symbolName()[2 ..^ 1]
@@ -100,23 +100,31 @@ func `$`*(self: SymbolKind): string =
 #
 
 func newScope*(parent = nil.ScopeRef): ScopeRef =
-  result = ScopeRef(parent: parent, symbols: @[])
-  result.depth =
-    if parent == nil: 0
-    else: parent.depth + 1
+  result = ScopeRef(
+    parent: parent,
+    symbols: @[],
+    depth:
+      if parent == nil:
+        0
+      else:
+        parent.depth + 1
+  )
 
 func getSymbol*(self: ScopeRef; id: string): SymbolRef =
   var idx = self.symbols.findIt(it.id == id)
   result =
-    if idx < 0: nil
-    else: self.symbols[idx]
+    if idx < 0:
+      nil
+    else:
+      self.symbols[idx]
 
 func getSymbolRec*(self: ScopeRef; id: string): SymbolRef =
   result = nil
   var scope = self
   while scope != nil:
     result = self.getSymbol(id)
-    if result != nil: break
+    if result != nil:
+      break
     scope = scope.parent
 
 #
@@ -128,4 +136,6 @@ func `$`*(self: SymbolRef): string =
     if self == nil:
       "nil"
     else:
-      &"{self.kind}: {self.id} {self.`type`}"
+      $self.kind & ": " & self.id & " " & $self.typ
+
+{.pop.} # raises: []

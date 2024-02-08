@@ -9,22 +9,6 @@ import
 {.push, raises: [].}
 
 #
-# Primitives
-#
-
-let
-  i8Type* = TypeRef(kind: tyI8)
-  i16Type* = TypeRef(kind: tyI16)
-  i32Type* = TypeRef(kind: tyI32)
-  i64Type* = TypeRef(kind: tyI64)
-
-let
-  i8Sym* = SymbolRef(kind: skType, `type`: i8Type)
-  i16Sym* = SymbolRef(kind: skType, `type`: i16Type)
-  i32Sym* = SymbolRef(kind: skType, `type`: i32Type)
-  i64Sym* = SymbolRef(kind: skType, `type`: i64Type)
-
-#
 # Module
 #
 
@@ -49,6 +33,17 @@ func registerSymbol*(self: ModuleRef; symbol: SymbolRef)
   self.rootScope.symbols &= symbol
 
 proc registerMagicSyms(self: ModuleRef) =
+  let
+    i8Type  = TypeRef(kind: tyI8)
+    i16Type = TypeRef(kind: tyI16)
+    i32Type = TypeRef(kind: tyI32)
+    i64Type = TypeRef(kind: tyI64)
+
+    i8Sym  = SymbolRef(kind: skType, typ: i8Type)
+    i16Sym = SymbolRef(kind: skType, typ: i16Type)
+    i32Sym = SymbolRef(kind: skType, typ: i32Type)
+    i64Sym = SymbolRef(kind: skType, typ: i64Type)
+
   self.magics = {
     mTypeI8: i8Sym,
     mTypeI16: i16Sym,
