@@ -1,8 +1,14 @@
-func fib(n i32) i32
-    if n < 0 do $panic('`n` must be natural, but `n` is ${n}')
-    if n < 2 do return n
-    return fib(n-1) + fib(n-2)
+module Fibonacci
 
-$println('fib(10) = ${fib(10)}')
-$println('fib(15) = ${fib(15)}')
-$println('fib(20) = ${fib(20)}')
+func fib(n usize) usize {
+  return when n {
+    0, 1 -> n
+    else -> fib(n-1) + fib(n-2)
+  }
+}
+
+func main() {
+  $println('fib(10) = ${fib(10)}')
+  $println('fib(15) = ${fib(15)}')
+  $println('fib(20) = ${fib(20)}')
+}

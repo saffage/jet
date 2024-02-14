@@ -1,26 +1,32 @@
-# module core
+module Types
 
-# type isize  @Magic('TypeIsize')
-# type usize  @Magic('TypeUsize')
-type i8     @Magic('TypeI8')
-type i16    @Magic('TypeI16')
-type i32    @Magic('TypeI32')
-type i64    @Magic('TypeI64')
-# type u8     @Magic('TypeU8')
-# type u16    @Magic('TypeU16')
-# type u32    @Magic('TypeU32')
-# type u64    @Magic('TypeU64')
-# type f32    @Magic('TypeF32')
-# type f64    @Magic('TypeF64')
-# type char   @Magic('TypeChar')
-# type bool   @Magic('TypeBool')
-# type any    @Magic('TypeAny')
+struct isize { $magic('TypeIsize') }
 
-# func print(messages ...any)
-#   @Magic('FuncPrint')
+struct usize { $magic('TypeUsize') }
 
-# func println(messages ...any)
-#   @Magic('FuncPrintln')
+struct i8 { $magic('TypeI8') }
 
-# func panic(message ...any) (!)
-#   @Magic('FuncPanic')
+struct i16 { $magic('TypeI16') }
+
+struct i32 { $magic('TypeI32') }
+
+struct i64 { $magic('TypeI64') }
+
+struct u8 { $magic('TypeU8') }
+
+struct u16 { $magic('TypeU16') }
+
+struct u32 { $magic('TypeU32') }
+
+struct u64 { $magic('TypeU64') }
+
+struct f32 { $magic('TypeF32') }
+
+struct f64 { $magic('TypeF64') }
+
+struct char { $magic('TypeChar') }
+
+struct bool { $magic('TypeBool') }
+
+struct any { $magic('TypeAny') }
+
