@@ -70,7 +70,7 @@ func isCompatibleTypes*(self, other: TypeRef): bool =
 
 type
   ScopeRef* = ref Scope
-  Scope = object
+  Scope* = object
     parent*  : ScopeRef
     symbols* : seq[SymbolRef]
     depth*   : int
@@ -80,12 +80,13 @@ type
     skVar
     skVal
     skFunc
+    skModule
 
   SymbolFlags* = enum
     EMPTY
 
   SymbolRef* = ref Symbol
-  Symbol = object
+  Symbol* = object of RootObj
     id*    : string
     kind*  : SymbolKind
     typ*   : TypeRef

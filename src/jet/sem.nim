@@ -8,6 +8,7 @@ import
   jet/symbol,
   jet/module,
   jet/magics,
+  jet/parser,
   jet/semutil,
 
   lib/utils,
@@ -126,6 +127,17 @@ proc typeOfExpr(module: ModuleRef; expr: AstNode; expectedType = nil.TypeRef): T
         if typeDesc == nil:
           raiseSemanticError("expected typedesc, got expression", expr)
         typeDesc
+      of ExprDotExpr:
+        let left = expr.children[0]
+        let right = expr.children[1]
+        let moduleId = left.id
+        let symbolId = right.id
+        let i = module.importedModules.findIt(it.id == moduleId)
+
+        if i < 0:
+          raiseSemanticError("module '" & moduleId & "' is not defined", left.rng)
+
+        module.importedModules[i].getSym(symbolId).typ
       else:
         todo($expr.branchKind)
 
@@ -170,6 +182,12 @@ proc genSym(module: ModuleRef; tree: AstNode): SymbolRef
           scope: nil, # idk
           magic: some(magic),
         )
+      of Using:
+        {.cast(raises: []).}:
+          let file = tree.children[0]
+          let newTree = parseAll("", isModule=true).get()
+        let newModule = newModule(newTree)
+
       else:
         unimplemented()
     else:
@@ -205,7 +223,7 @@ proc genSym(module: ModuleRef; tree: AstNode): SymbolRef
       id: id,
       kind: symKind,
       typ: typ,
-      scope: module.rootScope, # recursive
+      scope: module.scope, # recursive
     )
   else:
     unimplemented()
@@ -233,7 +251,7 @@ proc traverseSymbols*(module: ModuleRef; rootTree: AstNode)
 
 proc traverseSymbols*(module: ModuleRef)
   {.raises: [ModuleError, SemanticError, ValueError].} =
-  module.traverseSymbols(module.rootTree)
+  module.traverseSymbols(module.tree)
   module.assertMagicsResolved() # TODO: it's not supposed to be here
 
 {.pop.} # raises: []

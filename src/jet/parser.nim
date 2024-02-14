@@ -23,6 +23,7 @@ import
 type
   Parser* {.byref.} = object
     tokens      : seq[Token]
+    isModule    : bool
     curr        : int = 0
     ast         : Option[AstNode] = none(AstNode)
     blockStack  : Stack[BlockContext]
@@ -113,6 +114,8 @@ func parseFunc(self: var Parser): AstNode
 func parseIf(self: var Parser): AstNode
 func parseWhile(self: var Parser): AstNode
 func parseReturn(self: var Parser): AstNode
+func parseModule(self: var Parser): AstNode
+func parseUsing(self: var Parser): AstNode
 func parseVar(self: var Parser): AstNode
 func parseVal(self: var Parser): AstNode
 func parseValDecl(self: var Parser): AstNode
@@ -126,6 +129,7 @@ func parseInfix(self: var Parser; left: AstNode): AstNode
 func parseInfixCurly(self: var Parser; left: AstNode): AstNode
 func parseInfixRound(self: var Parser; left: AstNode): AstNode
 func parseInfixSquare(self: var Parser; left: AstNode): AstNode
+func parseExprDotExpr(self: var Parser; left: AstNode): AstNode
 func parseAnnotation(self: var Parser): AstNode
 func parseList(self: var Parser; fn: ParsePrefixFunc): AstNode
 func parseList(self: var Parser): AstNode = self.parseList(parseExpr)
@@ -137,8 +141,8 @@ func parseBlock(
   fn: ParsePrefixFunc = parseExpr;
 ): ParseMode {.discardable.}
 
-func parseAll*(input: string; posOffset = emptyFilePos): Option[AstNode]
-func parseExpr*(input: string; posOffset = emptyFilePos): AstNode
+func parseAll*(input: string; posOffset = emptyFilePos; isModule = false): Option[AstNode]
+func parseExpr*(input: string; posOffset = emptyFilePos; isModule = false): AstNode
 
 {.pop.} # raises: [LexerError, FmtLexerError, ParserError, ValueError]
 {.push, raises: [].}
@@ -619,6 +623,36 @@ func parseReturn(self: var Parser): AstNode =
 
   result = initAstNodeBranch(Return, @[expr], token.rng)
 
+func parseModule(self: var Parser): AstNode =
+  self.skipToken(KwModule)
+
+  let path = self.parseExpr()
+
+  case path.kind
+  of Id: discard
+  of Branch:
+    case path.branchKind
+    of ExprDotExpr: discard
+    else: raiseParserError(&"expected Id or ExprDotExpr, got {path.branchKind}", path.rng)
+  else: raiseParserError(&"expected Id or ExprDotExpr, got {path.kind}", path.rng)
+
+  result = initAstNodeBranch(Module, @[path])
+
+func parseUsing(self: var Parser): AstNode =
+  self.skipToken(KwUsing)
+
+  let path = self.parseExpr()
+
+  case path.kind
+  of Id: discard
+  of Branch:
+    case path.branchKind
+    of ExprDotExpr: discard
+    else: raiseParserError(&"expected Id or ExprDotExpr, got {path.branchKind}", path.rng)
+  else: raiseParserError(&"expected Id or ExprDotExpr, got {path.kind}", path.rng)
+
+  result = initAstNodeBranch(Using, @[path])
+
 func parseVar(self: var Parser): AstNode =
   debug("parseVar")
 
@@ -776,6 +810,13 @@ func parseInfixRound(self: var Parser; left: AstNode): AstNode =
 
 func parseInfixSquare(self: var Parser; left: AstNode): AstNode =
   raiseParserError("todo", self.peekToken().rng)
+
+func parseExprDotExpr(self: var Parser; left: AstNode): AstNode =
+  self.skipToken(Dot)
+
+  let right = self.parseExpr()
+
+  result = initAstNodeBranch(ExprDotExpr, @[left, right])
 
 func parseAnnotation(self: var Parser): AstNode =
   let atToken = self.popToken(At)
@@ -946,8 +987,10 @@ func parseBlock(
 # API
 #
 
-func newParser*(tokens: openArray[Token]): Parser =
-  result = Parser(tokens: @tokens)
+func newParser*(tokens: openArray[Token]; isModule = true): Parser =
+  ## The `isModule` parameter specifies that `tokens` should
+  ## contain a top-level declaration of the module name
+  result = Parser(tokens: @tokens, isModule: isModule)
   result.prefixFuncs[Id]       = parseId
   result.prefixFuncs[LeRound]  = parseList
   result.prefixFuncs[LeCurly]  = parseList
@@ -963,6 +1006,8 @@ func newParser*(tokens: openArray[Token]): Parser =
   result.prefixFuncs[KwIf]     = parseIf
   result.prefixFuncs[KwWhile]  = parseWhile
   result.prefixFuncs[KwReturn] = parseReturn
+  result.prefixFuncs[KwModule] = parseModule
+  result.prefixFuncs[KwUsing]  = parseUsing
 
   result.prefixFuncs[Dollar]    = parsePrefix
   result.prefixFuncs[Ampersand] = parsePrefix
@@ -990,33 +1035,45 @@ func newParser*(tokens: openArray[Token]): Parser =
   result.infixFuncs[Shl]      = parseInfix
   result.infixFuncs[Shr]      = parseInfix
 
-  result.infixFuncs[LeCurly]   = parseInfixCurly
-  result.infixFuncs[LeRound]   = parseInfixRound
-  result.infixFuncs[LeSquare]  = parseInfixSquare
+  result.infixFuncs[LeCurly]  = parseInfixCurly
+  result.infixFuncs[LeRound]  = parseInfixRound
+  result.infixFuncs[LeSquare] = parseInfixSquare
+  result.infixFuncs[Dot]      = parseExprDotExpr
 
 func getAst*(self: Parser): Option[AstNode] =
   self.ast
 
 func parseAll*(self: var Parser)
   {.raises: [LexerError, FmtLexerError, ParserError, ValueError].} =
-  debug("parseAll()")
+  debug("parseAll")
+
   if self.tokens.len() == 0:
-    self.ast = some(initAstNodeEmpty())
-    return
+    if self.isModule:
+      raiseParserError("this file should have the module name declaration at the beginning", emptyFilePos)
+    else:
+      self.ast = some(initAstNodeEmpty())
+      return
 
   var ast = initAstNodeBranch(Block, @[])
+
+  if self.isModule:
+    if self.tokens[0].kind != KwModule:
+      raiseParserError(
+        "this file should have the module name declaration at the beginning; " &
+        &"got {self.tokens[0].kind} instead", self.tokens[0].rng)
+
   self.parseBlock(ast.children, until = some(Eof))
   self.ast = some(ast)
 
-func parseAll(input: string; posOffset: FilePosition): Option[AstNode] =
+func parseAll(input: string; posOffset: FilePosition; isModule: bool): Option[AstNode] =
   let tokens = input.getAllTokens(posOffset).normalizeTokens()
-  var parser = newParser(tokens)
+  var parser = newParser(tokens, isModule)
   parser.parseAll()
   result = parser.getAst()
 
-func parseExpr(input: string; posOffset: FilePosition): AstNode =
+func parseExpr(input: string; posOffset: FilePosition; isModule: bool): AstNode =
   let tokens = input.getAllTokens(posOffset).normalizeTokens()
-  var parser = newParser(tokens)
+  var parser = newParser(tokens, isModule)
   result = parser.parseExpr()
 
 {.pop.} # raises: []

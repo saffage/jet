@@ -63,6 +63,8 @@ type
     KwReturn  = "return"
     KwWhile   = "while"
     KwDo      = "do"
+    KwModule  = "module"
+    KwUsing   = "using"
 
     #[ Word-like Operators ]#
     KwOr      = "or"

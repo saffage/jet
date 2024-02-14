@@ -32,6 +32,9 @@ type
     Postfix     ## a~
     ExprCurly   ## a{...}
     ExprRound   ## a(...)
+    ExprDotExpr
+    Module
+    Using
 
   AstNode* {.byref.} = object
     case kind* : AstNodeKind

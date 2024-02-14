@@ -14,11 +14,13 @@ import
 
 type
   ModuleRef* = ref Module
-  Module = object
-    rootScope* : ScopeRef
-    rootTree*  : AstNode
-    magics*    : Table[MagicKind, SymbolRef] ## Keep in sync with `magics.MagicKind`
-    isMain*    : bool
+  Module = object of Symbol
+    tree*   : AstNode
+    magics* : Table[MagicKind, SymbolRef] ## Keep in sync with `magics.MagicKind`
+    isMain* : bool
+
+    importedModules* : seq[ModuleRef]
+    importedSymbols* : seq[SymbolRef]
 
   ModuleError* = object of CatchableError
 
@@ -27,10 +29,10 @@ template raiseModuleError(message: string) =
 
 func registerSymbol*(self: ModuleRef; symbol: SymbolRef)
   {.raises: [ModuleError, ValueError].} =
-  if self.rootScope.getSymbolRec(symbol.id) != nil:
+  if self.scope.getSymbolRec(symbol.id) != nil:
     raiseModuleError(&"attempt to redefine identifier: '{symbol.id}'")
 
-  self.rootScope.symbols &= symbol
+  self.scope.symbols &= symbol
 
 proc registerMagicSyms(self: ModuleRef) =
   let
@@ -58,10 +60,10 @@ func getMagicSym*(self: ModuleRef; magic: MagicKind): SymbolRef =
     raise newException(Defect, "unimplemented magic: '" & $magic & "'")
 
 func getSym*(self: ModuleRef; id: string): SymbolRef =
-  result = self.rootScope.getSymbolRec(id)
+  result = self.scope.getSymbolRec(id)
 
-proc newModule*(rootTree: AstNode): ModuleRef =
-  result = ModuleRef(rootTree: rootTree, rootScope: newScope())
+proc newModule*(tree: AstNode): ModuleRef =
+  result = ModuleRef(tree: tree, scope: newScope())
   result.registerMagicSyms()
 
 {.pop.} # raises: []

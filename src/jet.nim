@@ -89,7 +89,7 @@ proc main() =
   var mainModule = newModule(rootTree)
   try:
     mainModule.traverseSymbols()
-    debug("Root scope symbols:\n    " & mainModule.rootScope.symbols.join("\n    "))
+    debug("Root scope symbols:\n    " & mainModule.scope.symbols.join("\n    "))
   except SemanticError, ModuleError, ValueError:
     let err = getCurrentException()
     # TODO: file id
