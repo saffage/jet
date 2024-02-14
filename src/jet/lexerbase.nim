@@ -32,7 +32,7 @@ func isEmpty*(self: LexerBase): bool =
   result = self.idx > self.buffer.high
 
 func peekOffset*(self: LexerBase; offset: int): char =
-  ## Returns current character in the `buffer` with specified `offset`.
+  ## Returns current character in the `buffer` with specified `offset`
   assert(self.idx + offset >= 0)
   result =
     if self.idx + offset > self.buffer.high:
@@ -50,12 +50,12 @@ func pop*(self: var LexerBase): char
   result = self.peek()
   if result != '\0': self.idx += 1
 
-func popChar*(self: var LexerBase; c: set[char]): bool
+func popChar*(self: var LexerBase; charSet: set[char]): bool
   {.discardable.} =
   ## Returns *true* if the current character in the `buffer` is `c`, otherwise *false* \
   ## Character will be popped from the buffer
   result =
-    if self.peek() in c:
+    if self.peek() in charSet:
       self.pop()
       true
     else:
@@ -76,7 +76,7 @@ func column(self: LexerBase): int =
   result = (self.idx + 1) - self.idxStart + self.posOffset.column.int
 
 func peekPos*(self: LexerBase): FilePosition =
-  ## Returns current character position.
+  ## Returns current character position
   result = FilePosition(line: self.line().uint32, column: self.column().uint32)
 
 func handleNewline*(self: var LexerBase): bool
@@ -122,9 +122,9 @@ func getLines*(self: LexerBase; lineNums: openArray[int] | Slice[int]): seq[stri
   for line in lineNums:
     result &= self.getLine(line)
 
-template parseWhile*(self: var LexerBase; predicate: untyped): string =
+template parseWhile*(self: var LexerBase; predicate: untyped; bufSize = 0.Natural): string =
   block:
-    var result = newStringOfCap(16)
+    var result = newStringOfCap(bufSize)
     var it {.inject.} = self.peek()
 
     while self.idx <= self.buffer.high and predicate:
@@ -133,7 +133,7 @@ template parseWhile*(self: var LexerBase; predicate: untyped): string =
 
     result
 
-template parseUntil*(self: var LexerBase; predicate: untyped): string =
-  self.parseWhile(not(predicate))
+template parseUntil*(self: var LexerBase; predicate: untyped; bufSize = 0.Natural): string =
+  self.parseWhile(not(predicate), bufSize)
 
 {.pop.} # raises: []

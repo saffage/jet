@@ -27,6 +27,7 @@ const
 func buildCharSet(): set[char]
   {.compileTime.} =
   result = {}
+
   for kind in OperatorKinds:
     for c in $kind:
       result.incl(c)
@@ -50,8 +51,10 @@ func lexId(self: var Lexer): Token =
   let kind = data.toTokenKind().get(Id)
 
   result =
-    if kind == Id: Token(kind: Id, data: data)
-    else: Token(kind: kind)
+    if kind == Id:
+      Token(kind: Id, data: data)
+    else:
+      Token(kind: kind)
 
 func lexNumber(self: var Lexer): Token
   {.raises: [LexerError].} =
@@ -178,6 +181,7 @@ func lexString(self: var Lexer; raw = false): Token
 
   if self.peek() == '\0':
     raiseLexerError("missing closing " & quote, info)
+
   self.pop()
 
   let kind =
@@ -188,14 +192,13 @@ func lexString(self: var Lexer; raw = false): Token
 
 func nextToken(self: var Lexer)
   {.raises: [LexerError].} =
-  if self.idx > self.buffer.high:
+  if self.isEmpty():
     self.curr = Token(kind: TokenKind.Eof, rng: self.peekPos().withLength(0))
     return
 
-  var prevFilePos = self.peekPos()
-  let oldPos  = self.idx
+  let prevFilePos = self.peekPos()
 
-  let token = case self.peek():
+  self.curr = case self.peek():
     of '#':
       self.lexComment()
     of IdStartChars:
@@ -224,14 +227,13 @@ func nextToken(self: var Lexer)
     else:
       raiseLexerError("invalid character: " & strutils.escape($self.peek()), self.peekPos())
 
-  let rng = prevFilePos.withLength(self.idx - oldPos)
-  self.curr     = token
-  self.curr.rng = rng
+  self.curr.rng = prevFilePos .. self.peekPos()
 
 func nextTokenNotEmpty(self: var Lexer)
   {.raises: [LexerError].} =
-  self.nextToken()
-  while self.curr.kind == Empty: self.nextToken()
+  while true:
+    self.nextToken()
+    if self.curr.kind != Empty: break
 
 #
 # API
@@ -306,6 +308,7 @@ func normalizeTokens*(tokens: seq[Token]): seq[Token] =
       if token.kind == Eof:
         result[^1].spaces.trailing = spacesLast
         break
+
     prevKind = token.kind
 
 {.pop.} # raises: []
