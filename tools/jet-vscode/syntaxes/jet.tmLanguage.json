@@ -51,8 +51,8 @@
 				{
 					"match": "\\@([A-Za-z_][A-Za-z_0-9]*)",
 					"captures": {
-						"0": { "name": "meta.annotation.jet" },
-						"1": { "name": "meta.annotation.name.jet" }
+						"0": { "name": "support.other.annotation.jet" },
+						"1": { "name": "support.other.annotation-name.jet" }
 					}
 				}
 			]
@@ -65,7 +65,7 @@
 				},
 				{
 					"name": "keyword.control.jet",
-					"match": "\\b(if|elif|else|while|for|continue|break|return)\\b"
+					"match": "\\b(if|elif|else|when|while|for|continue|break|return)\\b"
 				},
 				{
 					"name": "keyword.jet",
