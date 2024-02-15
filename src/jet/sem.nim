@@ -18,16 +18,16 @@ import
 
 type
   SemanticError* = object of CatchableError
-    rng* : FileRange
+    range* : FileRange
 
 template raiseSemanticError*(message: string; node: AstNode) =
-  raise (ref SemanticError)(msg: message, rng: node.rng)
+  raise (ref SemanticError)(msg: message, range: node.range)
 
 template raiseSemanticError*(message: string; fileRange: FileRange) =
-  raise (ref SemanticError)(msg: message, rng: fileRange)
+  raise (ref SemanticError)(msg: message, range: fileRange)
 
-template raiseSemanticError*(message: string; filePos: FilePosition) =
-  raise (ref SemanticError)(msg: message, rng: filePos.withLength(0))
+template raiseSemanticError*(message: string; filePos: FilePos) =
+  raise (ref SemanticError)(msg: message, range: filePos .. filePos)
 
 func isSymDecl(tree: AstNode): bool =
   result =
@@ -44,16 +44,16 @@ proc checkOperandTypes(module: ModuleRef; opNode: AstNode; left, right: TypeRef)
   result = case op:
     of OpAdd, OpSub, OpMul:
       if left.kind notin {tyI8, tyI16, tyI32, tyI64}:
-        raiseSemanticError("invalid type for " & $op & " operator", opNode.rng)
+        raiseSemanticError("invalid type for " & $op & " operator", opNode.range)
 
       if right.kind notin {tyI8, tyI16, tyI32, tyI64}:
-        raiseSemanticError("invalid type for " & $op & " operator", opNode.rng)
+        raiseSemanticError("invalid type for " & $op & " operator", opNode.range)
 
       if left.kind != right.kind:
         raiseSemanticError(
           "both expressions must be of the same type, got '" &
           $left & "' and '" & $right & "'",
-          opNode.rng)
+          opNode.range)
 
       left
     else:
@@ -135,7 +135,7 @@ proc typeOfExpr(module: ModuleRef; expr: AstNode; expectedType = nil.TypeRef): T
         let i = module.importedModules.findIt(it.id == moduleId)
 
         if i < 0:
-          raiseSemanticError("module '" & moduleId & "' is not defined", left.rng)
+          raiseSemanticError("module '" & moduleId & "' is not defined", left.range)
 
         module.importedModules[i].getSym(symbolId).typ
       else:
@@ -170,7 +170,7 @@ proc genSym(module: ModuleRef; tree: AstNode): SymbolRef
         let magic = try:
           parseEnum[MagicKind]('m' & arg)
         except ValueError:
-          raiseSemanticError("unknown magic: '" & arg & "'", args[0].rng)
+          raiseSemanticError("unknown magic: '" & arg & "'", args[0].range)
         let magicSym = module.getMagicSym(magic)
 
         magic.markAsResolved()
@@ -185,7 +185,7 @@ proc genSym(module: ModuleRef; tree: AstNode): SymbolRef
       of Using:
         {.cast(raises: []).}:
           let file = tree.children[0]
-          let newTree = parseAll("", isModule=true).get()
+          let newTree = parseAll("", isModule=true)
         let newModule = newModule(newTree)
 
       else:
@@ -236,7 +236,7 @@ proc assertMagicsResolved(module: ModuleRef)
     let magicsAsStr = unresolvedMagics.toSeq().join(", ")
     raiseSemanticError(
       &"the following magics was not resolved: {magicsAsStr}",
-      emptyFilePos)
+      FilePos())
 
 proc traverseSymbols*(module: ModuleRef; rootTree: AstNode)
   {.raises: [ModuleError, SemanticError, ValueError].} =

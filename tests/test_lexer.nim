@@ -11,7 +11,7 @@ suite "Lexer":
     check: "".getAllTokens() == @[
       Token(
         kind: Eof,
-        rng: FilePosition(line: 1, column: 1) .. FilePosition(line: 1, column: 1),
+        range: FilePos(line: 1, column: 1) .. FilePos(line: 1, column: 1),
       )
     ]
 
@@ -20,8 +20,8 @@ suite "Normalizer (tokens)":
     check: "".getAllTokens().normalizeTokens() == @[
       Token(
         kind: Eof,
-        rng: FilePosition(line: 1, column: 1) .. FilePosition(line: 1, column: 1),
-        spaces: TokenSpacing(
+        range: FilePos(line: 1, column: 1) .. FilePos(line: 1, column: 1),
+        spaces: TokenSpaces(
           leading: 0,
           trailing: spacesLast,
           wasEndl: true,

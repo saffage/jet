@@ -49,7 +49,7 @@ type
     of Branch:
       branchKind* : AstNodeBranchKind
       children*   : seq[AstNode]
-    rng* : FileRange
+    range* : FileRange
 
   OperatorKind* = enum
     OpNot    = "not"
@@ -130,8 +130,8 @@ func `$`*(tree: AstNode): string =
     else:
       $tree.branchKind
 
-  if tree.rng != emptyFileRange:
-    result &= "[" & $tree.rng & "]"
+  if tree.range != FileRange():
+    result &= "[" & $tree.range & "]"
 
   case tree.kind
   of Id:
@@ -143,20 +143,20 @@ func `$`*(tree: AstNode): string =
   else:
     discard
 
-func initAstNode*(kind: AstNodeKind; rng = emptyFileRange): AstNode =
-  result = AstNode(kind: kind, rng: rng)
+func initAstNode*(kind: AstNodeKind; range = FileRange()): AstNode =
+  result = AstNode(kind: kind, range: range)
 
-func initAstNodeEmpty*(rng = emptyFileRange): AstNode =
-  result = AstNode(kind: Empty, rng: rng)
+func initAstNodeEmpty*(range = FileRange()): AstNode =
+  result = AstNode(kind: Empty, range: range)
 
-func initAstNodeId*(id: sink string; rng = emptyFileRange): AstNode =
-  result = AstNode(kind: Id, id: id, rng: rng)
+func initAstNodeId*(id: sink string; range = FileRange()): AstNode =
+  result = AstNode(kind: Id, id: id, range: range)
 
-func initAstNodeLit*(lit: Literal; rng = emptyFileRange): AstNode =
-  result = AstNode(kind: Lit, lit: lit, rng: rng)
+func initAstNodeLit*(lit: Literal; range = FileRange()): AstNode =
+  result = AstNode(kind: Lit, lit: lit, range: range)
 
-func initAstNodeOperator*(op: OperatorKind; rng = emptyFileRange): AstNode =
-  result = AstNode(kind: Operator, op: op, rng: rng)
+func initAstNodeOperator*(op: OperatorKind; range = FileRange()): AstNode =
+  result = AstNode(kind: Operator, op: op, range: range)
 
-func initAstNodeBranch*(branchKind: AstNodeBranchKind; children = newSeq[AstNode](); rng = emptyFileRange): AstNode =
-  result = AstNode(kind: Branch, branchKind: branchKind, children: children, rng: rng)
+func initAstNodeBranch*(branchKind: AstNodeBranchKind; children = newSeq[AstNode](); range = FileRange()): AstNode =
+  result = AstNode(kind: Branch, branchKind: branchKind, children: children, range: range)

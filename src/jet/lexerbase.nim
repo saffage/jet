@@ -7,25 +7,24 @@ import
 
 {.push, raises: [].}
 
-const
-  initialFilePos* = FilePosition(line: 1, column: 1)
-
 type
   LexerBase* = object of RootObj
-    buffer*    : openArray[char]              ## Content of the file
-    idx*       : int = 0                      ## Index of the current character in the buffer
-    idxStart*  : int = 0                      ## Index of the first character in the buffer
-    lineNum*   : int = 1                      ## Position of current character in the buffer
-    posOffset* : FilePosition = emptyFilePos  ## Used in `line` & `column` functions
+    buffer*       : openArray[char] ## Content of the file
+    idx*          : int = 0         ## Index of the current character in the buffer
+    idxStartPrev* : int = 0         ## Index of the first character in the current line
+    idxStart*     : int = 0         ## Index of the first character in the current line
+    lineNum*      : int = 1         ## Current line number
+    lineOffset*   : int             ## Used in `line` function
+    columnOffset* : int             ## Used in `column` function
 
   LexerError* = object of CatchableError
-    rng* : FileRange
+    range* : FileRange
 
 template raiseLexerError*(message: string; fileRange: FileRange) =
-  raise (ref LexerError)(msg: message, rng: fileRange)
+  raise (ref LexerError)(msg: message, range: fileRange)
 
-template raiseLexerError*(message: string; filePos: FilePosition) =
-  raise (ref LexerError)(msg: message, rng: filePos.withLength(0))
+template raiseLexerError*(message: string; filePos: FilePos) =
+  raise (ref LexerError)(msg: message, range: filePos .. filePos)
 
 func isEmpty*(self: LexerBase): bool =
   ## Returns *true* when `buffer` is fully processed
@@ -34,6 +33,7 @@ func isEmpty*(self: LexerBase): bool =
 func peekOffset*(self: LexerBase; offset: int): char =
   ## Returns current character in the `buffer` with specified `offset`
   assert(self.idx + offset >= 0)
+
   result =
     if self.idx + offset > self.buffer.high:
       '\0'
@@ -67,17 +67,35 @@ func popChar*(self: var LexerBase; c: char): bool
   ## Character will be popped from the buffer
   result = self.popChar({c})
 
-func line(self: LexerBase): int =
+func linePrev*(self: LexerBase): int =
   ## Returns a current line
-  result = self.lineNum.int + self.posOffset.line.int
+  result = self.lineNum.int - int(self.idx == self.idxStart) + self.lineOffset
 
-func column(self: LexerBase): int =
+func line*(self: LexerBase): int =
+  ## Returns a current line
+  result = self.lineNum.int + self.lineOffset
+
+func columnPrev*(self: LexerBase): int =
   ## Returns a column in the current line
-  result = (self.idx + 1) - self.idxStart + self.posOffset.column.int
+  let lineStart =
+    if self.idx == self.idxStart:
+      self.idxStartPrev
+    else:
+      self.idxStart
+  
+  result = self.idx - lineStart + self.columnOffset
 
-func peekPos*(self: LexerBase): FilePosition =
+func column*(self: LexerBase): int =
+  ## Returns a column in the current line
+  result = (self.idx + 1) - self.idxStart + self.columnOffset
+
+func peekPos*(self: LexerBase): FilePos =
   ## Returns current character position
-  result = FilePosition(line: self.line().uint32, column: self.column().uint32)
+  result = FilePos(line: self.line().uint32, column: self.column().uint32)
+
+func prevPos*(self: LexerBase): FilePos =
+  ## Returns previous character position
+  result = FilePos(line: self.linePrev().uint32, column: self.columnPrev().uint32)
 
 func handleNewline*(self: var LexerBase): bool
   {.discardable.} =
@@ -85,8 +103,9 @@ func handleNewline*(self: var LexerBase): bool
     if self.peek() in Newlines:
       self.popChar('\r')
       self.popChar('\n')
-      self.lineNum += 1
-      self.idxStart = self.idx
+      self.lineNum     += 1
+      self.idxStartPrev = self.idxStart
+      self.idxStart     = self.idx
       true
     else:
       false

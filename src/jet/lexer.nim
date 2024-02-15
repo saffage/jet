@@ -35,13 +35,13 @@ func buildCharSet(): set[char]
 const
   operatorChars = buildCharSet()
 
-func lexHSpace(self: var Lexer): Token =
+func lexSpace(self: var Lexer): Token =
   let data = self.parseWhile(it == ' ')
 
-  result = Token(kind: HSpace, data: data)
+  result = Token(kind: Space, data: data)
 
-func lexVSpace(self: var Lexer): Token =
-  result = Token(kind: VSpace)
+func lexEndl(self: var Lexer): Token =
+  result = Token(kind: Endl)
 
   while self.handleNewline():
     result.data &= '\n'
@@ -65,7 +65,7 @@ func lexNumber(self: var Lexer): Token
         if wasSeparator:
           raiseLexerError(
             "more than 1 separator in a row is not allowed",
-            self.peekPos().withLength(1))
+            self.peekPos() .. self.peekPos() + 1)
         wasSeparator = true
         true
       else:
@@ -75,7 +75,7 @@ func lexNumber(self: var Lexer): Token
   func parseNumberChecked(self: var Lexer; charSet: set[char]): string
     {.raises: [LexerError].} =
     if self.peek() notin charSet:
-      raiseLexerError("expected number here", self.peekPos().withLength(1))
+      raiseLexerError("expected number here", self.peekPos() .. self.peekPos() + 1)
 
     let startPos = self.peekPos()
     result = self.parseWhile(withSeparatorCheck(charSet))
@@ -83,12 +83,12 @@ func lexNumber(self: var Lexer): Token
     if result.startsWith('_'):
       raiseLexerError(
         "leading underscores in number literal is illegal",
-        startPos.withLength(1))
+        startPos .. startPos + 1)
 
     if result.endsWith('_'):
       raiseLexerError(
         "trailing underscores in number literal is illegal",
-        self.peekPos().withLength(1))
+        self.peekPos() .. self.peekPos() + 1)
 
   let numPart =
     if self.popChar('0'):
@@ -107,7 +107,7 @@ func lexNumber(self: var Lexer): Token
       else:
         raiseLexerError(
           "'0' as first character of a number literal are not allowed",
-          self.peekPos().withLength(1))
+          self.peekPos() .. self.peekPos() + 1)
     else:
       self.parseNumberChecked(Digits)
 
@@ -166,7 +166,7 @@ func lexOperator(self: var Lexer): Token
   let kind = toTokenKind(op)
 
   if kind.isNone():
-    raiseLexerError("unknown operator: '" & op & "'", info.withLength(op.len().uint32))
+    raiseLexerError("unknown operator: '" & op & "'", info .. info + op.len().uint32)
 
   result = Token(kind: kind.get())
 
@@ -193,7 +193,7 @@ func lexString(self: var Lexer; raw = false): Token
 func nextToken(self: var Lexer)
   {.raises: [LexerError].} =
   if self.isEmpty():
-    self.curr = Token(kind: TokenKind.Eof, rng: self.peekPos().withLength(0))
+    self.curr = Token(kind: TokenKind.Eof, range: self.peekPos() .. self.peekPos())
     return
 
   let prevFilePos = self.peekPos()
@@ -215,19 +215,19 @@ func nextToken(self: var Lexer)
     of operatorChars - {'.'}:
       self.lexOperator()
     of ' ':
-      self.lexHSpace()
+      self.lexSpace()
     of Newlines:
-      self.lexVSpace()
+      self.lexEndl()
     of '\"':
       self.lexString(raw = true)
     of '\'':
       self.lexString()
     of '\0':
-      Token(kind: TokenKind.Eof, rng: self.peekPos().withLength(0))
+      Token(kind: TokenKind.Eof)
     else:
       raiseLexerError("invalid character: " & strutils.escape($self.peek()), self.peekPos())
 
-  self.curr.rng = prevFilePos .. self.peekPos()
+  self.curr.range = prevFilePos .. self.prevPos()
 
 func nextTokenNotEmpty(self: var Lexer)
   {.raises: [LexerError].} =
@@ -239,12 +239,13 @@ func nextTokenNotEmpty(self: var Lexer)
 # API
 #
 
-proc newLexer*(buffer: openArray[char]; posOffset = emptyFilePos): Lexer
+proc newLexer*(buffer: openArray[char]; offset = (line: 0, column: 0)): Lexer
   {.raises: [LexerError].} =
   result = Lexer(
     buffer: buffer.toOpenArray(0, buffer.high),
     curr: Token(kind: TokenKind.Eof),
-    posOffset: posOffset,
+    lineOffset: offset.line,
+    columnOffset: offset.column,
   )
   result.nextToken()
 
@@ -269,9 +270,9 @@ func getAllTokens*(self: var Lexer): seq[Token]
     result &= token
     if token.kind == TokenKind.Eof: break
 
-func getAllTokens*(input: string; posOffset = emptyFilePos): seq[Token]
+func getAllTokens*(input: string; offset = (line: 0, column: 0)): seq[Token]
   {.raises: [LexerError].} =
-  var lexer = newLexer(input, posOffset)
+  var lexer = newLexer(input, offset)
   result = lexer.getAllTokens()
 
 func normalizeTokens*(tokens: seq[Token]): seq[Token] =
@@ -284,16 +285,16 @@ func normalizeTokens*(tokens: seq[Token]): seq[Token] =
     case token.kind
     of Empty:
       continue
-    of VSpace:
+    of Endl:
       wasEndl = true
       spaces  = 0
-    of HSpace:
+    of Space:
       spaces += token.data.len()
     else:
       var token = token
       token.spaces.wasEndl = wasEndl
       token.spaces.leading =
-        if prevKind == HSpace: spaces
+        if prevKind == Space: spaces
         else: 0
 
       if result.len() > 0:

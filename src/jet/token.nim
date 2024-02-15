@@ -15,8 +15,8 @@ type
     Id            = "<identifier>"
     Comment       = "<comment>"
     CommentModule = "<comment-module>"
-    HSpace        = "<horizontal-space>"
-    VSpace        = "<vertical-space>"
+    Space         = "<space>"
+    Endl          = "<end-of-line>"
 
     #[ Literals ]#
     IntLit       = "<int-literal>"
@@ -135,19 +135,19 @@ func toTokenKind*(c: char): Option[TokenKind] =
 
 const
   spacesNotSet* = -1
-  spacesLast* = -2
+  spacesLast*   = -2
 
 type
-  TokenSpacing* = object
+  TokenSpaces* = object
     leading*  : int = spacesNotSet
     trailing* : int = spacesNotSet
     wasEndl*  : bool = false
 
   Token* = object
     kind*   : TokenKind
-    data*   : string = ""
-    rng*    : FileRange = FileRange()
-    spaces* : TokenSpacing = TokenSpacing()
+    data*   : string
+    range*  : FileRange
+    spaces* : TokenSpaces
 
 const
   emptyToken* = Token(kind: Empty)
@@ -157,7 +157,7 @@ func `$`*(self: Token): string =
 
 func human*(self: Token): string
   {.raises: [ValueError].} =
-  result = &"at [{self.rng}] {self}"
+  result = &"at [{self.range}] {self}"
 
   if self.data.len() > 0:
     result.addQuoted(self.data)
