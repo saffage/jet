@@ -105,6 +105,15 @@ func styleEnd*(): string =
 func stylizeText*(text: string; style: TextStyle): string =
   result = styleBegin(style) & text & styleEnd()
 
+func stylizeText*(text: string; style: TextStyle; bounds: Slice[Natural]): string =
+  if text == "":
+    return ""
+
+  let textBefore = text[0 .. min(bounds.a - 1, text.high)]
+  let textAfter  = if bounds.b < text.high: text[bounds.b + 1 ..^ 1] else: ""
+
+  result = textBefore & stylizeText(text[bounds.a .. min(bounds.b, text.high)], style) & textAfter
+
 template `@`*(text: string; style: TextStyle): string =
   stylizeText(text, style)
 
