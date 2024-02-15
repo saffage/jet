@@ -5,6 +5,7 @@ import
   std/os,
   std/options,
   std/json,
+  std/parseopt,
 
   jet/astalgo,
   jet/token,
@@ -41,12 +42,27 @@ proc main() =
   #   - (?) resolve annotations
   #   - backend stage
 
-  if paramCount() != 1:
-    panic("expected path to Jet file as 1 argument")
+  let params   = commandLineParams()
+  var argument = ""
+  var noSem    = false
+
+  for kind, key, val in params.getopt():
+    case kind
+    of cmdLongOption, cmdShortOption:
+      case key
+      of "nosem":
+        noSem = val == "" or val.parseBool()
+      else:
+        panic("unknown option: " & key)
+    of cmdArgument:
+      argument = key
+    of cmdEnd: discard
+
+  if argument == "":
+    panic("expected path to Jet file")
 
   hint("file reading...")
-  let argument = paramStr(1)
-  let file     = open(argument, fmRead).readAll()
+  let file = open(argument, fmRead).readAll()
 
   hint("lexical analysis...")
   var tokens = try:
@@ -66,7 +82,7 @@ proc main() =
   debug(&"normalized tokens: \n{tmp2}")
 
   hint("syntactic analysis...")
-  var parser = newParser(tokens)
+  var parser = newParser(tokens, filename=argument)
   try:
     parser.parseAll()
   except ParserError as e:
@@ -84,24 +100,18 @@ proc main() =
   else:
     debug("AST is not generated")
 
-  hint("semantic analysis...")
-  var rootTree = parser.getAst().get()
-  var mainModule = newModule(rootTree)
-  try:
-    mainModule.traverseSymbols()
-    debug("Root scope symbols:\n    " & mainModule.scope.symbols.join("\n    "))
-  except SemanticError, ModuleError, ValueError:
-    let err = getCurrentException()
-    # TODO: file id
-    if err of (ref SemanticError):
-      let err = cast[ref SemanticError](err)
-      let pos = err.rng.a
-      if pos != emptyFilePos:
-        stdout.write(argument & ":" & $pos & ": ")
-      else:
-        stdout.write(argument & ": ")
-    error("[" & $err.name & "]: " & err.msg)
-    raise
+  if not noSem:
+    hint("semantic analysis...")
+    var rootTree = parser.getAst()
+    var mainModule = newModule(rootTree)
+    try:
+      mainModule.traverseSymbols()
+      debug("Root scope symbols:\n    " & mainModule.scope.symbols.join("\n    "))
+    except SemanticError, ModuleError, ValueError:
+      let err = getCurrentException()
+      if err of (ref SemanticError):
+        let err = (ref SemanticError)(err)
+      raise
 
 when isMainModule:
   main()
