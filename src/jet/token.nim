@@ -67,9 +67,8 @@ type
     KwUsing   = "using"
 
     #[ Word-like Operators ]#
-    KwOr      = "or"
-    KwAnd     = "and"
-    KwNot     = "not"
+    KwOr  = "or"
+    KwAnd = "and"
 
     #[ Punctuation ]#
     Dot       = "."
@@ -114,9 +113,9 @@ const
   UntypedLiteralKinds*   = {IntLit..FloatLit}
   TypedLiteralKinds*     = {ISizeLit..F64Lit}
   LiteralKinds*          = {IntLit..F64Lit}
-  KeywordKinds*          = {KwNil..KwNot}
+  KeywordKinds*          = {KwNil..KwAnd}
   OperatorKinds*         = {EqOp..FatArrow} ## Word-like operators are not included, use `WordLikeOperatorKinds`
-  WordLikeOperatorKinds* = {KwOr..KwNot}
+  WordLikeOperatorKinds* = {KwOr..KwAnd}
   StringableKinds*       = {LeRound..Ampersand}
 
 # func `$`*(self: TokenKind): string =

@@ -88,7 +88,6 @@ const priorities = {
   GeOp       : Ord,
   KwAnd      : And,
   KwOr       : Or,
-  KwNot      : Prefix,
   Eq         : Eq,
 }.toTable()
 
@@ -109,7 +108,6 @@ func parseLit(self: var Parser): AstNode
 func parseExpr(self: var Parser): AstNode
 func parseTypeExpr(self: var Parser): AstNode
 func parseId(self: var Parser): AstNode
-func parseNot(self: var Parser): AstNode
 func parseStruct(self: var Parser): AstNode
 func parseType(self: var Parser): AstNode
 func parseFunc(self: var Parser): AstNode
@@ -546,18 +544,7 @@ func parseId(self: var Parser): AstNode =
 
   let token = self.popToken(Id)
 
-  result = initAstNodeId(token.data, token.rng)
-
-func parseNot(self: var Parser): AstNode =
-  debug("parseNot")
-
-  self.priority = some(Priority.Prefix)
-
-  let token = self.popToken(KwNot)
-  let expr  = self.parseExpr()
-  let notOp = initAstNodeOperator(OpNot, token.rng)
-
-  result = initAstNodeBranch(Prefix, @[notOp, expr], token.rng)
+  result = initAstNodeId(token.data, token.range)
 
 func parseStruct(self: var Parser): AstNode =
   debug("parseStruct")
@@ -998,7 +985,6 @@ func newParser*(tokens: openArray[Token]; isModule = true): Parser =
   result.prefixFuncs[LeCurly]  = parseList
   result.prefixFuncs[LeSquare] = parseList
   result.prefixFuncs[At]       = parseAnnotation
-  result.prefixFuncs[KwNot]    = parseNot
   result.prefixFuncs[KwDo]     = parseDo
   result.prefixFuncs[KwStruct] = parseStruct
   result.prefixFuncs[KwType]   = parseType

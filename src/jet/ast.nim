@@ -52,7 +52,6 @@ type
     range* : FileRange
 
   OperatorKind* = enum
-    OpNot    = "not"
     OpAnd    = "and"
     OpOr     = "or"
     OpEq     = "=="
@@ -90,7 +89,6 @@ func toOperatorKind*(value: string): Option[OperatorKind] =
 
 func notation*(kind: OperatorKind): set[OperatorNotation] =
   result = case kind:
-    of OpNot: {Prefix}
     of OpAnd: {Infix}
     of OpOr: {Infix}
     of OpEq: {Infix}
@@ -123,12 +121,15 @@ func len*(tree: AstNode): int =
     else:
       tree.children.len()
 
-func `$`*(tree: AstNode): string =
+func kindStr*(tree: AstNode): string =
   result =
     if tree.kind != Branch:
       $tree.kind
     else:
       $tree.branchKind
+
+func `$`*(tree: AstNode): string =
+  result = tree.kindStr()
 
   if tree.range != FileRange():
     result &= "[" & $tree.range & "]"
