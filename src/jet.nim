@@ -7,10 +7,12 @@ import
   std/json,
   std/parseopt,
 
+  jet/ast,
   jet/astalgo,
   jet/token,
   jet/lexer,
-  jet/parser,
+  # jet/parser,
+  jet/parser2,
   jet/symbol,
   jet/module,
   jet/sem,
@@ -132,10 +134,10 @@ proc main() =
 
   hint("done")
 
-  if parser.getAst().isSome():
+  if parser.getAst().kind != Empty:
     debug("generated AST")
-    parser.getAst().get().printTree()
-    writeFile("tests_local/ast.json", (%parser.getAst().get()).pretty())
+    parser.getAst().printTree()
+    writeFile("tests_local/ast.json", (%parser.getAst()).pretty())
   else:
     debug("AST is not generated")
 

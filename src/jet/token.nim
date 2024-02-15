@@ -60,6 +60,7 @@ type
     KwIf      = "if"
     KwElif    = "elif"
     KwElse    = "else"
+    KwWhen    = "when"
     KwReturn  = "return"
     KwWhile   = "while"
     KwDo      = "do"
@@ -97,6 +98,7 @@ type
     DotDot     = ".."
     DotDotDot  = "..."
     DotDotLess = "..<"
+    Arrow      = "->"
     FatArrow   = "=>"
 
     #[ Special symbols ]#

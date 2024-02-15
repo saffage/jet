@@ -8,7 +8,7 @@ import
   jet/symbol,
   jet/module,
   jet/magics,
-  jet/parser,
+  jet/parser2,
   jet/semutil,
 
   lib/utils,
