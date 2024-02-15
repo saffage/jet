@@ -155,5 +155,19 @@ proc main() =
         handleError(err, argument, file.getLine(err.range.a.line.int))
       raise
 
+  # hint("generating C code...")
+  # let generatedCode = ast2c(rootTree)
+  # writeFile("out.jet.c", generatedCode)
+
+  # hint("done!")
+
+  # hint("building...")
+  # let flags = fmt"-I{libDir} -o out.exe"
+  # debug("flags: " & flags)
+
+  # let code = execShellCmd("gcc " & flags & " out.jet.c")
+  # if code != 0:
+  #   panic("CC error!")
+
 when isMainModule:
   main()
