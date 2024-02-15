@@ -22,31 +22,67 @@ type
     of lkNil    : nil
 
 func `$`*(self: Literal): string =
-  return case self.kind:
-    of lkString :  self.stringVal
-    of lkChar   : $self.charVal
-    of lkInt    : $self.intVal
-    of lkFloat  : $self.floatVal
-    of lkBool   : $self.boolVal
-    of lkNil    : "nil"
+  result = case self.kind:
+    of lkString:
+       self.stringVal
+    of lkChar:
+      $self.charVal
+    of lkInt:
+      $self.intVal
+    of lkFloat:
+      $self.floatVal
+    of lkBool:
+      $self.boolVal
+    of lkNil:
+      "nil"
+
+func `==`*(self, other: Literal): bool =
+  if self.kind != other.kind:
+    return false
+
+  result = case self.kind:
+    of lkString:
+      self.stringVal == other.stringVal
+    of lkChar:
+      self.charVal == other.charVal
+    of lkInt:
+      self.intVal == other.intVal
+    of lkFloat:
+      self.floatVal == other.floatVal
+    of lkBool:
+      self.boolVal == other.boolVal
+    of lkNil:
+      true
 
 func pretty*(self: Literal): string =
-  return case self.kind:
-    of lkString : escape(self.stringVal)
-    of lkChar   : escape($self.charVal, "'", "'")
-    of lkInt    : $self.intVal
-    of lkFloat  : $self.floatVal
-    of lkBool   : $self.boolVal
-    of lkNil    : "nil"
+  result = case self.kind:
+    of lkString:
+      escape(self.stringVal)
+    of lkChar:
+      escape($self.charVal, "'", "'")
+    of lkInt:
+      $self.intVal
+    of lkFloat:
+      $self.floatVal
+    of lkBool:
+      $self.boolVal
+    of lkNil:
+      "nil"
 
 func len*(self: Literal): int =
-  return case self.kind:
-    of lkString : self.stringVal.len()
-    of lkChar   : unimplemented("char literal 'len'")
-    of lkInt    : ($self.intVal).len()
-    of lkFloat  : ($self.floatVal).len()
-    of lkBool   : ($self.boolVal).len()
-    of lkNil    : 3
+  result = case self.kind:
+    of lkString:
+      self.stringVal.len()
+    of lkChar:
+      unimplemented("char literal 'len'")
+    of lkInt:
+      ($self.intVal).len()
+    of lkFloat:
+      ($self.floatVal).len()
+    of lkBool:
+      ($self.boolVal).len()
+    of lkNil:
+      3
 
 func newLit*(value: typeof(nil)): Literal =
   result = Literal(kind: lkNil)
