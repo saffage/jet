@@ -1,4 +1,4 @@
-## Very simple logger with a lot of hidden side effects.
+## Very simple logger with a ton of hidden side effects
 
 import
   std/strutils,
@@ -27,12 +27,12 @@ const
   debugMsgStyle* = TextStyle(foreground: White)
   hintTagStyle*  = TextStyle(foreground: Cyan)
   hintMsgStyle*  = TextStyle(foreground: White)
-  warnTagStyle*  = TextStyle(foreground: Yellow)
-  warnMsgStyle*  = TextStyle(foreground: White)
+  warnTagStyle*  = TextStyle(foreground: Yellow, bold: true)
+  warnMsgStyle*  = TextStyle(foreground: White, bold: true)
   errorTagStyle* = TextStyle(foreground: BrightRed, bold: true)
-  errorMsgStyle* = TextStyle(foreground: White)
+  errorMsgStyle* = TextStyle(foreground: White, bold: true)
   panicTagStyle* = TextStyle(foreground: Red, bold: true)
-  panicMsgStyle* = TextStyle(foreground: Red)
+  panicMsgStyle* = TextStyle(foreground: Red, bold: true)
 
 func tagStyle(self: LogLevel): TextStyle =
   result = case self:
@@ -71,35 +71,42 @@ func print(level: static[LogLevel]; tag, msg: string; colors: bool) =
   {.cast(noSideEffect).}:
     if level < loggingLevel: return
 
-  if colors:
-    let tag = tag @ level.tagStyle()
-    let msg = msg @ level.msgStyle()
-    debugEcho(tag & msg)
-  else:
-    debugEcho(tag & msg)
+  let (tag, msg) =
+    if colors:
+      (tag @ level.tagStyle(), msg @ level.msgStyle())
+    else:
+      (tag, msg)
+
+  {.cast(noSideEffect), cast(raises: []).}:
+    let stream =
+      if level < Error:
+        stdout
+      else:
+        stderr
+    stream.writeLine(tag & msg)
 
 func log(level: static[LogLevel]; msg: string; colors: bool) =
   const tag = toLowerAscii($level) & ": "
   print(level, tag, msg, colors)
 
-func log(level: static[LogLevel]; msg: string; colors: bool; pos: FilePosition) =
+func log(level: static[LogLevel]; msg: string; colors: bool; pos: FilePos) =
   const levelTag = toLowerAscii($level)
   let tag = try: &"{levelTag}[{pos}]: " except ValueError: "<fmt-error>"
   print(level, tag, msg, colors)
 
-func debug*(msg: string; pos: FilePosition) =
+func debug*(msg: string; pos: FilePos) =
   log(Debug, msg, hasColors(), pos)
 
 func debug*(msg: string) =
   log(Debug, msg, hasColors())
 
-func pos*(msg: string; pos: FilePosition) =
+func pos*(msg: string; pos: FilePos) =
   log(Info, msg, hasColors(), pos)
 
 func pos*(msg: string) =
   log(Info, msg, hasColors())
 
-func hint*(msg: string; pos: FilePosition) =
+func hint*(msg: string; pos: FilePos) =
   log(Hint, msg, hasColors(), pos)
 
   {.cast(noSideEffect).}:
@@ -111,7 +118,7 @@ func hint*(msg: string) =
   {.cast(noSideEffect).}:
     inc(hints)
 
-func warn*(msg: string; pos: FilePosition) =
+func warn*(msg: string; pos: FilePos) =
   log(Warn, msg, hasColors())
 
   {.cast(noSideEffect).}:
@@ -123,7 +130,7 @@ func warn*(msg: string) =
   {.cast(noSideEffect).}:
     inc(warns)
 
-func error*(msg: string; pos: FilePosition) =
+func error*(msg: string; pos: FilePos) =
   log(Error, msg, hasColors(), pos)
 
   {.cast(noSideEffect).}:
@@ -139,7 +146,7 @@ func error*(msg: string) =
     if errors >= maxErrors:
       raise newException(LoggerDefect, msg)
 
-func panic*(msg: string; pos: FilePosition)
+func panic*(msg: string; pos: FilePos)
   {.noreturn.} =
   log(Panic, msg, hasColors(), pos)
   raise newException(LoggerDefect, msg)
@@ -148,5 +155,3 @@ func panic*(msg: string)
   {.noreturn.} =
   log(Panic, msg, hasColors())
   raise newException(LoggerDefect, msg)
-
-{.pop.} # raises: []
