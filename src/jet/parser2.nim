@@ -40,7 +40,7 @@ type
     Highest
 
   ParserError* = object of CatchableError
-    range* : FileRange
+    range* : Option[FileRange]
 
   FmtLexer = object of LexerBase
 
@@ -122,14 +122,17 @@ func parseExpr*(input: string; offset = (line: 0, column: 0); isModule = false):
 # Util Functions
 #
 
+template raiseParserError*(message: string) =
+  raise (ref ParserError)(msg: message)
+
 template raiseParserError*(message: string; node: AstNode) =
-  raise (ref ParserError)(msg: message, range: node.range)
+  raise (ref ParserError)(msg: message, range: some(node.range))
 
 template raiseParserError*(message: string; fileRange: FileRange) =
-  raise (ref ParserError)(msg: message, range: fileRange)
+  raise (ref ParserError)(msg: message, range: some(fileRange))
 
 template raiseParserError*(message: string; filePos: FilePos) =
-  raise (ref ParserError)(msg: message, range: filePos .. filePos + 1)
+  raise (ref ParserError)(msg: message, range: some(filePos .. filePos + 1))
 
 func isEmpty(self: Parser): bool =
   result = self.curr > self.tokens.high
