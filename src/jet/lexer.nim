@@ -192,11 +192,11 @@ func lexString(self: var Lexer; raw = false): Token
 
 func nextToken(self: var Lexer)
   {.raises: [LexerError].} =
-  if self.isEmpty():
-    self.curr = Token(kind: TokenKind.Eof, range: self.peekPos() .. self.peekPos())
-    return
-
   let prevFilePos = self.peekPos()
+
+  if self.isEmpty():
+    self.curr = Token(kind: TokenKind.Eof, range: prevFilePos .. prevFilePos)
+    return
 
   self.curr = case self.peek():
     of '#':
