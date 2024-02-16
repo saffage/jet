@@ -69,11 +69,11 @@ func popChar*(self: var LexerBase; c: char): bool
 
 func linePrev*(self: LexerBase): int =
   ## Returns a current line
-  result = self.lineNum.int - int(self.idx == self.idxStart) + self.lineOffset
+  result = self.lineNum - int(self.idx == self.idxStart) + self.lineOffset
 
 func line*(self: LexerBase): int =
   ## Returns a current line
-  result = self.lineNum.int + self.lineOffset
+  result = self.lineNum + self.lineOffset
 
 func columnPrev*(self: LexerBase): int =
   ## Returns a column in the current line
@@ -82,7 +82,7 @@ func columnPrev*(self: LexerBase): int =
       self.idxStartPrev
     else:
       self.idxStart
-  
+
   result = self.idx - lineStart + self.columnOffset
 
 func column*(self: LexerBase): int =
