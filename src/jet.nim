@@ -27,7 +27,7 @@ proc `%`*(v: char): JsonNode =
 
 proc getLine(buf: openArray[char]; n: Natural): string =
   proc skipUntilEndl(buf: openArray[char]; idx: var int) =
-    while buf[idx] notin {'\r', '\n'}:
+    while idx < buf.high and buf[idx] notin {'\r', '\n', '\0'}:
       idx += 1
 
   proc skipEndl(buf: openArray[char]; idx: var int) =
@@ -54,15 +54,21 @@ proc handleError(err: ref CatchableError; filePath: string; line: string) =
     if err of ParserError:
       (ref ParserError)(err).range
     elif err of LexerError:
-      (ref LexerError)(err).range
+      some((ref LexerError)(err).range)
     elif err of SemanticError:
       (ref SemanticError)(err).range
     else:
       return
 
+  let target =
+    if range.isSome():
+      some(HighlightTarget(range: range.get(), line: line))
+    else:
+      none(HighlightTarget)
+
   HighlightInfo(
     message: err.msg,
-    target: some(HighlightTarget(range: range, line: line)),
+    target: target,
     filePath: filePath,
     kind: HighlightInfoKind.Error,
   ).highlightInfoInFile()
@@ -129,7 +135,13 @@ proc main() =
   try:
     parser.parseAll()
   except ParserError as err:
-    handleError(err, argument, file.getLine(err.range.a.line.int))
+    handleError(
+      err,
+      argument,
+      if err.range.isSome():
+        file.getLine(err.range.get().a.line.int)
+      else:
+        "")
     raise
 
   hint("done")
@@ -152,7 +164,13 @@ proc main() =
       let err = getCurrentException()
       if err of (ref SemanticError):
         let err = (ref SemanticError)(err)
-        handleError(err, argument, file.getLine(err.range.a.line.int))
+        handleError(
+          err,
+          argument,
+          if err.range.isSome():
+            file.getLine(err.range.get().a.line.int)
+          else:
+            "")
       raise
 
   # hint("generating C code...")
