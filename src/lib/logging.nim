@@ -99,7 +99,6 @@ func visualize(info: HighlightInfo): string =
     underscoreCharSet = ['~', '-', '^']
     lineNumSuffix     = " |"
     lineNumNoteSuffix = " ="
-    filePathPrefix    = " --> "
 
   let
     lineNumStr =
