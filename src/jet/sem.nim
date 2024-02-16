@@ -18,16 +18,19 @@ import
 
 type
   SemanticError* = object of CatchableError
-    range* : FileRange
+    range* : Option[FileRange]
+
+template raiseSemanticError*(message: string) =
+  raise (ref SemanticError)(msg: message)
 
 template raiseSemanticError*(message: string; node: AstNode) =
-  raise (ref SemanticError)(msg: message, range: node.range)
+  raise (ref SemanticError)(msg: message, range: some(node.range))
 
 template raiseSemanticError*(message: string; fileRange: FileRange) =
-  raise (ref SemanticError)(msg: message, range: fileRange)
+  raise (ref SemanticError)(msg: message, range: some(fileRange))
 
 template raiseSemanticError*(message: string; filePos: FilePos) =
-  raise (ref SemanticError)(msg: message, range: filePos .. filePos)
+  raise (ref SemanticError)(msg: message, range: some(filePos .. filePos))
 
 func isSymDecl(tree: AstNode): bool =
   result =
@@ -234,9 +237,7 @@ proc assertMagicsResolved(module: ModuleRef)
 
   if unresolvedMagics != {}:
     let magicsAsStr = unresolvedMagics.toSeq().join(", ")
-    raiseSemanticError(
-      &"the following magics was not resolved: {magicsAsStr}",
-      FilePos())
+    raiseSemanticError(&"the following magics was not resolved: {magicsAsStr}")
 
 proc traverseSymbols*(module: ModuleRef; rootTree: AstNode)
   {.raises: [ModuleError, SemanticError, ValueError].} =
