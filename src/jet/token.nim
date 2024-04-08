@@ -51,6 +51,7 @@ type
     KwNil     = "nil"
     KwTrue    = "true"
     KwFalse   = "false"
+    KwConst   = "const"
     KwVar     = "var"
     KwVal     = "val"
     KwFunc    = "func"

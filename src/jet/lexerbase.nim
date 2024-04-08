@@ -127,7 +127,7 @@ func getLine*(self: LexerBase; lineNum: Positive): string
   while true:
     lexer.skipLine()
     if i == lineNum:
-      result = self.buffer.toString(start..<self.idx)
+      result = self.buffer.toString(start..<lexer.idx)
       break
     if not lexer.handleNewline():
       raise newException(ValueError, "line " & $lineNum & " does not exist in the buffer")

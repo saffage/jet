@@ -14,6 +14,7 @@ type
     Branch
 
   AstNodeBranchKind* = enum
+    IdList      ## a, b
     Struct
     Enum
     Type
@@ -23,8 +24,9 @@ type
     ElseBranch
     While
     Return
-    ValDecl
-    VarDecl
+    VarDecl     ## var ...
+    ValDecl     ## val ...
+    ConstQual   ## const ...
     List        ## (a, b)
     Block       ## (a; b)
     Infix       ## a ~ b

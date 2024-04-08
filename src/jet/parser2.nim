@@ -101,8 +101,11 @@ func parseFuncExpr(self: var Parser): AstNode
 
 func parseModule(self: var Parser; isBodyRequired = true): AstNode
 func parseStruct(self: var Parser): AstNode
+func parseVarDecl(self: var Parser): AstNode
+func parseVarSpec(self: var Parser): AstNode
 
 func parseId(self: var Parser): AstNode
+func parseIdList(self: var Parser): AstNode
 func parseLiteral(self: var Parser): AstNode
 func parsePrimary(self: var Parser): AstNode
 func parseSuffix(self: var Parser; left: AstNode): AstNode
@@ -239,6 +242,8 @@ func parseExpr(self: var Parser): AstNode =
       self.parseReturnExpr()
     of KwModule:
       self.parseModule()
+    of KwVar, KwVal:
+      self.parseVarDecl()
     else:
       self.parsePrimary()
 
@@ -318,12 +323,119 @@ func parseStruct(self: var Parser): AstNode =
 
   result = initAstNodeBranch(Struct, @[name, body], token.range)
 
+func parseVarDecl(self: var Parser): AstNode =
+  #[
+    VarDecl <- 'const'? ('val' | 'var') VarSpec
+  ]#
+  debug("parseVarDecl")
+
+  let constToken =
+    if self.peekKind() == KwConst:
+      self.popToken()
+    else:
+      emptyToken
+  let token = self.popToken({KwVal, KwVar})
+
+  result = self.parseVarSpec()
+  result.range = token.range
+
+  if token.kind == KwVal:
+    result = initAstNodeBranch(ValDecl, result.children, result.range)
+
+  if constToken.kind != Empty:
+    result = initAstNodeBranch(ConstQual, @[result], constToken.range)
+
+func parseVarSpec(self: var Parser): AstNode =
+  #[
+    VarSpec <- IdList ('=' Expr | Type ('=' Expr)?)
+  ]#
+  debug("parseVarSpec")
+
+  let names = self.parseIdList()
+  let (ty, expr) =
+    if self.skipTokenMaybe(Eq):
+      (initAstNodeEmpty(), self.parseExpr())
+    else:
+      let ty = self.parseExpr()
+      let expr =
+        if self.skipTokenMaybe(Eq):
+          self.parseExpr()
+        else:
+          initAstNodeEmpty()
+      (ty, expr)
+
+  result = initAstNodeBranch(VarDecl, @[names, ty, expr], names.range)
+
+func parseType(self: var Parser): AstNode =
+#[
+  Type      <- TypeName TypeArgs? | TypeLit | '(' Type ')'
+  TypeName  <- Id | QualifiedId
+  TypeArgs  <- '[' TypeList (',')? ']'
+  TypeList  <- Type (',' Type)*
+  TypeLit   <- ArrayType | SliceType | StructType
+
+  TypeParams    <- '[' TypeParamList (',')? ']'
+  TypeParamList <- TypeParamDecl (',' TypeParamDecl)*
+  TypeParamDecl <- IdList
+
+  SliceType   <- '[' ']' ElementType
+  ElementType <- Type
+
+  ArrayType   <- '[' ArrayLength ']' ElementType
+  ArrayLength <- Expr
+
+  StructDecl <- 'struct' Id ('['  ']')?
+  StructType <- 'struct' '{' VarSpec* '}'
+
+  RefType <- '&' BaseType
+  BaseType <- Type
+]#
+  discard
+
+func parseTypeName(self: var Parser): AstNode =
+  let name = self.parseId()
+
+  if self.skipTokenMaybe(Dot):
+    let qualifiedName = self.parseId()
+
 func parseId(self: var Parser): AstNode =
   debug("parseId")
 
   let token = self.popToken(Id)
 
   result = initAstNodeId(token.data, token.range)
+#[
+  QualifiedId <- (ModuleName '.')+ Id
+  ModuleName <- Id
+]#
+
+func parseQualifiedId(self: var Parser): AstNode =
+  debug("parseQualifiedId")
+
+  result = self.parseId()
+
+  while self.peekKind() == Dot:
+    result = self.parseModuleName()
+
+func parseIdList(self: var Parser): AstNode =
+#[
+  IdList <- Id (',' Id)*
+]#
+  debug("parseIdList")
+
+  result = self.parseId()
+
+  while self.skipTokenMaybe(Comma):
+    if result.kind != Branch:
+      result = initAstNodeBranch(IdList, @[result], result.range)
+
+    let id = self.parseId()
+
+    result.children &= id
+    result.range = result.range.a .. id.range.b
+
+func parseQualifiedId(self: var Parser): AstNode =
+  let moduleName = self.parseId()
 
 func parseLiteral(self: var Parser): AstNode =
   let token = self.popToken({IntLit, FloatLit, StringLit, KwTrue, KwFalse, KwNil})
@@ -383,6 +495,8 @@ GroupedExpr <- '(' Expr ')'
       self.parseLiteral()
     of KeywordKinds - WordLikeOperatorKinds:
       raiseParserError("todo", token.range)
+    of Eof:
+      raiseParserError(&"unexpected end of file")
     else:
       raiseParserError(&"unexpected token: {token.kind}", token.range)
 
@@ -465,22 +579,15 @@ func parseAll*(self: var Parser)
 
   self.ast =
     if self.isModule:
-      self.parseModule(isBodyRequired=true)
+      self.parseModule(isBodyRequired=false)
     else:
       initAstNodeBranch(Block)
 
   while self.peekKind() != Eof:
     debug("parseAll: " & $self.peekKind())
 
-    try:
-      if (let expr = self.parseExpr(); expr.kind != Empty):
-        self.ast.children &= expr
-    except ParserError as err:
-      discard self.popToken() # maybe skip whole line?
-      {.cast(noSideEffect).}:
-        try: stderr.write(self.filename & ":" & $err.range.a & ": ")
-        except IOError: unreachable()
-      error(err.msg)
+    if (let expr = self.parseExpr(); expr.kind != Empty):
+      self.ast.children &= expr
 
 func parseAll(input: string; offset: tuple[line, column: int]; isModule: bool): AstNode =
   let tokens = input.getAllTokens(offset).normalizeTokens()

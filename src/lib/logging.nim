@@ -100,6 +100,8 @@ func visualize(info: HighlightInfo): string =
     lineNumSuffix     = " |"
     lineNumNoteSuffix = " ="
 
+  result = ""
+
   let
     lineNumStr =
       if target =? info.target:
@@ -125,15 +127,12 @@ func visualize(info: HighlightInfo): string =
     let
       lineNum        = stylizeText(lineNumStr & lineNumSuffix, lineNumStyle)
       line           = stylizeText(target.line, highlightStyle, highlightRange)
-      underliningStr = repeat(underscoreCharSet[0], highlightRange.len())
+      underliningStr = repeat(underscoreCharSet[0], max(1, highlightRange.len()))
       underlining    = stylizeText(underliningStr, info.style())
+      emptyLineUntilHighlight = emptyLineNum & spaces(target.range.a.column.int - 1)
 
     result &= emptyLineNum & "\n"
     result &= lineNum & line & "\n"
-
-    let
-      emptyLineUntilHighlight = emptyLineNum & spaces(target.range.a.column.int - 1)
-
     result &= emptyLineUntilHighlight & underlining & '\n'
 
     if target.details != "":
@@ -201,24 +200,33 @@ when isMainModule:
   let buf = readFile(filename)
   let range = FilePos(line: 3, column: 1) .. FilePos(line: 3, column: 5)
 
+  # highlightInfoInFile(HighlightInfo(
+  #   message: "test message",
+  #   target: some(HighlightTarget(
+  #     range: range,
+  #     line: buf.getLine(range.a.line.int),
+  #     details: "test details",
+  #   )),
+  #   notes: @[
+  #     HighlightNote(
+  #       message: "this is note message",
+  #       filePath: some(filename),
+  #       range: some(range),
+  #     ),
+  #     HighlightNote(
+  #       message: "another note",
+  #     )
+  #   ],
+  #   filePath: filename,
+  #   kind: HighlightInfoKind.Error,
+  #   error: CompilationError.EMPTY,
+  # ))
   highlightInfoInFile(HighlightInfo(
     message: "test message",
+    filePath: "test.jet",
     target: some(HighlightTarget(
-      range: range,
-      line: buf.getLine(range.a.line.int),
+      range: FilePos(line: 1, column: 5)..FilePos(line: 1, column: 7),
+      line: "test line content",
       details: "test details",
     )),
-    notes: @[
-      HighlightNote(
-        message: "this is note message",
-        filePath: some(filename),
-        range: some(range),
-      ),
-      HighlightNote(
-        message: "another note",
-      )
-    ],
-    filePath: filename,
-    kind: HighlightInfoKind.Error,
-    error: CompilationError.EMPTY,
   ))
