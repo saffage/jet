@@ -1,5 +1,0 @@
-module HelloWorld
-
-func main() {
-  $println('Hello, World!')
-}

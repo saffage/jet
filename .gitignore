@@ -1,3 +1,15 @@
+# Some Go stuff
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work
+
+# Editor configuration
 /.vscode
-/bin
-/tests_local
+
+# For local testing
+/_test
