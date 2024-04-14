@@ -44,10 +44,6 @@ func NewWalker(visitor Visitor) Walker {
 	return &defaultWalker{visitor, []stackEntry{}}
 }
 
-// func (w *defaultWalker) Stack() []stackEntry {
-// 	return w.stack
-// }
-
 func (w *defaultWalker) Walk(node Node) {
 	if visitor := w.visitor.Visit(node); visitor == nil {
 		return

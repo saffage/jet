@@ -42,10 +42,10 @@ func TypeOf(owner Scope, expr ast.Node) (type_ types.Type, required Symbol, wher
 				return type_, sym, node
 			}
 			// symbol have no type (not yet resolver)
-			return &types.Unknown{}, sym, node
+			return types.Unknown{}, sym, node
 		}
 		// identifier is undefined
-		return &types.Unknown{}, nil, node
+		return types.Unknown{}, nil, node
 
 	case *ast.Literal:
 		switch node.Kind {
@@ -65,7 +65,7 @@ func TypeOf(owner Scope, expr ast.Node) (type_ types.Type, required Symbol, wher
 			return listScope.Type, nil, nil
 		}
 
-		return &types.Unknown{}, nil, nil
+		return types.Unknown{}, nil, nil
 	}
 
 	return nil, nil, nil

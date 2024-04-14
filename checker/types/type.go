@@ -12,6 +12,6 @@ type Type interface {
 }
 
 func IsUnknown(t Type) bool {
-	_, ok := t.(*Unknown)
+	_, ok := t.(Unknown)
 	return ok
 }
