@@ -81,6 +81,7 @@ func (scope *LocalScope) Visit(node ast.Node) ast.Visitor {
 		case *ast.AliasDecl:
 		case *ast.EnumDecl:
 		case *ast.FuncDecl:
+
 		case *ast.GenericDecl:
 			// TODO handle all names
 			variable := NewVar(0, decl.Field.Names[0], decl, scope)
@@ -100,8 +101,10 @@ func (scope *LocalScope) Visit(node ast.Node) ast.Visitor {
 			variable.setType(type_)
 			scope.Type = type_
 			return nil
+
 		case *ast.ModuleDecl:
 		case *ast.StructDecl:
+
 		default:
 			panic("unreachable")
 		}
