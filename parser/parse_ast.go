@@ -949,7 +949,7 @@ func (p *Parser) parseClosingExprList(
 	separators ...token.Kind,
 ) *ast.List {
 	if len(separators) < 1 {
-		panic("parser.parseClosingExprList: expect at least 1 separator")
+		panic("expect at least 1 separator")
 	}
 
 	if p.flags&Trace != 0 {

@@ -159,7 +159,7 @@ func (w *defaultWalker) Walk(node Node) {
 			walkList(w, b.List)
 
 		default:
-			panic(fmt.Sprintf("ast.(*defaultWalker).Walk: unexpected node type '%T' for ModuleDecl.Body field", n.Body))
+			panic(fmt.Sprintf("unexpected node type '%T' in module body", n.Body))
 		}
 
 	case *GenericDecl:
@@ -232,7 +232,7 @@ func (w *defaultWalker) Walk(node Node) {
 		}
 
 	default:
-		panic(fmt.Sprintf("ast.(*defaultWalker).Walk: unknown node type '%T'", n))
+		panic(fmt.Sprintf("unknown node type '%T'", n))
 	}
 
 	w.stack = w.stack[:len(w.stack)-1]

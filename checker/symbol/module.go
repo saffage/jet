@@ -86,7 +86,7 @@ func (m *Module) Parent() Scope {
 
 func (m *Module) Define(symbol Symbol) Symbol {
 	if symbol == nil {
-		panic("GlobalScope.Define: attempt to define nil symbol")
+		panic("attempt to define nil symbol")
 	}
 
 	if sym := m.ResolveMember(symbol.Name()); sym != nil {

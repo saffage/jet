@@ -53,7 +53,7 @@ func (p *Parser) errorExpected(message string, start, end token.Loc, details ...
 
 func (p *Parser) errorExpectedToken(start, end token.Loc, tokens ...token.Kind) {
 	if len(tokens) < 1 {
-		panic("Parser.errorExpectedToken: required at least 1 token")
+		panic("required at least 1 token")
 	}
 
 	tokenStrs := []string{}

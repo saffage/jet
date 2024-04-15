@@ -14,7 +14,7 @@ type LocalScope struct {
 
 func NewLocalScope(parent Scope) *LocalScope {
 	if parent == nil {
-		panic("symbol.NewLocalScope: the local scope must have a parent")
+		panic("the local scope must have a parent")
 	}
 
 	return &LocalScope{
@@ -29,7 +29,7 @@ func (scope *LocalScope) Parent() Scope {
 
 func (scope *LocalScope) Define(symbol Symbol) Symbol {
 	if symbol == nil {
-		panic("GlobalScope.Define: attempt to define nil symbol")
+		panic("attempt to define nil symbol")
 	}
 
 	if sym := scope.ResolveMember(symbol.Name()); sym != nil {
