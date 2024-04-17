@@ -1,6 +1,8 @@
 package symbol
 
 import (
+	"fmt"
+
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/checker/types"
 )
@@ -9,7 +11,9 @@ type LocalScope struct {
 	symbols []Symbol
 	parent  Scope
 
-	types.Type // Used for scope type
+	type_    types.Type // Used for scope type
+	typeFrom ast.Node
+	typeSym  Symbol
 }
 
 func NewLocalScope(parent Scope) *LocalScope {
@@ -17,10 +21,17 @@ func NewLocalScope(parent Scope) *LocalScope {
 		panic("the local scope must have a parent")
 	}
 
+	fmt.Printf(">>> push local\n")
+
 	return &LocalScope{
 		symbols: []Symbol{},
 		parent:  parent,
 	}
+}
+
+func (scope *LocalScope) Free() {
+	// Exists only for debug.
+	fmt.Printf(">>> pop local\n")
 }
 
 func (scope *LocalScope) Parent() Scope {
@@ -92,6 +103,8 @@ func (scope *LocalScope) Visit(node ast.Node) ast.Visitor {
 				panic(err)
 			}
 
+			fmt.Printf(">>> def local var `%s`\n", variable.Name())
+
 			type_, _, where := TypeOf(scope, decl.Field.Value)
 
 			if where != nil {
@@ -99,7 +112,7 @@ func (scope *LocalScope) Visit(node ast.Node) ast.Visitor {
 			}
 
 			variable.setType(type_)
-			scope.Type = type_
+			scope.type_ = type_
 			return nil
 
 		case *ast.ModuleDecl:
@@ -113,11 +126,15 @@ func (scope *LocalScope) Visit(node ast.Node) ast.Visitor {
 	case *ast.Ident:
 		if sym := scope.Resolve(n.Name); sym != nil {
 			if sym.Type() != nil {
-				scope.Type = sym.Type()
+				scope.type_ = sym.Type()
+			} else {
+				// Symbol is defined but have no type yet. Defered sym?
+				scope.type_ = types.Unknown{}
 			}
-		} else {
-			panic(NewErrorf(n, "identifier `%s` is undefined", n.Name))
+			scope.typeSym = sym
 		}
+		// panic(NewErrorf(n, "identifier `%s` is undefined", n.Name))
+		scope.typeFrom = n
 		return nil
 	}
 

@@ -28,7 +28,8 @@ func NewType(id ID, node *ast.AliasDecl, owner Scope) *Type {
 // Meaning:
 //   - `type_` - type of the expression.
 //   - `required` - symbol that is required for this expression but have no type.
-//   - `where` - identifier that refers to the symbol (declared or not).
+//   - `where` - identifier that refers to the symbol (declared or not),
+//     wich type is required for inderring type of the expression.
 func TypeOf(owner Scope, expr ast.Node) (type_ types.Type, required Symbol, where *ast.Ident) {
 	switch node := ast.UnwrapParen(expr).(type) {
 	case *ast.ParenExpr:
@@ -58,14 +59,17 @@ func TypeOf(owner Scope, expr ast.Node) (type_ types.Type, required Symbol, wher
 
 	case *ast.CurlyList:
 		listScope := NewLocalScope(owner)
+		defer listScope.Free()
 		walker := ast.NewWalker(listScope)
 		walker.Walk(node.List)
 
-		if listScope.Type != nil {
-			return listScope.Type, nil, nil
+		where, _ := listScope.typeFrom.(*ast.Ident)
+
+		if listScope.type_ != nil {
+			return listScope.type_, listScope.typeSym, where
 		}
 
-		return types.Unknown{}, nil, nil
+		return types.Unknown{}, listScope.typeSym, where
 	}
 
 	return nil, nil, nil
