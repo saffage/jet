@@ -98,7 +98,7 @@ func TestExprs(t *testing.T) {
 				}
 
 				if slices.Compare(got, want) != 0 {
-					t.Errorf("unexpected AST was parsed\nwant %s\ngot  %s", string(c.expectedJSON), string(got))
+					t.Errorf("unexpected AST was parsed\nwant %s\ngot  %s", string(want), string(got))
 				}
 			} else {
 				encoded, err := json.MarshalIndent(ast, "", "    ")
