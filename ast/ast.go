@@ -80,11 +80,11 @@ type (
 		Loc  token.Loc
 	}
 
-	// Represents `#foo`, `#foo()`, `#foo{}`.
+	// Represents `#foo`, `#foo expr`, `#foo()`, `#foo{}`.
 	Attribute struct {
-		X        Node      // Next statement\expression.
-		Attached Node      // Can be nil, 'ast.ParenList', 'ast.CurlyList'.
-		Loc      token.Loc // `#` token.
+		Ident *Ident
+		X     Node      // Next statement\expression, 'ast.ParenList' or 'ast.CurlyList'.
+		Loc   token.Loc // `#` token.
 	}
 
 	// Represents `&` or `&var` (both a reference type or borrow operation).
@@ -185,10 +185,10 @@ func (n *Annotation) PosEnd() token.Loc {
 
 func (n *Attribute) Pos() token.Loc { return n.Loc }
 func (n *Attribute) PosEnd() token.Loc {
-	if n.Attached != nil {
-		return n.Attached.PosEnd()
+	if n.X != nil {
+		return n.X.PosEnd()
 	}
-	return n.X.PosEnd()
+	return n.Ident.PosEnd()
 }
 
 func (n *Ref) Pos() token.Loc    { return n.Loc }

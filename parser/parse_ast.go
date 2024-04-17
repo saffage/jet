@@ -31,6 +31,31 @@ func (p *Parser) parseIdentNode() ast.Node {
 	return p.parseIdent()
 }
 
+func (p *Parser) parseAttribute() ast.Node {
+	if p.flags&Trace != 0 {
+		p.trace()
+		defer p.untrace()
+	}
+
+	if tok := p.expect(token.Attribute); tok != nil {
+		identStart := tok.Start
+		identStart.Char += 1
+		ident := &ast.Ident{
+			Name:  tok.Data[1:],
+			Start: identStart,
+			End:   tok.End,
+		}
+
+		return &ast.Attribute{
+			Ident: ident,
+			X:     p.parseExpr(),
+			Loc:   tok.Start,
+		}
+	}
+
+	return nil
+}
+
 func (p *Parser) parseLiteral() ast.Node {
 	if tok := p.expect(token.Int, token.Float, token.String); tok != nil {
 		return &ast.Literal{
@@ -163,6 +188,9 @@ func (p *Parser) parseOperand() ast.Node {
 	switch p.tok.Kind {
 	case token.Ident:
 		return p.parseIdentNode()
+
+	case token.Attribute:
+		return p.parseAttribute()
 
 	case token.Int, token.Float, token.String:
 		return p.parseLiteral()
