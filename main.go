@@ -26,5 +26,6 @@ func catchAssetionFail() {
 			log.InternalError(err.Msg)
 			os.Exit(1)
 		}
+		panic(err)
 	}
 }
