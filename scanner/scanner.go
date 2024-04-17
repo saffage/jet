@@ -304,25 +304,19 @@ func (s *Scanner) scanNumber() token.Token {
 	if s.Consume('0') {
 		switch {
 		case s.Consume('x'):
-			if num := s.parseHexNumber(); num.Kind != token.Illegal {
-				numPart = "0x" + num.Data
-			} else {
-				return num
-			}
+			num := s.parseHexNumber()
+			num.Data = "0x" + num.Data
+			return num
 
 		case s.Consume('b'):
-			if num := s.parseBinNumber(); num.Kind != token.Illegal {
-				numPart = "0b" + num.Data
-			} else {
-				return num
-			}
+			num := s.parseBinNumber()
+			num.Data = "0b" + num.Data
+			return num
 
 		case s.Consume('o'):
-			if num := s.parseOctNumber(); num.Kind != token.Illegal {
-				numPart = "0o" + num.Data
-			} else {
-				return num
-			}
+			num := s.parseOctNumber()
+			num.Data = "0o" + num.Data
+			return num
 
 		case s.Match('X', 'B', 'O'):
 			s.error("uppercase letters is not allowed, use lowercase instead", s.Pos())
