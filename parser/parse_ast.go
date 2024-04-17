@@ -2,6 +2,7 @@ package parser
 
 import (
 	"github.com/saffage/jet/ast"
+	"github.com/saffage/jet/internal/assert"
 	"github.com/saffage/jet/token"
 )
 
@@ -462,24 +463,27 @@ func (p *Parser) parseField() ast.Node {
 
 	names := make([]*ast.Ident, 0, len(nameNodes.Nodes))
 	value := ast.Node(nil)
-	tokIdx := 0
-	skipValue := false
+	tokIdx := -1
+	parseValue := false
 
 	if typ == nil {
 		p.expect(token.Eq)
-		skipValue = true
+		parseValue = true
 	} else if p.consume(token.Eq) != nil {
 		tokIdx = p.save()
-		skipValue = true
+		parseValue = true
 	}
 
-	if !skipValue {
+	if parseValue {
 		p.consume(token.NewLine)
 		value = p.parseExpr()
 
 		if value == nil {
-			p.restore(tokIdx)
-			start, end := p.skipTo()
+			if tokIdx >= 0 {
+				p.restore(tokIdx)
+			}
+
+			start, end := p.skipTo(endOfStmtKinds...)
 			p.errorExpected("expression", start, end)
 			return nil
 		}
@@ -492,6 +496,8 @@ func (p *Parser) parseField() ast.Node {
 			panic("unreachable?")
 		}
 	}
+
+	assert.Ok(typ != nil || value != nil)
 
 	return &ast.Field{
 		Names: names,
