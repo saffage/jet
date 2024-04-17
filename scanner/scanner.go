@@ -252,7 +252,7 @@ func (s *Scanner) scanString() token.Token {
 		Kind:  token.String,
 		Data:  data,
 		Start: quotePos,
-		End:   s.Pos(),
+		End:   s.PrevPos(),
 	}
 }
 
