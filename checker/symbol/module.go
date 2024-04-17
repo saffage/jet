@@ -276,7 +276,7 @@ func (m *Module) resolveSymbolType(sym Symbol) {
 			return // delayed
 		}
 
-		if explicitType != nil && !explicitType.SameType(valueType) {
+		if explicitType != nil && !explicitType.Equals(valueType) {
 			panic(NewErrorf(
 				node.Ident(),
 				"invalid type for `%s`, expected %s, got %s",

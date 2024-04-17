@@ -10,6 +10,6 @@ func (t Unknown) String() string {
 	return "unknown"
 }
 
-func (t Unknown) SameType(other Type) bool {
+func (t Unknown) Equals(other Type) bool {
 	return IsUnknown(other)
 }

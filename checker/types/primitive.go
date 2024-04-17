@@ -19,7 +19,7 @@ func (t *Primitive) Underlying() Type {
 	return t
 }
 
-func (t *Primitive) SameType(other Type) bool {
+func (t *Primitive) Equals(other Type) bool {
 	if primitive, ok := other.(*Primitive); ok {
 		return t.Kind == primitive.Kind
 	}

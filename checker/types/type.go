@@ -8,7 +8,7 @@ type Type interface {
 	// A human readable representation.
 	String() string
 
-	SameType(Type) bool
+	Equals(Type) bool
 }
 
 func IsUnknown(t Type) bool {
