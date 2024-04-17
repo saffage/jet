@@ -14,10 +14,11 @@ const (
 	_special_end
 
 	_primary_begin
-	Ident  // foo
-	Int    // 10
-	Float  // 10.0, 1.0e+2
-	String // "str", 'str'
+	Attribute // #identifier
+	Ident     // identifier
+	Int       // 10
+	Float     // 10.0, 1.0e+2
+	String    // "str", 'str'
 	_primary_end
 
 	_punctuation_begin
@@ -60,7 +61,6 @@ const (
 	// End of position dependent tokens.
 
 	Amp          // '&'
-	Hash         // '#'
 	At           // '@'
 	QuestionMark // '?'
 	Arrow        // '->'
@@ -183,6 +183,7 @@ var kindNames = map[Kind]string{
 	Comment:      "Comment",
 	Whitespace:   "Whitespace",
 	NewLine:      "NewLine",
+	Attribute:    "Attribute",
 	Ident:        "Identifier",
 	Int:          "Int",
 	Float:        "Float",
@@ -214,7 +215,6 @@ var kindNames = map[Kind]string{
 	Slash:        "Slash",
 	Percent:      "Percent",
 	Amp:          "Amp",
-	Hash:         "Hash",
 	At:           "At",
 	PlusEq:       "PlusEq",
 	MinusEq:      "MinusEq",
@@ -247,6 +247,7 @@ var kindsReadable = map[Kind]string{
 	Comment:    "comment",
 	Whitespace: "whitespace",
 	NewLine:    "new line",
+	Attribute:  "attribute",
 	Ident:      "identifier",
 	Int:        "untyped int",
 	Float:      "untyped float",
@@ -281,7 +282,6 @@ var kindStrings = map[Kind]string{
 	Slash:        "/",
 	Percent:      "%",
 	Amp:          "&",
-	Hash:         "#",
 	At:           "@",
 	PlusEq:       "+=",
 	MinusEq:      "-=",

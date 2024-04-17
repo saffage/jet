@@ -64,7 +64,27 @@ func (s *Scanner) Next() token.Token {
 
 		switch {
 		case s.Consume('#'):
-			tok = token.Token{Kind: token.Hash}
+			if token.IsIdentifierStartChar(s.Peek()) {
+				identifier := s.TakeWhile(token.IsIdentifierChar)
+
+				tok = token.Token{
+					Kind: token.Attribute,
+					Data: "#" + identifier,
+				}
+			} else {
+				tok = token.Token{
+					Kind: token.Comment,
+					Data: "#",
+				}
+			}
+
+			if tok.Kind == token.Comment {
+				tok.Data += s.TakeUntil(isNewLineChar)
+
+				if s.flags&SkipComments == 0 {
+					return s.Next()
+				}
+			}
 
 		case s.Consume('@'):
 			tok = token.Token{Kind: token.At}
@@ -127,17 +147,10 @@ func (s *Scanner) Next() token.Token {
 		case s.Consume('-'):
 			kind := token.Minus
 
-			if s.Consume('-') {
-				kind = token.Comment
-			} else if s.Consume('=') {
+			if s.Consume('=') {
 				kind = token.MinusEq
 			} else if s.Consume('>') {
 				kind = token.Arrow
-			}
-
-			if kind == token.Comment && s.flags&SkipComments == 0 {
-				_ = s.TakeUntil(isNewLineChar)
-				return s.Next()
 			}
 
 			tok = token.Token{Kind: kind}
