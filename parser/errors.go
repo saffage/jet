@@ -5,7 +5,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/fatih/color"
 	"github.com/saffage/jet/token"
 )
 
@@ -39,7 +38,7 @@ func NewError(message string, start, end token.Loc, details string, notes ...str
 
 func (p *Parser) error(message string, start, end token.Loc, details ...any) {
 	if p.flags&Trace != 0 {
-		p.trace(color.RedString("error"))
+		p.trace()
 		defer p.untrace()
 	}
 
