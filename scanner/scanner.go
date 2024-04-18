@@ -81,7 +81,7 @@ func (s *Scanner) Next() token.Token {
 			if tok.Kind == token.Comment {
 				tok.Data += s.TakeUntil(isNewLineChar)
 
-				if s.flags&SkipComments == 0 {
+				if s.flags&SkipComments != 0 {
 					return s.Next()
 				}
 			}
