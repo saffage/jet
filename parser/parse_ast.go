@@ -408,7 +408,7 @@ func (p *Parser) parseBlock() ast.Node {
 		defer p.untrace()
 	}
 
-	if list := p.parseCurlyList(p.parseComplexExpr); list != nil {
+	if list := p.parseCurlyList(p.parseStmt); list != nil {
 		return list
 	}
 
