@@ -70,33 +70,6 @@ func (p *Parser) parseLiteral() ast.Node {
 	return nil
 }
 
-func (p *Parser) parseParenExpr() ast.Node {
-	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
-	}
-
-	lParen := p.expect(token.LParen)
-
-	if lParen == nil {
-		return nil
-	}
-
-	x := p.parseExpr()
-
-	rParen := p.expect(token.RParen)
-
-	if rParen == nil {
-		return nil
-	}
-
-	return &ast.ParenExpr{
-		X:     x,
-		Start: lParen.Start,
-		End:   rParen.Start,
-	}
-}
-
 //
 
 func (p *Parser) parseMemberAccess(x ast.Node) ast.Node {
@@ -197,7 +170,7 @@ func (p *Parser) parseOperand() ast.Node {
 		return p.parseLiteral()
 
 	case token.LParen:
-		return p.parseParenExpr()
+		return p.parseParenList(p.parseExpr, token.Comma)
 
 	default:
 		p.errorExpected("operand", p.tok.Start, p.tok.End)

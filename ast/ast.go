@@ -121,7 +121,7 @@ type (
 		Args *BracketList
 	}
 
-	// Represents `a, b, c`.
+	// Represents sequence of nodes, separated by comma or semicolon\new line.
 	List struct {
 		Nodes []Node
 	}
