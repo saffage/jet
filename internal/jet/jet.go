@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/checker/symbol"
 	"github.com/saffage/jet/config"
@@ -64,7 +63,7 @@ func process(
 	fileid config.FileID,
 	isRepl bool,
 ) {
-	toks, scanErrors := scanner.Scan(buffer, fileid, scanner.SkipWhitespace)
+	toks, scanErrors := scanner.Scan(buffer, fileid, scanner.SkipWhitespace|scanner.SkipComments)
 
 	if len(scanErrors) > 0 {
 		for _, err := range scanErrors {
@@ -92,7 +91,13 @@ func process(
 		return
 	}
 
-	spew.Dump(nodes)
+	// spew.Dump(nodes)
+	fmt.Println("recreated AST:")
+	for i, node := range nodes.Nodes {
+		if _, isEmpty := node.(*ast.Empty); i < len(nodes.Nodes)-1 || !isEmpty {
+			fmt.Println("  ", node.String())
+		}
+	}
 
 	if WriteAstFileHandle != nil && nodes != nil {
 		if bytes, err := json.MarshalIndent(nodes, "", "  "); err == nil {

@@ -86,8 +86,8 @@ func (w *defaultWalker) Walk(node Node) {
 		assert.Ok(n.X != nil)
 		w.Walk(n.X)
 
-		assert.Ok(n.Y != nil)
-		w.Walk(n.Y)
+		assert.Ok(n.Selector != nil)
+		w.Walk(n.Selector)
 
 	case *Star:
 		// Nothing to walk

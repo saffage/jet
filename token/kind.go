@@ -139,6 +139,14 @@ func (kind Kind) String() string {
 	return "`" + kindStrings[kind] + "`"
 }
 
+func (kind Kind) Repr() string {
+	s, ok := kindStrings[kind]
+	if !ok {
+		panic(fmt.Sprintf("kind '%s' cannot be represented as string", kind.Name()))
+	}
+	return s
+}
+
 func getKinds(begin, end int) []Kind {
 	kinds := make([]Kind, 0, end-begin-1)
 	for kind := begin + 1; kind < end; kind++ {

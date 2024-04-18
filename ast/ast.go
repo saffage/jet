@@ -8,6 +8,7 @@ type (
 	Node interface {
 		Pos() token.Loc
 		PosEnd() token.Loc
+		String() string
 	}
 
 	// Invalid node.
@@ -30,6 +31,15 @@ type (
 		Kind       token.Kind
 		Start, End token.Loc
 	}
+
+	Comment struct {
+		Data       string
+		Start, End token.Loc
+	}
+
+	CommentGroup struct {
+		Comments []*Comment
+	}
 )
 
 func (n *BadNode) Pos() token.Loc    { return n.Loc }
@@ -43,6 +53,12 @@ func (n *Ident) PosEnd() token.Loc { return n.End }
 
 func (n *Literal) Pos() token.Loc    { return n.Start }
 func (n *Literal) PosEnd() token.Loc { return n.End }
+
+func (n *Comment) Pos() token.Loc    { return n.Start }
+func (n *Comment) PosEnd() token.Loc { return n.End }
+
+func (n *CommentGroup) Pos() token.Loc    { return n.Comments[0].Pos() }
+func (n *CommentGroup) PosEnd() token.Loc { return n.Comments[len(n.Comments)-1].PosEnd() }
 
 type (
 	// Represents a `...` token in AST.
@@ -74,9 +90,9 @@ type (
 
 	// Represents `#foo`, `#foo expr`, `#foo()`, `#foo{}`.
 	Attribute struct {
-		Ident *Ident
-		X     Node      // Next statement\expression, 'ast.ParenList' or 'ast.CurlyList'.
-		Loc   token.Loc // `#` token.
+		Name *Ident
+		X    Node      // Next statement\expression, 'ast.ParenList' or 'ast.CurlyList'.
+		Loc  token.Loc // `#` token.
 	}
 
 	// Represents `&` or `&var` (both a reference type or borrow operation).
@@ -98,10 +114,11 @@ type (
 		Loc token.Loc // `!` token.
 	}
 
-	// Represents `x.y`.
+	// Represents `x.selector`.
 	MemberAccess struct {
-		X, Y Node
-		Loc  token.Loc // `.` token.
+		X        Node
+		Selector Node
+		Loc      token.Loc // `.` token.
 	}
 
 	// Used in `MemberAccess` nodes to represent `.*` suffix.
@@ -180,7 +197,7 @@ func (n *Attribute) PosEnd() token.Loc {
 	if n.X != nil {
 		return n.X.PosEnd()
 	}
-	return n.Ident.PosEnd()
+	return n.Name.PosEnd()
 }
 
 func (n *Ref) Pos() token.Loc    { return n.Loc }
@@ -204,7 +221,7 @@ func (n *Signature) Pos() token.Loc {
 func (n *Signature) PosEnd() token.Loc { return n.Result.PosEnd() }
 
 func (n *MemberAccess) Pos() token.Loc    { return n.X.Pos() }
-func (n *MemberAccess) PosEnd() token.Loc { return n.Y.PosEnd() }
+func (n *MemberAccess) PosEnd() token.Loc { return n.Selector.PosEnd() }
 
 func (n *Star) Pos() token.Loc    { return n.Loc }
 func (n *Star) PosEnd() token.Loc { return n.Loc }
@@ -235,7 +252,7 @@ func (n *Field) PosEnd() token.Loc {
 	if n.Type != nil {
 		return n.Type.PosEnd()
 	}
-	panic("unreachable")
+	panic("node must have as least a type or a value")
 }
 
 func (n *UnaryOp) Pos() token.Loc    { return n.Loc }

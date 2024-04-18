@@ -48,9 +48,9 @@ func (p *Parser) parseAttribute() ast.Node {
 		}
 
 		return &ast.Attribute{
-			Ident: ident,
-			X:     p.parseExpr(),
-			Loc:   tok.Start,
+			Name: ident,
+			X:    p.parseExpr(),
+			Loc:  tok.Start,
 		}
 	}
 
@@ -97,9 +97,9 @@ func (p *Parser) parseMemberAccess(x ast.Node) ast.Node {
 		}
 
 		x = p.parseMemberAccess(&ast.MemberAccess{
-			Loc: dot.Start,
-			X:   x,
-			Y:   y,
+			Loc:      dot.Start,
+			X:        x,
+			Selector: y,
 		})
 	}
 
