@@ -30,11 +30,6 @@ type (
 		Kind       token.Kind
 		Start, End token.Loc
 	}
-
-	ParenExpr struct {
-		X          Node
-		Start, End token.Loc
-	}
 )
 
 func (n *BadNode) Pos() token.Loc    { return n.Loc }
@@ -48,9 +43,6 @@ func (n *Ident) PosEnd() token.Loc { return n.End }
 
 func (n *Literal) Pos() token.Loc    { return n.Start }
 func (n *Literal) PosEnd() token.Loc { return n.End }
-
-func (n *ParenExpr) Pos() token.Loc    { return n.Start }
-func (n *ParenExpr) PosEnd() token.Loc { return n.End }
 
 type (
 	// Represents a `...` token in AST.
@@ -134,7 +126,7 @@ type (
 		Nodes []Node
 	}
 
-	// Represents `(,)` or `(a, b, c)`.
+	// Represents `(a, b, c)`.
 	ParenList struct {
 		*List
 		Open, Close token.Loc // `(` and `)`.

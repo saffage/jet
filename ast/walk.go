@@ -59,10 +59,6 @@ func (w *defaultWalker) Walk(node Node) {
 	case *BadNode, *Empty, *Ident, *Literal:
 		// Nothing to walk
 
-	case *ParenExpr:
-		assert.Ok(n.X != nil)
-		w.Walk(n.X)
-
 	case *Ellipsis:
 		assert.Ok(n.X != nil)
 		w.Walk(n.X)

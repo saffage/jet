@@ -31,10 +31,7 @@ func NewType(id ID, node *ast.AliasDecl, owner Scope) *Type {
 //   - `where` - identifier that refers to the symbol (declared or not),
 //     wich type is required for inderring type of the expression.
 func TypeOf(owner Scope, expr ast.Node) (type_ types.Type, required Symbol, where *ast.Ident) {
-	switch node := ast.UnwrapParen(expr).(type) {
-	case *ast.ParenExpr:
-		panic("unreachable")
-
+	switch node := ast.UnwrapParenExpr(expr).(type) {
 	case *ast.Ident:
 		if sym := owner.Resolve(node.Name); sym != nil {
 			// symbol is defined
