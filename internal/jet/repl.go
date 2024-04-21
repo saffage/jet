@@ -10,7 +10,7 @@ import (
 	"github.com/saffage/jet/config"
 )
 
-func repl() {
+func runREPL() {
 	println("Welcome to the Jet REPL!\nPress 'CTRL + C' to exit")
 	cfg, reader := config.New(), bufio.NewScanner(os.Stdin)
 
@@ -21,13 +21,13 @@ func repl() {
 	}
 
 	for {
-		if promt(reader) && reader.Err() == nil {
+		if promt(reader) {
 			fileinfo := cfg.Files[config.MainFileID]
 			fileinfo.Buf.WriteByte('\n')
 			fileinfo.Buf.Write(reader.Bytes())
 			cfg.Files[config.MainFileID] = fileinfo
 
-			process(cfg, fileinfo.Buf.Bytes(), config.MainFileID, true)
+			process(cfg, fileinfo.Buf.Bytes(), config.MainFileID, true /*isREPL*/)
 		}
 
 		if reader.Err() != nil {
@@ -37,6 +37,6 @@ func repl() {
 }
 
 func promt(reader *bufio.Scanner) bool {
-	print(color.HiCyanString(">>> "))
-	return reader.Scan() && len(strings.TrimSpace(reader.Text())) != 0
+	print(color.HiCyanString("> "))
+	return reader.Scan() && reader.Err() == nil && len(strings.TrimSpace(reader.Text())) != 0
 }

@@ -44,7 +44,7 @@ func ProcessArgs([]string) {
 	args := flag.Args()
 
 	if len(args) == 0 {
-		repl()
+		runREPL()
 		return
 	}
 
