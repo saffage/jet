@@ -7,7 +7,7 @@ func setAnnotations(node ast.Decl, annotations []*ast.Annotation) {
 	case *ast.ModuleDecl:
 		n.Annots = annotations
 
-	case *ast.AliasDecl:
+	case *ast.TypeAliasDecl:
 		n.Annots = annotations
 
 	case *ast.StructDecl:

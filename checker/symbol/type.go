@@ -10,7 +10,7 @@ type Type struct {
 	base
 }
 
-func NewType(id ID, node *ast.AliasDecl, owner Scope) *Type {
+func NewType(id ID, node *ast.TypeAliasDecl, owner Scope) *Type {
 	return &Type{
 		base: base{
 			owner: owner,

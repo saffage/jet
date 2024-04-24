@@ -190,7 +190,7 @@ func (m *Module) Visit(node ast.Node) ast.Visitor {
 	case *ast.EnumDecl:
 		panic("todo")
 
-	case *ast.AliasDecl:
+	case *ast.TypeAliasDecl:
 		panic("todo")
 
 	default:

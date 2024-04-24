@@ -306,7 +306,7 @@ type (
 		Loc    token.Loc // `enum` token
 	}
 
-	AliasDecl struct {
+	TypeAliasDecl struct {
 		Annots []*Annotation
 		Name   *Ident
 		Expr   Node
@@ -349,11 +349,11 @@ func (n *EnumDecl) Ident() *Ident              { return n.Name }
 func (*EnumDecl) Doc() string                  { return "" }
 func (n *EnumDecl) Annotations() []*Annotation { return n.Annots }
 
-func (n *AliasDecl) Pos() token.Loc             { return n.Loc }
-func (n *AliasDecl) PosEnd() token.Loc          { return n.Expr.PosEnd() }
-func (n *AliasDecl) Ident() *Ident              { return n.Name }
-func (*AliasDecl) Doc() string                  { return "" }
-func (n *AliasDecl) Annotations() []*Annotation { return n.Annots }
+func (n *TypeAliasDecl) Pos() token.Loc             { return n.Loc }
+func (n *TypeAliasDecl) PosEnd() token.Loc          { return n.Expr.PosEnd() }
+func (n *TypeAliasDecl) Ident() *Ident              { return n.Name }
+func (*TypeAliasDecl) Doc() string                  { return "" }
+func (n *TypeAliasDecl) Annotations() []*Annotation { return n.Annots }
 
 type (
 	If struct {

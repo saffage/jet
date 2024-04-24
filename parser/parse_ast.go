@@ -902,7 +902,7 @@ func (p *Parser) parseAlias() ast.Node {
 			return nil
 		}
 
-		return &ast.AliasDecl{
+		return &ast.TypeAliasDecl{
 			Loc:  tokAlias.Start,
 			Name: id,
 			Expr: expr,

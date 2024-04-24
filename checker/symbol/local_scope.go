@@ -89,7 +89,7 @@ func (scope *LocalScope) Visit(node ast.Node) ast.Visitor {
 	switch n := node.(type) {
 	case ast.Decl:
 		switch decl := n.(type) {
-		case *ast.AliasDecl:
+		case *ast.TypeAliasDecl:
 		case *ast.EnumDecl:
 		case *ast.FuncDecl:
 

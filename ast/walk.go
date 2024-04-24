@@ -183,7 +183,7 @@ func (w *defaultWalker) Walk(node Node) {
 		w.Walk(n.Name)
 		walkList(w, n.Body.List)
 
-	case *AliasDecl:
+	case *TypeAliasDecl:
 		assert.Ok(n.Name != nil)
 		w.Walk(n.Name)
 

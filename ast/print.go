@@ -212,8 +212,8 @@ func (n *EnumDecl) String() string {
 	return fmt.Sprintf("enum %s %s", n.Name.String(), n.Body.String())
 }
 
-func (n *AliasDecl) String() string {
-	panic("todo")
+func (n *TypeAliasDecl) String() string {
+	return fmt.Sprintf("alias %s = %s", n.Name.String(), n.Expr.String())
 }
 
 func (n *If) String() string {
