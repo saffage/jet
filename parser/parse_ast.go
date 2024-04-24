@@ -202,26 +202,27 @@ func (p *Parser) parseUnaryExpr() ast.Node {
 	}
 
 	switch p.tok.Kind {
-	case token.Minus:
-		tok := p.consume()
+	case token.Minus, token.Bang:
+		kind := p.tok.Kind
+		loc := p.consume().Start
+
 		return &ast.UnaryOp{
 			X:      p.parseUnaryExpr(),
-			Loc:    tok.Start,
-			OpKind: tok.Kind,
+			Loc:    loc,
+			OpKind: kind,
 		}
 
 	case token.Amp:
-		ampPos := p.consume().Start
-		varPos := token.Loc{}
+		loc, varLoc := p.consume().Start, token.Loc{}
 
 		if varTok := p.consume(token.KwVar); varTok != nil {
-			varPos = varTok.Start
+			varLoc = varTok.Start
 		}
 
 		return &ast.Ref{
 			X:      p.parseUnaryExpr(),
-			Loc:    ampPos,
-			VarLoc: varPos,
+			Loc:    loc,
+			VarLoc: varLoc,
 		}
 
 	default:
@@ -229,37 +230,37 @@ func (p *Parser) parseUnaryExpr() ast.Node {
 	}
 }
 
-func (p *Parser) parseBinaryExpr(x ast.Node, precedence token.Precedence) ast.Node {
+func (p *Parser) parseBinaryExpr(lhs ast.Node, precedence token.Precedence) ast.Node {
 	if p.flags&Trace != 0 {
 		p.trace()
 		defer p.untrace()
 	}
 
-	if x == nil {
-		x = p.parseUnaryExpr()
+	if lhs == nil {
+		lhs = p.parseUnaryExpr()
 	}
 
-	if x == nil {
+	if lhs == nil {
 		return nil
 	}
 
 	for p.tok.Precedence() >= precedence {
 		tok := p.consume()
-		y := p.parseBinaryExpr(nil, tok.Precedence()+1)
+		rhs := p.parseBinaryExpr(nil, tok.Precedence()+1)
 
-		if y == nil {
+		if rhs == nil {
 			return nil
 		}
 
-		x = &ast.BinaryOp{
-			X:      x,
-			Y:      y,
+		lhs = &ast.BinaryOp{
+			X:      lhs,
+			Y:      rhs,
 			Loc:    tok.Start,
 			OpKind: tok.Kind,
 		}
 	}
 
-	return x
+	return lhs
 }
 
 //
