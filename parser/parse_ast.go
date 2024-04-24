@@ -49,7 +49,7 @@ func (p *Parser) parseAttribute() ast.Node {
 
 		return &ast.Attribute{
 			Name: ident,
-			X:    p.parseExpr(),
+			X:    p.parseComplexExpr(),
 			Loc:  tok.Start,
 		}
 	}
@@ -579,6 +579,9 @@ func (p *Parser) parseType() ast.Node {
 
 	case token.KwFunc:
 		return p.parseSignature(p.expect(token.KwFunc))
+
+	case token.Attribute:
+		return p.parseAttribute()
 
 	default:
 		return nil
