@@ -100,7 +100,7 @@ func process(
 	}
 
 	if WriteAstFileHandle != nil && nodes != nil {
-		if bytes, err := json.MarshalIndent(nodes, "", "  "); err == nil {
+		if bytes, err := json.MarshalIndent(nodes.Nodes, "", "  "); err == nil {
 			_, err := WriteAstFileHandle.Write(bytes)
 			if err != nil {
 				panic(err)
