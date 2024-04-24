@@ -73,15 +73,7 @@ func process(
 		return
 	}
 
-	nodes, parseErrors := &ast.List{}, []error(nil)
-
-	if isRepl {
-		expr, errors := parser.ParseExpr(cfg, buffer)
-		nodes.Nodes = append(nodes.Nodes, expr)
-		parseErrors = errors
-	} else {
-		nodes, parseErrors = parser.Parse(cfg, toks, parser.DefaultFlags|parser.Trace)
-	}
+	nodes, parseErrors := parser.Parse(cfg, toks, parser.DefaultFlags|parser.Trace)
 
 	if len(parseErrors) > 0 {
 		for _, err := range parseErrors {
@@ -124,5 +116,13 @@ func process(
 		}
 	}()
 
-	symbol.NewModule(0, &ast.Ident{Name: cfg.Files[config.MainFileID].Name}, nil, nodes)
+	if isRepl {
+		decl := &ast.FuncDecl{
+			Name: &ast.Ident{Name: "repl"},
+			Body: nodes,
+		}
+		symbol.NewFunc(0, decl, nil)
+	} else {
+		symbol.NewModule(0, &ast.Ident{Name: cfg.Files[config.MainFileID].Name}, nil, nodes)
+	}
 }
