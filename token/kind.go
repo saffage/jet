@@ -107,7 +107,7 @@ const (
 	_kinds_last = _keywords_end
 )
 
-// Returns `Illegal` if `s` is not a kind.
+// Returns `Illegal` if `s` is not a kind name.
 func KindFromString(s string) Kind {
 	for kind, str := range representableKinds {
 		if str == s {
