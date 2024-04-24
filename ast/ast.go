@@ -28,7 +28,7 @@ type (
 
 	Literal struct {
 		Value      string
-		Kind       token.Kind
+		Kind       LiteralKind
 		Start, End token.Loc
 	}
 
@@ -93,13 +93,6 @@ type (
 		Name *Ident
 		X    Node      // Next statement\expression, 'ast.ParenList' or 'ast.CurlyList'.
 		Loc  token.Loc // `#` token.
-	}
-
-	// Represents `&` or `&var` (both a reference type or borrow operation).
-	Ref struct {
-		X      Node
-		Loc    token.Loc // `&` token.
-		VarLoc token.Loc // `var` token; or default if has no `var`.
 	}
 
 	// Represents `?` suffix.
@@ -171,13 +164,13 @@ type (
 	UnaryOp struct {
 		X      Node
 		Loc    token.Loc
-		OpKind token.Kind
+		OpKind UnaryOpKind
 	}
 
 	BinaryOp struct {
 		X, Y   Node
 		Loc    token.Loc
-		OpKind token.Kind
+		OpKind BinaryOpKind
 	}
 )
 
@@ -199,9 +192,6 @@ func (n *Attribute) PosEnd() token.Loc {
 	}
 	return n.Name.PosEnd()
 }
-
-func (n *Ref) Pos() token.Loc    { return n.Loc }
-func (n *Ref) PosEnd() token.Loc { return n.X.PosEnd() }
 
 func (n *Try) Pos() token.Loc    { return n.X.Pos() }
 func (n *Try) PosEnd() token.Loc { return n.Loc }
@@ -281,7 +271,7 @@ type (
 		Annots []*Annotation
 		Field  *Field
 		Loc    token.Loc // `const`, `var`, `val` token
-		Kind   token.Kind
+		Kind   GenericDeclKind
 	}
 
 	FuncDecl struct {

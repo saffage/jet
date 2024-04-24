@@ -2,7 +2,7 @@
     "Nodes": [
         {
             "Value": "hi",
-            "Kind": "String",
+            "Kind": "string",
             "Start": {
                 "FileID": 1,
                 "Offset": 0,

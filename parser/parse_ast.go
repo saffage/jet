@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"fmt"
+
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/internal/assert"
 	"github.com/saffage/jet/token"
@@ -59,8 +61,24 @@ func (p *Parser) parseAttribute() ast.Node {
 
 func (p *Parser) parseLiteral() ast.Node {
 	if tok := p.expect(token.Int, token.Float, token.String); tok != nil {
+		litKind := ast.UnknownLiteral
+
+		switch tok.Kind {
+		case token.Int:
+			litKind = ast.IntLiteral
+
+		case token.Float:
+			litKind = ast.FloatLiteral
+
+		case token.String:
+			litKind = ast.StringLiteral
+
+		default:
+			panic("unreachable")
+		}
+
 		return &ast.Literal{
-			Kind:  tok.Kind,
+			Kind:  litKind,
 			Value: tok.Data,
 			Start: tok.Start,
 			End:   tok.End,
@@ -202,27 +220,39 @@ func (p *Parser) parseUnaryExpr() ast.Node {
 	}
 
 	switch p.tok.Kind {
-	case token.Minus, token.Bang:
-		kind := p.tok.Kind
+	case token.Minus:
 		loc := p.consume().Start
 
 		return &ast.UnaryOp{
 			X:      p.parseUnaryExpr(),
 			Loc:    loc,
-			OpKind: kind,
+			OpKind: ast.UnaryNeg,
+		}
+
+	case token.Bang:
+		loc := p.consume().Start
+
+		return &ast.UnaryOp{
+			X:      p.parseUnaryExpr(),
+			Loc:    loc,
+			OpKind: ast.UnaryNot,
 		}
 
 	case token.Amp:
-		loc, varLoc := p.consume().Start, token.Loc{}
+		loc := p.consume().Start
 
 		if varTok := p.consume(token.KwVar); varTok != nil {
-			varLoc = varTok.Start
+			return &ast.UnaryOp{
+				X:      p.parseUnaryExpr(),
+				Loc:    loc,
+				OpKind: ast.UnaryMutAddr,
+			}
 		}
 
-		return &ast.Ref{
+		return &ast.UnaryOp{
 			X:      p.parseUnaryExpr(),
 			Loc:    loc,
-			VarLoc: varLoc,
+			OpKind: ast.UnaryAddr,
 		}
 
 	default:
@@ -252,11 +282,40 @@ func (p *Parser) parseBinaryExpr(lhs ast.Node, precedence token.Precedence) ast.
 			return nil
 		}
 
+		binaryOpKind := ast.UnknownBinaryOp
+
+		switch tok.Kind {
+		case token.Plus:
+			binaryOpKind = ast.BinaryAdd
+
+		case token.Minus:
+			binaryOpKind = ast.BinarySub
+
+		case token.Asterisk:
+			binaryOpKind = ast.BinaryMult
+
+		case token.Slash:
+			binaryOpKind = ast.BinaryDiv
+
+		case token.Percent:
+			binaryOpKind = ast.BinaryMod
+
+		case token.Eq:
+			binaryOpKind = ast.BinaryAssign
+
+		default:
+			p.error(
+				fmt.Sprintf("operator '%s' cannot be used in the binary expression", tok.Kind),
+				tok.Start,
+				tok.End,
+			)
+		}
+
 		lhs = &ast.BinaryOp{
 			X:      lhs,
 			Y:      rhs,
 			Loc:    tok.Start,
-			OpKind: tok.Kind,
+			OpKind: binaryOpKind,
 		}
 	}
 
@@ -551,14 +610,19 @@ func (p *Parser) parseType() ast.Node {
 	switch p.tok.Kind {
 	case token.Amp:
 		ampPos := p.expect().Start
-		varPos := token.Loc{}
+
 		if varTok := p.consume(token.KwVar); varTok != nil {
-			varPos = varTok.Start
+			return &ast.UnaryOp{
+				X:      p.parseType(),
+				Loc:    ampPos,
+				OpKind: ast.UnaryMutAddr,
+			}
 		}
-		return &ast.Ref{
+
+		return &ast.UnaryOp{
 			X:      p.parseType(),
 			Loc:    ampPos,
-			VarLoc: varPos,
+			OpKind: ast.UnaryAddr,
 		}
 
 	case token.LBracket:
@@ -604,10 +668,26 @@ func (p *Parser) parseGenericDecl() ast.Node {
 		return nil
 	}
 
+	declKind := ast.UnknownGenericDeclKind
+
+	switch tok.Kind {
+	case token.KwVar:
+		declKind = ast.VarDecl
+
+	case token.KwVal:
+		declKind = ast.ValDecl
+
+	case token.KwConst:
+		declKind = ast.ConstDecl
+
+	default:
+		panic("unreachable")
+	}
+
 	return &ast.GenericDecl{
-		Loc:   tok.Start,
-		Kind:  tok.Kind,
 		Field: field,
+		Loc:   tok.Start,
+		Kind:  declKind,
 	}
 }
 
@@ -705,7 +785,7 @@ func (p *Parser) validateEnumBody(body *ast.CurlyList) {
 			continue
 
 		case *ast.BinaryOp:
-			if e.OpKind == token.Eq {
+			if e.OpKind == ast.BinaryAssign {
 				continue
 			}
 		}

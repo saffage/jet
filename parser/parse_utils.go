@@ -1,6 +1,8 @@
 package parser
 
-import "github.com/saffage/jet/ast"
+import (
+	"github.com/saffage/jet/ast"
+)
 
 func setAnnotations(node ast.Decl, annotations []*ast.Annotation) {
 	switch n := node.(type) {

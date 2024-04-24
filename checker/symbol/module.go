@@ -7,7 +7,6 @@ import (
 	"github.com/saffage/jet/checker/types"
 	"github.com/saffage/jet/internal/assert"
 	"github.com/saffage/jet/internal/log"
-	"github.com/saffage/jet/token"
 )
 
 type delayed struct {
@@ -162,8 +161,7 @@ func (m *Module) Visit(node ast.Node) ast.Visitor {
 
 	case *ast.GenericDecl:
 		switch d.Kind {
-		case token.KwVar:
-			// OK
+		case ast.VarDecl:
 
 		default:
 			panic(NewError(d, "the only `var` declarations are supported for now"))

@@ -47,7 +47,7 @@ func TypeOf(owner Scope, expr ast.Node) (type_ types.Type, required Symbol, wher
 
 	case *ast.Literal:
 		switch node.Kind {
-		case token.Int:
+		case ast.IntLiteral:
 			return &types.Primitive{Kind: types.UntypedInt}, nil, nil
 
 		default:

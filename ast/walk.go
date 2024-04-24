@@ -63,10 +63,6 @@ func (w *defaultWalker) Walk(node Node) {
 		assert.Ok(n.X != nil)
 		w.Walk(n.X)
 
-	case *Ref:
-		assert.Ok(n.X != nil)
-		w.Walk(n.X)
-
 	case *ArrayType:
 		assert.Ok(n.X != nil)
 		w.Walk(n.X)

@@ -3,8 +3,6 @@ package ast
 import (
 	"fmt"
 	"strings"
-
-	"github.com/saffage/jet/token"
 )
 
 var Indent = "  "
@@ -23,17 +21,15 @@ func (n *Ident) String() string {
 
 func (n *Literal) String() string {
 	switch n.Kind {
-	case token.Float:
+	case IntLiteral, FloatLiteral:
 		return n.Value
 
-	case token.Int:
-		return n.Value
-
-	case token.String:
+	case StringLiteral:
 		return "\"" + n.Value + "\""
-	}
 
-	panic("unreachable")
+	default:
+		panic("unreachable")
+	}
 }
 
 func (n *Comment) String() string {
@@ -90,14 +86,6 @@ func (n *Attribute) String() string {
 	}
 
 	return buf.String()
-}
-
-func (n *Ref) String() string {
-	if n.VarLoc != (token.Loc{}) {
-		return "&var" + n.X.String()
-	}
-
-	return "&" + n.X.String()
 }
 
 func (n *Try) String() string {
@@ -183,11 +171,11 @@ func (n *Field) String() string {
 }
 
 func (n *UnaryOp) String() string {
-	return n.OpKind.Repr() + n.X.String()
+	return n.OpKind.String() + n.X.String()
 }
 
 func (n *BinaryOp) String() string {
-	return fmt.Sprintf("%s %s %s", n.X.String(), n.OpKind.Repr(), n.Y.String())
+	return fmt.Sprintf("%s %s %s", n.X.String(), n.OpKind.String(), n.Y.String())
 }
 
 // TODO append annotations and documentation to declarations.
@@ -197,7 +185,7 @@ func (n *ModuleDecl) String() string {
 }
 
 func (n *GenericDecl) String() string {
-	return fmt.Sprintf("%s %s", n.Kind.Repr(), n.Field.String())
+	return fmt.Sprintf("%s %s", n.Kind.String(), n.Field.String())
 }
 
 func (n *FuncDecl) String() string {
