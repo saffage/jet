@@ -3,7 +3,6 @@ package symbol
 import (
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/checker/types"
-	"github.com/saffage/jet/token"
 )
 
 type Type struct {
