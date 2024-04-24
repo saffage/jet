@@ -13,5 +13,6 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/smarty/assertions v1.15.1 // indirect
 	github.com/smartystreets/goconvey v1.8.1 // indirect
+	golang.org/x/exp v0.0.0-20240416160154-fe59bbe5cc7f
 	golang.org/x/sys v0.19.0 // indirect
 )
