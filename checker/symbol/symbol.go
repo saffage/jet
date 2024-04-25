@@ -19,7 +19,7 @@ type Symbol interface {
 	Name() string
 
 	// Identifier node.
-	NameNode() *ast.Ident
+	Ident() *ast.Ident
 
 	// Related AST node.
 	Node() ast.Node
@@ -44,11 +44,11 @@ type base struct {
 	node  ast.Node
 }
 
-func (sym *base) Owner() Scope         { return sym.owner }
-func (sym *base) ID() ID               { return sym.id }
-func (sym *base) Type() types.Type     { return sym.type_ }
-func (sym *base) Name() string         { return sym.name.Name }
-func (sym *base) NameNode() *ast.Ident { return sym.name }
-func (sym *base) Node() ast.Node       { return sym.node }
+func (sym *base) Owner() Scope      { return sym.owner }
+func (sym *base) ID() ID            { return sym.id }
+func (sym *base) Type() types.Type  { return sym.type_ }
+func (sym *base) Name() string      { return sym.name.Name }
+func (sym *base) Ident() *ast.Ident { return sym.name }
+func (sym *base) Node() ast.Node    { return sym.node }
 
 func (sym *base) setType(type_ types.Type) { sym.type_ = type_ }

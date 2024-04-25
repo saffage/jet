@@ -99,7 +99,7 @@ func (scope *LocalScope) Visit(node ast.Node) ast.Visitor {
 
 			if declared := scope.Define(variable); declared != nil {
 				err := NewErrorf(decl.Field.Names[0], "declaration shadows previous declaration")
-				err.Notes = []Error{NewError(declared.NameNode(), "previous declaration was here")}
+				err.Notes = []Error{NewError(declared.Ident(), "previous declaration was here")}
 				panic(err)
 			}
 
