@@ -110,6 +110,11 @@ func process(
 			case symbol.Error:
 				reportError(cfg, e)
 
+			case []symbol.Error:
+				for i := range e {
+					reportError(cfg, e[i])
+				}
+
 			default:
 				panic(err)
 			}
