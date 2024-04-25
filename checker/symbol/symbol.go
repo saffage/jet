@@ -6,11 +6,11 @@ import (
 )
 
 type Symbol interface {
-	// Scope where a symbol was defined.
-	Owner() Scope
-
 	// Symbol ID.
 	ID() ID
+
+	// Scope where a symbol was defined.
+	Owner() Scope
 
 	// Type of a symbol.
 	Type() types.Type
@@ -27,25 +27,18 @@ type Symbol interface {
 	setType(types.Type)
 }
 
-type TypeChecker interface {
-	Symbol
-
-	// Returns a type of the `expr` or error if `expr` can't have a type.
-	TypeOf(expr ast.Node) (types.Type, error)
-}
-
 type ID uint64
 
 type base struct {
-	owner Scope
 	id    ID
+	owner Scope
 	type_ types.Type
 	name  *ast.Ident
 	node  ast.Node
 }
 
-func (sym *base) Owner() Scope      { return sym.owner }
 func (sym *base) ID() ID            { return sym.id }
+func (sym *base) Owner() Scope      { return sym.owner }
 func (sym *base) Type() types.Type  { return sym.type_ }
 func (sym *base) Name() string      { return sym.name.Name }
 func (sym *base) Ident() *ast.Ident { return sym.name }

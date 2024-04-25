@@ -22,8 +22,32 @@ type Scope interface {
 
 	// Returns all symbols that was defined in this scope.
 	Symbols() []Symbol
+}
 
-	// Сopies all symbols defined in another module to the current scope.
-	// The module must be complete.
-	Use(module *Module)
+// Imports all symbols defined in another scope into the current scope.
+// If the other scope is a module, this module must be completed.
+//
+// If any of the symbols from the other scope are already defined in the
+// current scope, an error will occur.
+func Use(current, other Scope) {
+	if module, ok := other.(*Module); ok {
+		if !module.IsCompleted() {
+			panic(NewErrorf(nil, "module '%s' is not completed", module.Name()))
+		}
+	}
+
+	errors := []Error{}
+
+	for _, sym := range other.Symbols() {
+		definedSym := current.Define(sym)
+
+		if definedSym != nil {
+			// TODO point to the `using` statement.
+			err := NewErrorf(nil, "member '%s' is already defined in this scope", sym.Name())
+			err.Notes = append(err.Notes, NewErrorf(definedSym.Ident(), "symbol defined here"))
+			errors = append(errors, err)
+		}
+	}
+
+	panic(errors)
 }

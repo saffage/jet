@@ -29,8 +29,8 @@ func NewLocalScope(parent Scope) *LocalScope {
 	}
 }
 
+// Exists only for debug.
 func (scope *LocalScope) Free() {
-	// Exists only for debug.
 	fmt.Printf(">>> pop local\n")
 }
 
@@ -73,26 +73,10 @@ func (scope *LocalScope) Symbols() []Symbol {
 	return scope.symbols
 }
 
-func (scope *LocalScope) Use(module *Module) {
-	if !module.Completed() {
-		panic(NewErrorf(nil, "module '%s' is not completed", module.Name()))
-	}
-
-	for _, sym := range module.Symbols() {
-		if scope.Define(sym) != nil {
-			panic(NewErrorf(nil, "member '%s' is already defined", sym.Name()))
-		}
-	}
-}
-
 func (scope *LocalScope) Visit(node ast.Node) ast.Visitor {
 	switch n := node.(type) {
 	case ast.Decl:
 		switch decl := n.(type) {
-		case *ast.TypeAliasDecl:
-		case *ast.EnumDecl:
-		case *ast.FuncDecl:
-
 		case *ast.GenericDecl:
 			// TODO handle all names
 			variable := NewVar(0, decl.Field.Names[0], decl, scope)
@@ -115,13 +99,12 @@ func (scope *LocalScope) Visit(node ast.Node) ast.Visitor {
 			scope.type_ = type_
 			return nil
 
-		case *ast.ModuleDecl:
-		case *ast.StructDecl:
+		case *ast.TypeAliasDecl, *ast.EnumDecl, *ast.FuncDecl, *ast.ModuleDecl, *ast.StructDecl:
+			panic("not implemented")
 
 		default:
 			panic("unreachable")
 		}
-		panic("todo")
 
 	case *ast.Ident:
 		if sym := scope.Resolve(n.Name); sym != nil {

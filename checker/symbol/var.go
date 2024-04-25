@@ -9,8 +9,8 @@ type Var struct {
 func NewVar(id ID, name *ast.Ident, node *ast.GenericDecl, owner Scope) *Var {
 	return &Var{
 		base: base{
-			owner: owner,
 			id:    id,
+			owner: owner,
 			name:  name,
 			node:  node,
 		},

@@ -31,16 +31,15 @@ type Module struct {
 	completed bool
 }
 
-func NewModule(id ID, name *ast.Ident, owner *Module, node ast.Node) *Module {
+func NewModule(id ID, owner *Module, name *ast.Ident, node ast.Node) *Module {
 	list, ok := node.(*ast.List)
 	assert.Ok(ok)
 
 	m := &Module{
 		base: base{
-			name:  name,
-			owner: owner,
 			id:    id,
-			type_: nil,
+			owner: owner,
+			name:  name,
 			node:  node,
 		},
 		symbols:   []Symbol{},
@@ -76,6 +75,7 @@ func NewModule(id ID, name *ast.Ident, owner *Module, node ast.Node) *Module {
 		m.resolveSymbolType(delayed.symbol)
 	}
 
+	m.completed = true
 	return m
 }
 
@@ -118,28 +118,8 @@ func (m *Module) Symbols() []Symbol {
 	return m.symbols
 }
 
-func (m *Module) Use(module *Module) {
-	if !module.Completed() {
-		panic(fmt.Sprintf("module '%s' not completed", module.Name()))
-	}
-
-	for _, sym := range module.Symbols() {
-		if m.Define(sym) != nil {
-			panic(fmt.Sprintf("member '%s' is already defined", sym.Name()))
-		}
-	}
-}
-
-func (m *Module) Completed() bool {
+func (m *Module) IsCompleted() bool {
 	return m.completed
-}
-
-func (m *Module) MarkCompleted() {
-	m.completed = true
-}
-
-func (m *Module) TypeOf(expr ast.Node) (types.Type, error) {
-	return nil, nil
 }
 
 func (m *Module) Visit(node ast.Node) ast.Visitor {

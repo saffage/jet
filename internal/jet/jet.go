@@ -123,6 +123,6 @@ func process(
 		}
 		symbol.NewFunc(0, decl, nil)
 	} else {
-		symbol.NewModule(0, &ast.Ident{Name: cfg.Files[config.MainFileID].Name}, nil, nodes)
+		symbol.NewModule(0, nil, &ast.Ident{Name: cfg.Files[config.MainFileID].Name}, nodes)
 	}
 }
