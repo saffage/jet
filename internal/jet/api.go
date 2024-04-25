@@ -21,12 +21,8 @@ func ProcessArgs([]string) {
 	)
 	flag.Parse()
 
-	if writeAst != nil {
-		filename := "ast.json"
-
-		if *writeAst != "" {
-			filename = *writeAst
-		}
+	if writeAst != nil && *writeAst != "" {
+		filename := *writeAst
 
 		err := error(nil)
 		WriteAstFileHandle, err = os.Create(filename)
