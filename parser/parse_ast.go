@@ -311,7 +311,7 @@ func (p *Parser) parseBinaryExpr(lhs ast.Node, precedence token.Precedence) ast.
 
 		default:
 			p.error(
-				fmt.Sprintf("operator '%s' cannot be used in the binary expression", tok.Kind),
+				fmt.Sprintf("%s cannot be used in the binary expression", tok.Kind.UserString()),
 				tok.Start,
 				tok.End,
 			)

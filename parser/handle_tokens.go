@@ -52,7 +52,7 @@ func (p *Parser) expect(kinds ...token.Kind) *token.Token {
 	kindStrs := []string{}
 
 	for _, kind := range kinds {
-		kindStrs = append(kindStrs, kind.String())
+		kindStrs = append(kindStrs, kind.UserString())
 	}
 
 	p.errorExpected(strings.Join(kindStrs, " or "), p.tok.Start, p.tok.End)

@@ -46,7 +46,7 @@ func (p *Parser) error(message string, start, end token.Loc, details ...any) {
 }
 
 func (p *Parser) errorExpected(message string, start, end token.Loc, details ...any) {
-	message = fmt.Sprintf("expected %s, found %s", message, p.tok.Kind.String())
+	message = fmt.Sprintf("expected %s, found %s", message, p.tok.Kind.UserString())
 	p.error(message, start, end, details...)
 }
 
@@ -58,10 +58,10 @@ func (p *Parser) errorExpectedToken(start, end token.Loc, tokens ...token.Kind) 
 	tokenStrs := []string{}
 
 	for _, tok := range tokens {
-		tokenStrs = append(tokenStrs, tok.String())
+		tokenStrs = append(tokenStrs, tok.UserString())
 	}
 
-	message := fmt.Sprintf("expected %s, found %s", strings.Join(tokenStrs, " or "), p.tok.Kind.String())
+	message := fmt.Sprintf("expected %s, found %s", strings.Join(tokenStrs, " or "), p.tok.Kind.UserString())
 	p.error(message, start, end)
 }
 
