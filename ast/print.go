@@ -5,8 +5,6 @@ import (
 	"strings"
 )
 
-var Indent = "  "
-
 func (n *BadNode) String() string {
 	return "#error(\"bad node\")"
 }
@@ -48,6 +46,7 @@ func (n *ArrayType) String() string {
 	if n.N != nil {
 		return "[" + n.N.String() + "]" + n.X.String()
 	}
+
 	return "[]" + n.X.String()
 }
 
@@ -139,7 +138,11 @@ func (n *ParenList) String() string {
 }
 
 func (n *CurlyList) String() string {
-	return fmt.Sprintf("{ %s }", n.List.String())
+	if len(n.List.Nodes) > 0 {
+		return fmt.Sprintf("{ %s }", n.List.String())
+	}
+
+	return "{}"
 }
 
 func (n *BracketList) String() string {
@@ -178,30 +181,30 @@ func (n *BinaryOp) String() string {
 	return fmt.Sprintf("%s %s %s", n.X.String(), n.OpKind.String(), n.Y.String())
 }
 
-// TODO append annotations and documentation to declarations.
+// TODO append documentation to the declarations.
 
 func (n *ModuleDecl) String() string {
-	return fmt.Sprintf("module %s %s", n.Name.String(), n.Body.String())
+	return fmt.Sprintf("%smodule %s %s", printAnnotations(n.Annots), n.Name.String(), n.Body.String())
 }
 
 func (n *GenericDecl) String() string {
-	return fmt.Sprintf("%s %s", n.Kind.String(), n.Field.String())
+	return fmt.Sprintf("%s%s %s", printAnnotations(n.Annots), n.Kind.String(), n.Field.String())
 }
 
 func (n *FuncDecl) String() string {
-	return fmt.Sprintf("func %s%s %s", n.Name.String(), n.Signature.String(), n.Body.String())
+	return fmt.Sprintf("%sfunc %s%s %s", printAnnotations(n.Annots), n.Name.String(), n.Signature.String(), n.Body.String())
 }
 
 func (n *StructDecl) String() string {
-	return fmt.Sprintf("struct %s %s", n.Name.String(), n.Fields.String())
+	return fmt.Sprintf("%sstruct %s %s", printAnnotations(n.Annots), n.Name.String(), n.Fields.String())
 }
 
 func (n *EnumDecl) String() string {
-	return fmt.Sprintf("enum %s %s", n.Name.String(), n.Body.String())
+	return fmt.Sprintf("%senum %s %s", printAnnotations(n.Annots), n.Name.String(), n.Body.String())
 }
 
 func (n *TypeAliasDecl) String() string {
-	return fmt.Sprintf("alias %s = %s", n.Name.String(), n.Expr.String())
+	return fmt.Sprintf("%salias %s = %s", printAnnotations(n.Annots), n.Name.String(), n.Expr.String())
 }
 
 func (n *If) String() string {
@@ -238,4 +241,15 @@ func (n *Continue) String() string {
 	}
 
 	return "continue"
+}
+
+func printAnnotations(annots []*Annotation) string {
+	buf := strings.Builder{}
+
+	for _, annot := range annots {
+		buf.WriteString(annot.String())
+		buf.WriteByte('\n')
+	}
+
+	return buf.String()
 }
