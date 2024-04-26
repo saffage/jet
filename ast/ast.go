@@ -321,8 +321,13 @@ func (n *GenericDecl) Ident() *Ident {
 func (*GenericDecl) Doc() string                  { return "" }
 func (n *GenericDecl) Annotations() []*Annotation { return n.Annots }
 
-func (n *FuncDecl) Pos() token.Loc             { return n.Loc }
-func (n *FuncDecl) PosEnd() token.Loc          { return n.Body.PosEnd() }
+func (n *FuncDecl) Pos() token.Loc { return n.Loc }
+func (n *FuncDecl) PosEnd() token.Loc {
+	if n.Body != nil {
+		return n.Body.PosEnd()
+	}
+	return n.Signature.PosEnd()
+}
 func (n *FuncDecl) Ident() *Ident              { return n.Name }
 func (*FuncDecl) Doc() string                  { return "" }
 func (n *FuncDecl) Annotations() []*Annotation { return n.Annots }
