@@ -16,7 +16,7 @@ type Visitor interface {
 type Walker interface {
 	// Preorder traversal or top-down traversal.
 	// Visit a parent node before visiting its children.
-	// Each node is terminated by a call with argument nil.
+	// Each node is terminated by a call with `nil` argument.
 	//
 	// Example:
 	// 	- List (length = 3)

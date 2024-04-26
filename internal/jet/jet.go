@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/fatih/color"
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/checker/symbol"
 	"github.com/saffage/jet/config"
@@ -87,7 +88,7 @@ func process(
 	fmt.Println("recreated AST:")
 	for i, node := range nodes.Nodes {
 		if _, isEmpty := node.(*ast.Empty); i < len(nodes.Nodes)-1 || !isEmpty {
-			fmt.Println("  ", node.String())
+			fmt.Println(color.HiGreenString(node.String()))
 		}
 	}
 

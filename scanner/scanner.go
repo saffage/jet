@@ -135,7 +135,7 @@ func (s *Scanner) Next() token.Token {
 			tok = token.Token{Kind: kind}
 
 		case s.Consume('=', '!', '<', '>', '+', '*', '/', '%'):
-			// NOTE Order dependent tokens
+			// NOTE This tokens is order dependent
 			kind := token.KindFromString(string(s.Prev()))
 
 			if s.Consume('=') {

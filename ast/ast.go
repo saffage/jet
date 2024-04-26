@@ -154,7 +154,7 @@ type (
 		Open, Close token.Loc // `[` and `]`.
 	}
 
-	// Represents `a Type = value`.
+	// Represents `a, b Type = value`.
 	Field struct {
 		Names []*Ident
 		Type  Node // maybe nil.
