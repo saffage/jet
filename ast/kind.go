@@ -34,6 +34,8 @@ const (
 	BinaryDiv    // /
 	BinaryMod    // %
 	BinaryAssign // =
+	BinaryEq     // ==
+	BinaryNe     // !=
 )
 
 type GenericDeclKind byte

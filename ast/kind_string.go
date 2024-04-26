@@ -56,11 +56,13 @@ func _() {
 	_ = x[BinaryDiv-4]
 	_ = x[BinaryMod-5]
 	_ = x[BinaryAssign-6]
+	_ = x[BinaryEq-7]
+	_ = x[BinaryNe-8]
 }
 
-const _BinaryOpKind_name = "unknown binary operation+-*/%="
+const _BinaryOpKind_name = "unknown binary operation+-*/%===!="
 
-var _BinaryOpKind_index = [...]uint8{0, 24, 25, 26, 27, 28, 29, 30}
+var _BinaryOpKind_index = [...]uint8{0, 24, 25, 26, 27, 28, 29, 30, 32, 34}
 
 func (i BinaryOpKind) String() string {
 	if i >= BinaryOpKind(len(_BinaryOpKind_index)-1) {

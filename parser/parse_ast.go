@@ -303,6 +303,12 @@ func (p *Parser) parseBinaryExpr(lhs ast.Node, precedence token.Precedence) ast.
 		case token.Eq:
 			binaryOpKind = ast.BinaryAssign
 
+		case token.EqOp:
+			binaryOpKind = ast.BinaryEq
+
+		case token.NeOp:
+			binaryOpKind = ast.BinaryNe
+
 		default:
 			p.error(
 				fmt.Sprintf("operator '%s' cannot be used in the binary expression", tok.Kind),
