@@ -586,10 +586,6 @@ func (p *Parser) parseSignature(funcTok *token.Token) *ast.Signature {
 
 	if p.tok.Kind != token.Arrow && p.tok.Kind != token.LCurly {
 		returnType = p.parseType()
-
-		if returnType == nil {
-			return nil
-		}
 	}
 
 	tokPos := token.Loc{}
@@ -740,7 +736,7 @@ func (p *Parser) parseFuncDecl() ast.Node {
 	}
 
 	if body == nil {
-		return nil
+		body = &ast.CurlyList{List: &ast.List{}}
 	}
 
 	return &ast.FuncDecl{
