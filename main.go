@@ -4,7 +4,6 @@ import (
 	"os"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/saffage/jet/internal/assert"
 	"github.com/saffage/jet/internal/jet"
 	"github.com/saffage/jet/internal/log"
 )
@@ -15,17 +14,19 @@ func main() {
 	spew.Config.DisableCapacities = true
 	spew.Config.DisablePointerAddresses = true
 
-	defer catchAssetionFail()
+	defer catchInternalErrors()
 
 	jet.ProcessArgs(os.Args)
 }
 
-func catchAssetionFail() {
+func catchInternalErrors() {
 	if err := recover(); err != nil {
-		if err, ok := err.(assert.Fail); ok {
-			log.InternalError(err.Msg)
-			os.Exit(1)
+		if err, ok := err.(error); ok {
+			log.InternalError(err.Error())
 		}
+		log.InternalError("%v", err)
+
+		// for stack trace
 		panic(err)
 	}
 }
