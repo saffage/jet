@@ -161,16 +161,26 @@ type (
 		Value Node // maybe nil.
 	}
 
+	UnaryOpr struct {
+		Start token.Loc
+		End   token.Loc
+		Kind  UnaryOpKind
+	}
+
+	BinaryOpr struct {
+		Start token.Loc
+		End   token.Loc
+		Kind  BinaryOpKind
+	}
+
 	UnaryOp struct {
-		X      Node
-		Loc    token.Loc
-		OpKind UnaryOpKind
+		X   Node
+		Opr *UnaryOpr
 	}
 
 	BinaryOp struct {
-		X, Y   Node
-		Loc    token.Loc
-		OpKind BinaryOpKind
+		X, Y Node
+		Opr  *BinaryOpr
 	}
 )
 
@@ -245,7 +255,13 @@ func (n *Field) PosEnd() token.Loc {
 	panic("node must have as least a type or a value")
 }
 
-func (n *UnaryOp) Pos() token.Loc    { return n.Loc }
+func (n *UnaryOpr) Pos() token.Loc    { return n.Start }
+func (n *UnaryOpr) PosEnd() token.Loc { return n.End }
+
+func (n *BinaryOpr) Pos() token.Loc    { return n.Start }
+func (n *BinaryOpr) PosEnd() token.Loc { return n.End }
+
+func (n *UnaryOp) Pos() token.Loc    { return n.Opr.Pos() }
 func (n *UnaryOp) PosEnd() token.Loc { return n.X.PosEnd() }
 
 func (n *BinaryOp) Pos() token.Loc    { return n.X.Pos() }

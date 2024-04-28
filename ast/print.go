@@ -173,12 +173,20 @@ func (n *Field) String() string {
 	return buf.String()
 }
 
+func (n *UnaryOpr) String() string {
+	return n.Kind.String()
+}
+
+func (n *BinaryOpr) String() string {
+	return n.Kind.String()
+}
+
 func (n *UnaryOp) String() string {
-	return n.OpKind.String() + n.X.String()
+	return n.Opr.String() + n.X.String()
 }
 
 func (n *BinaryOp) String() string {
-	return fmt.Sprintf("%s %s %s", n.X.String(), n.OpKind.String(), n.Y.String())
+	return fmt.Sprintf("%s %s %s", n.X.String(), n.Opr.String(), n.Y.String())
 }
 
 // TODO append documentation to the declarations.

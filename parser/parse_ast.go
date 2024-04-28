@@ -224,18 +224,24 @@ func (p *Parser) parseUnaryExpr() ast.Node {
 		loc := p.consume().Start
 
 		return &ast.UnaryOp{
-			X:      p.parseUnaryExpr(),
-			Loc:    loc,
-			OpKind: ast.UnaryNeg,
+			X: p.parseUnaryExpr(),
+			Opr: &ast.UnaryOpr{
+				Start: loc,
+				End:   loc,
+				Kind:  ast.UnaryNeg,
+			},
 		}
 
 	case token.Bang:
 		loc := p.consume().Start
 
 		return &ast.UnaryOp{
-			X:      p.parseUnaryExpr(),
-			Loc:    loc,
-			OpKind: ast.UnaryNot,
+			X: p.parseUnaryExpr(),
+			Opr: &ast.UnaryOpr{
+				Start: loc,
+				End:   loc,
+				Kind:  ast.UnaryNot,
+			},
 		}
 
 	case token.Amp:
@@ -243,16 +249,22 @@ func (p *Parser) parseUnaryExpr() ast.Node {
 
 		if varTok := p.consume(token.KwVar); varTok != nil {
 			return &ast.UnaryOp{
-				X:      p.parseUnaryExpr(),
-				Loc:    loc,
-				OpKind: ast.UnaryMutAddr,
+				X: p.parseUnaryExpr(),
+				Opr: &ast.UnaryOpr{
+					Start: loc,
+					End:   varTok.End,
+					Kind:  ast.UnaryMutAddr,
+				},
 			}
 		}
 
 		return &ast.UnaryOp{
-			X:      p.parseUnaryExpr(),
-			Loc:    loc,
-			OpKind: ast.UnaryAddr,
+			X: p.parseUnaryExpr(),
+			Opr: &ast.UnaryOpr{
+				Start: loc,
+				End:   loc,
+				Kind:  ast.UnaryAddr,
+			},
 		}
 
 	default:
@@ -318,10 +330,13 @@ func (p *Parser) parseBinaryExpr(lhs ast.Node, precedence token.Precedence) ast.
 		}
 
 		lhs = &ast.BinaryOp{
-			X:      lhs,
-			Y:      rhs,
-			Loc:    tok.Start,
-			OpKind: binaryOpKind,
+			X:   lhs,
+			Y:   rhs,
+			Opr: &ast.BinaryOpr{
+				Start: tok.Start,
+				End:   tok.End,
+				Kind:  binaryOpKind,
+			},
 		}
 	}
 
@@ -611,20 +626,26 @@ func (p *Parser) parseType() ast.Node {
 
 	switch p.tok.Kind {
 	case token.Amp:
-		ampPos := p.expect().Start
+		ampLoc := p.expect().Start
 
 		if varTok := p.consume(token.KwVar); varTok != nil {
 			return &ast.UnaryOp{
-				X:      p.parseType(),
-				Loc:    ampPos,
-				OpKind: ast.UnaryMutAddr,
+				X: p.parseType(),
+				Opr: &ast.UnaryOpr{
+					Start: ampLoc,
+					End:   varTok.End,
+					Kind:  ast.UnaryMutAddr,
+				},
 			}
 		}
 
 		return &ast.UnaryOp{
-			X:      p.parseType(),
-			Loc:    ampPos,
-			OpKind: ast.UnaryAddr,
+			X: p.parseType(),
+			Opr: &ast.UnaryOpr{
+				Start: ampLoc,
+				End:   ampLoc,
+				Kind:  ast.UnaryAddr,
+			},
 		}
 
 	case token.LBracket:
@@ -787,7 +808,7 @@ func (p *Parser) validateEnumBody(body *ast.CurlyList) {
 			continue
 
 		case *ast.BinaryOp:
-			if e.OpKind == ast.BinaryAssign {
+			if e.Opr.Kind == ast.BinaryAssign {
 				continue
 			}
 		}
