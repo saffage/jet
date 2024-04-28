@@ -1,72 +1,183 @@
 package symbol
 
 import (
+	"fmt"
+
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/checker/types"
+	"github.com/saffage/jet/constant"
 )
 
-type Type struct {
-	base
+type nilTypeError struct {
+	sym Symbol
+	use *ast.Ident
 }
 
-func NewType(id ID, node *ast.TypeAliasDecl, owner Scope) *Type {
-	return &Type{
-		base: base{
-			owner: owner,
-			id:    id,
-			name:  node.Name,
-			node:  node,
-		},
-	}
+func (err *nilTypeError) Error() string {
+	return fmt.Sprintf("type of the `%s` symbol is not yet resolved", err.sym.Name())
 }
-
-// `type_` returns:
-//   - nil - expression has no type.
-//   - [types.Unknown] - expression should have type but doesn't (symbol definition is written after or symbol not defined).
 
 // Meaning:
 //   - `type_` - type of the expression.
 //   - `required` - symbol that is required for this expression but have no type.
 //   - `where` - identifier that refers to the symbol (declared or not),
 //     wich type is required for inderring type of the expression.
-func TypeOf(owner Scope, expr ast.Node) (type_ types.Type, required Symbol, where *ast.Ident) {
+//
+// `type_` returns:
+//   - nil - expression has no type.
+//   - [types.Unknown] - expression should have type but doesn't (symbol is deffered or not defined).
+func TypeOf(scope Scope, expr ast.Node) (types.Type, error) {
 	switch node := ast.UnwrapParenExpr(expr).(type) {
 	case *ast.Ident:
-		if sym := owner.Resolve(node.Name); sym != nil {
+		if sym := scope.Resolve(node.Name); sym != nil {
 			// symbol is defined
-			if type_ := owner.Resolve(node.Name).Type(); type_ != nil {
+			if type_ := scope.Resolve(node.Name).Type(); type_ != nil {
 				// symbol have a type (resolved)
-				return type_, sym, node
+				return type_, nil
 			}
-			// symbol have no type (not yet resolver)
-			return types.Unknown{}, sym, node
+			// symbol is not yet resolver
+			return types.Unknown{}, &nilTypeError{sym, node}
 		}
-		// identifier is undefined
-		return types.Unknown{}, nil, node
+
+		return nil, NewErrorf(node, "identifier `%s` is undefined", node.Name)
 
 	case *ast.Literal:
 		switch node.Kind {
 		case ast.IntLiteral:
-			return &types.Primitive{Kind: types.UntypedInt}, nil, nil
+			return types.UntypedInt{}, nil
+
+		case ast.FloatLiteral:
+			return types.UntypedFloat{}, nil
+
+		case ast.StringLiteral:
+			return types.UntypedString{}, nil
 
 		default:
-			panic("todo")
+			panic(fmt.Sprintf("unhandled literal kind: '%s'", node.Kind.String()))
 		}
 
+	case *ast.UnaryOp:
+		switch node.Opr.Kind {
+		case ast.UnaryNeg:
+			type_, err := TypeOf(scope, node.X)
+			if err != nil {
+				return types.Unknown{}, err
+			}
+
+			switch type_.(type) {
+			case types.UntypedInt, types.UntypedFloat, types.I32:
+				return type_, nil
+
+			default:
+				panic(NewErrorf(
+					node.Opr,
+					"operator '%s' is not defined for the type '%s'",
+					node.Opr.Kind.String(),
+					type_.String(),
+				))
+			}
+
+		case ast.UnaryNot:
+			type_, err := TypeOf(scope, node.X)
+			if err != nil {
+				return types.Unknown{}, err
+			}
+
+			switch type_.(type) {
+			case types.UntypedBool, types.Bool:
+				return type_, nil
+
+			default:
+				panic(NewErrorf(
+					node.X,
+					"operator '%s' is not defined for the type '%s'",
+					node.Opr.Kind.String(),
+					type_.String(),
+				))
+			}
+
+		case ast.UnaryAddr, ast.UnaryMutAddr:
+			panic("not implemented")
+
+		default:
+			panic("unreachable")
+		}
+
+	case *ast.BinaryOp:
+		x_type, err := TypeOf(scope, node.X)
+		if err != nil {
+			return types.Unknown{}, err
+		}
+
+		y_type, err := TypeOf(scope, node.Y)
+		if err != nil {
+			return types.Unknown{}, err
+		}
+
+		if !x_type.Equals(y_type) {
+			panic(NewErrorf(node, "type mismatch ('%s' and '%s')", x_type, y_type))
+		}
+
+		switch node.Opr.Kind {
+		case ast.BinaryAdd, ast.BinarySub, ast.BinaryMult, ast.BinaryDiv, ast.BinaryMod:
+			switch x_type.(type) {
+			case types.UntypedInt, types.UntypedFloat, types.I32:
+				return x_type, nil
+			}
+
+		case ast.BinaryEq, ast.BinaryNe:
+			switch x_type.(type) {
+			case types.UntypedBool, types.UntypedInt, types.UntypedFloat:
+				return types.UntypedBool{}, nil
+
+			case types.Bool, types.I32:
+				return types.Bool{}, nil
+			}
+		}
+
+		panic(NewErrorf(
+			node.Opr,
+			"operator '%s' is not defined for the type '%s'",
+			node.Opr.Kind.String(),
+			x_type.String(),
+		))
+
+	case *ast.BuiltInCall:
+		builtin, ok := scope.Resolve("@" + node.Name.Name).(*Builtin)
+		if !ok || builtin == nil {
+			panic(NewErrorf(node.Name, "unknown builtin '@%s'", node.Name.Name))
+		}
+
+		result := builtin.fn(builtin, scope, node)
+
+		switch x := result.(type) {
+		case constant.Value:
+			return types.FromConstantValue(x), nil
+
+		case types.Type:
+			return x, nil
+
+		case error:
+			return types.Unknown{}, x
+		}
+
+		panic("todo")
+
 	case *ast.CurlyList:
-		listScope := NewLocalScope(owner)
+		listScope := NewLocalScope(scope)
 		defer listScope.Free()
+
 		walker := ast.NewWalker(listScope)
 		walker.Walk(node.List)
 
-		where, _ := listScope.typeFrom.(*ast.Ident)
+		// where, _ := listScope.typeFrom.(*ast.Ident)
 
-		if listScope.type_ != nil {
-			return listScope.type_, listScope.typeSym, where
+		if listScope.evalType == nil {
+			return types.Unknown{}, nil
 		}
 
-		return types.Unknown{}, listScope.typeSym, where
+		return listScope.evalType, nil
 	}
 
-	return nil, nil, nil
+	return nil, NewError(expr, "expression has no type")
 }

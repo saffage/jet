@@ -9,9 +9,16 @@ type Type interface {
 	String() string
 
 	Equals(Type) bool
+
+	implType()
 }
 
-func IsUnknown(t Type) bool {
-	_, ok := t.(Unknown)
-	return ok
-}
+func (UntypedBool) implType()   {}
+func (UntypedInt) implType()    {}
+func (UntypedFloat) implType()  {}
+func (UntypedString) implType() {}
+func (Bool) implType()          {}
+func (I32) implType()           {}
+func (Unknown) implType()       {}
+func (TypeDesc) implType()      {}
+func (Any) implType()           {}

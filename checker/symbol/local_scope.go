@@ -5,13 +5,14 @@ import (
 
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/checker/types"
+	"github.com/saffage/jet/internal/assert"
 )
 
 type LocalScope struct {
 	symbols []Symbol
 	parent  Scope
 
-	type_    types.Type // Used for scope type
+	evalType types.Type // Local scopes are also expression.
 	typeFrom ast.Node
 	typeSym  Symbol
 }
@@ -79,6 +80,8 @@ func (scope *LocalScope) Visit(node ast.Node) ast.Visitor {
 		switch decl := n.(type) {
 		case *ast.GenericDecl:
 			// TODO handle all names
+			assert.Ok(len(decl.Field.Names) == 1)
+
 			variable := NewVar(0, decl.Field.Names[0], decl, scope)
 
 			if declared := scope.Define(variable); declared != nil {
@@ -89,14 +92,13 @@ func (scope *LocalScope) Visit(node ast.Node) ast.Visitor {
 
 			fmt.Printf(">>> def local var `%s`\n", variable.Name())
 
-			type_, _, where := TypeOf(scope, decl.Field.Value)
-
-			if where != nil {
-				panic(NewErrorf(where, "identifier `%s` is undefined", where.Name))
+			type_, err := TypeOf(scope, decl.Field.Value)
+			if err != nil {
+				panic(err)
 			}
 
 			variable.setType(type_)
-			scope.type_ = type_
+			scope.evalType = type_
 			return nil
 
 		case *ast.TypeAliasDecl, *ast.EnumDecl, *ast.FuncDecl, *ast.ModuleDecl, *ast.StructDecl:
@@ -109,10 +111,10 @@ func (scope *LocalScope) Visit(node ast.Node) ast.Visitor {
 	case *ast.Ident:
 		if sym := scope.Resolve(n.Name); sym != nil {
 			if sym.Type() != nil {
-				scope.type_ = sym.Type()
+				scope.evalType = sym.Type()
 			} else {
 				// Symbol is defined but have no type yet. Defered sym?
-				scope.type_ = types.Unknown{}
+				scope.evalType = types.Unknown{}
 			}
 			scope.typeSym = sym
 		}
