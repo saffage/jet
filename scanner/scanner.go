@@ -63,27 +63,14 @@ func (s *Scanner) Next() token.Token {
 		startPos, tok := s.Pos(), token.Token{Kind: token.Illegal}
 
 		switch {
-		case s.Consume('#'):
-			if token.IsIdentifierStartChar(s.Peek()) {
-				identifier := s.TakeWhile(token.IsIdentifierChar)
-
-				tok = token.Token{
-					Kind: token.Attribute,
-					Data: "#" + identifier,
-				}
-			} else {
-				tok = token.Token{
-					Kind: token.Comment,
-					Data: "#",
-				}
+		case s.Match('#'):
+			tok = token.Token{
+				Kind: token.Comment,
+				Data: s.TakeUntil(isNewLineChar),
 			}
 
-			if tok.Kind == token.Comment {
-				tok.Data += s.TakeUntil(isNewLineChar)
-
-				if s.flags&SkipComments != 0 {
-					return s.Next()
-				}
+			if s.flags&SkipComments != 0 {
+				return s.Next()
 			}
 
 		case s.Consume('@'):

@@ -19,7 +19,6 @@ const (
 	Whitespace // whitespace
 	NewLine    // new line
 
-	Attribute // attribute
 	Ident     // identifier
 	Int       // untyped int
 	Float     // untyped float
@@ -92,7 +91,7 @@ const (
 	_special_begin = EOF
 	_special_end   = NewLine
 
-	_primary_begin = Attribute
+	_primary_begin = Ident
 	_primary_end   = String
 
 	_punctuation_begin = LParen

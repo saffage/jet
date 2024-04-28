@@ -34,25 +34,33 @@ func (p *Parser) parseIdentNode() ast.Node {
 	return p.parseIdent()
 }
 
-func (p *Parser) parseAttribute() ast.Node {
+func (p *Parser) parseBuiltIn() ast.Node {
 	if p.flags&Trace != 0 {
 		p.trace()
 		defer p.untrace()
 	}
 
-	if tok := p.expect(token.Attribute); tok != nil {
-		identStart := tok.Start
-		identStart.Char += 1
-		ident := &ast.Ident{
-			Name:  tok.Data[1:],
-			Start: identStart,
-			End:   tok.End,
+	if tok := p.expect(token.At); tok != nil {
+		name := p.parseIdent()
+		x := ast.Node(nil)
+
+		switch p.tok.Kind {
+		case token.LParen:
+			x = p.parseParenList(p.parseExpr)
+
+		case token.LCurly:
+			x = p.parseBlock()
+
+		default:
+			p.errorExpected("builtin function call requires argument list or block", p.tok.Start, p.tok.End)
 		}
 
-		return &ast.Attribute{
-			Name: ident,
-			X:    p.parseComplexExpr(),
-			Loc:  tok.Start,
+		if x != nil {
+			return &ast.BuiltInCall{
+				Name: name,
+				X:    x,
+				Loc:  tok.Start,
+			}
 		}
 	}
 
@@ -160,7 +168,7 @@ func (p *Parser) parseSuffixExpr(x ast.Node) ast.Node {
 		case token.LParen:
 			x = &ast.Call{
 				X:    x,
-				Args: p.parseParenList(p.parseExpr),
+				Args: p.parseParenList(p.parseExpr, token.Comma),
 			}
 
 		default:
@@ -181,8 +189,8 @@ func (p *Parser) parseOperand() ast.Node {
 	case token.Ident:
 		return p.parseIdentNode()
 
-	case token.Attribute:
-		return p.parseAttribute()
+	case token.At:
+		return p.parseBuiltIn()
 
 	case token.Int, token.Float, token.String:
 		return p.parseLiteral()
@@ -330,8 +338,8 @@ func (p *Parser) parseBinaryExpr(lhs ast.Node, precedence token.Precedence) ast.
 		}
 
 		lhs = &ast.BinaryOp{
-			X:   lhs,
-			Y:   rhs,
+			X: lhs,
+			Y: rhs,
 			Opr: &ast.BinaryOpr{
 				Start: tok.Start,
 				End:   tok.End,
@@ -381,16 +389,17 @@ func (p *Parser) parseComplexExpr() ast.Node {
 		defer p.untrace()
 	}
 
-	for {
-		for p.tok.Kind == token.NewLine {
-			p.next()
-		}
+	for p.tok.Kind == token.NewLine {
+		p.next()
+	}
 
-		if annotation := p.parseAnnotation(); annotation != nil {
-			p.annots = append(p.annots, annotation)
-		} else {
-			break
-		}
+	if attributes := p.parseAttributes(); attributes != nil {
+		p.attrs = attributes
+	}
+
+	// TODO meybe remove this?
+	for p.tok.Kind == token.NewLine {
+		p.next()
 	}
 
 	node := ast.Node(nil)
@@ -424,19 +433,19 @@ func (p *Parser) parseComplexExpr() ast.Node {
 		node = p.parseExpr()
 	}
 
-	if len(p.annots) > 0 {
+	if p.attrs != nil {
 		if decl, isDecl := node.(ast.Decl); isDecl {
-			setAnnotations(decl, p.annots)
+			setAttributes(decl, p.attrs)
 		} else {
 			p.addError(NewError(
-				"unexpected annotation",
-				p.annots[0].Pos(),
-				p.annots[0].PosEnd(),
+				"unexpected attribute list",
+				p.attrs.Pos(),
+				p.attrs.PosEnd(),
 				"",
-				"only a declaration can have annotation",
+				"only a declaration can have attributes",
 			))
 		}
-		p.annots = nil
+		p.attrs = nil
 	}
 
 	return node
@@ -458,28 +467,24 @@ func (p *Parser) parseStmt() ast.Node {
 
 //
 
-func (p *Parser) parseAnnotation() *ast.Annotation {
+func (p *Parser) parseAttributes() *ast.AttributeList {
 	if p.flags&Trace != 0 {
 		p.trace()
 		defer p.untrace()
 	}
 
+	tokenIdx := p.save()
+
 	if tok := p.consume(token.At); tok != nil {
-		if ident := p.parseIdent(); ident != nil {
-			args := (*ast.ParenList)(nil)
-
-			if p.match(token.LParen) {
-				args = p.parseParenList(p.parseStmt, token.Comma)
-			}
-
-			return &ast.Annotation{
-				Loc:  tok.Start,
-				Name: ident,
-				Args: args,
+		if list := p.parseParenList(p.parseComplexExpr, token.Comma); list != nil {
+			return &ast.AttributeList{
+				Loc:   tok.Start,
+				Attrs: list,
 			}
 		}
 	}
 
+	p.restore(tokenIdx)
 	return nil
 }
 
@@ -668,8 +673,8 @@ func (p *Parser) parseType() ast.Node {
 	case token.KwFunc:
 		return p.parseSignature(p.expect(token.KwFunc))
 
-	case token.Attribute:
-		return p.parseAttribute()
+	case token.At:
+		return p.parseBuiltIn()
 
 	default:
 		return nil

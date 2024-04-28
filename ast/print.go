@@ -6,7 +6,7 @@ import (
 )
 
 func (n *BadNode) String() string {
-	return "#error(\"bad node\")"
+	return "@error(\"bad node\")"
 }
 
 func (n *Empty) String() string {
@@ -52,7 +52,11 @@ func (n *ArrayType) String() string {
 
 func (n *Signature) String() string {
 	buf := strings.Builder{}
-	// buf.WriteString("func")
+
+	if n.Loc.Line > 0 {
+		buf.WriteString("func")
+	}
+
 	buf.WriteString(n.Params.String())
 
 	if n.Result != nil {
@@ -63,24 +67,20 @@ func (n *Signature) String() string {
 	return buf.String()
 }
 
-func (n *Annotation) String() string {
+func (n *AttributeList) String() string {
+	return "@" + n.Attrs.String()
+}
+
+func (n *BuiltInCall) String() string {
 	buf := strings.Builder{}
 	buf.WriteByte('@')
 	buf.WriteString(n.Name.String())
 
-	if n.Args != nil {
-		buf.WriteString(n.Args.String())
-	}
-
-	return buf.String()
-}
-
-func (n *Attribute) String() string {
-	buf := strings.Builder{}
-	buf.WriteByte('#')
-	buf.WriteString(n.Name.String())
-
 	if n.X != nil {
+		if _, ok := n.X.(*ParenList); !ok {
+			buf.WriteByte(' ')
+		}
+
 		buf.WriteString(n.X.String())
 	}
 
@@ -192,27 +192,27 @@ func (n *BinaryOp) String() string {
 // TODO append documentation to the declarations.
 
 func (n *ModuleDecl) String() string {
-	return fmt.Sprintf("%smodule %s %s", printAnnotations(n.Annots), n.Name.String(), n.Body.String())
+	return fmt.Sprintf("%smodule %s %s", optionalAttributeList(n.Attrs), n.Name.String(), n.Body.String())
 }
 
 func (n *GenericDecl) String() string {
-	return fmt.Sprintf("%s%s %s", printAnnotations(n.Annots), n.Kind.String(), n.Field.String())
+	return fmt.Sprintf("%s%s %s", optionalAttributeList(n.Attrs), n.Kind.String(), n.Field.String())
 }
 
 func (n *FuncDecl) String() string {
-	return fmt.Sprintf("%sfunc %s%s %s", printAnnotations(n.Annots), n.Name.String(), n.Signature.String(), n.Body.String())
+	return fmt.Sprintf("%sfunc %s%s %s", optionalAttributeList(n.Attrs), n.Name.String(), n.Signature.String(), n.Body.String())
 }
 
 func (n *StructDecl) String() string {
-	return fmt.Sprintf("%sstruct %s %s", printAnnotations(n.Annots), n.Name.String(), n.Fields.String())
+	return fmt.Sprintf("%sstruct %s %s", optionalAttributeList(n.Attrs), n.Name.String(), n.Fields.String())
 }
 
 func (n *EnumDecl) String() string {
-	return fmt.Sprintf("%senum %s %s", printAnnotations(n.Annots), n.Name.String(), n.Body.String())
+	return fmt.Sprintf("%senum %s %s", optionalAttributeList(n.Attrs), n.Name.String(), n.Body.String())
 }
 
 func (n *TypeAliasDecl) String() string {
-	return fmt.Sprintf("%salias %s = %s", printAnnotations(n.Annots), n.Name.String(), n.Expr.String())
+	return fmt.Sprintf("%salias %s = %s", optionalAttributeList(n.Attrs), n.Name.String(), n.Expr.String())
 }
 
 func (n *If) String() string {
@@ -251,13 +251,10 @@ func (n *Continue) String() string {
 	return "continue"
 }
 
-func printAnnotations(annots []*Annotation) string {
-	buf := strings.Builder{}
-
-	for _, annot := range annots {
-		buf.WriteString(annot.String())
-		buf.WriteByte('\n')
+func optionalAttributeList(attrs *AttributeList) string {
+	if attrs == nil {
+		return ""
 	}
 
-	return buf.String()
+	return attrs.String() + " "
 }

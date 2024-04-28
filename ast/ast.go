@@ -75,24 +75,24 @@ type (
 	}
 
 	// Represents function signature.
+	// `func(x T) T`, `(T) T`
 	Signature struct {
 		Params *ParenList
 		Result Node
 		Loc    token.Loc // `func` token.
 	}
 
-	// Represents `@Foo` or `@Foo(args)`.
-	Annotation struct {
-		Name *Ident
-		Args *ParenList
-		Loc  token.Loc
+	// Represents `@()`.
+	AttributeList struct {
+		Attrs *ParenList
+		Loc   token.Loc // `@` token.
 	}
 
-	// Represents `#foo`, `#foo expr`, `#foo()`, `#foo{}`.
-	Attribute struct {
+	// Represents `@foo()`, `@foo {}`.
+	BuiltInCall struct {
 		Name *Ident
-		X    Node      // Next statement\expression, 'ast.ParenList' or 'ast.CurlyList'.
-		Loc  token.Loc // `#` token.
+		X    Node      // Arguments or block.
+		Loc  token.Loc // `@` token.
 	}
 
 	// Represents `?` suffix.
@@ -187,16 +187,11 @@ type (
 func (n *Ellipsis) Pos() token.Loc    { return n.Loc }
 func (n *Ellipsis) PosEnd() token.Loc { return n.X.PosEnd() }
 
-func (n *Annotation) Pos() token.Loc { return n.Loc }
-func (n *Annotation) PosEnd() token.Loc {
-	if n.Args != nil {
-		return n.Args.PosEnd()
-	}
-	return n.Name.PosEnd()
-}
+func (n *AttributeList) Pos() token.Loc    { return n.Loc }
+func (n *AttributeList) PosEnd() token.Loc { return n.Attrs.PosEnd() }
 
-func (n *Attribute) Pos() token.Loc { return n.Loc }
-func (n *Attribute) PosEnd() token.Loc {
+func (n *BuiltInCall) Pos() token.Loc { return n.Loc }
+func (n *BuiltInCall) PosEnd() token.Loc {
 	if n.X != nil {
 		return n.X.PosEnd()
 	}
@@ -272,26 +267,26 @@ type (
 		Node
 		Ident() *Ident
 		Doc() string
-		Annotations() []*Annotation
+		Attributes() *AttributeList
 	}
 
 	ModuleDecl struct {
-		Annots []*Annotation
-		Name   *Ident
-		Body   Node      // Can be either [CurlyList] or [ExprList]
-		Loc    token.Loc // `module` token
+		Attrs *AttributeList
+		Name  *Ident
+		Body  Node      // Can be either [CurlyList] or [ExprList]
+		Loc   token.Loc // `module` token
 	}
 
 	// Declaration of variables and constants
 	GenericDecl struct {
-		Annots []*Annotation
-		Field  *Field
-		Loc    token.Loc // `const`, `var`, `val` token
-		Kind   GenericDeclKind
+		Attrs *AttributeList
+		Field *Field
+		Loc   token.Loc // `const`, `var`, `val` token
+		Kind  GenericDeclKind
 	}
 
 	FuncDecl struct {
-		Annots    []*Annotation
+		Attrs     *AttributeList
 		Name      *Ident
 		Signature *Signature
 		Body      Node
@@ -299,24 +294,24 @@ type (
 	}
 
 	StructDecl struct {
-		Annots []*Annotation
+		Attrs  *AttributeList
 		Name   *Ident
 		Fields *CurlyList
 		Loc    token.Loc // `struct` token
 	}
 
 	EnumDecl struct {
-		Annots []*Annotation
-		Name   *Ident
-		Body   *CurlyList
-		Loc    token.Loc // `enum` token
+		Attrs *AttributeList
+		Name  *Ident
+		Body  *CurlyList
+		Loc   token.Loc // `enum` token
 	}
 
 	TypeAliasDecl struct {
-		Annots []*Annotation
-		Name   *Ident
-		Expr   Node
-		Loc    token.Loc // `alias` token
+		Attrs *AttributeList
+		Name  *Ident
+		Expr  Node
+		Loc   token.Loc // `alias` token
 	}
 )
 
@@ -324,7 +319,7 @@ func (n *ModuleDecl) Pos() token.Loc             { return n.Loc }
 func (n *ModuleDecl) PosEnd() token.Loc          { return n.Name.PosEnd() }
 func (n *ModuleDecl) Ident() *Ident              { return n.Name }
 func (*ModuleDecl) Doc() string                  { return "" }
-func (n *ModuleDecl) Annotations() []*Annotation { return n.Annots }
+func (n *ModuleDecl) Attributes() *AttributeList { return n.Attrs }
 
 func (n *GenericDecl) Pos() token.Loc    { return n.Loc }
 func (n *GenericDecl) PosEnd() token.Loc { return n.Field.PosEnd() }
@@ -335,7 +330,7 @@ func (n *GenericDecl) Ident() *Ident {
 	return nil
 }
 func (*GenericDecl) Doc() string                  { return "" }
-func (n *GenericDecl) Annotations() []*Annotation { return n.Annots }
+func (n *GenericDecl) Attributes() *AttributeList { return n.Attrs }
 
 func (n *FuncDecl) Pos() token.Loc { return n.Loc }
 func (n *FuncDecl) PosEnd() token.Loc {
@@ -346,25 +341,25 @@ func (n *FuncDecl) PosEnd() token.Loc {
 }
 func (n *FuncDecl) Ident() *Ident              { return n.Name }
 func (*FuncDecl) Doc() string                  { return "" }
-func (n *FuncDecl) Annotations() []*Annotation { return n.Annots }
+func (n *FuncDecl) Attributes() *AttributeList { return n.Attrs }
 
 func (n *StructDecl) Pos() token.Loc             { return n.Loc }
 func (n *StructDecl) PosEnd() token.Loc          { return n.Fields.PosEnd() }
 func (n *StructDecl) Ident() *Ident              { return n.Name }
 func (*StructDecl) Doc() string                  { return "" }
-func (n *StructDecl) Annotations() []*Annotation { return n.Annots }
+func (n *StructDecl) Attributes() *AttributeList { return n.Attrs }
 
 func (n *EnumDecl) Pos() token.Loc             { return n.Loc }
 func (n *EnumDecl) PosEnd() token.Loc          { return n.Body.PosEnd() }
 func (n *EnumDecl) Ident() *Ident              { return n.Name }
 func (*EnumDecl) Doc() string                  { return "" }
-func (n *EnumDecl) Annotations() []*Annotation { return n.Annots }
+func (n *EnumDecl) Attributes() *AttributeList { return n.Attrs }
 
 func (n *TypeAliasDecl) Pos() token.Loc             { return n.Loc }
 func (n *TypeAliasDecl) PosEnd() token.Loc          { return n.Expr.PosEnd() }
 func (n *TypeAliasDecl) Ident() *Ident              { return n.Name }
 func (*TypeAliasDecl) Doc() string                  { return "" }
-func (n *TypeAliasDecl) Annotations() []*Annotation { return n.Annots }
+func (n *TypeAliasDecl) Attributes() *AttributeList { return n.Attrs }
 
 type (
 	If struct {
@@ -418,8 +413,26 @@ func (n *While) PosEnd() token.Loc { return n.Body.PosEnd() }
 func (n *Return) Pos() token.Loc    { return n.Loc }
 func (n *Return) PosEnd() token.Loc { return n.X.PosEnd() }
 
-func (n *Break) Pos() token.Loc    { return n.Loc }
-func (n *Break) PosEnd() token.Loc { return n.Label.PosEnd() }
+func (n *Break) Pos() token.Loc { return n.Loc }
+func (n *Break) PosEnd() token.Loc {
+	if n.Label != nil {
+		return n.Label.PosEnd()
+	}
+	const length = len("break") - 1
+	end := n.Loc
+	end.Char += length
+	end.Offset += length
+	return end
+}
 
-func (n *Continue) Pos() token.Loc    { return n.Loc }
-func (n *Continue) PosEnd() token.Loc { return n.Label.PosEnd() }
+func (n *Continue) Pos() token.Loc { return n.Loc }
+func (n *Continue) PosEnd() token.Loc {
+	if n.Label != nil {
+		return n.Label.PosEnd()
+	}
+	const length = len("continue") - 1
+	end := n.Loc
+	end.Char += length
+	end.Offset += length
+	return end
+}

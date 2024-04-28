@@ -21,8 +21,7 @@ type Parser struct {
 	indent int
 
 	// State
-	restoreIndices []int
-	annots         []*ast.Annotation
+	attrs       *ast.AttributeList
 }
 
 type Flags int
@@ -50,7 +49,8 @@ func (p *Parser) Errors() []error {
 
 func Parse(cfg *config.Config, tokens []token.Token, flags Flags) (*ast.List, []error) {
 	p := New(cfg, tokens, flags)
-	return p.parseStmtList(), p.Errors()
+	stmts := p.parseStmtList()
+	return stmts, p.Errors()
 }
 
 func ParseExpr(cfg *config.Config, input []byte) (ast.Node, []error) {
@@ -61,5 +61,6 @@ func ParseExpr(cfg *config.Config, input []byte) (ast.Node, []error) {
 	}
 
 	p := New(cfg, toks, DefaultFlags|Trace)
-	return p.parseExpr(), p.Errors()
+	expr := p.parseExpr()
+	return expr, p.Errors()
 }

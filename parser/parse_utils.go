@@ -4,21 +4,21 @@ import (
 	"github.com/saffage/jet/ast"
 )
 
-func setAnnotations(node ast.Decl, annotations []*ast.Annotation) {
+func setAttributes(node ast.Decl, attrs *ast.AttributeList) {
 	switch n := node.(type) {
 	case *ast.ModuleDecl:
-		n.Annots = annotations
+		n.Attrs = attrs
 
 	case *ast.TypeAliasDecl:
-		n.Annots = annotations
+		n.Attrs = attrs
 
 	case *ast.StructDecl:
-		n.Annots = annotations
+		n.Attrs = attrs
 
 	case *ast.FuncDecl:
-		n.Annots = annotations
+		n.Attrs = attrs
 
 	case *ast.GenericDecl:
-		n.Annots = annotations
+		n.Attrs = attrs
 	}
 }
