@@ -60,7 +60,10 @@ func (p *Parser) expect(kinds ...token.Kind) *token.Token {
 }
 
 func (p *Parser) save() (tokenIndex int) {
-	p.restoreIndices = append([]int{p.current}, p.restoreIndices...)
+	p.restoreData = append(p.restoreData, restoreData{
+		index:  p.current,
+		errors: p.errors,
+	})
 	return p.current
 }
 
@@ -69,14 +72,17 @@ func (p *Parser) restore(tokenIndex int) {
 		panic(fmt.Sprintf("invalid restore index '%d'", tokenIndex))
 	}
 
-	for i, idx := range p.restoreIndices {
-		if tokenIndex == idx {
+	for i := len(p.restoreData) - 1; i >= 0; i-- {
+		data := p.restoreData[i]
+
+		if tokenIndex == data.index {
 			p.current = tokenIndex
+			p.errors = data.errors
 			p.tok = p.tokens[p.current]
-			p.restoreIndices = p.restoreIndices[i+1:]
+			p.restoreData = p.restoreData[i+1:]
 			return
 		}
 	}
 
-	panic(fmt.Sprintf("unsaved restore point '%d', active point is %v", tokenIndex, p.restoreIndices))
+	panic(fmt.Sprintf("unsaved restore point '%d', active point is %v", tokenIndex, p.restoreData))
 }

@@ -21,7 +21,13 @@ type Parser struct {
 	indent int
 
 	// State
+	restoreData []restoreData
 	attrs       *ast.AttributeList
+}
+
+type restoreData struct {
+	index  int
+	errors []error
 }
 
 type Flags int
