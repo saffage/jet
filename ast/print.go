@@ -31,23 +31,15 @@ func (n *Literal) String() string {
 }
 
 func (n *Comment) String() string {
-	return "#" + n.Data
+	return n.Data
 }
 
 func (n *CommentGroup) String() string {
 	panic("todo")
 }
 
-func (n *Ellipsis) String() string {
-	return "..." + n.X.String()
-}
-
 func (n *ArrayType) String() string {
-	if n.N != nil {
-		return "[" + n.N.String() + "]" + n.X.String()
-	}
-
-	return "[]" + n.X.String()
+	return n.Args.String() + n.X.String()
 }
 
 func (n *Signature) String() string {
@@ -68,7 +60,7 @@ func (n *Signature) String() string {
 }
 
 func (n *AttributeList) String() string {
-	return "@" + n.Attrs.String()
+	return "@" + n.List.String()
 }
 
 func (n *BuiltInCall) String() string {
@@ -85,14 +77,6 @@ func (n *BuiltInCall) String() string {
 	}
 
 	return buf.String()
-}
-
-func (n *Try) String() string {
-	return n.X.String() + "?"
-}
-
-func (n *Unwrap) String() string {
-	return n.X.String() + "!"
 }
 
 func (n *MemberAccess) String() string {
@@ -173,20 +157,28 @@ func (n *Field) String() string {
 	return buf.String()
 }
 
-func (n *UnaryOpr) String() string {
+func (n *PrefixOpr) String() string {
 	return n.Kind.String()
 }
 
-func (n *BinaryOpr) String() string {
+func (n *InfixOpr) String() string {
 	return n.Kind.String()
 }
 
-func (n *UnaryOp) String() string {
+func (n *PostfixOpr) String() string {
+	return n.Kind.String()
+}
+
+func (n *PrefixOp) String() string {
 	return n.Opr.String() + n.X.String()
 }
 
-func (n *BinaryOp) String() string {
+func (n *InfixOp) String() string {
 	return fmt.Sprintf("%s %s %s", n.X.String(), n.Opr.String(), n.Y.String())
+}
+
+func (n *PostfixOp) String() string {
+	return n.X.String() + n.Opr.String()
 }
 
 // TODO append documentation to the declarations.
@@ -201,14 +193,6 @@ func (n *GenericDecl) String() string {
 
 func (n *FuncDecl) String() string {
 	return fmt.Sprintf("%sfunc %s%s %s", optionalAttributeList(n.Attrs), n.Name.String(), n.Signature.String(), n.Body.String())
-}
-
-func (n *StructDecl) String() string {
-	return fmt.Sprintf("%sstruct %s %s", optionalAttributeList(n.Attrs), n.Name.String(), n.Fields.String())
-}
-
-func (n *EnumDecl) String() string {
-	return fmt.Sprintf("%senum %s %s", optionalAttributeList(n.Attrs), n.Name.String(), n.Body.String())
 }
 
 func (n *TypeAliasDecl) String() string {

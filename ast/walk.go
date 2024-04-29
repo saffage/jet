@@ -6,233 +6,215 @@ import (
 	"github.com/saffage/jet/internal/assert"
 )
 
-type Visitor interface {
-	// Applies some action to `node`. The result is the next action
-	// to be performed on each of the children, or nil if no action
-	// is needed and this branch should be dropped.
-	Visit(node Node) Visitor
-}
+// Applies some action to a node.
+//
+// The result must be the next action to be performed on each
+// of the child nodes. If no action is required and this branch
+// should be dropped, nil should be returned.
+type Visitor func(Node) Visitor
 
-type Walker interface {
-	// Preorder traversal or top-down traversal.
-	// Visit a parent node before visiting its children.
-	// Each node is terminated by a call with `nil` argument.
-	//
-	// Example:
-	// 	- List (length = 3)
-	//  - - Ident
-	//  - - nil (Ident)
-	//  - - Ident
-	//  - - nil (Ident)
-	//  - - List (length = 0)
-	//  - - nil (List)
-	//  - nil (List)
-	Walk(node Node)
-}
-
-type stackEntry struct {
-	Node
-	Visitor
-}
-
-type defaultWalker struct {
-	visitor Visitor
-	stack   []stackEntry
-}
-
-func NewWalker(visitor Visitor) Walker {
-	return &defaultWalker{visitor, []stackEntry{}}
-}
-
-func (w *defaultWalker) Walk(node Node) {
-	if visitor := w.visitor.Visit(node); visitor == nil {
+// Preorder\top-down traversal.
+// Visit a parent node before visiting its children.
+// Each node is terminated by a call with `nil` argument.
+//
+// Example:
+//   - List (length = 3)
+//   - - Ident
+//   - - nil (Ident)
+//   - - Ident
+//   - - nil (Ident)
+//   - - List (length = 0)
+//   - - nil (List)
+//   - nil (List)
+func WalkTopDown(visit Visitor, tree Node) {
+	if visitor := visit(tree); visitor == nil {
 		return
 	}
 
-	if node == nil {
+	if tree == nil {
 		return
 	}
 
-	w.stack = append(w.stack, stackEntry{node, w.visitor})
-
-	switch n := node.(type) {
-	case *BadNode, *Empty, *Ident, *Literal:
+	switch n := tree.(type) {
+	case *BadNode, *Empty, *Ident, *Literal, *PrefixOpr, *InfixOpr, *PostfixOpr, *Star, *Comment, *CommentGroup:
 		// Nothing to walk
-
-	case *Ellipsis:
-		assert.Ok(n.X != nil)
-		w.Walk(n.X)
-
-	case *ArrayType:
-		assert.Ok(n.X != nil)
-		w.Walk(n.X)
-
-		if n.N != nil {
-			w.Walk(n.N)
-		}
-
-	case *Signature:
-		walkList(w, n.Params.List)
-
-		if n.Result != nil {
-			w.Walk(n.Result)
-		}
-
-	case *MemberAccess:
-		assert.Ok(n.X != nil)
-		w.Walk(n.X)
-
-		assert.Ok(n.Selector != nil)
-		w.Walk(n.Selector)
-
-	case *Star:
-		// Nothing to walk
-
-	case *Try:
-		assert.Ok(n.X != nil)
-		w.Walk(n.X)
-
-	case *Unwrap:
-		assert.Ok(n.X != nil)
-		w.Walk(n.X)
-
-	case *Call:
-		assert.Ok(n.X != nil)
-		w.Walk(n.X)
-		walkList(w, n.Args.List)
-
-	case *Index:
-		assert.Ok(n.X != nil)
-		w.Walk(n.X)
-
-	case *List:
-		walkList(w, n)
-
-	case *ParenList:
-		walkList(w, n.List)
-
-	case *CurlyList:
-		walkList(w, n.List)
-
-	case *BracketList:
-		walkList(w, n.List)
 
 	case *Field:
 		for _, name := range n.Names {
 			assert.Ok(name != nil)
-			w.Walk(name)
+			visit(name)
 		}
 
 		if n.Type != nil {
-			w.Walk(n.Type)
+			visit(n.Type)
 		}
 
 		if n.Value != nil {
-			w.Walk(n.Value)
+			visit(n.Value)
 		}
 
-	case *UnaryOp:
-		assert.Ok(n.X != nil)
-		w.Walk(n.X)
+	case *Signature:
+		walkList(visit, n.Params.List)
 
-	case *BinaryOp:
+		if n.Result != nil {
+			visit(n.Result)
+		}
+
+	case *Call:
 		assert.Ok(n.X != nil)
-		w.Walk(n.X)
+		visit(n.X)
+		walkList(visit, n.Args.List)
+
+	case *Index:
+		assert.Ok(n.X != nil)
+		visit(n.X)
+
+	case *ArrayType:
+		assert.Ok(n.X != nil)
+		visit(n.X)
+		walkList(visit, n.Args.List)
+
+	case *MemberAccess:
+		assert.Ok(n.X != nil)
+		visit(n.X)
+
+		assert.Ok(n.Selector != nil)
+		visit(n.Selector)
+
+	case *PrefixOp:
+		assert.Ok(n.X != nil)
+		visit(n.X)
+
+	case *InfixOp:
+		assert.Ok(n.X != nil)
+		assert.Ok(n.Y != nil)
+		visit(n.X)
+		visit(n.Y)
+
+	case *PostfixOp:
+		assert.Ok(n.X != nil)
+		visit(n.X)
+
+	case *List:
+		walkList(visit, n)
+
+	case *ParenList:
+		walkList(visit, n.List)
+
+	case *CurlyList:
+		walkList(visit, n.List)
+
+	case *BracketList:
+		walkList(visit, n.List)
+
+	case *AttributeList:
+		assert.Ok(n.List != nil)
+		walkList(visit, n.List.List)
+
+	case *BuiltInCall:
+		assert.Ok(n.Name != nil)
+		visit(n.Name)
+		visit(n.X)
 
 	case *ModuleDecl:
+		if n.Attrs != nil {
+			visit(n.Attrs)
+		}
+
 		assert.Ok(n.Name != nil)
-		w.Walk(n.Name)
+		visit(n.Name)
 
 		switch b := n.Body.(type) {
 		case *List:
-			walkList(w, b)
+			walkList(visit, b)
 
 		case *CurlyList:
-			walkList(w, b.List)
+			walkList(visit, b.List)
 
 		default:
-			panic(fmt.Sprintf("unexpected node type '%T' in module body", n.Body))
+			panic(fmt.Sprintf("unexpected node type '%T' for module body", n.Body))
 		}
 
 	case *GenericDecl:
-		assert.Ok(n.Field != nil)
-		w.Walk(n.Field)
-
-	case *FuncDecl:
-		assert.Ok(n.Name != nil)
-		w.Walk(n.Name)
-
-		assert.Ok(n.Signature != nil)
-		w.Walk(n.Signature)
-
-		if n.Body != nil {
-			w.Walk(n.Body)
+		if n.Attrs != nil {
+			visit(n.Attrs)
 		}
 
-	case *StructDecl:
-		assert.Ok(n.Name != nil)
-		w.Walk(n.Name)
-		walkList(w, n.Fields.List)
+		assert.Ok(n.Field != nil)
+		visit(n.Field)
 
-	case *EnumDecl:
+	case *FuncDecl:
+		if n.Attrs != nil {
+			visit(n.Attrs)
+		}
+
 		assert.Ok(n.Name != nil)
-		w.Walk(n.Name)
-		walkList(w, n.Body.List)
+		visit(n.Name)
+
+		assert.Ok(n.Signature != nil)
+		visit(n.Signature)
+
+		if n.Body != nil {
+			visit(n.Body)
+		}
 
 	case *TypeAliasDecl:
+		if n.Attrs != nil {
+			visit(n.Attrs)
+		}
+
 		assert.Ok(n.Name != nil)
-		w.Walk(n.Name)
+		visit(n.Name)
 
 		assert.Ok(n.Expr != nil)
-		w.Walk(n.Expr)
+		visit(n.Expr)
 
 	case *If:
 		assert.Ok(n.Cond != nil)
-		w.Walk(n.Cond)
+		visit(n.Cond)
 
 		assert.Ok(n.Body != nil)
-		w.Walk(n.Body)
+		visit(n.Body)
 
 		if n.Else != nil {
-			assert.Ok(n.Else != nil)
-			w.Walk(n.Else)
+			visit(n.Else)
 		}
 
 	case *Else:
 		assert.Ok(n.Body != nil)
-		w.Walk(n.Body)
+		visit(n.Body)
 
 	case *While:
 		assert.Ok(n.Cond != nil)
-		w.Walk(n.Cond)
+		visit(n.Cond)
 
 		assert.Ok(n.Body != nil)
-		w.Walk(n.Body)
+		visit(n.Body)
 
 	case *Return:
-		assert.Ok(n.X != nil)
-		w.Walk(n.X)
+		if n.X != nil {
+			visit(n.X)
+		}
 
 	case *Break:
 		if n.Label != nil {
-			w.Walk(n.Label)
+			visit(n.Label)
 		}
 
 	case *Continue:
 		if n.Label != nil {
-			w.Walk(n.Label)
+			visit(n.Label)
 		}
 
 	default:
 		panic(fmt.Sprintf("unknown node type '%T'", n))
 	}
 
-	w.stack = w.stack[:len(w.stack)-1]
-	w.Walk(nil)
+	visit(nil)
 }
 
-func walkList(w Walker, list *List) {
+func walkList(visit Visitor, list *List) {
 	for _, node := range list.Nodes {
-		w.Walk(node)
+		visit(node)
 	}
 }

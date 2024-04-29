@@ -101,7 +101,7 @@ func (scope *LocalScope) Visit(node ast.Node) ast.Visitor {
 			scope.evalType = type_
 			return nil
 
-		case *ast.TypeAliasDecl, *ast.EnumDecl, *ast.FuncDecl, *ast.ModuleDecl, *ast.StructDecl:
+		case *ast.TypeAliasDecl, *ast.FuncDecl, *ast.ModuleDecl:
 			panic("not implemented")
 
 		default:
@@ -123,5 +123,5 @@ func (scope *LocalScope) Visit(node ast.Node) ast.Visitor {
 		return nil
 	}
 
-	return scope
+	return scope.Visit
 }

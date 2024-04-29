@@ -12,9 +12,6 @@ func setAttributes(node ast.Decl, attrs *ast.AttributeList) {
 	case *ast.TypeAliasDecl:
 		n.Attrs = attrs
 
-	case *ast.StructDecl:
-		n.Attrs = attrs
-
 	case *ast.FuncDecl:
 		n.Attrs = attrs
 

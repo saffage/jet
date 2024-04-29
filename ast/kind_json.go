@@ -6,11 +6,15 @@ func (kind LiteralKind) MarshalJSON() ([]byte, error) {
 	return json.Marshal(kind.String())
 }
 
-func (kind UnaryOpKind) MarshalJSON() ([]byte, error) {
+func (kind PrefixOpKind) MarshalJSON() ([]byte, error) {
 	return json.Marshal(kind.String())
 }
 
-func (kind BinaryOpKind) MarshalJSON() ([]byte, error) {
+func (kind InfixOpKind) MarshalJSON() ([]byte, error) {
+	return json.Marshal(kind.String())
+}
+
+func (kind PostfixOpKind) MarshalJSON() ([]byte, error) {
 	return json.Marshal(kind.String())
 }
 

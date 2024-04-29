@@ -1,16 +1,17 @@
 package ast
 
-//go:generate stringer -type=LiteralKind,UnaryOpKind,BinaryOpKind,GenericDeclKind -output=kind_string.go -linecomment
+//go:generate stringer -type=LiteralKind,PrefixOpKind,InfixOpKind,PostfixOpKind,GenericDeclKind -output=kind_string.go -linecomment
 
 type (
 	LiteralKind     byte
-	UnaryOpKind     byte
-	BinaryOpKind    byte
+	PrefixOpKind    byte
+	InfixOpKind     byte
+	PostfixOpKind   byte
 	GenericDeclKind byte
 )
 
 const (
-	UnknownLiteral LiteralKind = iota // unknown literal
+	UnknownLiteral LiteralKind = iota // unknown literal kind
 
 	IntLiteral    // int
 	FloatLiteral  // float
@@ -18,33 +19,40 @@ const (
 )
 
 const (
-	UnknownUnaryOp UnaryOpKind = iota // unknown unary operation
+	UnknownPrefix PrefixOpKind = iota // unknown prefix operation
 
-	UnaryNot     // !
-	UnaryNeg     // -
-	UnaryAddr    // &
-	UnaryMutAddr // &var
+	PrefixNot     // !
+	PrefixNeg     // -
+	PrefixAddr    // &
+	PrefixMutAddr // &var
 )
 
 const (
-	UnknownBinaryOp BinaryOpKind = iota // unknown binary operation
+	UnknownInfix InfixOpKind = iota // unknown infix operation
 
-	BinaryAdd    // +
-	BinarySub    // -
-	BinaryMult   // *
-	BinaryDiv    // /
-	BinaryMod    // %
-	BinaryAssign // =
-	BinaryEq     // ==
-	BinaryNe     // !=
-	BinaryLt     // <
-	BinaryLe     // <=
-	BinaryGt     // >
-	BinaryGe     // >=
+	InfixAdd    // +
+	InfixSub    // -
+	InfixMult   // *
+	InfixDiv    // /
+	InfixMod    // %
+	InfixAssign // =
+	InfixEq     // ==
+	InfixNe     // !=
+	InfixLt     // <
+	InfixLe     // <=
+	InfixGt     // >
+	InfixGe     // >=
 )
 
 const (
-	UnknownGenericDeclKind GenericDeclKind = iota // unknown generic declaration kind
+	UnknownPostfix PostfixOpKind = iota // unknown postfix operation
+
+	PostfixTry    // ?
+	PostfixUnwrap // !
+)
+
+const (
+	UnknownDecl GenericDeclKind = iota // unknown generic declaration kind
 
 	ConstDecl // const
 	VarDecl   // var

@@ -56,9 +56,9 @@ func TypeOf(scope Scope, expr ast.Node) (types.Type, error) {
 			panic(fmt.Sprintf("unhandled literal kind: '%s'", node.Kind.String()))
 		}
 
-	case *ast.UnaryOp:
+	case *ast.PrefixOp:
 		switch node.Opr.Kind {
-		case ast.UnaryNeg:
+		case ast.PrefixNeg:
 			type_, err := TypeOf(scope, node.X)
 			if err != nil {
 				return types.Unknown{}, err
@@ -77,7 +77,7 @@ func TypeOf(scope Scope, expr ast.Node) (types.Type, error) {
 				))
 			}
 
-		case ast.UnaryNot:
+		case ast.PrefixNot:
 			type_, err := TypeOf(scope, node.X)
 			if err != nil {
 				return types.Unknown{}, err
@@ -96,14 +96,14 @@ func TypeOf(scope Scope, expr ast.Node) (types.Type, error) {
 				))
 			}
 
-		case ast.UnaryAddr, ast.UnaryMutAddr:
+		case ast.PrefixAddr, ast.PrefixMutAddr:
 			panic("not implemented")
 
 		default:
 			panic("unreachable")
 		}
 
-	case *ast.BinaryOp:
+	case *ast.InfixOp:
 		x_type, err := TypeOf(scope, node.X)
 		if err != nil {
 			return types.Unknown{}, err
@@ -119,13 +119,13 @@ func TypeOf(scope Scope, expr ast.Node) (types.Type, error) {
 		}
 
 		switch node.Opr.Kind {
-		case ast.BinaryAdd, ast.BinarySub, ast.BinaryMult, ast.BinaryDiv, ast.BinaryMod:
+		case ast.InfixAdd, ast.InfixSub, ast.InfixMult, ast.InfixDiv, ast.InfixMod:
 			switch x_type.(type) {
 			case types.UntypedInt, types.UntypedFloat, types.I32:
 				return x_type, nil
 			}
 
-		case ast.BinaryEq, ast.BinaryNe, ast.BinaryLt, ast.BinaryLe, ast.BinaryGt, ast.BinaryGe:
+		case ast.InfixEq, ast.InfixNe, ast.InfixLt, ast.InfixLe, ast.InfixGt, ast.InfixGe:
 			switch x_type.(type) {
 			case types.UntypedBool, types.UntypedInt, types.UntypedFloat:
 				return types.UntypedBool{}, nil
@@ -167,10 +167,7 @@ func TypeOf(scope Scope, expr ast.Node) (types.Type, error) {
 		listScope := NewLocalScope(scope)
 		defer listScope.Free()
 
-		walker := ast.NewWalker(listScope)
-		walker.Walk(node.List)
-
-		// where, _ := listScope.typeFrom.(*ast.Ident)
+		ast.WalkTopDown(listScope.Visit, node.List)
 
 		if listScope.evalType == nil {
 			return types.Unknown{}, nil

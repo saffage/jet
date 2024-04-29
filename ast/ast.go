@@ -6,9 +6,17 @@ import (
 
 type (
 	Node interface {
+		// Start of the entire tree. This location must also include nested nodes.
 		Pos() token.Loc
+
+		// End of the entire tree. This location must also include nested nodes.
 		PosEnd() token.Loc
+
+		// String representation of the node. This string must be equal to the
+		// code from which this tree was parsed (ignoring location).
 		String() string
+
+		implNode()
 	}
 
 	// Invalid node.
@@ -32,6 +40,29 @@ type (
 		Start, End token.Loc
 	}
 
+	PrefixOpr struct {
+		Start token.Loc
+		End   token.Loc
+		Kind  PrefixOpKind
+	}
+
+	InfixOpr struct {
+		Start token.Loc
+		End   token.Loc
+		Kind  InfixOpKind
+	}
+
+	PostfixOpr struct {
+		Start token.Loc
+		End   token.Loc
+		Kind  PostfixOpKind
+	}
+
+	// Used in `MemberAccess` nodes to represent `*` suffix.
+	Star struct {
+		Loc token.Loc // `*` token.
+	}
+
 	Comment struct {
 		Data       string
 		Start, End token.Loc
@@ -41,6 +72,17 @@ type (
 		Comments []*Comment
 	}
 )
+
+func (*BadNode) implNode()      {}
+func (*Empty) implNode()        {}
+func (*Ident) implNode()        {}
+func (*Literal) implNode()      {}
+func (*PrefixOpr) implNode()    {}
+func (*InfixOpr) implNode()     {}
+func (*PostfixOpr) implNode()   {}
+func (*Star) implNode()         {}
+func (*Comment) implNode()      {}
+func (*CommentGroup) implNode() {}
 
 func (n *BadNode) Pos() token.Loc    { return n.Loc }
 func (n *BadNode) PosEnd() token.Loc { return n.Loc }
@@ -54,6 +96,18 @@ func (n *Ident) PosEnd() token.Loc { return n.End }
 func (n *Literal) Pos() token.Loc    { return n.Start }
 func (n *Literal) PosEnd() token.Loc { return n.End }
 
+func (n *PrefixOpr) Pos() token.Loc    { return n.Start }
+func (n *PrefixOpr) PosEnd() token.Loc { return n.End }
+
+func (n *InfixOpr) Pos() token.Loc    { return n.Start }
+func (n *InfixOpr) PosEnd() token.Loc { return n.End }
+
+func (n *PostfixOpr) Pos() token.Loc    { return n.Start }
+func (n *PostfixOpr) PosEnd() token.Loc { return n.End }
+
+func (n *Star) Pos() token.Loc    { return n.Loc }
+func (n *Star) PosEnd() token.Loc { return n.Loc }
+
 func (n *Comment) Pos() token.Loc    { return n.Start }
 func (n *Comment) PosEnd() token.Loc { return n.End }
 
@@ -61,62 +115,18 @@ func (n *CommentGroup) Pos() token.Loc    { return n.Comments[0].Pos() }
 func (n *CommentGroup) PosEnd() token.Loc { return n.Comments[len(n.Comments)-1].PosEnd() }
 
 type (
-	// Represents a `...` token in AST.
-	// Used in parameter lists.
-	Ellipsis struct {
-		X   Node      // Not nil if used with expression.
-		Loc token.Loc // `...` token.
+	// Represents `a, b Type = value`.
+	Field struct {
+		Names []*Ident
+		Type  Node // maybe nil.
+		Value Node // maybe nil.
 	}
 
-	// Represents `[]x` or `[N]x`.
-	ArrayType struct {
-		N, X        Node
-		Open, Close token.Loc
-	}
-
-	// Represents function signature.
-	// `func(x T) T`, `(T) T`
+	// Represents `func(x T) T` or `(T) T`.
 	Signature struct {
 		Params *ParenList
 		Result Node
 		Loc    token.Loc // `func` token.
-	}
-
-	// Represents `@()`.
-	AttributeList struct {
-		Attrs *ParenList
-		Loc   token.Loc // `@` token.
-	}
-
-	// Represents `@foo()`, `@foo {}`.
-	BuiltInCall struct {
-		Name *Ident
-		X    Node      // Arguments or block.
-		Loc  token.Loc // `@` token.
-	}
-
-	// Represents `?` suffix.
-	Try struct {
-		X   Node
-		Loc token.Loc // `?` token.
-	}
-
-	// Represents `!` suffix.
-	Unwrap struct {
-		X   Node
-		Loc token.Loc // `!` token.
-	}
-
-	// Represents `x.selector`.
-	MemberAccess struct {
-		X        Node
-		Selector Node
-		Loc      token.Loc // `.` token.
-	}
-
-	// Used in `MemberAccess` nodes to represent `.*` suffix.
-	Star struct {
-		Loc token.Loc // `*` token.
 	}
 
 	// Represents `x(args)`.
@@ -131,6 +141,88 @@ type (
 		Args *BracketList
 	}
 
+	// Represents `[args]x`.
+	ArrayType struct {
+		X    Node
+		Args *BracketList
+	}
+
+	// Represents `x.selector`.
+	MemberAccess struct {
+		X        Node
+		Selector Node
+		Loc      token.Loc // `.` token.
+	}
+
+	// Represents `!x`, where `!` is an unary operator.
+	PrefixOp struct {
+		X   Node
+		Opr *PrefixOpr
+	}
+
+	// Represents `x ! y`, where `!` is a binary operator.
+	InfixOp struct {
+		X, Y Node
+		Opr  *InfixOpr
+	}
+
+	PostfixOp struct {
+		X   Node
+		Opr *PostfixOpr
+	}
+)
+
+func (*Field) implNode()        {}
+func (*Signature) implNode()    {}
+func (*Call) implNode()         {}
+func (*Index) implNode()        {}
+func (*ArrayType) implNode()    {}
+func (*MemberAccess) implNode() {}
+func (*PrefixOp) implNode()     {}
+func (*InfixOp) implNode()      {}
+func (*PostfixOp) implNode()    {}
+
+func (n *Field) Pos() token.Loc { return n.Names[0].Pos() }
+func (n *Field) PosEnd() token.Loc {
+	if n.Value != nil {
+		return n.Value.PosEnd()
+	}
+	if n.Type != nil {
+		return n.Type.PosEnd()
+	}
+	panic("node must have as least a type or a value")
+}
+
+func (n *Signature) Pos() token.Loc {
+	if n.Loc.Line == 0 {
+		return n.Params.Pos()
+	}
+	return n.Loc
+}
+func (n *Signature) PosEnd() token.Loc { return n.Result.PosEnd() }
+
+func (n *MemberAccess) Pos() token.Loc    { return n.X.Pos() }
+func (n *MemberAccess) PosEnd() token.Loc { return n.Selector.PosEnd() }
+
+func (n *Call) Pos() token.Loc    { return n.X.Pos() }
+func (n *Call) PosEnd() token.Loc { return n.Args.PosEnd() }
+
+func (n *Index) Pos() token.Loc    { return n.X.Pos() }
+func (n *Index) PosEnd() token.Loc { return n.Args.PosEnd() }
+
+func (n *ArrayType) Pos() token.Loc    { return n.Args.Pos() }
+func (n *ArrayType) PosEnd() token.Loc { return n.X.PosEnd() }
+
+func (n *PrefixOp) Pos() token.Loc    { return n.Opr.Pos() }
+func (n *PrefixOp) PosEnd() token.Loc { return n.X.PosEnd() }
+
+func (n *InfixOp) Pos() token.Loc    { return n.X.Pos() }
+func (n *InfixOp) PosEnd() token.Loc { return n.Y.PosEnd() }
+
+func (n *PostfixOp) Pos() token.Loc    { return n.X.Pos() }
+func (n *PostfixOp) PosEnd() token.Loc { return n.Opr.PosEnd() }
+
+type (
 	// Represents sequence of nodes, separated by comma or semicolon\new line.
 	List struct {
 		Nodes []Node
@@ -153,79 +245,12 @@ type (
 		*List
 		Open, Close token.Loc // `[` and `]`.
 	}
-
-	// Represents `a, b Type = value`.
-	Field struct {
-		Names []*Ident
-		Type  Node // maybe nil.
-		Value Node // maybe nil.
-	}
-
-	UnaryOpr struct {
-		Start token.Loc
-		End   token.Loc
-		Kind  UnaryOpKind
-	}
-
-	BinaryOpr struct {
-		Start token.Loc
-		End   token.Loc
-		Kind  BinaryOpKind
-	}
-
-	UnaryOp struct {
-		X   Node
-		Opr *UnaryOpr
-	}
-
-	BinaryOp struct {
-		X, Y Node
-		Opr  *BinaryOpr
-	}
 )
 
-func (n *Ellipsis) Pos() token.Loc    { return n.Loc }
-func (n *Ellipsis) PosEnd() token.Loc { return n.X.PosEnd() }
-
-func (n *AttributeList) Pos() token.Loc    { return n.Loc }
-func (n *AttributeList) PosEnd() token.Loc { return n.Attrs.PosEnd() }
-
-func (n *BuiltInCall) Pos() token.Loc { return n.Loc }
-func (n *BuiltInCall) PosEnd() token.Loc {
-	if n.X != nil {
-		return n.X.PosEnd()
-	}
-	return n.Name.PosEnd()
-}
-
-func (n *Try) Pos() token.Loc    { return n.X.Pos() }
-func (n *Try) PosEnd() token.Loc { return n.Loc }
-
-func (n *Unwrap) Pos() token.Loc    { return n.X.Pos() }
-func (n *Unwrap) PosEnd() token.Loc { return n.Loc }
-
-func (n *ArrayType) Pos() token.Loc    { return n.Open }
-func (n *ArrayType) PosEnd() token.Loc { return n.X.PosEnd() }
-
-func (n *Signature) Pos() token.Loc {
-	if n.Loc.Line == 0 {
-		return n.Params.Pos()
-	}
-	return n.Loc
-}
-func (n *Signature) PosEnd() token.Loc { return n.Result.PosEnd() }
-
-func (n *MemberAccess) Pos() token.Loc    { return n.X.Pos() }
-func (n *MemberAccess) PosEnd() token.Loc { return n.Selector.PosEnd() }
-
-func (n *Star) Pos() token.Loc    { return n.Loc }
-func (n *Star) PosEnd() token.Loc { return n.Loc }
-
-func (n *Call) Pos() token.Loc    { return n.X.Pos() }
-func (n *Call) PosEnd() token.Loc { return n.Args.PosEnd() }
-
-func (n *Index) Pos() token.Loc    { return n.X.Pos() }
-func (n *Index) PosEnd() token.Loc { return n.Args.PosEnd() }
+func (*List) implNode()        {}
+func (*ParenList) implNode()   {}
+func (*CurlyList) implNode()   {}
+func (*BracketList) implNode() {}
 
 func (n *List) Pos() token.Loc    { return n.Nodes[0].Pos() }
 func (n *List) PosEnd() token.Loc { return n.Nodes[len(n.Nodes)-1].PosEnd() }
@@ -239,28 +264,29 @@ func (n *CurlyList) PosEnd() token.Loc { return n.Close }
 func (n *BracketList) Pos() token.Loc    { return n.Open }
 func (n *BracketList) PosEnd() token.Loc { return n.Close }
 
-func (n *Field) Pos() token.Loc { return n.Names[0].Pos() }
-func (n *Field) PosEnd() token.Loc {
-	if n.Value != nil {
-		return n.Value.PosEnd()
+type (
+	// Represents `@()`.
+	AttributeList struct {
+		List *ParenList
+		Loc  token.Loc // `@` token.
 	}
-	if n.Type != nil {
-		return n.Type.PosEnd()
+
+	// Represents `@foo()` or `@foo {}`.
+	BuiltInCall struct {
+		Name *Ident
+		X    Node      // Either [ParenList] or [CurlyList].
+		Loc  token.Loc // `@` token.
 	}
-	panic("node must have as least a type or a value")
-}
+)
 
-func (n *UnaryOpr) Pos() token.Loc    { return n.Start }
-func (n *UnaryOpr) PosEnd() token.Loc { return n.End }
+func (*AttributeList) implNode() {}
+func (*BuiltInCall) implNode()   {}
 
-func (n *BinaryOpr) Pos() token.Loc    { return n.Start }
-func (n *BinaryOpr) PosEnd() token.Loc { return n.End }
+func (n *AttributeList) Pos() token.Loc    { return n.Loc }
+func (n *AttributeList) PosEnd() token.Loc { return n.List.PosEnd() }
 
-func (n *UnaryOp) Pos() token.Loc    { return n.Opr.Pos() }
-func (n *UnaryOp) PosEnd() token.Loc { return n.X.PosEnd() }
-
-func (n *BinaryOp) Pos() token.Loc    { return n.X.Pos() }
-func (n *BinaryOp) PosEnd() token.Loc { return n.Y.PosEnd() }
+func (n *BuiltInCall) Pos() token.Loc    { return n.Loc }
+func (n *BuiltInCall) PosEnd() token.Loc { return n.X.PosEnd() }
 
 type (
 	Decl interface {
@@ -273,15 +299,14 @@ type (
 	ModuleDecl struct {
 		Attrs *AttributeList
 		Name  *Ident
-		Body  Node      // Can be either [CurlyList] or [ExprList]
-		Loc   token.Loc // `module` token
+		Body  Node      // Can be either [CurlyList] or [List].
+		Loc   token.Loc // `module` token.
 	}
 
-	// Declaration of variables and constants
 	GenericDecl struct {
 		Attrs *AttributeList
 		Field *Field
-		Loc   token.Loc // `const`, `var`, `val` token
+		Loc   token.Loc // `const`, `var`, `val` token.
 		Kind  GenericDeclKind
 	}
 
@@ -290,30 +315,21 @@ type (
 		Name      *Ident
 		Signature *Signature
 		Body      Node
-		Loc       token.Loc // `func` token
-	}
-
-	StructDecl struct {
-		Attrs  *AttributeList
-		Name   *Ident
-		Fields *CurlyList
-		Loc    token.Loc // `struct` token
-	}
-
-	EnumDecl struct {
-		Attrs *AttributeList
-		Name  *Ident
-		Body  *CurlyList
-		Loc   token.Loc // `enum` token
+		Loc       token.Loc // `func` token.
 	}
 
 	TypeAliasDecl struct {
 		Attrs *AttributeList
 		Name  *Ident
 		Expr  Node
-		Loc   token.Loc // `alias` token
+		Loc   token.Loc // `alias` token.
 	}
 )
+
+func (*ModuleDecl) implNode()    {}
+func (*GenericDecl) implNode()   {}
+func (*FuncDecl) implNode()      {}
+func (*TypeAliasDecl) implNode() {}
 
 func (n *ModuleDecl) Pos() token.Loc             { return n.Loc }
 func (n *ModuleDecl) PosEnd() token.Loc          { return n.Name.PosEnd() }
@@ -342,18 +358,6 @@ func (n *FuncDecl) PosEnd() token.Loc {
 func (n *FuncDecl) Ident() *Ident              { return n.Name }
 func (*FuncDecl) Doc() string                  { return "" }
 func (n *FuncDecl) Attributes() *AttributeList { return n.Attrs }
-
-func (n *StructDecl) Pos() token.Loc             { return n.Loc }
-func (n *StructDecl) PosEnd() token.Loc          { return n.Fields.PosEnd() }
-func (n *StructDecl) Ident() *Ident              { return n.Name }
-func (*StructDecl) Doc() string                  { return "" }
-func (n *StructDecl) Attributes() *AttributeList { return n.Attrs }
-
-func (n *EnumDecl) Pos() token.Loc             { return n.Loc }
-func (n *EnumDecl) PosEnd() token.Loc          { return n.Body.PosEnd() }
-func (n *EnumDecl) Ident() *Ident              { return n.Name }
-func (*EnumDecl) Doc() string                  { return "" }
-func (n *EnumDecl) Attributes() *AttributeList { return n.Attrs }
 
 func (n *TypeAliasDecl) Pos() token.Loc             { return n.Loc }
 func (n *TypeAliasDecl) PosEnd() token.Loc          { return n.Expr.PosEnd() }
@@ -395,6 +399,13 @@ type (
 		Loc   token.Loc // `continue` token.
 	}
 )
+
+func (*If) implNode()       {}
+func (*Else) implNode()     {}
+func (*While) implNode()    {}
+func (*Return) implNode()   {}
+func (*Break) implNode()    {}
+func (*Continue) implNode() {}
 
 func (n *If) Pos() token.Loc { return n.Loc }
 func (n *If) PosEnd() token.Loc {

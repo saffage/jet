@@ -39,10 +39,8 @@ func NewModule(id ID, owner *Module, name *ast.Ident, node ast.Node) *Module {
 	//  * [ ] resolve usings
 	//  * [ ] find cyclic usings
 
-	walker := ast.NewWalker(m)
-
 	for _, node := range list.Nodes {
-		walker.Walk(node)
+		ast.WalkTopDown(m.Visit, node)
 	}
 
 	// Pass 2:
@@ -166,9 +164,6 @@ func (m *Module) Visit(node ast.Node) ast.Visitor {
 		}
 
 		fmt.Printf(">>> def func `%s`\n", d.Name.Name)
-
-	case *ast.StructDecl, *ast.EnumDecl:
-		panic("todo")
 
 	case *ast.TypeAliasDecl:
 		sym := NewTypeAlias(0, nil, d, m)

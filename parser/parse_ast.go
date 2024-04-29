@@ -147,16 +147,32 @@ func (p *Parser) parseSuffixExpr(x ast.Node) ast.Node {
 		case token.Dot:
 			x = p.parseMemberAccess(x)
 
-		case token.QuestionMark:
-			x = &ast.Try{
-				X:   x,
-				Loc: p.consume().Start,
+		case token.QuestionMark, token.Bang:
+			opr := p.consume()
+			postfixOpKind := ast.UnknownPostfix
+
+			switch opr.Kind {
+			case token.QuestionMark:
+				postfixOpKind = ast.PostfixTry
+
+			case token.Bang:
+				postfixOpKind = ast.PostfixUnwrap
+
+			default:
+				p.error(
+					fmt.Sprintf("%s can't be used as postfix operator", opr.Kind.UserString()),
+					opr.Start,
+					opr.End,
+				)
 			}
 
-		case token.Bang:
-			x = &ast.Unwrap{
-				X:   x,
-				Loc: p.consume().Start,
+			x = &ast.PostfixOp{
+				X: x,
+				Opr: &ast.PostfixOpr{
+					Start: opr.Start,
+					End:   opr.End,
+					Kind:  postfixOpKind,
+				},
 			}
 
 		case token.LBracket:
@@ -231,24 +247,24 @@ func (p *Parser) parseUnaryExpr() ast.Node {
 	case token.Minus:
 		loc := p.consume().Start
 
-		return &ast.UnaryOp{
+		return &ast.PrefixOp{
 			X: p.parseUnaryExpr(),
-			Opr: &ast.UnaryOpr{
+			Opr: &ast.PrefixOpr{
 				Start: loc,
 				End:   loc,
-				Kind:  ast.UnaryNeg,
+				Kind:  ast.PrefixNeg,
 			},
 		}
 
 	case token.Bang:
 		loc := p.consume().Start
 
-		return &ast.UnaryOp{
+		return &ast.PrefixOp{
 			X: p.parseUnaryExpr(),
-			Opr: &ast.UnaryOpr{
+			Opr: &ast.PrefixOpr{
 				Start: loc,
 				End:   loc,
-				Kind:  ast.UnaryNot,
+				Kind:  ast.PrefixNot,
 			},
 		}
 
@@ -256,22 +272,22 @@ func (p *Parser) parseUnaryExpr() ast.Node {
 		loc := p.consume().Start
 
 		if varTok := p.consume(token.KwVar); varTok != nil {
-			return &ast.UnaryOp{
+			return &ast.PrefixOp{
 				X: p.parseUnaryExpr(),
-				Opr: &ast.UnaryOpr{
+				Opr: &ast.PrefixOpr{
 					Start: loc,
 					End:   varTok.End,
-					Kind:  ast.UnaryMutAddr,
+					Kind:  ast.PrefixMutAddr,
 				},
 			}
 		}
 
-		return &ast.UnaryOp{
+		return &ast.PrefixOp{
 			X: p.parseUnaryExpr(),
-			Opr: &ast.UnaryOpr{
+			Opr: &ast.PrefixOpr{
 				Start: loc,
 				End:   loc,
-				Kind:  ast.UnaryAddr,
+				Kind:  ast.PrefixAddr,
 			},
 		}
 
@@ -302,44 +318,44 @@ func (p *Parser) parseBinaryExpr(lhs ast.Node, precedence token.Precedence) ast.
 			return nil
 		}
 
-		binaryOpKind := ast.UnknownBinaryOp
+		binaryOpKind := ast.UnknownInfix
 
 		switch tok.Kind {
 		case token.Plus:
-			binaryOpKind = ast.BinaryAdd
+			binaryOpKind = ast.InfixAdd
 
 		case token.Minus:
-			binaryOpKind = ast.BinarySub
+			binaryOpKind = ast.InfixSub
 
 		case token.Asterisk:
-			binaryOpKind = ast.BinaryMult
+			binaryOpKind = ast.InfixMult
 
 		case token.Slash:
-			binaryOpKind = ast.BinaryDiv
+			binaryOpKind = ast.InfixDiv
 
 		case token.Percent:
-			binaryOpKind = ast.BinaryMod
+			binaryOpKind = ast.InfixMod
 
 		case token.Eq:
-			binaryOpKind = ast.BinaryAssign
+			binaryOpKind = ast.InfixAssign
 
 		case token.EqOp:
-			binaryOpKind = ast.BinaryEq
+			binaryOpKind = ast.InfixEq
 
 		case token.NeOp:
-			binaryOpKind = ast.BinaryNe
+			binaryOpKind = ast.InfixNe
 
 		case token.LtOp:
-			binaryOpKind = ast.BinaryLt
+			binaryOpKind = ast.InfixLt
 
 		case token.LeOp:
-			binaryOpKind = ast.BinaryLe
+			binaryOpKind = ast.InfixLe
 
 		case token.GtOp:
-			binaryOpKind = ast.BinaryGt
+			binaryOpKind = ast.InfixGt
 
 		case token.GeOp:
-			binaryOpKind = ast.BinaryGe
+			binaryOpKind = ast.InfixGe
 
 		default:
 			p.error(
@@ -349,10 +365,10 @@ func (p *Parser) parseBinaryExpr(lhs ast.Node, precedence token.Precedence) ast.
 			)
 		}
 
-		lhs = &ast.BinaryOp{
+		lhs = &ast.InfixOp{
 			X: lhs,
 			Y: rhs,
-			Opr: &ast.BinaryOpr{
+			Opr: &ast.InfixOpr{
 				Start: tok.Start,
 				End:   tok.End,
 				Kind:  binaryOpKind,
@@ -421,9 +437,6 @@ func (p *Parser) parseComplexExpr() ast.Node {
 	case token.KwFunc:
 		node = p.parseFuncDecl()
 
-	case token.KwEnum:
-		node = p.parseEnumDecl()
-
 	case token.KwModule:
 		node = p.parseModule()
 
@@ -487,8 +500,8 @@ func (p *Parser) parseAttributes() *ast.AttributeList {
 	if tok := p.consume(token.At); tok != nil {
 		if list := p.parseParenList(p.parseComplexExpr, token.Comma); list != nil {
 			return &ast.AttributeList{
-				Loc:   tok.Start,
-				Attrs: list,
+				Loc:  tok.Start,
+				List: list,
 			}
 		}
 	}
@@ -644,37 +657,31 @@ func (p *Parser) parseType() ast.Node {
 		ampLoc := p.expect().Start
 
 		if varTok := p.consume(token.KwVar); varTok != nil {
-			return &ast.UnaryOp{
+			return &ast.PrefixOp{
 				X: p.parseType(),
-				Opr: &ast.UnaryOpr{
+				Opr: &ast.PrefixOpr{
 					Start: ampLoc,
 					End:   varTok.End,
-					Kind:  ast.UnaryMutAddr,
+					Kind:  ast.PrefixMutAddr,
 				},
 			}
 		}
 
-		return &ast.UnaryOp{
+		return &ast.PrefixOp{
 			X: p.parseType(),
-			Opr: &ast.UnaryOpr{
+			Opr: &ast.PrefixOpr{
 				Start: ampLoc,
 				End:   ampLoc,
-				Kind:  ast.UnaryAddr,
+				Kind:  ast.PrefixAddr,
 			},
 		}
 
 	case token.LBracket:
-		openPos := p.consume().Start
-		n := p.parseSimpleExpr()
-		closePos := token.Loc{}
-		if closeTok := p.consume(token.RBracket); closeTok != nil {
-			closePos = closeTok.Start
-		}
+		brackets := p.parseBracketList(p.parseExpr)
+
 		return &ast.ArrayType{
-			X:     p.parseType(),
-			N:     n,
-			Open:  openPos,
-			Close: closePos,
+			X:    p.parseType(),
+			Args: brackets,
 		}
 
 	case token.Ident:
@@ -706,7 +713,7 @@ func (p *Parser) parseGenericDecl() ast.Node {
 		return nil
 	}
 
-	declKind := ast.UnknownGenericDeclKind
+	declKind := ast.UnknownDecl
 
 	switch tok.Kind {
 	case token.KwVar:
@@ -783,47 +790,14 @@ func (p *Parser) parseFuncDecl() ast.Node {
 	}
 }
 
-func (p *Parser) parseEnumDecl() ast.Node {
-	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
-	}
-
-	enumTok := p.expect(token.KwEnum)
-
-	if enumTok == nil {
-		return nil
-	}
-
-	name := p.parseIdent()
-
-	if name == nil {
-		return nil
-	}
-
-	body := p.parseCurlyList(p.parseSimpleExpr)
-
-	if body == nil {
-		return nil
-	}
-
-	p.validateEnumBody(body)
-
-	return &ast.EnumDecl{
-		Name: name,
-		Body: body,
-		Loc:  enumTok.Start,
-	}
-}
-
 func (p *Parser) validateEnumBody(body *ast.CurlyList) {
 	for _, expr := range body.Nodes {
 		switch e := expr.(type) {
 		case *ast.Ident:
 			continue
 
-		case *ast.BinaryOp:
-			if e.Opr.Kind == ast.BinaryAssign {
+		case *ast.InfixOp:
+			if e.Opr.Kind == ast.InfixAssign {
 				continue
 			}
 		}
