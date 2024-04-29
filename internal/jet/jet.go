@@ -17,6 +17,7 @@ import (
 )
 
 var WriteAstFileHandle *os.File
+var ParseAst = false
 
 func reportError(cfg *config.Config, err error) {
 	switch err := err.(type) {
@@ -84,7 +85,6 @@ func process(
 		return
 	}
 
-	// spew.Dump(nodes)
 	fmt.Println("recreated AST:")
 	for i, node := range nodes.Nodes {
 		if _, isEmpty := node.(*ast.Empty); i < len(nodes.Nodes)-1 || !isEmpty {
@@ -103,6 +103,10 @@ func process(
 		} else {
 			panic(err)
 		}
+	}
+
+	if ParseAst {
+		return
 	}
 
 	defer func() {

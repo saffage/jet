@@ -19,6 +19,12 @@ func ProcessArgs([]string) {
 		"",
 		"output program AST into a specified file is JSON format. Filename can be specified explicitly after the flag (default is 'ast.json')",
 	)
+	flag.BoolVar(
+		&ParseAst,
+		"parseAst",
+		false,
+		"output program AST into the console and stops processing",
+	)
 	flag.Parse()
 
 	if writeAst != nil && *writeAst != "" {
