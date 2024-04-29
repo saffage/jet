@@ -393,9 +393,7 @@ func (p *Parser) parseComplexExpr() ast.Node {
 		p.next()
 	}
 
-	if attributes := p.parseAttributes(); attributes != nil {
-		p.attrs = attributes
-	}
+	attributes := p.parseAttributes()
 
 	// TODO meybe remove this?
 	for p.tok.Kind == token.NewLine {
@@ -433,19 +431,18 @@ func (p *Parser) parseComplexExpr() ast.Node {
 		node = p.parseExpr()
 	}
 
-	if p.attrs != nil {
+	if attributes != nil {
 		if decl, isDecl := node.(ast.Decl); isDecl {
-			setAttributes(decl, p.attrs)
+			setAttributes(decl, attributes)
 		} else {
 			p.addError(NewError(
 				"unexpected attribute list",
-				p.attrs.Pos(),
-				p.attrs.PosEnd(),
+				attributes.Pos(),
+				attributes.PosEnd(),
 				"",
 				"only a declaration can have attributes",
 			))
 		}
-		p.attrs = nil
 	}
 
 	return node

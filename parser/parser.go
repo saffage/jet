@@ -22,7 +22,6 @@ type Parser struct {
 
 	// State
 	restoreData []restoreData
-	attrs       *ast.AttributeList
 }
 
 type restoreData struct {
