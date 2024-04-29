@@ -329,6 +329,18 @@ func (p *Parser) parseBinaryExpr(lhs ast.Node, precedence token.Precedence) ast.
 		case token.NeOp:
 			binaryOpKind = ast.BinaryNe
 
+		case token.LtOp:
+			binaryOpKind = ast.BinaryLt
+
+		case token.LeOp:
+			binaryOpKind = ast.BinaryLe
+
+		case token.GtOp:
+			binaryOpKind = ast.BinaryGt
+
+		case token.GeOp:
+			binaryOpKind = ast.BinaryGe
+
 		default:
 			p.error(
 				fmt.Sprintf("%s cannot be used in the binary expression", tok.Kind.UserString()),
@@ -485,6 +497,7 @@ func (p *Parser) parseAttributes() *ast.AttributeList {
 	return nil
 }
 
+// TODO remove
 func (p *Parser) parseBlock() ast.Node {
 	if p.flags&Trace != 0 {
 		p.trace()

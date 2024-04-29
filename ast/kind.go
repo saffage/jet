@@ -2,7 +2,12 @@ package ast
 
 //go:generate stringer -type=LiteralKind,UnaryOpKind,BinaryOpKind,GenericDeclKind -output=kind_string.go -linecomment
 
-type LiteralKind byte
+type (
+	LiteralKind     byte
+	UnaryOpKind     byte
+	BinaryOpKind    byte
+	GenericDeclKind byte
+)
 
 const (
 	UnknownLiteral LiteralKind = iota // unknown literal
@@ -12,8 +17,6 @@ const (
 	StringLiteral // string
 )
 
-type UnaryOpKind byte
-
 const (
 	UnknownUnaryOp UnaryOpKind = iota // unknown unary operation
 
@@ -22,8 +25,6 @@ const (
 	UnaryAddr    // &
 	UnaryMutAddr // &var
 )
-
-type BinaryOpKind byte
 
 const (
 	UnknownBinaryOp BinaryOpKind = iota // unknown binary operation
@@ -36,9 +37,11 @@ const (
 	BinaryAssign // =
 	BinaryEq     // ==
 	BinaryNe     // !=
+	BinaryLt     // <
+	BinaryLe     // <=
+	BinaryGt     // >
+	BinaryGe     // >=
 )
-
-type GenericDeclKind byte
 
 const (
 	UnknownGenericDeclKind GenericDeclKind = iota // unknown generic declaration kind

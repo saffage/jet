@@ -366,33 +366,33 @@ type (
 		Cond Node
 		Body Node
 		Else *Else
-		Loc  token.Loc // `if` token
+		Loc  token.Loc // `if` token.
 	}
 
 	Else struct {
 		Body Node
-		Loc  token.Loc // `else` token
+		Loc  token.Loc // `else` token.
 	}
 
 	While struct {
 		Cond Node
 		Body Node
-		Loc  token.Loc // `while` token
+		Loc  token.Loc // `while` token.
 	}
 
 	Return struct {
 		X   Node
-		Loc token.Loc
+		Loc token.Loc // `return` token.
 	}
 
 	Break struct {
 		Label *Ident
-		Loc   token.Loc
+		Loc   token.Loc // `break` token.
 	}
 
 	Continue struct {
 		Label *Ident
-		Loc   token.Loc
+		Loc   token.Loc // `continue` token.
 	}
 )
 

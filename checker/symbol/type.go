@@ -125,7 +125,7 @@ func TypeOf(scope Scope, expr ast.Node) (types.Type, error) {
 				return x_type, nil
 			}
 
-		case ast.BinaryEq, ast.BinaryNe:
+		case ast.BinaryEq, ast.BinaryNe, ast.BinaryLt, ast.BinaryLe, ast.BinaryGt, ast.BinaryGe:
 			switch x_type.(type) {
 			case types.UntypedBool, types.UntypedInt, types.UntypedFloat:
 				return types.UntypedBool{}, nil
