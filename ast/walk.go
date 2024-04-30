@@ -27,11 +27,13 @@ type Visitor func(Node) Visitor
 //   - - nil (List)
 //   - nil (List)
 func WalkTopDown(visit Visitor, tree Node) {
-	if visitor := visit(tree); visitor == nil {
-		return
+	if tree == nil {
+		panic("can't walk a nil node")
 	}
 
-	if tree == nil {
+	visit = visit(tree)
+
+	if visit == nil {
 		return
 	}
 
@@ -207,6 +209,7 @@ func WalkTopDown(visit Visitor, tree Node) {
 		}
 
 	default:
+		// NOTE should not happen.
 		panic(fmt.Sprintf("unknown node type '%T'", n))
 	}
 
