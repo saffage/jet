@@ -44,58 +44,58 @@ func WalkTopDown(visit Visitor, tree Node) {
 	case *Field:
 		for _, name := range n.Names {
 			assert.Ok(name != nil)
-			visit(name)
+			WalkTopDown(visit, name)
 		}
 
 		if n.Type != nil {
-			visit(n.Type)
+			WalkTopDown(visit, n.Type)
 		}
 
 		if n.Value != nil {
-			visit(n.Value)
+			WalkTopDown(visit, n.Value)
 		}
 
 	case *Signature:
 		walkList(visit, n.Params.List)
 
 		if n.Result != nil {
-			visit(n.Result)
+			WalkTopDown(visit, n.Result)
 		}
 
 	case *Call:
 		assert.Ok(n.X != nil)
-		visit(n.X)
+		WalkTopDown(visit, n.X)
 		walkList(visit, n.Args.List)
 
 	case *Index:
 		assert.Ok(n.X != nil)
-		visit(n.X)
+		WalkTopDown(visit, n.X)
 
 	case *ArrayType:
 		assert.Ok(n.X != nil)
-		visit(n.X)
+		WalkTopDown(visit, n.X)
 		walkList(visit, n.Args.List)
 
 	case *MemberAccess:
 		assert.Ok(n.X != nil)
-		visit(n.X)
+		WalkTopDown(visit, n.X)
 
 		assert.Ok(n.Selector != nil)
-		visit(n.Selector)
+		WalkTopDown(visit, n.Selector)
 
 	case *PrefixOp:
 		assert.Ok(n.X != nil)
-		visit(n.X)
+		WalkTopDown(visit, n.X)
 
 	case *InfixOp:
 		assert.Ok(n.X != nil)
 		assert.Ok(n.Y != nil)
-		visit(n.X)
-		visit(n.Y)
+		WalkTopDown(visit, n.X)
+		WalkTopDown(visit, n.Y)
 
 	case *PostfixOp:
 		assert.Ok(n.X != nil)
-		visit(n.X)
+		WalkTopDown(visit, n.X)
 
 	case *List:
 		walkList(visit, n)
@@ -115,16 +115,16 @@ func WalkTopDown(visit Visitor, tree Node) {
 
 	case *BuiltInCall:
 		assert.Ok(n.Name != nil)
-		visit(n.Name)
-		visit(n.X)
+		WalkTopDown(visit, n.Name)
+		WalkTopDown(visit, n.X)
 
 	case *ModuleDecl:
 		if n.Attrs != nil {
-			visit(n.Attrs)
+			WalkTopDown(visit, n.Attrs)
 		}
 
 		assert.Ok(n.Name != nil)
-		visit(n.Name)
+		WalkTopDown(visit, n.Name)
 
 		switch b := n.Body.(type) {
 		case *List:
@@ -139,77 +139,77 @@ func WalkTopDown(visit Visitor, tree Node) {
 
 	case *GenericDecl:
 		if n.Attrs != nil {
-			visit(n.Attrs)
+			WalkTopDown(visit, n.Attrs)
 		}
 
 		assert.Ok(n.Field != nil)
-		visit(n.Field)
+		WalkTopDown(visit, n.Field)
 
 	case *FuncDecl:
 		if n.Attrs != nil {
-			visit(n.Attrs)
+			WalkTopDown(visit, n.Attrs)
 		}
 
 		assert.Ok(n.Name != nil)
-		visit(n.Name)
+		WalkTopDown(visit, n.Name)
 
 		assert.Ok(n.Signature != nil)
-		visit(n.Signature)
+		WalkTopDown(visit, n.Signature)
 
 		if n.Body != nil {
-			visit(n.Body)
+			WalkTopDown(visit, n.Body)
 		}
 
 	case *TypeAliasDecl:
 		if n.Attrs != nil {
-			visit(n.Attrs)
+			WalkTopDown(visit, n.Attrs)
 		}
 
 		assert.Ok(n.Name != nil)
-		visit(n.Name)
+		WalkTopDown(visit, n.Name)
 
 		assert.Ok(n.Expr != nil)
-		visit(n.Expr)
+		WalkTopDown(visit, n.Expr)
 
 	case *If:
 		assert.Ok(n.Cond != nil)
-		visit(n.Cond)
+		WalkTopDown(visit, n.Cond)
 
 		assert.Ok(n.Body != nil)
-		visit(n.Body)
+		WalkTopDown(visit, n.Body)
 
 		if n.Else != nil {
-			visit(n.Else)
+			WalkTopDown(visit, n.Else)
 		}
 
 	case *Else:
 		assert.Ok(n.Body != nil)
-		visit(n.Body)
+		WalkTopDown(visit, n.Body)
 
 	case *While:
 		assert.Ok(n.Cond != nil)
-		visit(n.Cond)
+		WalkTopDown(visit, n.Cond)
 
 		assert.Ok(n.Body != nil)
-		visit(n.Body)
+		WalkTopDown(visit, n.Body)
 
 	case *Return:
 		if n.X != nil {
-			visit(n.X)
+			WalkTopDown(visit, n.X)
 		}
 
 	case *Break:
 		if n.Label != nil {
-			visit(n.Label)
+			WalkTopDown(visit, n.Label)
 		}
 
 	case *Continue:
 		if n.Label != nil {
-			visit(n.Label)
+			WalkTopDown(visit, n.Label)
 		}
 
 	default:
-		// NOTE should not happen.
+		// Should not happen.
 		panic(fmt.Sprintf("unknown node type '%T'", n))
 	}
 
@@ -217,7 +217,9 @@ func WalkTopDown(visit Visitor, tree Node) {
 }
 
 func walkList(visit Visitor, list *List) {
-	for _, node := range list.Nodes {
-		visit(node)
+	if list != nil {
+		for _, node := range list.Nodes {
+			WalkTopDown(visit, node)
+		}
 	}
 }
