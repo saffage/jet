@@ -7,7 +7,7 @@ import (
 )
 
 // TODO replace with generic binding.
-type BuiltinParam struct {
+type BuiltInParam struct {
 	name  *ast.Ident
 	type_ types.Type
 }
@@ -17,16 +17,16 @@ type BuiltinParam struct {
 //   - ast.Node
 //   - symbol.Symbol
 //   - types.Type
-type BuiltinCallFn func(b *Builtin, scope Scope, call *ast.BuiltInCall) any
+type BuiltInCallFn func(b *BuiltIn, scope Scope, call *ast.BuiltInCall) any
 
-type Builtin struct {
+type BuiltIn struct {
 	base
-	params []BuiltinParam
-	fn     BuiltinCallFn
+	params []BuiltInParam
+	fn     BuiltInCallFn
 }
 
-func NewBuiltin(id ID, node *ast.BuiltInCall) *Builtin {
-	return &Builtin{
+func NewBuiltin(id ID, node *ast.BuiltInCall) *BuiltIn {
+	return &BuiltIn{
 		base: base{
 			id:   id,
 			name: node.Name,
@@ -35,7 +35,7 @@ func NewBuiltin(id ID, node *ast.BuiltInCall) *Builtin {
 	}
 }
 
-func builtinMagic(b *Builtin, scope Scope, call *ast.BuiltInCall) any {
+func builtinMagic(b *BuiltIn, scope Scope, call *ast.BuiltInCall) any {
 	args, ok := call.X.(*ast.ParenList)
 	if !ok {
 		panic(NewError(call.X, "expected argument list"))
@@ -65,7 +65,7 @@ func builtinMagic(b *Builtin, scope Scope, call *ast.BuiltInCall) any {
 	}
 }
 
-func builtinTypeOf(b *Builtin, scope Scope, call *ast.BuiltInCall) any {
+func builtinTypeOf(b *BuiltIn, scope Scope, call *ast.BuiltInCall) any {
 	args, ok := call.X.(*ast.ParenList)
 	if !ok {
 		panic(NewError(call, "expected argument list"))
@@ -83,10 +83,14 @@ func builtinTypeOf(b *Builtin, scope Scope, call *ast.BuiltInCall) any {
 		return err
 	}
 
-	return types.Type(types.TypeDesc{types.TypedFromUntyped(type_)})
+	typedesc := types.TypeDesc{
+		Type: types.TypedFromUntyped(type_),
+	}
+
+	return types.Type(typedesc)
 }
 
-func (b *Builtin) checkArgTypes(scope Scope, args *ast.ParenList) error {
+func (b *BuiltIn) checkArgTypes(scope Scope, args *ast.ParenList) error {
 	maxlen := max(len(args.Nodes), len(b.params))
 
 	for i := 0; i < maxlen; i++ {

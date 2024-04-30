@@ -353,12 +353,12 @@ func resolveTypeAliasDeclType(m *Module, sym Symbol, node *ast.TypeAliasDecl) {
 }
 
 func appendBuiltins(m *Module) {
-	builtins := []*Builtin{
+	builtins := []*BuiltIn{
 		{
 			base: base{
 				name: &ast.Ident{Name: "@magic"},
 			},
-			params: []BuiltinParam{
+			params: []BuiltInParam{
 				{
 					name:  &ast.Ident{Name: "name"},
 					type_: types.UntypedString{},
@@ -370,7 +370,7 @@ func appendBuiltins(m *Module) {
 			base: base{
 				name: &ast.Ident{Name: "@type_of"},
 			},
-			params: []BuiltinParam{
+			params: []BuiltInParam{
 				{
 					name:  &ast.Ident{Name: "expr"},
 					type_: types.Any{},

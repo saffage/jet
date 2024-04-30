@@ -143,7 +143,7 @@ func TypeOf(scope Scope, expr ast.Node) (types.Type, error) {
 		))
 
 	case *ast.BuiltInCall:
-		builtin, ok := scope.Resolve("@" + node.Name.Name).(*Builtin)
+		builtin, ok := scope.Resolve("@" + node.Name.Name).(*BuiltIn)
 		if !ok || builtin == nil {
 			panic(NewErrorf(node.Name, "unknown builtin '@%s'", node.Name.Name))
 		}
