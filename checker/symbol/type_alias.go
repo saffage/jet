@@ -7,19 +7,30 @@ import (
 )
 
 type TypeAlias struct {
-	base
+	id    ID
+	owner Scope
+	type_ types.Type
+	node  *ast.TypeAliasDecl
+	name  *ast.Ident
 }
 
-func NewTypeAlias(id ID, t types.Type, node *ast.TypeAliasDecl, owner Scope) *TypeAlias {
+func NewTypeAlias(owner Scope, t types.Type, node *ast.TypeAliasDecl) *TypeAlias {
 	assert.Ok(t == nil || types.IsTypeDesc(t))
 
 	return &TypeAlias{
-		base: base{
-			id:    id,
-			owner: owner,
-			type_: t,
-			name:  node.Name,
-			node:  node,
-		},
+		id:    nextID(),
+		owner: owner,
+		type_: t,
+		node:  node,
+		name:  node.Name,
 	}
 }
+
+func (v *TypeAlias) ID() ID            { return v.id }
+func (v *TypeAlias) Owner() Scope      { return v.owner }
+func (v *TypeAlias) Type() types.Type  { return v.type_ }
+func (v *TypeAlias) Name() string      { return v.name.Name }
+func (v *TypeAlias) Ident() *ast.Ident { return v.name }
+func (v *TypeAlias) Node() ast.Node    { return v.node }
+
+func (v *TypeAlias) setType(t types.Type) { v.type_ = t }

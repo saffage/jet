@@ -9,7 +9,7 @@ type Scope interface {
 
 	// If a symbol with the specified name is already defined,
 	// returns a reference to it, otherwise returns nil.
-	Define(symbol Symbol) Symbol
+	Define(symbol Symbol) error
 
 	// Look up the specified symbol in the scope and return a reference to it,
 	// or nil if such symbol is not defined or not accessible.
@@ -29,25 +29,16 @@ type Scope interface {
 //
 // If any of the symbols from the other scope are already defined in the
 // current scope, an error will occur.
-func Use(current, other Scope) {
-	if module, ok := other.(*Module); ok {
-		if !module.IsCompleted() {
-			panic(NewErrorf(nil, "module '%s' is not completed", module.Name()))
-		}
+func importAllSymbols(current, other Scope) error {
+	if module, ok := other.(*Module); ok && !module.IsCompleted() {
+		return NewErrorf(nil, "module '%s' is not completed", module.Name())
 	}
-
-	errors := []Error{}
 
 	for _, sym := range other.Symbols() {
-		definedSym := current.Define(sym)
-
-		if definedSym != nil {
-			// TODO point to the `using` statement.
-			err := NewErrorf(nil, "member '%s' is already defined in this scope", sym.Name())
-			err.Notes = append(err.Notes, NewErrorf(definedSym.Ident(), "symbol defined here"))
-			errors = append(errors, err)
+		if err := current.Define(sym); err != nil {
+			return err
 		}
 	}
 
-	panic(errors)
+	return nil
 }

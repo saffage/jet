@@ -20,25 +20,27 @@ type BuiltInParam struct {
 type BuiltInCallFn func(b *BuiltIn, scope Scope, call *ast.BuiltInCall) any
 
 type BuiltIn struct {
-	base
-	params []BuiltInParam
+	id    ID
+	owner Scope
+
+	name   string
 	fn     BuiltInCallFn
+	params []BuiltInParam
 }
 
-func NewBuiltin(id ID, node *ast.BuiltInCall) *BuiltIn {
-	return &BuiltIn{
-		base: base{
-			id:   id,
-			name: node.Name,
-			node: node,
-		},
-	}
-}
+func (v *BuiltIn) ID() ID            { return v.id }
+func (v *BuiltIn) Owner() Scope      { return v.owner }
+func (v *BuiltIn) Type() types.Type  { return nil }
+func (v *BuiltIn) Name() string      { return v.name }
+func (v *BuiltIn) Ident() *ast.Ident { return nil }
+func (v *BuiltIn) Node() ast.Node    { return nil }
 
-func builtinMagic(b *BuiltIn, scope Scope, call *ast.BuiltInCall) any {
+func (v *BuiltIn) setType(t types.Type) { panic("built-in functions have no type") }
+
+func builtInMagic(b *BuiltIn, scope Scope, call *ast.BuiltInCall) any {
 	args, ok := call.X.(*ast.ParenList)
 	if !ok {
-		panic(NewError(call.X, "expected argument list"))
+		return NewError(call.X, "expected argument list")
 	}
 
 	err := b.checkArgTypes(scope, args)
@@ -48,7 +50,7 @@ func builtinMagic(b *BuiltIn, scope Scope, call *ast.BuiltInCall) any {
 
 	arg1, ok := args.Nodes[0].(*ast.Literal)
 	if !ok {
-		panic(NewError(args.Nodes[0], "expected literal"))
+		return NewError(args.Nodes[0], "expected literal")
 	}
 
 	magicName := arg1.Value
@@ -61,14 +63,14 @@ func builtinMagic(b *BuiltIn, scope Scope, call *ast.BuiltInCall) any {
 		return types.TypeDesc{Type: types.I32{}}
 
 	default:
-		panic(NewErrorf(call, "unknown magic '%s'", magicName))
+		return NewErrorf(call, "unknown magic '%s'", magicName)
 	}
 }
 
-func builtinTypeOf(b *BuiltIn, scope Scope, call *ast.BuiltInCall) any {
+func builtInTypeOf(b *BuiltIn, scope Scope, call *ast.BuiltInCall) any {
 	args, ok := call.X.(*ast.ParenList)
 	if !ok {
-		panic(NewError(call, "expected argument list"))
+		return NewError(call, "expected argument list")
 	}
 
 	err := b.checkArgTypes(scope, args)
@@ -78,13 +80,13 @@ func builtinTypeOf(b *BuiltIn, scope Scope, call *ast.BuiltInCall) any {
 
 	arg1 := args.Nodes[0]
 
-	type_, err := TypeOf(scope, arg1)
+	t, err := TypeOf(scope, arg1)
 	if err != nil {
 		return err
 	}
 
 	typedesc := types.TypeDesc{
-		Type: types.TypedFromUntyped(type_),
+		Type: types.TypedFromUntyped(t),
 	}
 
 	return types.Type(typedesc)
@@ -126,4 +128,35 @@ func (b *BuiltIn) checkArgTypes(scope Scope, args *ast.ParenList) error {
 	}
 
 	return nil
+}
+
+var builtIns []*BuiltIn
+
+func init() {
+	builtIns = []*BuiltIn{
+		{
+			id:    nextID(),
+			owner: nil,
+			name:  "magic",
+			fn:    builtInMagic,
+			params: []BuiltInParam{
+				{
+					name:  &ast.Ident{Name: "name"},
+					type_: types.UntypedString{},
+				},
+			},
+		},
+		{
+			id:    nextID(),
+			owner: nil,
+			name:  "type_of",
+			fn:    builtInTypeOf,
+			params: []BuiltInParam{
+				{
+					name:  &ast.Ident{Name: "expr"},
+					type_: types.Any{},
+				},
+			},
+		},
+	}
 }

@@ -11,7 +11,7 @@ import (
 // The result must be the next action to be performed on each
 // of the child nodes. If no action is required and this branch
 // should be dropped, nil should be returned.
-type Visitor func(Node) Visitor
+type Visitor func(Node) (Visitor, error)
 
 // Preorder\top-down traversal.
 // Visit a parent node before visiting its children.
@@ -26,15 +26,19 @@ type Visitor func(Node) Visitor
 //   - - List (length = 0)
 //   - - nil (List)
 //   - nil (List)
-func WalkTopDown(visit Visitor, tree Node) {
+func WalkTopDown(visit Visitor, tree Node) error {
 	if tree == nil {
 		panic("can't walk a nil node")
 	}
 
-	visit = visit(tree)
+	visit, err := visit(tree)
+	if err != nil {
+		return err
+	}
 
 	if visit == nil {
-		return
+		// Should we `visit(nil)`?
+		return nil
 	}
 
 	switch n := tree.(type) {
@@ -134,7 +138,7 @@ func WalkTopDown(visit Visitor, tree Node) {
 			walkList(visit, b.List)
 
 		default:
-			panic(fmt.Sprintf("unexpected node type '%T' for module body", n.Body))
+			return fmt.Errorf("unexpected node type '%T' for module body", n.Body)
 		}
 
 	case *GenericDecl:
@@ -214,6 +218,7 @@ func WalkTopDown(visit Visitor, tree Node) {
 	}
 
 	visit(nil)
+	return nil
 }
 
 func walkList(visit Visitor, list *List) {

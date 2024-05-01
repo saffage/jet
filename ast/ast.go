@@ -190,7 +190,7 @@ func (n *Field) PosEnd() token.Loc {
 	if n.Type != nil {
 		return n.Type.PosEnd()
 	}
-	panic("node must have as least a type or a value")
+	panic("node must have at least a type or a value")
 }
 
 func (n *Signature) Pos() token.Loc {

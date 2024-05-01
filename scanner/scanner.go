@@ -302,8 +302,8 @@ func (s *Scanner) parseBytes(n int) ([]byte, bool) {
 	result := make([]byte, n/2)
 
 	if _, err := hex.Decode(result, bytes); err != nil {
-		// Unexpected error
-		panic(err)
+		s.error(err.Error(), s.Pos())
+		return nil, false
 	}
 
 	return result, true

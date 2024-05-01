@@ -16,8 +16,10 @@ import (
 	"github.com/saffage/jet/token"
 )
 
-var WriteAstFileHandle *os.File
-var ParseAst = false
+var (
+	WriteAstFileHandle *os.File
+	ParseAst           = false
+)
 
 func reportError(cfg *config.Config, err error) {
 	switch err := err.(type) {
@@ -75,7 +77,7 @@ func process(
 		return
 	}
 
-	nodes, parseErrors := parser.Parse(cfg, toks, parser.DefaultFlags|parser.Trace)
+	nodeList, parseErrors := parser.Parse(cfg, toks, parser.DefaultFlags|parser.Trace)
 
 	if len(parseErrors) > 0 {
 		for _, err := range parseErrors {
@@ -86,14 +88,14 @@ func process(
 	}
 
 	fmt.Println("recreated AST:")
-	for i, node := range nodes.Nodes {
-		if _, isEmpty := node.(*ast.Empty); i < len(nodes.Nodes)-1 || !isEmpty {
+	for i, node := range nodeList.Nodes {
+		if _, isEmpty := node.(*ast.Empty); i < len(nodeList.Nodes)-1 || !isEmpty {
 			fmt.Println(color.HiGreenString(node.String()))
 		}
 	}
 
-	if WriteAstFileHandle != nil && nodes != nil {
-		if bytes, err := json.MarshalIndent(nodes.Nodes, "", "  "); err == nil {
+	if WriteAstFileHandle != nil && nodeList != nil {
+		if bytes, err := json.MarshalIndent(nodeList.Nodes, "", "  "); err == nil {
 			_, err := WriteAstFileHandle.Write(bytes)
 			if err != nil {
 				panic(err)
@@ -129,10 +131,17 @@ func process(
 	if isRepl {
 		decl := &ast.FuncDecl{
 			Name: &ast.Ident{Name: "repl"},
-			Body: nodes,
+			Body: nodeList,
 		}
-		symbol.NewFunc(0, decl, nil)
+		symbol.NewFunc(nil, nil, decl)
 	} else {
-		symbol.NewModule(0, nil, &ast.Ident{Name: cfg.Files[config.MainFileID].Name}, nodes)
+		mod := &ast.ModuleDecl{
+			Name: &ast.Ident{Name: cfg.Files[config.MainFileID].Name},
+			Body: nodeList,
+		}
+		_, err := symbol.NewModule(mod, nil)
+		if err != nil {
+			reportError(cfg, err)
+		}
 	}
 }

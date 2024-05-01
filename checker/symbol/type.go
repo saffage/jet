@@ -69,12 +69,12 @@ func TypeOf(scope Scope, expr ast.Node) (types.Type, error) {
 				return type_, nil
 
 			default:
-				panic(NewErrorf(
+				return types.Unknown{}, NewErrorf(
 					node.Opr,
 					"operator '%s' is not defined for the type '%s'",
 					node.Opr.Kind.String(),
 					type_.String(),
-				))
+				)
 			}
 
 		case ast.PrefixNot:
@@ -88,12 +88,12 @@ func TypeOf(scope Scope, expr ast.Node) (types.Type, error) {
 				return type_, nil
 
 			default:
-				panic(NewErrorf(
+				return types.Unknown{}, NewErrorf(
 					node.X,
 					"operator '%s' is not defined for the type '%s'",
 					node.Opr.Kind.String(),
 					type_.String(),
-				))
+				)
 			}
 
 		case ast.PrefixAddr, ast.PrefixMutAddr:
@@ -115,7 +115,7 @@ func TypeOf(scope Scope, expr ast.Node) (types.Type, error) {
 		}
 
 		if !x_type.Equals(y_type) {
-			panic(NewErrorf(node, "type mismatch ('%s' and '%s')", x_type, y_type))
+			return types.Unknown{}, NewErrorf(node, "type mismatch ('%s' and '%s')", x_type, y_type)
 		}
 
 		switch node.Opr.Kind {
@@ -135,24 +135,29 @@ func TypeOf(scope Scope, expr ast.Node) (types.Type, error) {
 			}
 		}
 
-		panic(NewErrorf(
+		return types.Unknown{}, NewErrorf(
 			node.Opr,
 			"operator '%s' is not defined for the type '%s'",
 			node.Opr.Kind.String(),
 			x_type.String(),
-		))
+		)
 
 	case *ast.BuiltInCall:
-		builtin, ok := scope.Resolve("@" + node.Name.Name).(*BuiltIn)
-		if !ok || builtin == nil {
-			panic(NewErrorf(node.Name, "unknown builtin '@%s'", node.Name.Name))
+		builtIn := (*BuiltIn)(nil)
+		for _, b := range builtIns {
+			if b.name == node.Name.Name {
+				builtIn = b
+			}
+		}
+		if builtIn == nil {
+			return nil, NewErrorf(node.Name, "unknown builtin '@%s'", node.Name.Name)
 		}
 
-		result := builtin.fn(builtin, scope, node)
+		result := builtIn.fn(builtIn, scope, node)
 
 		switch x := result.(type) {
 		case constant.Value:
-			return types.FromConstantValue(x), nil
+			return types.FromConstant(x.Kind()), nil
 
 		case types.Type:
 			return x, nil
@@ -164,15 +169,21 @@ func TypeOf(scope Scope, expr ast.Node) (types.Type, error) {
 		panic("todo")
 
 	case *ast.CurlyList:
-		listScope := NewLocalScope(scope)
-		defer listScope.Free()
+		listScope, err := NewLocalScope(scope)
+		if err != nil {
+			return nil, err
+		}
 
-		ast.WalkTopDown(listScope.Visit, node.List)
+		err = ast.WalkTopDown(listScope.visit, node.List)
+		if err != nil {
+			return nil, err
+		}
 
 		if listScope.evalType == nil {
 			return types.Unknown{}, nil
 		}
 
+		fmt.Printf(">>> pop local\n")
 		return listScope.evalType, nil
 	}
 

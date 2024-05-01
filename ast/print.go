@@ -104,10 +104,7 @@ func printList(nodes []Node, separator rune) string {
 			buf.WriteByte(' ')
 		}
 
-		_, err := buf.WriteString(n.String())
-		if err != nil {
-			panic(err)
-		}
+		buf.WriteString(n.String())
 	}
 
 	return buf.String()

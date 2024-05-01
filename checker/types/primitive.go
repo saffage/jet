@@ -36,8 +36,8 @@ func (t I32) Underlying() Type   { return t }
 func (t I32) String() string     { return "i32" }
 func (t I32) Equals(x Type) bool { return isOfType[I32](x) || isOfType[UntypedInt](x) }
 
-func FromConstantValue(value constant.Value) Type {
-	switch value.Kind() {
+func FromConstant(kind constant.Kind) Type {
+	switch kind {
 	case constant.Bool:
 		return UntypedBool{}
 

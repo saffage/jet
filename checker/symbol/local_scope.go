@@ -12,40 +12,41 @@ type LocalScope struct {
 	symbols []Symbol
 	parent  Scope
 
-	evalType types.Type // Local scopes are also expression.
-	typeFrom ast.Node
-	typeSym  Symbol
+	evalType      types.Type // Local scopes are also expression.
+	typeFromIdent ast.Node
+	typeFromSym   Symbol
 }
 
-func NewLocalScope(parent Scope) *LocalScope {
+func NewLocalScope(parent Scope) (*LocalScope, error) {
 	if parent == nil {
-		panic("the local scope must have a parent")
+		return nil, NewError(nil, "the local scope must have a parent")
+	}
+
+	scope := &LocalScope{
+		symbols:  []Symbol{},
+		parent:   parent,
+		evalType: types.Unknown{},
 	}
 
 	fmt.Printf(">>> push local\n")
-
-	return &LocalScope{
-		symbols: []Symbol{},
-		parent:  parent,
-	}
-}
-
-// Exists only for debug.
-func (scope *LocalScope) Free() {
-	fmt.Printf(">>> pop local\n")
+	return scope, nil
 }
 
 func (scope *LocalScope) Parent() Scope {
 	return scope.parent
 }
 
-func (scope *LocalScope) Define(symbol Symbol) Symbol {
+func (scope *LocalScope) Define(symbol Symbol) error {
 	if symbol == nil {
 		panic("attempt to define nil symbol")
 	}
 
-	if sym := scope.ResolveMember(symbol.Name()); sym != nil {
-		return sym
+	if prev := scope.ResolveMember(symbol.Name()); prev != nil {
+		err := NewError(symbol.Ident(), "declaration shadows previous declaration")
+		err.Notes = []Error{
+			NewError(prev.Ident(), "previous declaration was here"),
+		}
+		return err
 	}
 
 	scope.symbols = append(scope.symbols, symbol)
@@ -74,7 +75,7 @@ func (scope *LocalScope) Symbols() []Symbol {
 	return scope.symbols
 }
 
-func (scope *LocalScope) Visit(node ast.Node) ast.Visitor {
+func (scope *LocalScope) visit(node ast.Node) (ast.Visitor, error) {
 	switch n := node.(type) {
 	case ast.Decl:
 		switch decl := n.(type) {
@@ -82,24 +83,24 @@ func (scope *LocalScope) Visit(node ast.Node) ast.Visitor {
 			// TODO handle all names
 			assert.Ok(len(decl.Field.Names) == 1)
 
-			variable := NewVar(0, decl.Field.Names[0], decl, scope)
-
-			if declared := scope.Define(variable); declared != nil {
-				err := NewErrorf(decl.Field.Names[0], "declaration shadows previous declaration")
-				err.Notes = []Error{NewError(declared.Ident(), "previous declaration was here")}
-				panic(err)
+			variable := NewVar(scope, nil, decl, decl.Field.Names[0])
+			err := scope.Define(variable)
+			if err != nil {
+				return nil, err
 			}
 
 			fmt.Printf(">>> def local var `%s`\n", variable.Name())
 
-			type_, err := TypeOf(scope, decl.Field.Value)
+			t, err := TypeOf(scope, decl.Field.Value)
 			if err != nil {
-				panic(err)
+				return nil, err
 			}
 
-			variable.setType(type_)
-			scope.evalType = type_
-			return nil
+			variable.type_ = t
+			scope.evalType = t
+
+			fmt.Printf(">>> set `%s` type `%s`\n", variable.Name(), t)
+			return nil, nil
 
 		case *ast.TypeAliasDecl, *ast.FuncDecl, *ast.ModuleDecl:
 			panic("not implemented")
@@ -116,12 +117,12 @@ func (scope *LocalScope) Visit(node ast.Node) ast.Visitor {
 				// Symbol is defined but have no type yet. Defered sym?
 				scope.evalType = types.Unknown{}
 			}
-			scope.typeSym = sym
+			scope.typeFromSym = sym
 		}
 		// panic(NewErrorf(n, "identifier `%s` is undefined", n.Name))
-		scope.typeFrom = n
-		return nil
+		scope.typeFromIdent = n
+		return nil, nil
 	}
 
-	return scope.Visit
+	return scope.visit, nil
 }

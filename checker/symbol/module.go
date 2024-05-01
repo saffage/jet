@@ -5,47 +5,57 @@ import (
 
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/checker/types"
-	"github.com/saffage/jet/internal/assert"
 	"github.com/saffage/jet/internal/log"
 )
 
 // Module is a file.
 type Module struct {
-	base
+	id    ID
+	owner Scope
+
+	node      *ast.ModuleDecl
 	symbols   []Symbol
 	deferred  []deferred
 	completed bool
 }
 
-func NewModule(id ID, owner *Module, name *ast.Ident, node ast.Node) *Module {
-	list, ok := node.(*ast.List)
-	assert.Ok(ok)
-
+func NewModule(node *ast.ModuleDecl, owner *Module) (*Module, error) {
 	m := &Module{
-		base: base{
-			id:    id,
-			owner: owner,
-			name:  name,
-			node:  node,
-		},
+		id:        nextID(),
+		owner:     owner,
+		node:      node,
 		symbols:   []Symbol{},
 		deferred:  []deferred{},
 		completed: false,
 	}
-	appendBuiltins(m)
 
 	// Pass 1:
 	//  * [x] define members
 	//  * [ ] resolve usings
 	//  * [ ] find cyclic usings
 
-	for _, node := range list.Nodes {
-		ast.WalkTopDown(m.Visit, node)
+	nodes := []ast.Node(nil)
+
+	switch body := node.Body.(type) {
+	case *ast.List:
+		nodes = body.Nodes
+
+	case *ast.CurlyList:
+		nodes = body.List.Nodes
+
+	default:
+		panic("ill-formed AST")
+	}
+
+	for _, node := range nodes {
+		if err := ast.WalkTopDown(m.visit, node); err != nil {
+			return nil, err
+		}
 	}
 
 	// Pass 2:
-	//  * [ ] determine symbol types
-	//  * [ ] find cyclic symbol definitions
+	//  * [ ] resolve symbol types
+	//  * [x] find cyclic symbol definitions
 
 	log.Hint("resolve symbol types")
 
@@ -61,20 +71,33 @@ func NewModule(id ID, owner *Module, name *ast.Ident, node ast.Node) *Module {
 	}
 
 	m.completed = true
-	return m
+	return m, nil
 }
+
+func (m *Module) ID() ID            { return m.id }
+func (m *Module) Owner() Scope      { return m.owner }
+func (m *Module) Type() types.Type  { return nil }
+func (m *Module) Name() string      { return m.node.Name.Name }
+func (m *Module) Ident() *ast.Ident { return m.node.Name }
+func (m *Module) Node() ast.Node    { return m.node }
+
+func (m *Module) setType(t types.Type) { panic("modules have no type") }
 
 func (m *Module) Parent() Scope {
 	return m.owner
 }
 
-func (m *Module) Define(symbol Symbol) Symbol {
+func (m *Module) Define(symbol Symbol) error {
 	if symbol == nil {
 		panic("attempt to define nil symbol")
 	}
 
-	if sym := m.ResolveMember(symbol.Name()); sym != nil {
-		return sym
+	if prev := m.ResolveMember(symbol.Name()); prev != nil {
+		err := NewErrorf(symbol.Ident(), "name '%s' is already declared in this scope", symbol.Name())
+		err.Notes = []Error{
+			NewError(prev.Ident(), "previous declaration was here"),
+		}
+		return err
 	}
 
 	m.symbols = append(m.symbols, symbol)
@@ -107,46 +130,47 @@ func (m *Module) IsCompleted() bool {
 	return m.completed
 }
 
-func (m *Module) Visit(node ast.Node) ast.Visitor {
+func (m *Module) visit(node ast.Node) (ast.Visitor, error) {
 	if _, isEmpty := node.(*ast.Empty); isEmpty {
-		return nil
+		return nil, nil
 	}
 
 	decl, isDecl := node.(ast.Decl)
 
 	if !isDecl {
 		// NOTE parser should prevent this in future
-		panic(NewError(node, "expected declaration"))
+		return nil, NewError(node, "expected declaration")
 	}
 
 	switch d := decl.(type) {
 	case *ast.ModuleDecl:
-		panic("todo")
+		panic("not implemented")
 
 	case *ast.GenericDecl:
 		switch d.Kind {
 		case ast.VarDecl:
 			for _, name := range d.Field.Names {
-				sym := NewVar(0, name, d, m)
+				variable := NewVar(m, nil, d, name)
 
-				if definedSym := m.Define(sym); definedSym != nil {
-					panic(NewErrorf(d.Ident(), "variable `%s` is already defined", d.Ident().Name))
+				if err := m.Define(variable); err != nil {
+					return nil, err
 				}
 
 				fmt.Printf(">>> def var `%s`\n", name.Name)
 			}
 
 		case ast.ValDecl:
-			panic(NewError(d, "`val` declarations are supported for now"))
+			return nil, NewError(d, "`val` declarations are not supported for now")
 
 		case ast.ConstDecl:
 			for _, name := range d.Field.Names {
-				sym := NewConst(0, name, d, m)
+				sym, err := NewConst(m, d, name)
+				if err != nil {
+					return nil, err
+				}
 
-				if definedSym := m.Define(sym); definedSym != nil {
-					err := NewErrorf(name, "constant `%s` is already defined", name)
-					err.Notes = append(err.Notes, NewError(definedSym.Ident(), "previous name was defined here"))
-					panic(err)
+				if err := m.Define(sym); err != nil {
+					return nil, err
 				}
 
 				fmt.Printf(">>> def const `%s`\n", name.Name)
@@ -157,19 +181,19 @@ func (m *Module) Visit(node ast.Node) ast.Visitor {
 		}
 
 	case *ast.FuncDecl:
-		sym := NewFunc(0, d, m)
+		sym := NewFunc(m, nil, d)
 
-		if definedSym := m.Define(sym); definedSym != nil {
-			panic(NewErrorf(d.Ident(), "function `%s` is already defined", d.Ident().Name))
+		if err := m.Define(sym); err != nil {
+			return nil, err
 		}
 
 		fmt.Printf(">>> def func `%s`\n", d.Name.Name)
 
 	case *ast.TypeAliasDecl:
-		sym := NewTypeAlias(0, nil, d, m)
+		sym := NewTypeAlias(m, nil, d)
 
-		if definedSym := m.Define(sym); definedSym != nil {
-			panic(NewErrorf(d.Ident(), "name `%s` is already bound", d.Ident().Name))
+		if err := m.Define(sym); err != nil {
+			return nil, err
 		}
 
 		fmt.Printf(">>> def alias `%s`\n", sym.Name())
@@ -178,7 +202,7 @@ func (m *Module) Visit(node ast.Node) ast.Visitor {
 		panic(fmt.Sprintf("unhandled declaration kind (%T)", decl))
 	}
 
-	return nil
+	return nil, nil
 }
 
 type deferred struct {
@@ -233,42 +257,42 @@ func (m *Module) resolveDeferred(sym Symbol) *deferred {
 	return nil
 }
 
-func (m *Module) resolveSymbolType(sym Symbol) {
-	if sym.Type() != nil {
+func (m *Module) resolveSymbolType(symbol Symbol) {
+	if symbol.Type() != nil {
 		return
 	}
 
-	switch node := sym.Node().(type) {
-	case *ast.GenericDecl:
-		resolveGenericDeclType(m, sym, node)
+	switch sym := symbol.(type) {
+	case *Const:
+		resolveGenericDeclType(m, sym, sym.node)
 
-	case *ast.TypeAliasDecl:
-		resolveTypeAliasDeclType(m, sym, node)
+	case *Var:
+		resolveGenericDeclType(m, sym, sym.node)
 
-	case *ast.FuncDecl:
-		// panic("not implemented")
+	case *TypeAlias:
+		resolveTypeAliasDeclType(m, symbol, sym.node)
 
-	case *ast.BuiltInCall:
+	case *BuiltIn:
 		// Nothing to do.
 
 	default:
-		if sym.Node() == nil {
-			log.Hint("symbol `%s` doesn't have a node to resolve their type, skipped", sym.Name())
+		if symbol.Node() == nil {
+			log.Hint("symbol `%s` doesn't have a node to resolve their type, skipped", symbol.Name())
 			return
 		}
 
-		panic("todo")
+		panic("not implemented")
 	}
 }
 
-func resolveGenericDeclType(m *Module, sym Symbol, node *ast.GenericDecl) {
+func resolveGenericDeclType(m *Module, sym Symbol, node *ast.GenericDecl) error {
 	explicitType, valueType := types.Type(nil), types.Type(nil)
 	nilType := (*nilTypeError)(nil)
 
 	if node.Field.Type != nil {
 		type_, err := TypeOf(m, node.Field.Type)
 		if err != nil {
-			panic(err)
+			return err
 		}
 
 		explicitType = types.UnwrapTypeDesc(type_)
@@ -280,7 +304,7 @@ func resolveGenericDeclType(m *Module, sym Symbol, node *ast.GenericDecl) {
 		if nilTypeErr, ok := err.(*nilTypeError); ok {
 			nilType = nilTypeErr
 		} else if err != nil {
-			panic(err)
+			return err
 		}
 
 		valueType = type_
@@ -293,22 +317,24 @@ func resolveGenericDeclType(m *Module, sym Symbol, node *ast.GenericDecl) {
 			if notes := m.genRecursiveDeclNotes(*deferred); notes != nil {
 				err := NewError(node.Ident(), "recursive symbol definition")
 				err.Notes = notes
-				panic(err)
+				return err
 			}
 
 			m.resolveSymbolType(deferred.required)
 			valueType = deferred.required.Type()
-		} else {
+		} else if nilType != nil {
 			fmt.Printf(">>> defer `%s` for `%s`\n", sym.Name(), nilType.sym.Name())
 			m.deferred = append(m.deferred, newDeferredSym(sym, nilType.sym, nilType.use))
 
 			// symbol was deferred
-			return
+			return nil
+		} else {
+			panic("todo")
 		}
 	}
 
 	if valueType == nil {
-		panic(NewErrorf(node, "cannot infer type of the symbol"))
+		return NewErrorf(node, "cannot infer type of the symbol")
 	}
 
 	if node.Kind != ast.ConstDecl {
@@ -316,71 +342,40 @@ func resolveGenericDeclType(m *Module, sym Symbol, node *ast.GenericDecl) {
 	}
 
 	if explicitType != nil && !types.IsUnknown(explicitType) && !explicitType.Equals(valueType) {
-		panic(NewErrorf(
+		return NewErrorf(
 			node.Ident(),
 			"invalid type for `%s`, expected %s, got %s",
 			sym.Name(),
 			explicitType.String(),
 			valueType.String(),
-		))
+		)
 	}
 
 	sym.setType(valueType)
 	fmt.Printf(">>> set `%s` type `%s`\n", sym.Name(), valueType.String())
+	return nil
 }
 
-func resolveTypeAliasDeclType(m *Module, sym Symbol, node *ast.TypeAliasDecl) {
-	type_, err := TypeOf(m, node.Expr)
+func resolveTypeAliasDeclType(m *Module, sym Symbol, node *ast.TypeAliasDecl) error {
+	t, err := TypeOf(m, node.Expr)
 
 	if nilTypeErr, ok := err.(*nilTypeError); ok {
 		fmt.Printf(">>> defer `%s` for `%s`\n", sym.Name(), nilTypeErr.sym.Name())
 		m.deferred = append(m.deferred, newDeferredSym(sym, nilTypeErr.sym, nilTypeErr.use))
-		return
+		return nil
 	} else if err != nil {
-		panic(err)
+		return err
 	}
 
-	if !types.IsTypeDesc(type_) {
-		panic(NewErrorf(
+	if !types.IsTypeDesc(t) {
+		return NewErrorf(
 			node.Expr,
 			"expected type descriptor for type alias, but expression is of type '%s'",
-			type_.String(),
-		))
+			t.String(),
+		)
 	}
 
-	sym.setType(type_)
-	fmt.Printf(">>> set `%s` type `%s`\n", sym.Name(), type_)
-}
-
-func appendBuiltins(m *Module) {
-	builtins := []*BuiltIn{
-		{
-			base: base{
-				name: &ast.Ident{Name: "@magic"},
-			},
-			params: []BuiltInParam{
-				{
-					name:  &ast.Ident{Name: "name"},
-					type_: types.UntypedString{},
-				},
-			},
-			fn: builtinMagic,
-		},
-		{
-			base: base{
-				name: &ast.Ident{Name: "@type_of"},
-			},
-			params: []BuiltInParam{
-				{
-					name:  &ast.Ident{Name: "expr"},
-					type_: types.Any{},
-				},
-			},
-			fn: builtinTypeOf,
-		},
-	}
-
-	for _, builtin := range builtins {
-		m.Define(builtin)
-	}
+	sym.setType(t)
+	fmt.Printf(">>> set `%s` type `%s`\n", sym.Name(), t)
+	return nil
 }
