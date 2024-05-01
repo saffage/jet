@@ -46,7 +46,7 @@ func (p *Parser) parseBuiltIn() ast.Node {
 
 		switch p.tok.Kind {
 		case token.LParen:
-			x = p.parseParenList(p.parseExpr)
+			x = p.parseParenList(p.parseExpr, token.Comma)
 
 		case token.LCurly:
 			x = p.parseBlock()
@@ -1090,8 +1090,8 @@ func (p *Parser) parseClosingExprList(
 				continue
 			}
 
-			// [parseFunc] jet the correct node, but no separator was found.
-			// Report it and assign [ast.BadNode].
+			// [parseFunc] set the correct node, but no separator was found.
+			// Report it and assign [ast.BadNode] instead.
 			p.error("unterminated expression", node.Pos(), node.PosEnd())
 		}
 
