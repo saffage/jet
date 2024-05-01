@@ -20,13 +20,14 @@ func main() {
 }
 
 func catchInternalErrors() {
-	if err := recover(); err != nil {
-		if err, ok := err.(error); ok {
+	if panicErr := recover(); panicErr != nil {
+		if err, ok := panicErr.(error); ok {
 			log.InternalError(err.Error())
+		} else {
+			log.InternalError("%v", panicErr)
 		}
-		log.InternalError("%v", err)
 
 		// for stack trace
-		panic(err)
+		panic(panicErr)
 	}
 }
