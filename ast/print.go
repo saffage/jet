@@ -2,6 +2,7 @@ package ast
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -23,7 +24,8 @@ func (n *Literal) String() string {
 		return n.Value
 
 	case StringLiteral:
-		return "\"" + n.Value + "\""
+		// TODO replace [strconv.Quote].
+		return strconv.Quote(n.Value)
 
 	default:
 		panic("unreachable")
