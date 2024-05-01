@@ -31,14 +31,12 @@ func WalkTopDown(visit Visitor, tree Node) error {
 		panic("can't walk a nil node")
 	}
 
-	visit, err := visit(tree)
-	if err != nil {
+	if v, err := visit(tree); err != nil {
 		return err
-	}
-
-	if visit == nil {
-		// Should we `visit(nil)`?
+	} else if v == nil {
 		return nil
+	} else {
+		visit = v
 	}
 
 	switch n := tree.(type) {
@@ -48,168 +46,290 @@ func WalkTopDown(visit Visitor, tree Node) error {
 	case *Field:
 		for _, name := range n.Names {
 			assert.Ok(name != nil)
-			WalkTopDown(visit, name)
+
+			if err := WalkTopDown(visit, name); err != nil {
+				return err
+			}
 		}
 
 		if n.Type != nil {
-			WalkTopDown(visit, n.Type)
+			if err := WalkTopDown(visit, n.Type); err != nil {
+				return err
+			}
 		}
 
 		if n.Value != nil {
-			WalkTopDown(visit, n.Value)
+			if err := WalkTopDown(visit, n.Value); err != nil {
+				return err
+			}
 		}
 
 	case *Signature:
-		walkList(visit, n.Params.List)
+		assert.Ok(n.Params != nil)
+
+		if err := walkList(visit, n.Params.List); err != nil {
+			return err
+		}
 
 		if n.Result != nil {
-			WalkTopDown(visit, n.Result)
+			if err := WalkTopDown(visit, n.Result); err != nil {
+				return err
+			}
 		}
 
 	case *Call:
 		assert.Ok(n.X != nil)
-		WalkTopDown(visit, n.X)
-		walkList(visit, n.Args.List)
+		assert.Ok(n.Args != nil)
+
+		if err := WalkTopDown(visit, n.X); err != nil {
+			return err
+		}
+
+		if err := walkList(visit, n.Args.List); err != nil {
+			return err
+		}
 
 	case *Index:
 		assert.Ok(n.X != nil)
-		WalkTopDown(visit, n.X)
+		assert.Ok(n.Args != nil)
+
+		if err := WalkTopDown(visit, n.X); err != nil {
+			return err
+		}
+
+		if err := walkList(visit, n.Args.List); err != nil {
+			return err
+		}
 
 	case *ArrayType:
 		assert.Ok(n.X != nil)
-		WalkTopDown(visit, n.X)
-		walkList(visit, n.Args.List)
+		assert.Ok(n.Args != nil)
+
+		if err := WalkTopDown(visit, n.X); err != nil {
+			return err
+		}
+
+		if err := walkList(visit, n.Args.List); err != nil {
+			return err
+		}
 
 	case *MemberAccess:
 		assert.Ok(n.X != nil)
-		WalkTopDown(visit, n.X)
-
 		assert.Ok(n.Selector != nil)
-		WalkTopDown(visit, n.Selector)
+
+		if err := WalkTopDown(visit, n.X); err != nil {
+			return err
+		}
+
+		if err := WalkTopDown(visit, n.Selector); err != nil {
+			return err
+		}
 
 	case *PrefixOp:
 		assert.Ok(n.X != nil)
-		WalkTopDown(visit, n.X)
+
+		if err := WalkTopDown(visit, n.X); err != nil {
+			return err
+		}
 
 	case *InfixOp:
 		assert.Ok(n.X != nil)
 		assert.Ok(n.Y != nil)
-		WalkTopDown(visit, n.X)
-		WalkTopDown(visit, n.Y)
+
+		if err := WalkTopDown(visit, n.X); err != nil {
+			return err
+		}
+
+		if err := WalkTopDown(visit, n.Y); err != nil {
+			return err
+		}
 
 	case *PostfixOp:
 		assert.Ok(n.X != nil)
-		WalkTopDown(visit, n.X)
+
+		if err := WalkTopDown(visit, n.X); err != nil {
+			return err
+		}
 
 	case *List:
-		walkList(visit, n)
+		if err := walkList(visit, n); err != nil {
+			return err
+		}
 
 	case *ParenList:
-		walkList(visit, n.List)
+		if err := walkList(visit, n.List); err != nil {
+			return err
+		}
 
 	case *CurlyList:
-		walkList(visit, n.List)
+		if err := walkList(visit, n.List); err != nil {
+			return err
+		}
 
 	case *BracketList:
-		walkList(visit, n.List)
+		if err := walkList(visit, n.List); err != nil {
+			return err
+		}
 
 	case *AttributeList:
 		assert.Ok(n.List != nil)
-		walkList(visit, n.List.List)
+
+		if err := walkList(visit, n.List.List); err != nil {
+			return err
+		}
 
 	case *BuiltInCall:
 		assert.Ok(n.Name != nil)
-		WalkTopDown(visit, n.Name)
-		WalkTopDown(visit, n.X)
+		assert.Ok(n.X != nil)
 
-	case *ModuleDecl:
-		if n.Attrs != nil {
-			WalkTopDown(visit, n.Attrs)
+		if err := WalkTopDown(visit, n.Name); err != nil {
+			return err
 		}
 
+		if err := WalkTopDown(visit, n.X); err != nil {
+			return err
+		}
+
+	case *ModuleDecl:
 		assert.Ok(n.Name != nil)
-		WalkTopDown(visit, n.Name)
+		assert.Ok(n.Body != nil)
+
+		if n.Attrs != nil {
+			if err := WalkTopDown(visit, n.Attrs); err != nil {
+				return err
+			}
+		}
+
+		if err := WalkTopDown(visit, n.Name); err != nil {
+			return err
+		}
 
 		switch b := n.Body.(type) {
 		case *List:
-			walkList(visit, b)
+			if err := walkList(visit, b); err != nil {
+				return err
+			}
 
 		case *CurlyList:
-			walkList(visit, b.List)
+			if err := walkList(visit, b.List); err != nil {
+				return err
+			}
 
 		default:
 			return fmt.Errorf("unexpected node type '%T' for module body", n.Body)
 		}
 
 	case *GenericDecl:
+		assert.Ok(n.Field != nil)
+
 		if n.Attrs != nil {
-			WalkTopDown(visit, n.Attrs)
+			if err := WalkTopDown(visit, n.Attrs); err != nil {
+				return err
+			}
 		}
 
-		assert.Ok(n.Field != nil)
-		WalkTopDown(visit, n.Field)
+		if err := WalkTopDown(visit, n.Field); err != nil {
+			return err
+		}
 
 	case *FuncDecl:
+		assert.Ok(n.Name != nil)
+		assert.Ok(n.Signature != nil)
+
 		if n.Attrs != nil {
-			WalkTopDown(visit, n.Attrs)
+			if err := WalkTopDown(visit, n.Attrs); err != nil {
+				return err
+			}
 		}
 
-		assert.Ok(n.Name != nil)
-		WalkTopDown(visit, n.Name)
+		if err := WalkTopDown(visit, n.Name); err != nil {
+			return err
+		}
 
-		assert.Ok(n.Signature != nil)
-		WalkTopDown(visit, n.Signature)
+		if err := WalkTopDown(visit, n.Signature); err != nil {
+			return err
+		}
 
 		if n.Body != nil {
-			WalkTopDown(visit, n.Body)
+			if err := WalkTopDown(visit, n.Body); err != nil {
+				return err
+			}
 		}
 
 	case *TypeAliasDecl:
+		assert.Ok(n.Name != nil)
+		assert.Ok(n.Expr != nil)
+
 		if n.Attrs != nil {
-			WalkTopDown(visit, n.Attrs)
+			if err := WalkTopDown(visit, n.Attrs); err != nil {
+				return err
+			}
 		}
 
-		assert.Ok(n.Name != nil)
-		WalkTopDown(visit, n.Name)
+		if err := WalkTopDown(visit, n.Name); err != nil {
+			return err
+		}
 
-		assert.Ok(n.Expr != nil)
-		WalkTopDown(visit, n.Expr)
+		if err := WalkTopDown(visit, n.Expr); err != nil {
+			return err
+		}
 
 	case *If:
 		assert.Ok(n.Cond != nil)
-		WalkTopDown(visit, n.Cond)
-
 		assert.Ok(n.Body != nil)
-		WalkTopDown(visit, n.Body)
+
+		if err := WalkTopDown(visit, n.Cond); err != nil {
+			return err
+		}
+
+		if err := WalkTopDown(visit, n.Body); err != nil {
+			return err
+		}
 
 		if n.Else != nil {
-			WalkTopDown(visit, n.Else)
+			if err := WalkTopDown(visit, n.Else); err != nil {
+				return err
+			}
 		}
 
 	case *Else:
 		assert.Ok(n.Body != nil)
-		WalkTopDown(visit, n.Body)
+
+		if err := WalkTopDown(visit, n.Body); err != nil {
+			return err
+		}
 
 	case *While:
 		assert.Ok(n.Cond != nil)
-		WalkTopDown(visit, n.Cond)
-
 		assert.Ok(n.Body != nil)
-		WalkTopDown(visit, n.Body)
+
+		if err := WalkTopDown(visit, n.Cond); err != nil {
+			return err
+		}
+
+		if err := WalkTopDown(visit, n.Body); err != nil {
+			return err
+		}
 
 	case *Return:
 		if n.X != nil {
-			WalkTopDown(visit, n.X)
+			if err := WalkTopDown(visit, n.X); err != nil {
+				return err
+			}
 		}
 
 	case *Break:
 		if n.Label != nil {
-			WalkTopDown(visit, n.Label)
+			if err := WalkTopDown(visit, n.Label); err != nil {
+				return err
+			}
 		}
 
 	case *Continue:
 		if n.Label != nil {
-			WalkTopDown(visit, n.Label)
+			if err := WalkTopDown(visit, n.Label); err != nil {
+				return err
+			}
 		}
 
 	default:
@@ -217,14 +337,18 @@ func WalkTopDown(visit Visitor, tree Node) error {
 		panic(fmt.Sprintf("unknown node type '%T'", n))
 	}
 
-	visit(nil)
-	return nil
+	_, err := visit(nil)
+	return err
 }
 
-func walkList(visit Visitor, list *List) {
+func walkList(visit Visitor, list *List) error {
 	if list != nil {
 		for _, node := range list.Nodes {
-			WalkTopDown(visit, node)
+			if err := WalkTopDown(visit, node); err != nil {
+				return err
+			}
 		}
 	}
+
+	return nil
 }
