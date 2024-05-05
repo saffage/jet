@@ -3,19 +3,21 @@ package types
 import "fmt"
 
 type Array struct {
-	size uint
+	size int
 	elem Type
 }
 
-func NewArray(size uint, t Type) *Array {
+func NewArray(size int, t Type) *Array {
+	if size < -1 {
+		panic(fmt.Sprintf("invalid array size (%d)", size))
+	}
+
 	return &Array{size, t}
 }
 
 func (t *Array) Equals(other Type) bool {
-	other = other.Underlying()
-
-	if otherArray, ok := other.(*Array); ok {
-		return t.size == otherArray.size && t.elem.Equals(otherArray.elem)
+	if otherArray, ok := other.Underlying().(*Array); ok {
+		return (t.size == -1 || t.size == otherArray.size) && t.elem.Equals(otherArray.elem)
 	}
 
 	return false
@@ -23,8 +25,26 @@ func (t *Array) Equals(other Type) bool {
 
 func (t *Array) Underlying() Type { return t }
 
-func (t *Array) String() string { return fmt.Sprintf("[%d]%s", t.size, t.elem) }
+func (t *Array) String() string {
+	if t.size == -1 {
+		return "[_]" + t.elem.String()
+	}
 
-func (t *Array) Size() uint { return t.size }
+	return fmt.Sprintf("[%d]%s", t.size, t.elem)
+}
+
+func (t *Array) Size() int { return t.size }
 
 func (t *Array) ElemType() Type { return t.elem }
+
+func IsArray(t Type) bool { return AsRef(t) != nil }
+
+func AsArray(t Type) *Array {
+	if t != nil {
+		if array, _ := t.Underlying().(*Array); array != nil {
+			return array
+		}
+	}
+
+	return nil
+}

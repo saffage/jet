@@ -12,6 +12,9 @@ import (
 // Return type is never nil, if no error.
 func (scope *Scope) TypeOf(expr ast.Node) (types.Type, error) {
 	switch node := expr.(type) {
+	case nil:
+		panic("got nil not for expr")
+
 	case *ast.BadNode:
 		panic("ill-formed AST")
 
@@ -52,17 +55,26 @@ func (scope *Scope) TypeOf(expr ast.Node) (types.Type, error) {
 			return nil, NewError(node.Args, "expected 1 argument")
 		}
 
-		size := uint(0)
+		size := -1
 
 		switch arg := node.Args.Exprs[0].(type) {
 		case *ast.Literal:
 			// TODO use [constant.Int].
-			n, err := strconv.ParseUint(arg.Value, 0, 32)
+			n, err := strconv.ParseInt(arg.Value, 0, 32)
 			if err != nil {
 				panic(err)
 			}
 
-			size = uint(n)
+			if n < 0 {
+				return nil, NewError(arg, "size must be greater or equals to 0")
+			}
+
+			size = int(n)
+
+		case *ast.Ident:
+			if arg.Name != "_" {
+				return nil, NewError(arg, "expected integer literal for array size")
+			}
 
 		default:
 			return nil, NewError(arg, "expected integer literal for array size")
@@ -82,7 +94,7 @@ func (scope *Scope) TypeOf(expr ast.Node) (types.Type, error) {
 			return nil, err
 		}
 
-		if !types.IsTypeDesc(elemType.Underlying()) {
+		if !types.IsTypeDesc(elemType) {
 			return nil, NewErrorf(node.X, "expected type, got '%s'", elemType)
 		}
 
@@ -105,7 +117,7 @@ func (scope *Scope) TypeOf(expr ast.Node) (types.Type, error) {
 				return nil, err
 			}
 
-			if types.IsTypeDesc(t.Underlying()) {
+			if types.IsTypeDesc(t) {
 				isTypeDescTuple = true
 				elemTypes = append(elemTypes, types.SkipTypeDesc(t))
 			} else {
@@ -120,13 +132,13 @@ func (scope *Scope) TypeOf(expr ast.Node) (types.Type, error) {
 			}
 
 			if isTypeDescTuple {
-				if !types.IsTypeDesc(t.Underlying()) {
+				if !types.IsTypeDesc(t) {
 					return nil, NewErrorf(expr, "expected type, got '%s' instead", t)
 				}
 
 				elemTypes = append(elemTypes, types.SkipTypeDesc(t))
 			} else {
-				if types.IsTypeDesc(t.Underlying()) {
+				if types.IsTypeDesc(t) {
 					return nil, NewErrorf(expr, "expected expression, got type '%s' instead", t)
 				}
 
@@ -167,20 +179,20 @@ func (scope *Scope) TypeOf(expr ast.Node) (types.Type, error) {
 		}
 
 		size := len(node.Exprs)
-		return types.NewArray(uint(size), elemType), nil
+		return types.NewArray(size, elemType), nil
 
 	case *ast.PrefixOp:
+		x_type, err := scope.TypeOf(node.X)
+		if err != nil {
+			return nil, err
+		}
+
 		switch node.Opr.Kind {
 		case ast.OperatorNeg:
-			type_, err := scope.TypeOf(node.X)
-			if err != nil {
-				return nil, err
-			}
-
-			if p, ok := type_.Underlying().(*types.Primitive); ok {
+			if p, ok := x_type.Underlying().(*types.Primitive); ok {
 				switch p.Kind() {
 				case types.UntypedInt, types.UntypedFloat, types.I32:
-					return type_, nil
+					return x_type, nil
 				}
 			}
 
@@ -188,19 +200,14 @@ func (scope *Scope) TypeOf(expr ast.Node) (types.Type, error) {
 				node.Opr,
 				"operator '%s' is not defined for the type '%s'",
 				node.Opr.Kind.String(),
-				type_.String(),
+				x_type.String(),
 			)
 
 		case ast.OperatorNot:
-			type_, err := scope.TypeOf(node.X)
-			if err != nil {
-				return nil, err
-			}
-
-			if p, ok := type_.Underlying().(*types.Primitive); ok {
+			if p, ok := x_type.Underlying().(*types.Primitive); ok {
 				switch p.Kind() {
 				case types.UntypedBool, types.Bool:
-					return type_, nil
+					return x_type, nil
 				}
 			}
 
@@ -208,10 +215,21 @@ func (scope *Scope) TypeOf(expr ast.Node) (types.Type, error) {
 				node.X,
 				"operator '%s' is not defined for the type '%s'",
 				node.Opr.Kind.String(),
-				type_.String(),
+				x_type.String(),
 			)
 
-		case ast.OperatorAddr, ast.OperatorMutAddr:
+		case ast.OperatorAddr:
+			// Can be typedesc.
+
+			if types.IsTypeDesc(x_type) {
+				t := types.NewRef(types.SkipTypeDesc(x_type))
+				return types.NewTypeDesc(t), nil
+			}
+
+			// TODO check if the operand has addressable location.
+			return types.NewRef(types.SkipUntyped(x_type)), nil
+
+		case ast.OperatorMutAddr:
 			panic("not implemented")
 
 		default:
@@ -250,13 +268,11 @@ func (scope *Scope) TypeOf(expr ast.Node) (types.Type, error) {
 				case types.Bool, types.I32:
 					return types.Primitives[types.Bool], nil
 				}
-
-			case ast.OperatorAssign:
-				// Assign expression has the same type with the left operand.
-				// return x_type, nil
-
-				return types.Unit, nil
 			}
+		}
+
+		if node.Opr.Kind == ast.OperatorAssign {
+			return types.Unit, nil
 		}
 
 		return nil, NewErrorf(
@@ -265,6 +281,25 @@ func (scope *Scope) TypeOf(expr ast.Node) (types.Type, error) {
 			node.Opr.Kind.String(),
 			x_type.String(),
 		)
+
+	case *ast.PostfixOp:
+		x_type, err := scope.TypeOf(node.X)
+		if err != nil {
+			return nil, err
+		}
+
+		switch node.Opr.Kind {
+		case ast.OperatorUnwrap:
+			if ref := types.AsRef(x_type); ref != nil {
+				return ref.Base(), nil
+			}
+
+		case ast.OperatorTry:
+			panic("not inplemented")
+
+		default:
+			panic("unreachable")
+		}
 
 	case *ast.Call:
 		t, err := scope.TypeOf(node.X)
@@ -300,11 +335,6 @@ func (scope *Scope) TypeOf(expr ast.Node) (types.Type, error) {
 			return nil, err
 		}
 
-		arr, ok := t.Underlying().(*types.Array)
-		if !ok {
-			return nil, NewError(node.X, "expression is not an array")
-		}
-
 		if len(node.Args.Exprs) != 1 {
 			return nil, NewErrorf(node.Args.ExprList, "expected 1 argument")
 		}
@@ -314,11 +344,39 @@ func (scope *Scope) TypeOf(expr ast.Node) (types.Type, error) {
 			return nil, err
 		}
 
-		if !types.Primitives[types.I32].Equals(i) {
-			return nil, NewErrorf(node.Args.Exprs[0], "expected type 'i32' for index, got '%s' instead", i)
-		}
+		if array := types.AsArray(t); array != nil {
+			if !types.Primitives[types.I32].Equals(i) {
+				return nil, NewErrorf(node.Args.Exprs[0], "expected type 'i32' for index, got '%s' instead", i)
+			}
 
-		return arr.ElemType(), nil
+			return array.ElemType(), nil
+		} else if tuple := types.AsTuple(t); tuple != nil {
+			// if !types.Primitives[types.UntypedInt].Equals(i) {
+			// 	return nil, NewErrorf(node.Args.Exprs[0], "expected type 'i32' for index, got '%s' instead", i)
+			// }
+
+			index := uint64(0)
+
+			// TODO use [constant.Int]
+			if lit, _ := node.Args.Exprs[0].(*ast.Literal); lit != nil && lit.Kind == ast.IntLiteral {
+				n, err := strconv.ParseInt(lit.Value, 0, 64)
+				if err != nil {
+					panic(err)
+				}
+
+				if n < 0 || n > int64(tuple.Len())-1 {
+					return nil, NewErrorf(node.Args.Exprs[0], "index must be in range 0..%d", tuple.Len()-1)
+				}
+
+				index = uint64(n)
+			} else {
+				return nil, NewError(node.Args.Exprs[0], "expected integer literal")
+			}
+
+			return tuple.Types()[index], nil
+		} else {
+			return nil, NewError(node.X, "expression is not an array or tuple")
+		}
 
 	case *ast.BuiltInCall:
 		var builtIn *BuiltIn
@@ -434,8 +492,32 @@ func (scope *Scope) TypeOf(expr ast.Node) (types.Type, error) {
 	case *ast.While:
 		return nil, typeCheckWhile(node, scope)
 
+	case *ast.Signature:
+		params, err := scope.TypeOf(node.Params)
+		if err != nil {
+			return nil, err
+		}
+
+		result := types.Unit
+
+		if node.Result != nil {
+			tResult, err := scope.TypeOf(node.Result)
+			if err != nil {
+				return nil, err
+			}
+
+			if !types.IsTypeDesc(tResult) {
+				return nil, NewErrorf(node.Result, "expected type, got '%s' instead", tResult)
+			}
+
+			result = types.WrapInTuple(types.SkipTypeDesc(tResult))
+		}
+
+		t := types.NewFunc(result, params.(*types.Tuple))
+		return types.NewTypeDesc(t), nil
+
 	default:
-		panic("not implemented")
+		panic(fmt.Sprintf("type checking of '%T' is not implemented", expr))
 	}
 
 	log.Warn("node of type '%T' was skipped while type checking", expr)

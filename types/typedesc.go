@@ -32,8 +32,8 @@ func (t *TypeDesc) String() string { return fmt.Sprintf("typedesc(%s)", t.base) 
 func (t *TypeDesc) Base() Type { return t.base }
 
 func IsTypeDesc(t Type) bool {
-	_, ok := t.(*TypeDesc)
-	return ok
+	typedesc, _ := t.Underlying().(*TypeDesc)
+	return typedesc != nil
 }
 
 func SkipTypeDesc(t Type) Type {

@@ -7,8 +7,8 @@ type Primitive struct {
 }
 
 func (p *Primitive) Equals(other Type) bool {
-	p2, ok := other.Underlying().(*Primitive)
-	return p.kind == Any || (ok && p.kind == p2.kind || p.kind == SkipUntyped(p2).(*Primitive).kind)
+	p2, _ := other.Underlying().(*Primitive)
+	return p.kind == Any || (p2 != nil && (p.kind == p2.kind || p.kind == SkipUntyped(p2).(*Primitive).kind))
 }
 
 func (p *Primitive) Underlying() Type { return p }
@@ -18,12 +18,12 @@ func (p *Primitive) String() string { return p.kind.String() }
 func (p *Primitive) Kind() PrimitiveKind { return p.kind }
 
 func IsPrimitive(t Type) bool {
-	_, ok := t.(*Primitive)
-	return ok
+	p, _ := t.(*Primitive)
+	return p != nil
 }
 
 func SkipUntyped(t Type) Type {
-	if p, ok := t.(*Primitive); ok {
+	if p, _ := t.(*Primitive); p != nil {
 		switch p.kind {
 		case UntypedBool:
 			return Primitives[Bool]
@@ -31,8 +31,8 @@ func SkipUntyped(t Type) Type {
 		case UntypedInt:
 			return Primitives[I32]
 
-		// case UntypedFloat, UntypedString:
-		// 	panic("not implemented")
+			// case UntypedFloat, UntypedString:
+			// 	panic("not implemented")
 		}
 	}
 
@@ -40,7 +40,7 @@ func SkipUntyped(t Type) Type {
 }
 
 func IsUntyped(t Type) bool {
-	if p, ok := t.(*Primitive); ok {
+	if p, _ := t.(*Primitive); p != nil {
 		switch p.kind {
 		case UntypedBool, UntypedInt, UntypedFloat, UntypedString:
 			return true

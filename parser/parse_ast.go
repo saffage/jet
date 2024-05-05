@@ -802,11 +802,18 @@ func (p *Parser) parseType() ast.Node {
 			Args: brackets,
 		}
 
+	case token.LParen:
+		if tuple := p.parseParenList(p.parseType); tuple != nil {
+			return tuple
+		}
+
+		return nil
+
 	case token.Ident:
 		return p.parseTypeName()
 
-	// case token.KwFunc:
-	// 	return p.parseSignature(p.expect(token.KwFunc))
+	case token.KwFunc:
+		return p.parseSignature(p.consume())
 
 	case token.At:
 		return p.parseBuiltIn()

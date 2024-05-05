@@ -43,8 +43,13 @@ func (t *Func) String() string {
 	buf.WriteString(t.params.String())
 
 	if !t.result.Equals(Unit) {
-		buf.WriteByte(' ')
-		buf.WriteString(t.result.Underlying().String())
+		if t.result.Len() == 1 {
+			buf.WriteByte(' ')
+			buf.WriteString(t.result.types[0].String())
+		} else {
+			buf.WriteByte(' ')
+			buf.WriteString(t.result.String())
+		}
 	}
 
 	return buf.String()
