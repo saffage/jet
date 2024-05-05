@@ -33,11 +33,18 @@ func (n *Literal) String() string {
 }
 
 func (n *Comment) String() string {
-	return n.Data
+	return "##" + n.Data
 }
 
 func (n *CommentGroup) String() string {
-	panic("todo")
+	buf := strings.Builder{}
+
+	for _, comment := range n.Comments {
+		buf.WriteString(comment.String())
+		buf.WriteByte('\n')
+	}
+
+	return buf.String()
 }
 
 func (n *ArrayType) String() string {
@@ -70,12 +77,12 @@ func (n *BuiltInCall) String() string {
 	buf.WriteByte('@')
 	buf.WriteString(n.Name.String())
 
-	if n.X != nil {
-		if _, ok := n.X.(*ParenList); !ok {
+	if n.Args != nil {
+		if _, ok := n.Args.(*ParenList); !ok {
 			buf.WriteByte(' ')
 		}
 
-		buf.WriteString(n.X.String())
+		buf.WriteString(n.Args.String())
 	}
 
 	return buf.String()
@@ -83,10 +90,6 @@ func (n *BuiltInCall) String() string {
 
 func (n *MemberAccess) String() string {
 	return n.X.String() + "." + n.Selector.String()
-}
-
-func (n *Star) String() string {
-	return "*"
 }
 
 func (n *Call) String() string {
@@ -97,7 +100,7 @@ func (n *Index) String() string {
 	return n.X.String() + n.Args.String()
 }
 
-func printList(nodes []Node, separator rune) string {
+func printList[T Node](nodes []T, separator rune) string {
 	buf := strings.Builder{}
 
 	for i, n := range nodes {
@@ -116,8 +119,12 @@ func (n *List) String() string {
 	return printList(n.Nodes, ';')
 }
 
+func (n *ExprList) String() string {
+	return printList(n.Exprs, ',')
+}
+
 func (n *ParenList) String() string {
-	return fmt.Sprintf("(%s)", printList(n.Nodes, ','))
+	return fmt.Sprintf("(%s)", printList(n.Exprs, ','))
 }
 
 func (n *CurlyList) String() string {
@@ -129,42 +136,30 @@ func (n *CurlyList) String() string {
 }
 
 func (n *BracketList) String() string {
-	return fmt.Sprintf("[%s]", printList(n.Nodes, ','))
+	return fmt.Sprintf("[%s]", printList(n.Exprs, ','))
 }
 
-func (n *Field) String() string {
-	buf := strings.Builder{}
-
-	for i, name := range n.Names {
-		if i > 0 {
-			buf.WriteString(", ")
-		}
-
-		buf.WriteString(name.String())
+func (n *BindingWithValue) String() string {
+	if n.Operator != nil {
+		return fmt.Sprintf("%s %s %s", n.Binding.String(), n.Operator.String(), n.Value.String())
 	}
+
+	return n.Binding.String()
+}
+
+func (n *Binding) String() string {
+	buf := strings.Builder{}
+	buf.WriteString(n.Name.String())
 
 	if n.Type != nil {
 		buf.WriteByte(' ')
 		buf.WriteString(n.Type.String())
 	}
 
-	if n.Value != nil {
-		buf.WriteString(" = ")
-		buf.WriteString(n.Value.String())
-	}
-
 	return buf.String()
 }
 
-func (n *PrefixOpr) String() string {
-	return n.Kind.String()
-}
-
-func (n *InfixOpr) String() string {
-	return n.Kind.String()
-}
-
-func (n *PostfixOpr) String() string {
+func (n *Operator) String() string {
 	return n.Kind.String()
 }
 
@@ -180,22 +175,64 @@ func (n *PostfixOp) String() string {
 	return n.X.String() + n.Opr.String()
 }
 
-// TODO append documentation to the declarations.
-
 func (n *ModuleDecl) String() string {
-	return fmt.Sprintf("%smodule %s %s", optionalAttributeList(n.Attrs), n.Name.String(), n.Body.String())
+	return fmt.Sprintf(
+		"%s%smodule %s %s",
+		optionalComment(n.CommentGroup),
+		optionalAttributeList(n.Attrs),
+		n.Name.String(),
+		n.Body.String(),
+	)
 }
 
-func (n *GenericDecl) String() string {
-	return fmt.Sprintf("%s%s %s", optionalAttributeList(n.Attrs), n.Kind.String(), n.Field.String())
+func (n *VarDecl) String() string {
+	if n.Value != nil {
+		return fmt.Sprintf(
+			"%s%svar %s = %s",
+			optionalComment(n.CommentGroup),
+			optionalAttributeList(n.Attrs),
+			n.Binding.String(),
+			n.Value.String(),
+		)
+	}
+
+	return fmt.Sprintf(
+		"%s%svar %s",
+		optionalComment(n.CommentGroup),
+		optionalAttributeList(n.Attrs),
+		n.Binding.String(),
+	)
 }
 
 func (n *FuncDecl) String() string {
-	return fmt.Sprintf("%sfunc %s%s %s", optionalAttributeList(n.Attrs), n.Name.String(), n.Signature.String(), n.Body.String())
+	if n.Body != nil {
+		return fmt.Sprintf(
+			"%s%sfunc %s%s %s",
+			optionalComment(n.CommentGroup),
+			optionalAttributeList(n.Attrs),
+			n.Name.String(),
+			n.Signature.String(),
+			n.Body.String(),
+		)
+	}
+
+	return fmt.Sprintf(
+		"%s%sfunc %s%s",
+		optionalComment(n.CommentGroup),
+		optionalAttributeList(n.Attrs),
+		n.Name.String(),
+		n.Signature.String(),
+	)
 }
 
 func (n *TypeAliasDecl) String() string {
-	return fmt.Sprintf("%salias %s = %s", optionalAttributeList(n.Attrs), n.Name.String(), n.Expr.String())
+	return fmt.Sprintf(
+		"%s%salias %s = %s",
+		optionalComment(n.CommentGroup),
+		optionalAttributeList(n.Attrs),
+		n.Name.String(),
+		n.Expr.String(),
+	)
 }
 
 func (n *If) String() string {
@@ -232,6 +269,14 @@ func (n *Continue) String() string {
 	}
 
 	return "continue"
+}
+
+func optionalComment(commentGroup *CommentGroup) string {
+	if commentGroup == nil {
+		return ""
+	}
+
+	return commentGroup.String()
 }
 
 func optionalAttributeList(attrs *AttributeList) string {

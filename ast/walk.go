@@ -40,25 +40,28 @@ func WalkTopDown(visit Visitor, tree Node) error {
 	}
 
 	switch n := tree.(type) {
-	case *BadNode, *Empty, *Ident, *Literal, *PrefixOpr, *InfixOpr, *PostfixOpr, *Star, *Comment, *CommentGroup:
+	case *BadNode, *Empty, *Ident, *Literal, *Operator, *Comment, *CommentGroup:
 		// Nothing to walk
 
-	case *Field:
-		for _, name := range n.Names {
-			assert.Ok(name != nil)
+	case *BindingWithValue:
+		assert.Ok(n.Binding.Name != nil)
+		assert.Ok(n.Binding.Type != nil || (n.Value != nil && n.Operator != nil))
 
-			if err := WalkTopDown(visit, name); err != nil {
-				return err
-			}
+		if err := WalkTopDown(visit, n.Binding.Name); err != nil {
+			return err
 		}
 
 		if n.Type != nil {
-			if err := WalkTopDown(visit, n.Type); err != nil {
+			if err := WalkTopDown(visit, n.Binding.Type); err != nil {
 				return err
 			}
 		}
 
 		if n.Value != nil {
+			if err := WalkTopDown(visit, n.Operator); err != nil {
+				return err
+			}
+
 			if err := WalkTopDown(visit, n.Value); err != nil {
 				return err
 			}
@@ -67,7 +70,7 @@ func WalkTopDown(visit Visitor, tree Node) error {
 	case *Signature:
 		assert.Ok(n.Params != nil)
 
-		if err := walkList(visit, n.Params.List); err != nil {
+		if err := walkExprList(visit, n.Params.ExprList); err != nil {
 			return err
 		}
 
@@ -85,7 +88,7 @@ func WalkTopDown(visit Visitor, tree Node) error {
 			return err
 		}
 
-		if err := walkList(visit, n.Args.List); err != nil {
+		if err := walkExprList(visit, n.Args.ExprList); err != nil {
 			return err
 		}
 
@@ -97,7 +100,7 @@ func WalkTopDown(visit Visitor, tree Node) error {
 			return err
 		}
 
-		if err := walkList(visit, n.Args.List); err != nil {
+		if err := walkExprList(visit, n.Args.ExprList); err != nil {
 			return err
 		}
 
@@ -109,7 +112,7 @@ func WalkTopDown(visit Visitor, tree Node) error {
 			return err
 		}
 
-		if err := walkList(visit, n.Args.List); err != nil {
+		if err := walkExprList(visit, n.Args.ExprList); err != nil {
 			return err
 		}
 
@@ -156,8 +159,18 @@ func WalkTopDown(visit Visitor, tree Node) error {
 			return err
 		}
 
+	case *ExprList:
+		if err := walkExprList(visit, n); err != nil {
+			return err
+		}
+
+	case *BracketList:
+		if err := walkExprList(visit, n.ExprList); err != nil {
+			return err
+		}
+
 	case *ParenList:
-		if err := walkList(visit, n.List); err != nil {
+		if err := walkExprList(visit, n.ExprList); err != nil {
 			return err
 		}
 
@@ -166,27 +179,22 @@ func WalkTopDown(visit Visitor, tree Node) error {
 			return err
 		}
 
-	case *BracketList:
-		if err := walkList(visit, n.List); err != nil {
-			return err
-		}
-
 	case *AttributeList:
 		assert.Ok(n.List != nil)
 
-		if err := walkList(visit, n.List.List); err != nil {
+		if err := walkExprList(visit, n.List.ExprList); err != nil {
 			return err
 		}
 
 	case *BuiltInCall:
 		assert.Ok(n.Name != nil)
-		assert.Ok(n.X != nil)
+		assert.Ok(n.Args != nil)
 
 		if err := WalkTopDown(visit, n.Name); err != nil {
 			return err
 		}
 
-		if err := WalkTopDown(visit, n.X); err != nil {
+		if err := WalkTopDown(visit, n.Args); err != nil {
 			return err
 		}
 
@@ -210,6 +218,11 @@ func WalkTopDown(visit Visitor, tree Node) error {
 				return err
 			}
 
+		case *ExprList:
+			if err := walkExprList(visit, b); err != nil {
+				return err
+			}
+
 		case *CurlyList:
 			if err := walkList(visit, b.List); err != nil {
 				return err
@@ -219,8 +232,9 @@ func WalkTopDown(visit Visitor, tree Node) error {
 			return fmt.Errorf("unexpected node type '%T' for module body", n.Body)
 		}
 
-	case *GenericDecl:
-		assert.Ok(n.Field != nil)
+	case *VarDecl:
+		assert.Ok(n.Binding.Name != nil)
+		assert.Ok(n.Binding.Type != nil || n.Value != nil)
 
 		if n.Attrs != nil {
 			if err := WalkTopDown(visit, n.Attrs); err != nil {
@@ -228,9 +242,34 @@ func WalkTopDown(visit Visitor, tree Node) error {
 			}
 		}
 
-		if err := WalkTopDown(visit, n.Field); err != nil {
+		if err := WalkTopDown(visit, n.Binding.Name); err != nil {
 			return err
 		}
+
+		if n.Binding.Type != nil {
+			if err := WalkTopDown(visit, n.Binding.Type); err != nil {
+				return err
+			}
+		}
+
+		if n.Value != nil {
+			if err := WalkTopDown(visit, n.Binding.Type); err != nil {
+				return err
+			}
+		}
+
+	// case *GenericDecl:
+	// 	assert.Ok(n.Field != nil)
+
+	// 	if n.Attrs != nil {
+	// 		if err := WalkTopDown(visit, n.Attrs); err != nil {
+	// 			return err
+	// 		}
+	// 	}
+
+	// 	if err := WalkTopDown(visit, n.Field); err != nil {
+	// 		return err
+	// 	}
 
 	case *FuncDecl:
 		assert.Ok(n.Name != nil)
@@ -344,6 +383,18 @@ func WalkTopDown(visit Visitor, tree Node) error {
 func walkList(visit Visitor, list *List) error {
 	if list != nil {
 		for _, node := range list.Nodes {
+			if err := WalkTopDown(visit, node); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func walkExprList(visit Visitor, list *ExprList) error {
+	if list != nil {
+		for _, node := range list.Exprs {
 			if err := WalkTopDown(visit, node); err != nil {
 				return err
 			}

@@ -7,7 +7,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/saffage/jet/ast"
-	"github.com/saffage/jet/checker/symbol"
+	"github.com/saffage/jet/checker"
 	"github.com/saffage/jet/config"
 	"github.com/saffage/jet/internal/log"
 	"github.com/saffage/jet/parser"
@@ -19,6 +19,7 @@ import (
 var (
 	WriteAstFileHandle *os.File
 	ParseAst           = false
+	TraceParser        = false
 )
 
 func reportError(cfg *config.Config, err error) {
@@ -37,11 +38,11 @@ func reportError(cfg *config.Config, err error) {
 			report.Note(cfg, "parser note: "+note, token.Loc{}, token.Loc{})
 		}
 
-	case symbol.Error:
+	case checker.Error:
 		start, end := token.Loc{}, token.Loc{}
 
 		if err.Node != nil {
-			start, end = err.Node.Pos(), err.Node.PosEnd()
+			start, end = err.Node.Pos(), err.Node.LocEnd()
 		}
 
 		report.Error(cfg, "checker error: "+err.Message, start, end)
@@ -50,7 +51,7 @@ func reportError(cfg *config.Config, err error) {
 			start, end = token.Loc{}, token.Loc{}
 
 			if note.Node != nil {
-				start, end = note.Node.Pos(), note.Node.PosEnd()
+				start, end = note.Node.Pos(), note.Node.LocEnd()
 			}
 
 			report.Note(cfg, "checker note: "+note.Message, start, end)
@@ -67,7 +68,7 @@ func process(
 	fileid config.FileID,
 	isRepl bool,
 ) {
-	toks, scanErrors := scanner.Scan(buffer, fileid, scanner.SkipWhitespace|scanner.SkipComments)
+	toks, scanErrors := scanner.Scan(buffer, fileid, scanner.SkipWhitespace)
 
 	if len(scanErrors) > 0 {
 		for _, err := range scanErrors {
@@ -77,7 +78,13 @@ func process(
 		return
 	}
 
-	nodeList, parseErrors := parser.Parse(cfg, toks, parser.DefaultFlags|parser.Trace)
+	parserFlags := parser.DefaultFlags
+
+	if TraceParser {
+		parserFlags |= parser.Trace
+	}
+
+	nodeList, parseErrors := parser.Parse(cfg, toks, parserFlags)
 
 	if len(parseErrors) > 0 {
 		for _, err := range parseErrors {
@@ -114,10 +121,10 @@ func process(
 	defer func() {
 		if err := recover(); err != nil {
 			switch e := err.(type) {
-			case symbol.Error:
+			case checker.Error:
 				reportError(cfg, e)
 
-			case []symbol.Error:
+			case []checker.Error:
 				for i := range e {
 					reportError(cfg, e[i])
 				}
@@ -131,15 +138,15 @@ func process(
 	if isRepl {
 		decl := &ast.FuncDecl{
 			Name: &ast.Ident{Name: "repl"},
-			Body: nodeList,
+			Body: &ast.CurlyList{List: nodeList},
 		}
-		symbol.NewFunc(nil, nil, decl)
+		checker.NewFunc(nil, nil, decl)
 	} else {
 		mod := &ast.ModuleDecl{
 			Name: &ast.Ident{Name: cfg.Files[config.MainFileID].Name},
 			Body: nodeList,
 		}
-		_, err := symbol.NewModule(mod, nil)
+		_, err := checker.NewModule(mod)
 		if err != nil {
 			reportError(cfg, err)
 		}

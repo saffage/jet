@@ -25,6 +25,12 @@ func ProcessArgs([]string) {
 		false,
 		"output program AST into the console and stops processing",
 	)
+	flag.BoolVar(
+		&TraceParser,
+		"traceParser",
+		false,
+		"prints the parser function calls in stdout",
+	)
 	flag.Parse()
 
 	if writeAst != nil && *writeAst != "" {

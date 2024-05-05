@@ -19,6 +19,26 @@ func (p *Parser) next() {
 
 	p.tok = p.tokens[p.current]
 
+	// if p.commentGroup != nil && p.tok.End.Line > p.commentGroup.LocEnd().Line+1 {
+	// 	p.commentGroup = nil
+	// }
+
+	if p.tok.Kind == token.Comment {
+		// 	if strings.HasPrefix(p.tok.Data, "##") {
+		// 		if p.commentGroup == nil {
+		// 			p.commentGroup = &ast.CommentGroup{}
+		// 		}
+
+		// 		p.commentGroup.Comments = append(p.commentGroup.Comments, &ast.Comment{
+		// 			Data:  p.tok.Data[2:],
+		// 			Start: p.tok.Start,
+		// 			End:   p.tok.End,
+		// 		})
+		// 	}
+
+		p.next()
+	}
+
 	if p.flags&SkipWhitespace != 0 && p.tok.Kind == token.Whitespace {
 		p.next()
 	}
@@ -55,7 +75,7 @@ func (p *Parser) expect(kinds ...token.Kind) *token.Token {
 		kindStrs = append(kindStrs, kind.UserString())
 	}
 
-	p.errorExpected(strings.Join(kindStrs, " or "), p.tok.Start, p.tok.End)
+	p.errorExpected(p.tok.Start, p.tok.End, strings.Join(kindStrs, " or "))
 	return nil
 }
 

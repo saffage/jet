@@ -1,12 +1,13 @@
 package parser
 
 import (
-	"fmt"
-
 	"github.com/saffage/jet/ast"
-	"github.com/saffage/jet/internal/assert"
 	"github.com/saffage/jet/token"
 )
+
+//------------------------------------------------
+// Primitives
+//------------------------------------------------
 
 func (p *Parser) parseIdent() *ast.Ident {
 	if p.flags&Trace != 0 {
@@ -26,42 +27,8 @@ func (p *Parser) parseIdent() *ast.Ident {
 }
 
 func (p *Parser) parseIdentNode() ast.Node {
-	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
-	}
-
-	return p.parseIdent()
-}
-
-func (p *Parser) parseBuiltIn() ast.Node {
-	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
-	}
-
-	if tok := p.expect(token.At); tok != nil {
-		name := p.parseIdent()
-		x := ast.Node(nil)
-
-		switch p.tok.Kind {
-		case token.LParen:
-			x = p.parseParenList(p.parseExpr, token.Comma)
-
-		case token.LCurly:
-			x = p.parseBlock()
-
-		default:
-			p.errorExpected("builtin function call requires argument list or block", p.tok.Start, p.tok.End)
-		}
-
-		if x != nil {
-			return &ast.BuiltInCall{
-				Name: name,
-				X:    x,
-				Loc:  tok.Start,
-			}
-		}
+	if ident := p.parseIdent(); ident != nil {
+		return ident
 	}
 
 	return nil
@@ -96,204 +63,126 @@ func (p *Parser) parseLiteral() ast.Node {
 	return nil
 }
 
-//
+//------------------------------------------------
+// Statements
+//------------------------------------------------
 
-func (p *Parser) parseMemberAccess(x ast.Node) ast.Node {
+func (p *Parser) parseStmt() ast.Node {
 	if p.flags&Trace != 0 {
 		p.trace()
 		defer p.untrace()
 	}
 
-	if x == nil {
-		panic("can't use nil node as left-hand side expression")
+	for p.tok.Kind == token.NewLine {
+		p.next()
 	}
 
-	if dot := p.consume(token.Dot); dot != nil {
-		y := ast.Node(nil)
+	attributes := p.parseAttributes()
 
-		if star := p.consume(token.Asterisk); star != nil {
-			// special case for `.*`
-			y = &ast.Star{Loc: star.Start}
+	for p.tok.Kind == token.NewLine {
+		p.next()
+	}
+
+	node := ast.Node(nil)
+
+	switch p.tok.Kind {
+	case token.Semicolon:
+		node = p.parseEmptyStmt()
+
+	case token.KwVar:
+		node = p.parseVarDecl()
+
+	// case token.KwVar, token.KwVal, token.KwConst:
+	// 	node = p.parseGenericDecl()
+
+	case token.KwWhile:
+		return p.parseWhile()
+
+	case token.KwFunc:
+		node = p.parseFuncDecl()
+
+	case token.KwModule:
+		node = p.parseModule()
+
+	case token.KwAlias:
+		node = p.parseAlias()
+
+	case token.KwReturn:
+		node = p.parseReturn()
+
+	case token.KwBreak, token.KwContinue:
+		node = p.parseBreakOrContinue()
+
+	default:
+		node = p.parseExpr()
+	}
+
+	if attributes != nil {
+		if decl, isDecl := node.(ast.Decl); isDecl {
+			setAttributes(decl, attributes)
 		} else {
-			y = p.parseIdent()
+			p.error(
+				attributes.Pos(),
+				attributes.LocEnd(),
+				"unexpected attribute list (only a declaration can have attributes)",
+			)
 		}
-
-		if y == nil {
-			return nil
-		}
-
-		x = p.parseMemberAccess(&ast.MemberAccess{
-			Loc:      dot.Start,
-			X:        x,
-			Selector: y,
-		})
 	}
 
-	return x
+	// if decl, isDecl := node.(ast.Decl); isDecl {
+	// 	setDoc(decl, p.commentGroup)
+	// }
+	// p.commentGroup = nil
+
+	return node
 }
 
-func (p *Parser) parseSuffixExpr(x ast.Node) ast.Node {
+func (p *Parser) parseEmptyStmt() ast.Node {
 	if p.flags&Trace != 0 {
 		p.trace()
 		defer p.untrace()
 	}
 
-	if x == nil {
-		x = p.parseOperand()
+	if p.tok.Kind == token.Semicolon {
+		p.next()
+		return &ast.Empty{Loc: p.tok.Start}
 	}
 
-	for {
-		switch p.tok.Kind {
-		case token.Dot:
-			x = p.parseMemberAccess(x)
-
-		case token.QuestionMark, token.Bang:
-			opr := p.consume()
-			postfixOpKind := ast.UnknownPostfix
-
-			switch opr.Kind {
-			case token.QuestionMark:
-				postfixOpKind = ast.PostfixTry
-
-			case token.Bang:
-				postfixOpKind = ast.PostfixUnwrap
-
-			default:
-				p.error(
-					fmt.Sprintf("%s can't be used as postfix operator", opr.Kind.UserString()),
-					opr.Start,
-					opr.End,
-				)
-			}
-
-			x = &ast.PostfixOp{
-				X: x,
-				Opr: &ast.PostfixOpr{
-					Start: opr.Start,
-					End:   opr.End,
-					Kind:  postfixOpKind,
-				},
-			}
-
-		case token.LBracket:
-			x = &ast.Index{
-				X:    x,
-				Args: p.parseBracketList(p.parseExpr, token.Comma),
-			}
-
-		case token.LParen:
-			x = &ast.Call{
-				X:    x,
-				Args: p.parseParenList(p.parseExpr, token.Comma),
-			}
-
-		default:
-			return x
-		}
-	}
+	return nil
 }
 
-//
+//------------------------------------------------
+// Expressions
+//------------------------------------------------
 
-func (p *Parser) parseOperand() ast.Node {
+func (p *Parser) parseExpr() ast.Node {
 	if p.flags&Trace != 0 {
 		p.trace()
 		defer p.untrace()
 	}
 
 	switch p.tok.Kind {
-	case token.Ident:
-		return p.parseIdentNode()
+	case token.KwIf:
+		return p.parseIf()
 
-	case token.At:
-		return p.parseBuiltIn()
+	case token.LCurly:
+		return p.parseBlock()
 
-	case token.Int, token.Float, token.String:
-		return p.parseLiteral()
-
-	case token.LParen:
-		return p.parseParenList(p.parseExpr, token.Comma)
+	case token.LBracket:
+		return p.parseBracketExpr()
 
 	default:
-		p.errorExpected("operand", p.tok.Start, p.tok.End)
-		return nil
+		return p.parseSimpleExpr()
 	}
 }
 
-func (p *Parser) parsePrimaryExpr(x ast.Node) ast.Node {
+func (p *Parser) parseSimpleExpr() ast.Node {
 	if p.flags&Trace != 0 {
 		p.trace()
 		defer p.untrace()
 	}
 
-	if x == nil {
-		x = p.parseOperand()
-	}
-
-	if x == nil {
-		return nil
-	}
-
-	return p.parseSuffixExpr(x)
-}
-
-func (p *Parser) parseUnaryExpr() ast.Node {
-	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
-	}
-
-	switch p.tok.Kind {
-	case token.Minus:
-		loc := p.consume().Start
-
-		return &ast.PrefixOp{
-			X: p.parseUnaryExpr(),
-			Opr: &ast.PrefixOpr{
-				Start: loc,
-				End:   loc,
-				Kind:  ast.PrefixNeg,
-			},
-		}
-
-	case token.Bang:
-		loc := p.consume().Start
-
-		return &ast.PrefixOp{
-			X: p.parseUnaryExpr(),
-			Opr: &ast.PrefixOpr{
-				Start: loc,
-				End:   loc,
-				Kind:  ast.PrefixNot,
-			},
-		}
-
-	case token.Amp:
-		loc := p.consume().Start
-
-		if varTok := p.consume(token.KwVar); varTok != nil {
-			return &ast.PrefixOp{
-				X: p.parseUnaryExpr(),
-				Opr: &ast.PrefixOpr{
-					Start: loc,
-					End:   varTok.End,
-					Kind:  ast.PrefixMutAddr,
-				},
-			}
-		}
-
-		return &ast.PrefixOp{
-			X: p.parseUnaryExpr(),
-			Opr: &ast.PrefixOpr{
-				Start: loc,
-				End:   loc,
-				Kind:  ast.PrefixAddr,
-			},
-		}
-
-	default:
-		return p.parsePrimaryExpr(nil)
-	}
+	return p.parseBinaryExpr(nil, token.LowestPrec+1)
 }
 
 func (p *Parser) parseBinaryExpr(lhs ast.Node, precedence token.Precedence) ast.Node {
@@ -318,57 +207,73 @@ func (p *Parser) parseBinaryExpr(lhs ast.Node, precedence token.Precedence) ast.
 			return nil
 		}
 
-		binaryOpKind := ast.UnknownInfix
+		binaryOpKind := ast.UnknownOperator
 
 		switch tok.Kind {
 		case token.Plus:
-			binaryOpKind = ast.InfixAdd
+			binaryOpKind = ast.OperatorAdd
 
 		case token.Minus:
-			binaryOpKind = ast.InfixSub
+			binaryOpKind = ast.OperatorSub
 
 		case token.Asterisk:
-			binaryOpKind = ast.InfixMult
+			binaryOpKind = ast.OperatorMul
 
 		case token.Slash:
-			binaryOpKind = ast.InfixDiv
+			binaryOpKind = ast.OperatorDiv
 
 		case token.Percent:
-			binaryOpKind = ast.InfixMod
+			binaryOpKind = ast.OperatorMod
 
 		case token.Eq:
-			binaryOpKind = ast.InfixAssign
+			binaryOpKind = ast.OperatorAssign
 
 		case token.EqOp:
-			binaryOpKind = ast.InfixEq
+			binaryOpKind = ast.OperatorEq
 
 		case token.NeOp:
-			binaryOpKind = ast.InfixNe
+			binaryOpKind = ast.OperatorNe
 
 		case token.LtOp:
-			binaryOpKind = ast.InfixLt
+			binaryOpKind = ast.OperatorLt
 
 		case token.LeOp:
-			binaryOpKind = ast.InfixLe
+			binaryOpKind = ast.OperatorLe
 
 		case token.GtOp:
-			binaryOpKind = ast.InfixGt
+			binaryOpKind = ast.OperatorGt
 
 		case token.GeOp:
-			binaryOpKind = ast.InfixGe
+			binaryOpKind = ast.OperatorGe
+
+		case token.Amp:
+			binaryOpKind = ast.OperatorBitAnd
+
+		case token.Pipe:
+			binaryOpKind = ast.OperatorBitOr
+
+		case token.Caret:
+			binaryOpKind = ast.OperatorBitXor
+
+		case token.Shl:
+			binaryOpKind = ast.OperatorBitShl
+		case token.Shr:
+
+			binaryOpKind = ast.OperatorBitShr
 
 		default:
-			p.error(
-				fmt.Sprintf("%s cannot be used in the binary expression", tok.Kind.UserString()),
+			p.errorf(
 				tok.Start,
 				tok.End,
+				"%s cannot be used in the binary expression",
+				tok.Kind.UserString(),
 			)
 		}
 
 		lhs = &ast.InfixOp{
 			X: lhs,
 			Y: rhs,
-			Opr: &ast.InfixOpr{
+			Opr: &ast.Operator{
 				Start: tok.Start,
 				End:   tok.End,
 				Kind:  binaryOpKind,
@@ -379,115 +284,323 @@ func (p *Parser) parseBinaryExpr(lhs ast.Node, precedence token.Precedence) ast.
 	return lhs
 }
 
-//
-
-func (p *Parser) parseSimpleExpr() ast.Node {
-	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
-	}
-
-	return p.parseBinaryExpr(nil, token.LowestPrec+1)
-}
-
-func (p *Parser) parseExpr() ast.Node {
+func (p *Parser) parseUnaryExpr() ast.Node {
 	if p.flags&Trace != 0 {
 		p.trace()
 		defer p.untrace()
 	}
 
 	switch p.tok.Kind {
-	case token.KwIf:
-		return p.parseIf()
+	case token.Minus:
+		loc := p.consume().Start
 
-	case token.KwWhile:
-		return p.parseWhile()
+		return &ast.PrefixOp{
+			X: p.parseUnaryExpr(),
+			Opr: &ast.Operator{
+				Start: loc,
+				End:   loc,
+				Kind:  ast.OperatorNeg,
+			},
+		}
 
-	case token.LCurly:
-		return p.parseBlock()
+	case token.Bang:
+		loc := p.consume().Start
+
+		return &ast.PrefixOp{
+			X: p.parseUnaryExpr(),
+			Opr: &ast.Operator{
+				Start: loc,
+				End:   loc,
+				Kind:  ast.OperatorNot,
+			},
+		}
+
+	case token.Amp:
+		loc := p.consume().Start
+
+		if varTok := p.consume(token.KwVar); varTok != nil {
+			return &ast.PrefixOp{
+				X: p.parseUnaryExpr(),
+				Opr: &ast.Operator{
+					Start: loc,
+					End:   varTok.End,
+					Kind:  ast.OperatorMutAddr,
+				},
+			}
+		}
+
+		return &ast.PrefixOp{
+			X: p.parseUnaryExpr(),
+			Opr: &ast.Operator{
+				Start: loc,
+				End:   loc,
+				Kind:  ast.OperatorAddr,
+			},
+		}
 
 	default:
-		return p.parseSimpleExpr()
+		return p.parsePrimaryExpr(nil)
 	}
 }
 
-func (p *Parser) parseComplexExpr() ast.Node {
+func (p *Parser) parseOperand() ast.Node {
 	if p.flags&Trace != 0 {
 		p.trace()
 		defer p.untrace()
 	}
 
-	for p.tok.Kind == token.NewLine {
-		p.next()
-	}
-
-	attributes := p.parseAttributes()
-
-	// TODO meybe remove this?
-	for p.tok.Kind == token.NewLine {
-		p.next()
-	}
-
-	node := ast.Node(nil)
-
 	switch p.tok.Kind {
-	case token.KwVar, token.KwVal, token.KwConst:
-		node = p.parseGenericDecl()
+	case token.Ident:
+		return p.parseIdentNode()
 
-	case token.KwFunc:
-		node = p.parseFuncDecl()
+	case token.At:
+		return p.parseBuiltIn()
 
-	case token.KwModule:
-		node = p.parseModule()
+	case token.Int, token.Float, token.String:
+		return p.parseLiteral()
 
-	case token.KwAlias:
-		node = p.parseAlias()
-
-	case token.KwReturn:
-		node = p.parseReturn()
-
-	case token.KwBreak:
-		node = p.parseBreak()
-
-	case token.KwContinue:
-		node = p.parseContinue()
+	case token.LParen:
+		return p.parseParenList(p.parseExpr)
 
 	default:
-		node = p.parseExpr()
+		p.errorExpected(p.tok.Start, p.tok.End, "operand")
+		return nil
+	}
+}
+
+func (p *Parser) parsePrimaryExpr(x ast.Node) ast.Node {
+	if p.flags&Trace != 0 {
+		p.trace()
+		defer p.untrace()
 	}
 
-	if attributes != nil {
-		if decl, isDecl := node.(ast.Decl); isDecl {
-			setAttributes(decl, attributes)
-		} else {
-			p.addError(NewError(
-				"unexpected attribute list",
-				attributes.Pos(),
-				attributes.PosEnd(),
-				"",
-				"only a declaration can have attributes",
-			))
+	if x == nil {
+		x = p.parseOperand()
+	}
+
+	if x == nil {
+		return nil
+	}
+
+	return p.parseSuffixExpr(x)
+}
+
+func (p *Parser) parseSuffixExpr(x ast.Node) ast.Node {
+	if p.flags&Trace != 0 {
+		p.trace()
+		defer p.untrace()
+	}
+
+	if x == nil {
+		x = p.parseOperand()
+	}
+
+	for {
+		switch p.tok.Kind {
+		case token.Dot:
+			x = p.parseMemberAccess(x)
+
+		case token.QuestionMark, token.Bang:
+			opr := p.consume()
+			postfixOpKind := ast.UnknownOperator
+
+			switch opr.Kind {
+			case token.QuestionMark:
+				postfixOpKind = ast.OperatorTry
+
+			case token.Bang:
+				postfixOpKind = ast.OperatorUnwrap
+
+			default:
+				p.errorf(
+					opr.Start,
+					opr.End,
+					"%s can't be used as postfix operator",
+					opr.Kind.UserString(),
+				)
+			}
+
+			x = &ast.PostfixOp{
+				X: x,
+				Opr: &ast.Operator{
+					Start: opr.Start,
+					End:   opr.End,
+					Kind:  postfixOpKind,
+				},
+			}
+
+		case token.LBracket:
+			x = &ast.Index{
+				X:    x,
+				Args: p.parseBracketList(p.parseExpr),
+			}
+
+		case token.LParen:
+			x = &ast.Call{
+				X:    x,
+				Args: p.parseParenList(p.parseExpr),
+			}
+
+		default:
+			return x
+		}
+	}
+}
+
+//------------------------------------------------
+// Complex expressions
+//------------------------------------------------
+
+func (p *Parser) parseMemberAccess(x ast.Node) ast.Node {
+	if p.flags&Trace != 0 {
+		p.trace()
+		defer p.untrace()
+	}
+
+	if x == nil {
+		panic("can't use nil node as left-hand side expression")
+	}
+
+	if dot := p.consume(token.Dot); dot != nil {
+		y := p.parseIdent()
+
+		if y == nil {
+			return nil
+		}
+
+		x = p.parseMemberAccess(&ast.MemberAccess{
+			Loc:      dot.Start,
+			X:        x,
+			Selector: y,
+		})
+	}
+
+	return x
+}
+
+func (p *Parser) parseBuiltIn() ast.Node {
+	if p.flags&Trace != 0 {
+		p.trace()
+		defer p.untrace()
+	}
+
+	if tok := p.expect(token.At); tok != nil {
+		name := p.parseIdent()
+		x := ast.Node(nil)
+
+		switch p.tok.Kind {
+		case token.LParen:
+			if list := p.parseParenList(p.parseExpr); list != nil {
+				x = list
+			}
+
+		case token.LCurly:
+			x = p.parseBlock()
+
+		default:
+			p.errorExpected(
+				p.tok.Start,
+				p.tok.End,
+				"builtin function call requires argument list or block",
+			)
+		}
+
+		if x != nil {
+			return &ast.BuiltInCall{
+				Name: name,
+				Args: x,
+				Loc:  tok.Start,
+			}
 		}
 	}
 
-	return node
+	return nil
 }
 
-func (p *Parser) parseStmt() ast.Node {
+//------------------------------------------------
+// Declarations
+//------------------------------------------------
+
+func (p *Parser) parseVarDecl() ast.Node {
 	if p.flags&Trace != 0 {
 		p.trace()
 		defer p.untrace()
 	}
 
-	if p.tok.Kind == token.Semicolon || p.tok.Kind == token.EOF {
-		p.next()
-		return &ast.Empty{Loc: p.tok.Start}
+	tok := p.expect(token.KwVar)
+	binding, ok := p.parseBinding().(*ast.Binding)
+
+	if !ok {
+		return nil
 	}
 
-	return p.parseComplexExpr()
+	value := ast.Node(nil)
+
+	if eq := p.consume(token.Eq); eq != nil {
+		if value = p.parseExpr(); value == nil {
+			return nil
+		}
+	} else if binding.Type == nil {
+		p.errorExpected(p.tok.Start, p.tok.End, "value for binding with undefined type")
+		return nil
+	}
+
+	return &ast.VarDecl{
+		Binding: binding,
+		Value:   value,
+		Loc:     tok.Start,
+	}
 }
 
-//
+func (p *Parser) parseFuncDecl() ast.Node {
+	if p.flags&Trace != 0 {
+		p.trace()
+		defer p.untrace()
+	}
+
+	tok := p.expect(token.KwFunc)
+	name := p.parseIdent()
+
+	if name == nil {
+		return nil
+	}
+
+	signature := p.parseSignature(nil)
+
+	if signature == nil {
+		return nil
+	}
+
+	body := (*ast.CurlyList)(nil)
+
+	if p.tok.Kind == token.LCurly {
+		if list, ok := p.parseBlock().(*ast.CurlyList); ok {
+			body = list
+		} else {
+			start, end := p.skipTo()
+			p.errorExpected(start, end, "body")
+			return nil
+		}
+	} else if p.tok.Kind != token.NewLine && p.tok.Kind != token.EOF {
+		start, end := p.skipTo()
+		p.errorExpectedToken(start, end, token.Arrow, token.LCurly, token.NewLine)
+	}
+
+	// if body == nil {
+	// 	body = &ast.CurlyList{List: &ast.List{}}
+	// }
+
+	return &ast.FuncDecl{
+		Loc:       tok.Start,
+		Name:      name,
+		Signature: signature,
+		Body:      body,
+	}
+}
+
+//------------------------------------------------
+// IDK
+//------------------------------------------------
 
 func (p *Parser) parseAttributes() *ast.AttributeList {
 	if p.flags&Trace != 0 {
@@ -498,7 +611,7 @@ func (p *Parser) parseAttributes() *ast.AttributeList {
 	tokenIdx := p.save()
 
 	if tok := p.consume(token.At); tok != nil {
-		if list := p.parseParenList(p.parseComplexExpr, token.Comma); list != nil {
+		if list := p.parseParenList(p.parseExpr); list != nil {
 			return &ast.AttributeList{
 				Loc:  tok.Start,
 				List: list,
@@ -510,81 +623,86 @@ func (p *Parser) parseAttributes() *ast.AttributeList {
 	return nil
 }
 
-// TODO remove
-func (p *Parser) parseBlock() ast.Node {
+func (p *Parser) parseBracketExpr() ast.Node {
 	if p.flags&Trace != 0 {
 		p.trace()
 		defer p.untrace()
 	}
 
-	if list := p.parseCurlyList(p.parseStmt); list != nil {
+	if list := p.parseBracketList(p.parseExpr); list != nil {
 		return list
 	}
 
 	return nil
 }
 
-func (p *Parser) parseField() ast.Node {
-	// Field <- IdentifierList (Type? '=' Expr | Type ('=' Expr)?)
+func (p *Parser) parseBindingAndValue() ast.Node {
 	if p.flags&Trace != 0 {
 		p.trace()
 		defer p.untrace()
 	}
 
-	nameNodes := p.parseExprList(p.parseIdentNode, token.Comma)
-	typ := ast.Node(nil)
+	var binding *ast.Binding
 
-	if p.tok.Kind != token.Eq {
-		typ = p.parseType()
-		if typ == nil {
-			start, end := p.skipTo()
-			p.errorExpected("type name or '='", start, end)
-			return nil
-		}
+	if b := p.parseBinding(); b != nil {
+		binding = b.(*ast.Binding)
+	} else {
+		return nil
 	}
 
-	names := make([]*ast.Ident, 0, len(nameNodes.Nodes))
-	value := ast.Node(nil)
-	tokIdx := -1
-	parseValue := false
-
-	if typ == nil {
-		p.expect(token.Eq)
-		parseValue = true
-	} else if p.consume(token.Eq) != nil {
-		tokIdx = p.save()
-		parseValue = true
-	}
-
-	if parseValue {
+	if opr := p.consume(token.Eq); opr != nil {
 		p.consume(token.NewLine)
-		value = p.parseExpr()
+		value := p.parseExpr()
 
 		if value == nil {
-			if tokIdx >= 0 {
-				p.restore(tokIdx)
-			}
-
 			start, end := p.skipTo(endOfStmtKinds...)
-			p.errorExpected("expression", start, end)
+			p.errorExpected(start, end, "expression")
 			return nil
 		}
-	}
 
-	for _, name := range nameNodes.Nodes {
-		if n, ok := name.(*ast.Ident); ok {
-			names = append(names, n)
-		} else {
-			panic("unreachable?")
+		return &ast.BindingWithValue{
+			Binding: binding,
+			Operator: &ast.Operator{
+				Start: opr.Start,
+				End:   opr.End,
+				Kind:  ast.OperatorAssign,
+			},
+			Value: value,
 		}
 	}
 
-	assert.Ok(typ != nil || value != nil)
+	if binding.Type == nil {
+		p.errorExpected(p.tok.Start, p.tok.End, "type for binding without value")
+		return nil
+	}
 
-	return &ast.Field{
-		Names: names,
-		Type:  typ,
-		Value: value,
+	return binding
+}
+
+func (p *Parser) parseBinding() ast.Node {
+	if p.flags&Trace != 0 {
+		p.trace()
+		defer p.untrace()
+	}
+
+	name := p.parseIdent()
+
+	if name == nil {
+		return nil
+	}
+
+	typ := p.parseType()
+
+	// if colon := p.consume(token.Colon); colon != nil {
+	// 	typ = p.parseType()
+	// 	if typ == nil {
+	// 		return nil
+	// 	}
+	// }
+
+	return &ast.Binding{
+		Name: name,
+		Type: typ,
 	}
 }
 
@@ -602,13 +720,13 @@ func (p *Parser) parseTypeName() ast.Node {
 
 		default:
 			start, end := p.skipTo()
-			p.errorExpected("type name", start, end)
+			p.errorExpected(start, end, "type name")
 			return nil
 		}
 
 	default:
 		start, end := p.skipTo()
-		p.error("expected type name", start, end)
+		p.error(start, end, "expected type name")
 		return nil
 	}
 }
@@ -619,7 +737,7 @@ func (p *Parser) parseSignature(funcTok *token.Token) *ast.Signature {
 		defer p.untrace()
 	}
 
-	paramList := p.parseParenList(p.parseField, token.Comma)
+	paramList := p.parseParenList(p.parseBindingAndValue)
 
 	if paramList == nil {
 		return nil
@@ -659,20 +777,20 @@ func (p *Parser) parseType() ast.Node {
 		if varTok := p.consume(token.KwVar); varTok != nil {
 			return &ast.PrefixOp{
 				X: p.parseType(),
-				Opr: &ast.PrefixOpr{
+				Opr: &ast.Operator{
 					Start: ampLoc,
 					End:   varTok.End,
-					Kind:  ast.PrefixMutAddr,
+					Kind:  ast.OperatorMutAddr,
 				},
 			}
 		}
 
 		return &ast.PrefixOp{
 			X: p.parseType(),
-			Opr: &ast.PrefixOpr{
+			Opr: &ast.Operator{
 				Start: ampLoc,
 				End:   ampLoc,
-				Kind:  ast.PrefixAddr,
+				Kind:  ast.OperatorAddr,
 			},
 		}
 
@@ -687,8 +805,8 @@ func (p *Parser) parseType() ast.Node {
 	case token.Ident:
 		return p.parseTypeName()
 
-	case token.KwFunc:
-		return p.parseSignature(p.expect(token.KwFunc))
+	// case token.KwFunc:
+	// 	return p.parseSignature(p.expect(token.KwFunc))
 
 	case token.At:
 		return p.parseBuiltIn()
@@ -698,8 +816,7 @@ func (p *Parser) parseType() ast.Node {
 	}
 }
 
-//
-
+/*
 func (p *Parser) parseGenericDecl() ast.Node {
 	if p.flags&Trace != 0 {
 		p.trace()
@@ -734,77 +851,7 @@ func (p *Parser) parseGenericDecl() ast.Node {
 		Loc:   tok.Start,
 		Kind:  declKind,
 	}
-}
-
-func (p *Parser) parseFuncDecl() ast.Node {
-	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
-	}
-
-	tok := p.expect(token.KwFunc)
-	name := p.parseIdent()
-
-	if name == nil {
-		return nil
-	}
-
-	signature := p.parseSignature(nil)
-
-	if signature == nil {
-		return nil
-	}
-
-	body := ast.Node(nil)
-
-	if p.consume(token.Arrow) != nil {
-		body = p.parseExpr()
-
-		if body == nil {
-			start, end := p.skipTo()
-			p.errorExpected("expression", start, end)
-			return nil
-		}
-	} else if p.tok.Kind == token.LCurly {
-		body = p.parseBlock()
-
-		if body == nil {
-			start, end := p.skipTo()
-			p.errorExpected("body", start, end)
-			return nil
-		}
-	} else if p.tok.Kind != token.NewLine && p.tok.Kind != token.EOF {
-		start, end := p.skipTo()
-		p.errorExpectedToken(start, end, token.Arrow, token.LCurly, token.NewLine)
-	}
-
-	if body == nil {
-		body = &ast.CurlyList{List: &ast.List{}}
-	}
-
-	return &ast.FuncDecl{
-		Loc:       tok.Start,
-		Name:      name,
-		Signature: signature,
-		Body:      body,
-	}
-}
-
-func (p *Parser) validateEnumBody(body *ast.CurlyList) {
-	for _, expr := range body.Nodes {
-		switch e := expr.(type) {
-		case *ast.Ident:
-			continue
-
-		case *ast.InfixOp:
-			if e.Opr.Kind == ast.InfixAssign {
-				continue
-			}
-		}
-
-		p.error("expected identifier or assignment", expr.Pos(), expr.PosEnd())
-	}
-}
+} */
 
 func (p *Parser) parseElse() ast.Node {
 	if p.flags&Trace != 0 {
@@ -822,7 +869,7 @@ func (p *Parser) parseElse() ast.Node {
 
 			if body == nil {
 				start, end := p.skipTo()
-				p.error("expected `if` clause or block after `else`", start, end)
+				p.error(start, end, "expected `if` clause or block after `else`")
 				return nil
 			}
 		}
@@ -852,15 +899,15 @@ func (p *Parser) parseIf() ast.Node {
 
 	if cond == nil {
 		start, end := p.skipTo()
-		p.error("expected conditional expression for `if` clause", start, end)
+		p.error(start, end, "expected conditional expression for `if` clause")
 		return nil
 	}
 
-	body := p.parseBlock()
+	body := p.parseCurlyList(p.parseStmt)
 
 	if body == nil {
 		start, end := p.skipTo()
-		p.error("expected body for 'if' clause", start, end)
+		p.error(start, end, "expected body for 'if' clause")
 		return nil
 	}
 
@@ -886,8 +933,19 @@ func (p *Parser) parseWhile() ast.Node {
 	}
 
 	tok := p.expect(token.KwWhile)
+	if tok == nil {
+		return nil
+	}
+
 	cond := p.parseExpr()
+	if cond == nil {
+		return nil
+	}
+
 	body := p.parseBlock()
+	if body == nil {
+		return nil
+	}
 
 	return &ast.While{
 		Loc:  tok.Start,
@@ -911,41 +969,34 @@ func (p *Parser) parseReturn() ast.Node {
 	}
 }
 
-func (p *Parser) parseBreak() ast.Node {
+func (p *Parser) parseBreakOrContinue() ast.Node {
 	if p.flags&Trace != 0 {
 		p.trace()
 		defer p.untrace()
 	}
 
-	tok := p.expect(token.KwBreak)
+	tok := p.expect(token.KwBreak, token.KwContinue)
 	label := (*ast.Ident)(nil)
 
 	if p.tok.Kind == token.Ident {
 		label = p.parseIdent()
 	}
 
-	return &ast.Break{
-		Label: label,
-		Loc:   tok.Start,
-	}
-}
+	switch tok.Kind {
+	case token.KwBreak:
+		return &ast.Break{
+			Label: label,
+			Loc:   tok.Start,
+		}
 
-func (p *Parser) parseContinue() ast.Node {
-	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
-	}
+	case token.KwContinue:
+		return &ast.Continue{
+			Label: label,
+			Loc:   tok.Start,
+		}
 
-	tok := p.expect(token.KwContinue)
-	label := (*ast.Ident)(nil)
-
-	if p.tok.Kind == token.Ident {
-		label = p.parseIdent()
-	}
-
-	return &ast.Continue{
-		Label: label,
-		Loc:   tok.Start,
+	default:
+		panic("unreachable")
 	}
 }
 
@@ -971,7 +1022,7 @@ func (p *Parser) parseModule() ast.Node {
 		}
 	}
 
-	p.error("first statement in the file should be `module`", p.tok.Start, p.tok.End)
+	p.error(p.tok.Start, p.tok.End, "first statement in the file should be `module`")
 	return nil
 }
 
@@ -994,7 +1045,7 @@ func (p *Parser) parseAlias() ast.Node {
 		expr := p.parseType()
 
 		if expr == nil {
-			p.errorExpected("type", p.tok.Start, p.tok.End)
+			p.errorExpected(p.tok.Start, p.tok.End, "type")
 			return nil
 		}
 
@@ -1008,49 +1059,117 @@ func (p *Parser) parseAlias() ast.Node {
 	return nil
 }
 
-//
+//------------------------------------------------
+// Lists
+//------------------------------------------------
 
-func (p *Parser) parseExprList(
-	parseFunc func() ast.Node,
-	separators ...token.Kind,
-) *ast.List {
-	if len(separators) < 1 {
-		panic("parser.parseExprList: expect at least 1 separator")
-	}
-
+func (p *Parser) parseBracketList(f func() ast.Node) *ast.BracketList {
 	if p.flags&Trace != 0 {
 		p.trace()
 		defer p.untrace()
 	}
 
-	nodes := []ast.Node{}
-
-	for {
-		for p.tok.Kind == token.NewLine {
-			p.next()
-		}
-
-		if node := parseFunc(); node != nil {
-			nodes = append(nodes, node)
-		} else if p.consume(separators...) == nil {
-			nodes = append(nodes, &ast.BadNode{Loc: p.tok.Start})
-			p.skipTo(append(endOfStmtKinds, separators...)...)
-		}
-
-		if p.consume(separators...) == nil {
-			break
+	if exprs, openLoc, closeLoc := p.parseBracketedList(
+		f,
+		token.LBracket,
+		token.RBracket,
+		token.Comma,
+	); exprs != nil {
+		return &ast.BracketList{
+			ExprList: &ast.ExprList{Exprs: exprs},
+			Open:     openLoc,
+			Close:    closeLoc,
 		}
 	}
 
-	return &ast.List{Nodes: nodes}
+	return nil
 }
 
-// Not stops is no separator was found. Iterates until a `closing` token.
-func (p *Parser) parseClosingExprList(
-	parseFunc func() ast.Node,
-	closing token.Kind,
+func (p *Parser) parseParenList(f func() ast.Node) *ast.ParenList {
+	if p.flags&Trace != 0 {
+		p.trace()
+		defer p.untrace()
+	}
+
+	if exprs, openLoc, closeLoc := p.parseBracketedList(
+		f,
+		token.LParen,
+		token.RParen,
+		token.Comma,
+	); exprs != nil {
+		return &ast.ParenList{
+			ExprList: &ast.ExprList{Exprs: exprs},
+			Open:     openLoc,
+			Close:    closeLoc,
+		}
+	}
+
+	return nil
+}
+
+func (p *Parser) parseCurlyList(f func() ast.Node) *ast.CurlyList {
+	if p.flags&Trace != 0 {
+		p.trace()
+		defer p.untrace()
+	}
+
+	if nodes, openLoc, closeLoc := p.parseBracketedList(
+		f,
+		token.LCurly,
+		token.RCurly,
+		token.Semicolon,
+		token.NewLine,
+	); nodes != nil {
+		return &ast.CurlyList{
+			List:  &ast.List{Nodes: nodes},
+			Open:  openLoc,
+			Close: closeLoc,
+		}
+	}
+
+	return nil
+}
+
+func (p *Parser) parseBlock() ast.Node {
+	if p.flags&Trace != 0 {
+		p.trace()
+		defer p.untrace()
+	}
+
+	if list := p.parseCurlyList(p.parseStmt); list != nil {
+		return list
+	}
+
+	return nil
+}
+
+func (p *Parser) parseStmtList() *ast.List {
+	if p.flags&Trace != 0 {
+		p.trace()
+		defer p.untrace()
+	}
+
+	if nodes := p.listWithDelimiter(
+		p.parseStmt,
+		token.EOF,
+		token.Semicolon,
+		token.NewLine,
+	); len(nodes) > 0 {
+		return &ast.List{Nodes: nodes}
+	}
+
+	return nil
+}
+
+//------------------------------------------------
+// Helper functions
+//------------------------------------------------
+
+func (p *Parser) listWithDelimiter(
+	f func() ast.Node,
+	delimiter token.Kind,
 	separators ...token.Kind,
-) *ast.List {
+) []ast.Node {
 	if len(separators) < 1 {
 		panic("expect at least 1 separator")
 	}
@@ -1061,11 +1180,10 @@ func (p *Parser) parseClosingExprList(
 	}
 
 	nodes := []ast.Node{}
-	delimiters := append([]token.Kind{closing}, separators...)
 
-	// List :: `{` [Expr {Separator Expr} [Separator]] `}`
+	// List = Expr {Separator Expr} [Separator]
 	for {
-		// Element can start at new line
+		// Element can start at new line.
 		for p.tok.Kind == token.NewLine {
 			p.next()
 		}
@@ -1074,17 +1192,16 @@ func (p *Parser) parseClosingExprList(
 		//  - empty list `{}`
 		//  - list closes after separators `{x,}`
 		//  - unterminated list `{...`
-		if p.tok.Kind == closing {
+		if p.tok.Kind == delimiter {
 			break
 		} else if p.tok.Kind == token.EOF {
 			return nil
 		}
 
-		// Save expression start position for the bad node.
-		exprStartPos := p.tok.Start
+		nodeStart := p.tok.Start
 
-		if node := parseFunc(); node != nil {
-			if p.consume(separators...) != nil || p.match(closing) {
+		if node := f(); node != nil {
+			if p.consume(separators...) != nil || p.match(delimiter) {
 				// All is OK.
 				nodes = append(nodes, node)
 				continue
@@ -1092,112 +1209,53 @@ func (p *Parser) parseClosingExprList(
 
 			// [parseFunc] set the correct node, but no separator was found.
 			// Report it and assign [ast.BadNode] instead.
-			p.error("unterminated expression", node.Pos(), node.PosEnd())
+			p.error(node.Pos(), node.LocEnd(), "unterminated expression")
 		}
 
 		// Something went wrong, advance to some delimiter and
 		// continue parsing elements until we find the [closing] token.
-		p.skipTo(delimiters...)
+		p.skipTo(append(separators, delimiter)...)
 		p.consume(separators...)
-		nodes = append(nodes, &ast.BadNode{Loc: exprStartPos})
+		nodes = append(nodes, &ast.BadNode{Loc: nodeStart})
 	}
 
-	return &ast.List{Nodes: nodes}
+	return nodes
 }
 
-type AnyList interface {
-	ast.ParenList | ast.CurlyList | ast.BracketList
-}
-
-// If `separators` are not specified, [token.Semicolon] and [token.NewLine]
-// will be used as separators.
-func parseList[T AnyList](
-	p *Parser,
-	parseFunc func() ast.Node,
+func (p *Parser) parseBracketedList(
+	f func() ast.Node,
 	opening, closing token.Kind,
 	separators ...token.Kind,
-) *T {
-	if len(separators) == 0 {
-		separators = []token.Kind{token.Semicolon, token.NewLine}
-	}
-
+) (nodes []ast.Node, openLoc, closeLoc token.Loc) {
 	if p.flags&Trace != 0 {
 		p.trace()
 		defer p.untrace()
 	}
 
-	tokOpening := p.expect(opening)
-
-	if tokOpening == nil {
-		return nil
+	if tok := p.expect(opening); tok != nil {
+		openLoc = tok.Start
+	} else {
+		return nil, token.Loc{}, token.Loc{}
 	}
 
-	// parseFuncOrClosingToken := func() ast.Node {
-	// 	if p.tok.Kind == closing {
-	// 		return nil
-	// 	}
+	nodes = p.listWithDelimiter(f, closing, separators...)
 
-	// 	return parseFunc()
-	// }
-
-	exprList := p.parseClosingExprList(parseFunc, closing, separators...)
-
-	if exprList == nil {
-		return nil
+	if nodes == nil {
+		return nil, token.Loc{}, token.Loc{}
 	}
 
-	tokClose := p.consume(closing)
-
-	if tokClose == nil {
+	if tok := p.consume(closing); tok != nil {
+		closeLoc = tok.Start
+	} else {
 		if p.tok.Kind == token.EOF {
-			p.error("bracket is never closed (end of file reached)", tokOpening.Start, tokOpening.End)
+			p.error(openLoc, openLoc, "bracket is never closed (end of file reached)")
 		} else {
 			start, end := p.skipTo()
 			p.errorExpectedToken(start, end, append(separators, closing)...)
 		}
 
-		return nil
+		return nil, token.Loc{}, token.Loc{}
 	}
 
-	return &T{
-		Open:  tokOpening.Start,
-		Close: tokClose.Start,
-		List:  exprList,
-	}
-}
-
-func (p *Parser) parseParenList(parseFunc func() ast.Node, separators ...token.Kind) *ast.ParenList {
-	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
-	}
-
-	return parseList[ast.ParenList](p, parseFunc, token.LParen, token.RParen, separators...)
-}
-
-func (p *Parser) parseCurlyList(parseFunc func() ast.Node, separators ...token.Kind) *ast.CurlyList {
-	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
-	}
-
-	return parseList[ast.CurlyList](p, parseFunc, token.LCurly, token.RCurly, separators...)
-}
-
-func (p *Parser) parseBracketList(parseFunc func() ast.Node, separators ...token.Kind) *ast.BracketList {
-	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
-	}
-
-	return parseList[ast.BracketList](p, parseFunc, token.LBracket, token.RBracket, separators...)
-}
-
-func (p *Parser) parseStmtList() *ast.List {
-	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
-	}
-
-	return p.parseExprList(p.parseStmt, endOfStmtKinds...)
+	return nodes, openLoc, closeLoc
 }

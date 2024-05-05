@@ -15,14 +15,14 @@ const (
 	Illegal Kind = iota // illegal character
 
 	EOF        // end of file
-	Comment    // any comment
+	Comment    // comment
 	Whitespace // whitespace
 	NewLine    // new line
 
-	Ident     // identifier
-	Int       // untyped int
-	Float     // untyped float
-	String    // untyped string
+	Ident  // identifier
+	Int    // untyped int
+	Float  // untyped float
+	String // untyped string
 
 	LParen    // '('
 	RParen    // ')'
@@ -59,10 +59,14 @@ const (
 	// End of position dependent tokens.
 
 	Amp          // operator '&'
+	Pipe         // operator '|'
+	Caret        // operator '^'
 	At           // operator '@'
 	QuestionMark // operator '?'
 	Arrow        // operator '->'
 	FatArrow     // operator '=>'
+	Shl          // operator '<<'
+	Shr          // operator '>>'
 	Dot          // operator '.'
 	Dot2         // operator '..'
 	Dot2Less     // operator '..<'
@@ -203,12 +207,16 @@ var representableKinds = map[Kind]string{
 	GeOp:         ">=",
 	Arrow:        "->",
 	FatArrow:     "=>",
+	Shl:          "<<",
+	Shr:          ">>",
 	Plus:         "+",
 	Minus:        "-",
 	Asterisk:     "*",
 	Slash:        "/",
 	Percent:      "%",
 	Amp:          "&",
+	Pipe:         "|",
+	Caret:        "^",
 	At:           "@",
 	PlusEq:       "+=",
 	MinusEq:      "-=",

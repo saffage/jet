@@ -1,10 +1,10 @@
 package ast
 
-func UnwrapParenExpr(node Node) Node {
+func UnwrapParen(node Node) Node {
 	n, ok := node.(*ParenList)
 
-	for ok && len(n.Nodes) == 1 {
-		node = n.Nodes[0]
+	for ok && len(n.Exprs) == 1 {
+		node = n.Exprs[0]
 		n, ok = node.(*ParenList)
 	}
 

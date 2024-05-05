@@ -9,45 +9,50 @@ import (
 )
 
 type Error struct {
-	Message    string
-	Details    string
-	Notes      []string
 	Start, End token.Loc
+	Message    string
+	Notes      []string
 }
 
-func (e Error) Error() string {
-	if e.Details == "" {
-		return e.Message
+func NewError(start, end token.Loc, message string) Error {
+	return Error{
+		Start:   start,
+		End:     end,
+		Message: message,
 	}
-	return e.Message + "; " + e.Details
 }
+
+func NewErrorf(start, end token.Loc, format string, args ...any) Error {
+	return NewError(start, end, fmt.Sprintf(format, args...))
+}
+
+func (e Error) Error() string { return e.Message }
 
 func (p *Parser) addError(err error) {
 	p.errors = append(p.errors, err)
 }
 
-func NewError(message string, start, end token.Loc, details string, notes ...string) Error {
-	return Error{
-		Message: message,
-		Details: details,
-		Notes:   notes,
-		Start:   start,
-		End:     end,
-	}
-}
-
-func (p *Parser) error(message string, start, end token.Loc, details ...any) {
+func (p *Parser) error(start, end token.Loc, message string) {
 	if p.flags&Trace != 0 {
 		p.trace()
 		defer p.untrace()
 	}
 
-	p.addError(NewError(message, start, end, fmt.Sprint(details...)))
+	p.addError(NewError(start, end, message))
 }
 
-func (p *Parser) errorExpected(message string, start, end token.Loc, details ...any) {
+func (p *Parser) errorf(start, end token.Loc, format string, args ...any) {
+	if p.flags&Trace != 0 {
+		p.trace()
+		defer p.untrace()
+	}
+
+	p.addError(NewErrorf(start, end, format, args...))
+}
+
+func (p *Parser) errorExpected(start, end token.Loc, message string) {
 	message = fmt.Sprintf("expected %s, found %s", message, p.tok.Kind.UserString())
-	p.error(message, start, end, details...)
+	p.error(start, end, message)
 }
 
 func (p *Parser) errorExpectedToken(start, end token.Loc, tokens ...token.Kind) {
@@ -62,7 +67,7 @@ func (p *Parser) errorExpectedToken(start, end token.Loc, tokens ...token.Kind) 
 	}
 
 	message := fmt.Sprintf("expected %s, found %s", strings.Join(tokenStrs, " or "), p.tok.Kind.UserString())
-	p.error(message, start, end)
+	p.error(start, end, message)
 }
 
 func (p *Parser) skipTo(to ...token.Kind) (start, end token.Loc) {

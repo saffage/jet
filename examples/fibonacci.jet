@@ -1,12 +1,11 @@
+alias int = @magic('I32')
+
 func fib(n int) int {
-    if n < 2 {
-        return n
-    }
-    return fib(n-1) + fib(n-2)
+    if n < 2 { n } else { fib(n-1) + fib(n-2) }
 }
 
 func main() {
-    println('fib(10) = ${fib(10)}')
-    println('fib(15) = ${fib(15)}')
-    println('fib(20) = ${fib(20)}')
+    @print('fib(10) = ${fib(10)}\n')
+    @print('fib(15) = ${fib(15)}\n')
+    @print('fib(20) = ${fib(20)}\n')
 }

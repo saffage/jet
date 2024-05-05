@@ -19,11 +19,12 @@ func Scan(buffer []byte, fileid config.FileID, flags Flags) ([]token.Token, []er
 type Flags int
 
 const (
-	DefaultFlags   Flags = SkipComments
 	NoFlags        Flags = 0
-	SkipWhitespace Flags = 1 << iota
+	SkipWhitespace Flags = 1 << (iota - 1)
 	SkipIllegal
 	SkipComments
+
+	DefaultFlags Flags = NoFlags
 )
 
 type Scanner struct {
@@ -121,12 +122,34 @@ func (s *Scanner) Next() token.Token {
 
 			tok = token.Token{Kind: kind}
 
-		case s.Consume('!', '<', '>', '+', '*', '/', '%'):
+		case s.Consume('!', '+', '*', '/', '%'):
 			// NOTE This tokens is order dependent
 			kind := token.KindFromString(string(s.Prev()))
 
 			if s.Consume('=') {
 				kind += 1
+			}
+
+			tok = token.Token{Kind: kind}
+
+		case s.Consume('<'):
+			kind := token.LtOp
+
+			if s.Consume('<') {
+				kind = token.Shl
+			} else if s.Consume('=') {
+				kind = token.LeOp
+			}
+
+			tok = token.Token{Kind: kind}
+
+		case s.Consume('>'):
+			kind := token.GtOp
+
+			if s.Consume('>') {
+				kind = token.Shr
+			} else if s.Consume('=') {
+				kind = token.GeOp
 			}
 
 			tok = token.Token{Kind: kind}
@@ -153,7 +176,7 @@ func (s *Scanner) Next() token.Token {
 
 			tok = token.Token{Kind: kind}
 
-		case s.Match('?', '&', ',', ':', ';', '(', ')', '[', ']', '{', '}'):
+		case s.Match('?', '&', '|', '^', ',', ':', ';', '(', ')', '[', ']', '{', '}'):
 			kind := token.KindFromString(string(s.Advance()))
 
 			if kind == token.Illegal {

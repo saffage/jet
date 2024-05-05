@@ -20,7 +20,9 @@ const (
 	LowestPrec Precedence = iota
 	AssignPrec
 	ArrowPrec
+	BitwisePrec
 	CmpPrec
+	ShiftPrec
 	AddPrec
 	MulPrec
 )
@@ -57,6 +59,12 @@ func (t Token) Precedence() Precedence {
 
 	case Plus, Minus:
 		return AddPrec
+
+	case Shl, Shr:
+		return ShiftPrec
+
+	case Amp, Pipe, Caret:
+		return BitwisePrec
 
 	case EqOp, NeOp, LtOp, GtOp, LeOp, GeOp:
 		return CmpPrec

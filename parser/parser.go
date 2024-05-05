@@ -21,12 +21,9 @@ type Parser struct {
 	indent int
 
 	// State
-	restoreData []restoreData
-}
 
-type restoreData struct {
-	index  int
-	errors []error
+	// commentGroup *ast.CommentGroup
+	restoreData  []restoreData
 }
 
 type Flags int
@@ -68,4 +65,9 @@ func ParseExpr(cfg *config.Config, input []byte) (ast.Node, []error) {
 	p := New(cfg, toks, DefaultFlags|Trace)
 	expr := p.parseExpr()
 	return expr, p.Errors()
+}
+
+type restoreData struct {
+	index  int
+	errors []error
 }
