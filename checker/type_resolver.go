@@ -413,17 +413,21 @@ func typeCheckInfixOp(node *ast.InfixOp, scope *Scope) (types.Type, error) {
 		return nil, NewErrorf(node, "type mismatch (%s and %s)", tOperandX, tOperandY)
 	}
 
-	if p, ok := types.SkipAlias(tOperandX).Underlying().(*types.Primitive); ok {
+	if node.Opr.Kind == ast.OperatorAssign {
+		return types.Unit, nil
+	}
+
+	if primitive := types.AsPrimitive(tOperandX); primitive != nil {
 		switch node.Opr.Kind {
 		case ast.OperatorAdd, ast.OperatorSub, ast.OperatorMul, ast.OperatorDiv, ast.OperatorMod,
 			ast.OperatorBitAnd, ast.OperatorBitOr, ast.OperatorBitXor, ast.OperatorBitShl, ast.OperatorBitShr:
-			switch p.Kind() {
+			switch primitive.Kind() {
 			case types.UntypedInt, types.UntypedFloat, types.I32:
 				return tOperandX, nil
 			}
 
 		case ast.OperatorEq, ast.OperatorNe, ast.OperatorLt, ast.OperatorLe, ast.OperatorGt, ast.OperatorGe:
-			switch p.Kind() {
+			switch primitive.Kind() {
 			case types.UntypedBool, types.UntypedInt, types.UntypedFloat:
 				return types.Primitives[types.UntypedBool], nil
 
@@ -434,10 +438,6 @@ func typeCheckInfixOp(node *ast.InfixOp, scope *Scope) (types.Type, error) {
 		default:
 			panic("unreachable")
 		}
-	}
-
-	if node.Opr.Kind == ast.OperatorAssign {
-		return types.Unit, nil
 	}
 
 	return nil, NewErrorf(
