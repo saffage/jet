@@ -96,6 +96,18 @@ func (t *Func) CheckArgs(args *Tuple) (idx int, err error) {
 	return -1, nil
 }
 
+func IsFunc(t Type) bool { return AsFunc(t) != nil }
+
+func AsFunc(t Type) *Func {
+	if t != nil {
+		if fn, _ := t.Underlying().(*Func); fn != nil {
+			return fn
+		}
+	}
+
+	return nil
+}
+
 func ordinalize(num int) string {
 	s := strconv.Itoa(num)
 

@@ -11,6 +11,4 @@ type Symbol interface {
 	Name() string      // Identifier or name of a symbol.
 	Ident() *ast.Ident // Identifier node.
 	Node() ast.Node    // Related AST node.
-
-	setType(types.Type)
 }

@@ -26,7 +26,3 @@ func (sym *TypeAlias) Type() types.Type  { return types.NewTypeDesc(sym.t) }
 func (sym *TypeAlias) Name() string      { return sym.name.Name }
 func (sym *TypeAlias) Ident() *ast.Ident { return sym.name }
 func (sym *TypeAlias) Node() ast.Node    { return sym.node }
-
-func (sym *TypeAlias) setType(t types.Type) {
-	sym.t = types.NewAlias(types.SkipTypeDesc(t), sym.Name())
-}

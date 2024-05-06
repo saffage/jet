@@ -1,8 +1,6 @@
 package checker
 
 import (
-	"fmt"
-
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/types"
 )
@@ -16,38 +14,30 @@ func NewBlock(scope *Scope) *Block {
 	return &Block{scope, types.Unit}
 }
 
-func (expr *Block) visit(node ast.Node) (ast.Visitor, error) {
-	switch node := node.(type) {
-	case ast.Decl:
-		switch decl := node.(type) {
-		case *ast.VarDecl:
-			if err := resolveVar(decl, expr.scope); err != nil {
-				return nil, err
+func (check *Checker) blockVisitor(expr *Block) ast.Visitor {
+	return func(node ast.Node) ast.Visitor {
+		if decl, _ := node.(ast.Decl); decl != nil {
+			switch decl := decl.(type) {
+			case *ast.VarDecl:
+				check.resolveVarDecl(decl)
+				expr.t = types.Unit
+
+			case *ast.TypeAliasDecl, *ast.FuncDecl, *ast.ModuleDecl:
+				panic("not implemented")
+
+			default:
+				panic("unreachable")
 			}
 
-			fmt.Printf(">>> def local var `%s`\n", decl.Binding.Name)
-
-			expr.t = types.Unit
-			return nil, nil
-
-		case *ast.TypeAliasDecl, *ast.FuncDecl, *ast.ModuleDecl:
-			panic("not implemented")
-
-		default:
-			panic("unreachable")
+			return nil
 		}
 
-	default:
-		t, err := expr.scope.TypeOf(node)
-		if err != nil {
-			return nil, err
+		t := check.typeOf(node)
+		if t == nil {
+			return nil
 		}
 
 		expr.t = t
-		return nil, nil
-
-		// fmt.Printf("unchecked node: '%T'\n", node)
-		// expr.t = types.Unit
-		// return nil, nil
+		return nil
 	}
 }

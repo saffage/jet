@@ -38,7 +38,7 @@ func reportError(cfg *config.Config, err error) {
 			report.Note(cfg, "parser note: "+note, token.Loc{}, token.Loc{})
 		}
 
-	case checker.Error:
+	case *checker.Error:
 		start, end := token.Loc{}, token.Loc{}
 
 		if err.Node != nil {
@@ -122,11 +122,11 @@ func process(
 		if err := recover(); err != nil {
 			switch e := err.(type) {
 			case checker.Error:
-				reportError(cfg, e)
+				reportError(cfg, &e)
 
 			case []checker.Error:
 				for i := range e {
-					reportError(cfg, e[i])
+					reportError(cfg, &e[i])
 				}
 
 			default:
@@ -140,14 +140,15 @@ func process(
 			Name: &ast.Ident{Name: "repl"},
 			Body: &ast.CurlyList{List: nodeList},
 		}
-		checker.NewFunc(nil, nil, decl)
+		checker.NewFunc(nil, nil, nil, decl)
 	} else {
 		mod := &ast.ModuleDecl{
 			Name: &ast.Ident{Name: cfg.Files[config.MainFileID].Name},
 			Body: nodeList,
 		}
-		_, err := checker.NewModule(mod)
-		if err != nil {
+		errs := checker.Check(mod)
+
+		for _, err := range errs {
 			reportError(cfg, err)
 		}
 	}

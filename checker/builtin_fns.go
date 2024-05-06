@@ -5,68 +5,58 @@ import (
 	"github.com/saffage/jet/types"
 )
 
-func builtInMagic(args ast.Node, scope *Scope) (*Value, error) {
-	argList, ok := args.(*ast.ParenList)
-	if !ok {
-		return nil, NewError(args, "expected argument list")
+func (check *Checker) builtInMagic(args ast.Node, scope *Scope) *TypedValue {
+	argList, _ := args.(*ast.ParenList)
+	if argList == nil {
+		check.errorf(args, "expected argument list")
+		return nil
 	}
 
-	arg1, ok := argList.Exprs[0].(*ast.Literal)
-	if !ok {
-		return nil, NewError(argList.Exprs[0], "expected string literal")
+	arg1, _ := argList.Exprs[0].(*ast.Literal)
+	if arg1 == nil || arg1.Kind != ast.StringLiteral {
+		check.errorf(argList.Exprs[0], "expected string literal")
+		return nil
 	}
-
-	// tArg1, err := scope.TypeOf(argList.Exprs[0])
-	// if err != nil {
-	// 	return nil, NewError(argList.Exprs[0], "expected literal")
-	// }
-
-	// if !types.Primitives[types.UntypedString].Equals(tArg1) {
-	// 	return nil, NewErrorf(
-	// 		argList.Exprs[0],
-	// 		"expected 'untyped string', got '%s' instead",
-	// 		tArg1,
-	// 	)
-	// }
 
 	switch arg1.Value {
 	case "Bool":
-		return &Value{types.NewTypeDesc(types.Primitives[types.Bool]), nil}, nil
+		return &TypedValue{types.NewTypeDesc(types.Primitives[types.Bool]), nil}
 
 	case "I32":
-		return &Value{types.NewTypeDesc(types.Primitives[types.I32]), nil}, nil
+		return &TypedValue{types.NewTypeDesc(types.Primitives[types.I32]), nil}
 
 	default:
-		return nil, NewErrorf(arg1, "unknown magic '%s'", arg1.Value)
+		check.errorf(arg1, "unknown magic '%s'", arg1.Value)
+		return nil
 	}
 }
 
-func builtInTypeOf(args ast.Node, scope *Scope) (*Value, error) {
-	argList, ok := args.(*ast.ParenList)
-	if !ok {
-		return nil, NewError(args, "expected argument list")
+func (check *Checker) builtInTypeOf(args ast.Node, scope *Scope) *TypedValue {
+	argList, _ := args.(*ast.ParenList)
+	if argList == nil {
+		check.errorf(args, "expected argument list")
+		return nil
 	}
 
-	arg1 := argList.Exprs[0]
-
-	t, err := scope.TypeOf(arg1)
-	if err != nil {
-		return nil, err
+	t := check.typeOf(argList.Exprs[0])
+	if t == nil {
+		return nil
 	}
 
-	return &Value{types.NewTypeDesc(types.SkipUntyped(t)), nil}, nil
+	return &TypedValue{types.NewTypeDesc(types.SkipUntyped(t)), nil}
 }
 
-func builtInPrint(args ast.Node, scope *Scope) (*Value, error) {
-	argList, ok := args.(*ast.ParenList)
-	if !ok {
-		return nil, NewError(args, "expected argument list")
+func (check *Checker) builtInPrint(args ast.Node, scope *Scope) *TypedValue {
+	argList, _ := args.(*ast.ParenList)
+	if argList == nil {
+		check.errorf(args, "expected argument list")
+		return nil
 	}
 
-	_, err := scope.TypeOf(argList)
-	if err != nil {
-		return nil, err
+	t := check.typeOf(argList)
+	if t == nil {
+		return nil
 	}
 
-	return &Value{types.Unit, nil}, nil
+	return &TypedValue{types.Unit, nil}
 }

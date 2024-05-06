@@ -67,11 +67,11 @@ func (scope *Scope) Member(name string) Symbol {
 	return nil
 }
 
-func errorAlreadyDefined(ident, previous *ast.Ident) Error {
-	err := NewErrorf(ident, "name '%s' is already declared in this scope", ident.Name)
+func errorAlreadyDefined(ident, previous *ast.Ident) *Error {
+	err := NewErrorf(ident, "name '%s' is already defined in this scope", ident.Name)
 
 	if previous != nil {
-		err.Notes = []Error{
+		err.Notes = []*Error{
 			NewError(previous, "previous declaration was here"),
 		}
 	}

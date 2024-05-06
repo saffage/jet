@@ -7,7 +7,7 @@ import (
 
 // Represents a compile-time known value.
 // Also can represent a type in some situations.
-type Value struct {
+type TypedValue struct {
 	Type  types.Type
 	Value constant.Value // Can be nil.
 }

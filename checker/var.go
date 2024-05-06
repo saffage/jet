@@ -2,7 +2,6 @@ package checker
 
 import (
 	"github.com/saffage/jet/ast"
-	"github.com/saffage/jet/internal/assert"
 	"github.com/saffage/jet/types"
 )
 
@@ -27,8 +26,3 @@ func (v *Var) Type() types.Type  { return v.t }
 func (v *Var) Name() string      { return v.name.Name }
 func (v *Var) Ident() *ast.Ident { return v.name }
 func (v *Var) Node() ast.Node    { return v.node }
-
-func (v *Var) setType(t types.Type) {
-	assert.Ok(t != nil)
-	v.t = t
-}

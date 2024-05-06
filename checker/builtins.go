@@ -5,7 +5,7 @@ import (
 	"github.com/saffage/jet/types"
 )
 
-type BuiltInFn func(args ast.Node, scope *Scope) (*Value, error)
+type BuiltInFn func(args ast.Node, scope *Scope) *TypedValue
 
 type BuiltIn struct {
 	name string
@@ -19,15 +19,11 @@ func (b *BuiltIn) Name() string      { return b.name }
 func (b *BuiltIn) Ident() *ast.Ident { return nil }
 func (b *BuiltIn) Node() ast.Node    { return nil }
 
-func (b *BuiltIn) setType(t types.Type) { panic("can't change the type of the built-in function") }
-
-var builtIns []*BuiltIn
-
-func init() {
-	builtIns = []*BuiltIn{
+func (check *Checker) defBuiltIns() {
+	check.builtIns = []*BuiltIn{
 		{
 			name: "magic",
-			f:    builtInMagic,
+			f:    check.builtInMagic,
 			t: types.NewFunc(
 				types.NewTuple(types.Primitives[types.AnyTypeDesc]),
 				types.NewTuple(types.Primitives[types.UntypedString]),
@@ -35,7 +31,7 @@ func init() {
 		},
 		{
 			name: "type_of",
-			f:    builtInTypeOf,
+			f:    check.builtInTypeOf,
 			t: types.NewFunc(
 				types.NewTuple(types.Primitives[types.AnyTypeDesc]),
 				types.NewTuple(types.Primitives[types.Any]),
@@ -43,7 +39,7 @@ func init() {
 		},
 		{
 			name: "print",
-			f:    builtInPrint,
+			f:    check.builtInPrint,
 			t: types.NewFunc(
 				types.Unit,
 				types.NewTuple(types.Primitives[types.Any]),
