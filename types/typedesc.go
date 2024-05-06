@@ -31,9 +31,16 @@ func (t *TypeDesc) String() string { return fmt.Sprintf("typedesc(%s)", t.base) 
 
 func (t *TypeDesc) Base() Type { return t.base }
 
-func IsTypeDesc(t Type) bool {
-	typedesc, _ := t.Underlying().(*TypeDesc)
-	return typedesc != nil
+func IsTypeDesc(t Type) bool { return AsTypeDesc(t) != nil }
+
+func AsTypeDesc(t Type) *TypeDesc {
+	if t != nil {
+		if typedesc, _ := t.Underlying().(*TypeDesc); typedesc != nil {
+			return typedesc
+		}
+	}
+
+	return nil
 }
 
 func SkipTypeDesc(t Type) Type {

@@ -68,16 +68,8 @@ func (m *Module) visit(node ast.Node) (ast.Visitor, error) {
 		panic("not implemented")
 
 	case *ast.VarDecl:
-		sym := NewVar(m.scope, nil, decl.Binding, decl.Binding.Name)
-		t, err := resolveVarDecl(decl, m.scope)
-		if err != nil {
+		if err := resolveVar(decl, m.scope); err != nil {
 			return nil, err
-		}
-
-		sym.setType(t)
-
-		if defined := m.scope.Define(sym); defined != nil {
-			return nil, errorAlreadyDefined(sym.Ident(), defined.Ident())
 		}
 
 		fmt.Printf(">>> def var `%s`\n", decl.Binding.Name)

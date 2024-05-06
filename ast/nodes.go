@@ -34,6 +34,7 @@ func (*BuiltInCall) implNode()      {}
 func (*Call) implNode()             {}
 func (*Index) implNode()            {}
 func (*ArrayType) implNode()        {}
+func (*Signature) implNode()        {}
 func (*MemberAccess) implNode()     {}
 func (*PrefixOp) implNode()         {}
 func (*InfixOp) implNode()          {}
@@ -61,7 +62,6 @@ func (*CommentGroup) implNode() {}
 func (*List) implNode()          {}
 func (*ExprList) implNode()      {}
 func (*AttributeList) implNode() {}
-func (*Signature) implNode()     {}
 
 func (*While) implNode()    {}
 func (*Return) implNode()   {}
@@ -78,9 +78,9 @@ type (
 		Comments []*Comment
 	}
 
-	//
-	//
-	//
+	//------------------------------------------------
+	// Helper nodes
+	//------------------------------------------------
 
 	// Represents sequence of nodes, separated by semicolon\new line.
 	List struct {
@@ -98,16 +98,9 @@ type (
 		Loc  token.Loc // `@` token.
 	}
 
-	// Represents `func(x T) T` or `(T) T`.
-	Signature struct {
-		Params *ParenList
-		Result Node
-		Loc    token.Loc // `func` token.
-	}
-
-	//
-	//
-	//
+	//------------------------------------------------
+	// Language constructions
+	//------------------------------------------------
 
 	While struct {
 		Cond Node
@@ -145,14 +138,6 @@ func (n *ExprList) LocEnd() token.Loc { return n.Exprs[len(n.Exprs)-1].LocEnd() 
 
 func (n *AttributeList) Pos() token.Loc    { return n.Loc }
 func (n *AttributeList) LocEnd() token.Loc { return n.List.LocEnd() }
-
-func (n *Signature) Pos() token.Loc {
-	if n.Loc.Line == 0 {
-		return n.Params.Pos()
-	}
-	return n.Loc
-}
-func (n *Signature) LocEnd() token.Loc { return n.Result.LocEnd() }
 
 func (n *While) Pos() token.Loc    { return n.Loc }
 func (n *While) LocEnd() token.Loc { return n.Body.LocEnd() }

@@ -2,30 +2,6 @@ package ast
 
 import "github.com/saffage/jet/token"
 
-// func (*BadNode) implNode()  {}
-// func (*Empty) implNode()    {}
-// func (*Ident) implNode()    {}
-// func (*Literal) implNode()  {}
-// func (*Operator) implNode() {}
-
-// func (*BindingWithValue) implNode() {}
-// func (*Binding) implNode()          {}
-// func (*BuiltInCall) implNode()      {}
-// func (*Call) implNode()             {}
-// func (*Index) implNode()            {}
-// func (*ArrayType) implNode()        {}
-// func (*MemberAccess) implNode()     {}
-// func (*PrefixOp) implNode()         {}
-// func (*InfixOp) implNode()          {}
-// func (*PostfixOp) implNode()        {}
-
-// func (*BracketList) implNode() {}
-// func (*ParenList) implNode()   {}
-// func (*CurlyList) implNode()   {}
-
-// func (*If) implNode()   {}
-// func (*Else) implNode() {}
-
 type (
 	BadNode struct {
 		Loc token.Loc // Desired location.
@@ -52,9 +28,9 @@ type (
 		Kind  OperatorKind
 	}
 
-	//
-	//
-	//
+	//------------------------------------------------
+	// Composite nodes
+	//------------------------------------------------
 
 	// Represents `name Type`.
 	Binding struct {
@@ -94,6 +70,13 @@ type (
 		Args *BracketList
 	}
 
+	// Represents `func(x T) T` or `(T) T`.
+	Signature struct {
+		Params *ParenList
+		Result Node
+		Loc    token.Loc // `func` token.
+	}
+
 	// Represents `x.selector`.
 	MemberAccess struct {
 		X        Node
@@ -101,26 +84,27 @@ type (
 		Loc      token.Loc // `.` token.
 	}
 
-	// Represents `!x`, where `!` is an unary operator.
+	// Represents `!x`, where `!` is an prefix operator.
 	PrefixOp struct {
 		X   Node
 		Opr *Operator
 	}
 
-	// Represents `x ! y`, where `!` is a binary operator.
+	// Represents `x ! y`, where `!` is a infix operator.
 	InfixOp struct {
 		X, Y Node
 		Opr  *Operator
 	}
 
+	// Represents `x!`, where `!` is a postfix operator.
 	PostfixOp struct {
 		X   Node
 		Opr *Operator
 	}
 
-	//
-	//
-	//
+	//------------------------------------------------
+	// Lists
+	//------------------------------------------------
 
 	// Represents `[a, b, c]`.
 	BracketList struct {
@@ -140,9 +124,9 @@ type (
 		Open, Close token.Loc // `{` and `}`.
 	}
 
-	//
-	//
-	//
+	//------------------------------------------------
+	// Language constructions
+	//------------------------------------------------
 
 	If struct {
 		Cond Node
@@ -199,6 +183,14 @@ func (n *Index) LocEnd() token.Loc { return n.Args.LocEnd() }
 
 func (n *ArrayType) Pos() token.Loc    { return n.Args.Pos() }
 func (n *ArrayType) LocEnd() token.Loc { return n.X.LocEnd() }
+
+func (n *Signature) Pos() token.Loc {
+	if n.Loc.Line == 0 {
+		return n.Params.Pos()
+	}
+	return n.Loc
+}
+func (n *Signature) LocEnd() token.Loc { return n.Result.LocEnd() }
 
 func (n *MemberAccess) Pos() token.Loc    { return n.X.Pos() }
 func (n *MemberAccess) LocEnd() token.Loc { return n.Selector.LocEnd() }

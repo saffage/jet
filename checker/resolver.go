@@ -4,88 +4,77 @@ import (
 	"fmt"
 
 	"github.com/saffage/jet/ast"
-	"github.com/saffage/jet/internal/assert"
 	"github.com/saffage/jet/types"
 )
 
-func resolveVarDecl(node *ast.VarDecl, scope *Scope) (types.Type, error) {
-	var t types.Type
-
-	if node.Binding.Type != nil {
-		tType, err := scope.TypeOf(node.Binding.Type)
-		if err != nil {
-			return tType, err
-		}
-
-		assert.Ok(tType != nil, fmt.Sprintf("expression '%s' should have type", node.Binding.Type))
-		typedesc, _ := tType.Underlying().(*types.TypeDesc)
-
-		if typedesc == nil {
-			return t, NewErrorf(node.Binding.Type, "expression is not a type (%s)", tType)
-		}
-
-		t = typedesc.Base()
-		fmt.Printf(">>> set `%s` type `%s`\n", node.Binding.Name, t)
+func resolveVar(node *ast.VarDecl, scope *Scope) error {
+	// 'tValue' can be nil.
+	tValue, err := resolveVarValue(node.Value, scope)
+	if err != nil {
+		return err
 	}
 
-	isUnknownSizedArray := false
-
-	if array := types.AsArray(t); array != nil && array.Size() == -1 {
-		isUnknownSizedArray = true
+	// 'tType' must be not nil.
+	tType, err := resolveVarType(node.Binding.Type, tValue, scope)
+	if err != nil {
+		return err
 	}
 
-	if node.Value != nil {
-		tValue, err := scope.TypeOf(node.Value)
+	fmt.Printf(">>> var value '%s'\n", tValue)
+	fmt.Printf(">>> var type '%s'\n", tType)
+
+	if tValue != nil && !tType.Equals(tValue) {
+		return NewErrorf(
+			node.Binding.Name,
+			"type mismatch, expected '%s', got '%s'",
+			tType,
+			tValue,
+		)
+	}
+
+	fmt.Printf(">>> var actual type '%s'\n", tType)
+	sym := NewVar(scope, tType, node.Binding, node.Binding.Name)
+
+	if defined := scope.Define(sym); defined != nil {
+		return errorAlreadyDefined(sym.Ident(), defined.Ident())
+	}
+
+	return nil
+}
+
+func resolveVarValue(value ast.Node, scope *Scope) (types.Type, error) {
+	if value != nil {
+		t, err := scope.TypeOf(value)
 		if err != nil {
 			return nil, err
 		}
 
-		if types.IsTypeDesc(tValue) {
-			return nil, NewErrorf(node.Value, "expected value, got type '%s' instead", tValue.Underlying())
+		if types.IsTypeDesc(t) {
+			return nil, NewErrorf(value, "expected value, got type '%s' instead", t.Underlying())
 		}
 
-		tValue = types.SkipUntyped(tValue)
-
-		if t != nil && !t.Equals(tValue) {
-			return t, NewErrorf(node.Value, "type mismatch, expected '%s', got '%s'", t, tValue)
-		}
-
-		if array, arrayValue := types.AsArray(t), types.AsArray(tValue); isUnknownSizedArray {
-			if array == nil || arrayValue == nil {
-				panic("unreachable")
-			}
-
-			t = types.NewArray(arrayValue.Size(), array.ElemType())
-			fmt.Printf(">>> set `%s` type `%s`\n", node.Binding.Name, t)
-		}
-
-		if t == nil {
-			t = tValue
-			fmt.Printf(">>> set `%s` type `%s`\n", node.Binding.Name, t)
-		}
-	} else if isUnknownSizedArray {
-		return t, NewError(node.Binding.Name, "value is required to infer array size")
+		return types.SkipUntyped(t), nil
 	}
 
-	return t, nil
+	return nil, nil
 }
 
-// func resolveVarValue(value ast.Node, scope *Scope) (types.Type, error) {
-// 	if value == nil {
-// 		panic("unreachable")
-// 	}
+func resolveVarType(typeExpr ast.Node, value types.Type, scope *Scope) (types.Type, error) {
+	if typeExpr != nil {
+		t, err := scope.TypeOf(typeExpr)
+		if err != nil {
+			return t, err
+		}
 
-// 	t, err := scope.TypeOf(value)
-// 	if err != nil {
-// 		return nil, err
-// 	}
+		if typedesc := types.AsTypeDesc(t); typedesc != nil {
+			return typedesc.Base(), nil
+		}
 
-// 	if types.IsTypeDesc(t) {
-// 		return nil, NewErrorf(value, "expected value, got type '%s' instead", t.Underlying())
-// 	}
+		return nil, NewError(typeExpr, "expression is not a type")
+	}
 
-// 	return types.SkipUntyped(t), nil
-// }
+	return value, nil
+}
 
 func resolveFuncDecl(sym *Func) error {
 	sig := sym.node.Signature

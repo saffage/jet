@@ -8,7 +8,7 @@ type Array struct {
 }
 
 func NewArray(size int, t Type) *Array {
-	if size < -1 {
+	if size < 0 {
 		panic(fmt.Sprintf("invalid array size (%d)", size))
 	}
 

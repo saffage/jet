@@ -18,8 +18,15 @@ func (p *Primitive) String() string { return p.kind.String() }
 func (p *Primitive) Kind() PrimitiveKind { return p.kind }
 
 func IsPrimitive(t Type) bool {
-	p, _ := t.(*Primitive)
-	return p != nil
+	return AsPrimitive(t) != nil
+}
+
+func AsPrimitive(t Type) *Primitive {
+	if primitive, _ := t.Underlying().(*Primitive); primitive != nil {
+		return primitive
+	}
+
+	return nil
 }
 
 func SkipUntyped(t Type) Type {
@@ -50,7 +57,7 @@ func IsUntyped(t Type) bool {
 	return false
 }
 
-func NewTypeFromConstant(value constant.Value) Type {
+func FromConstant(value constant.Value) Type {
 	switch value.Kind() {
 	case constant.Bool:
 		return Primitives[UntypedBool]
@@ -58,7 +65,7 @@ func NewTypeFromConstant(value constant.Value) Type {
 	case constant.Int:
 		return Primitives[UntypedInt]
 
-	case constant.Float, constant.String, constant.Expression:
+	case constant.Float, constant.String:
 		panic("not implemented")
 
 	default:

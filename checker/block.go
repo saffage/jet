@@ -21,19 +21,11 @@ func (expr *Block) visit(node ast.Node) (ast.Visitor, error) {
 	case ast.Decl:
 		switch decl := node.(type) {
 		case *ast.VarDecl:
-			sym := NewVar(expr.scope, nil, decl.Binding, decl.Binding.Name)
-			t, err := resolveVarDecl(decl, expr.scope)
-			if err != nil {
+			if err := resolveVar(decl, expr.scope); err != nil {
 				return nil, err
 			}
 
-			sym.setType(t)
-
-			if defined := expr.scope.Define(sym); defined != nil {
-				return nil, errorAlreadyDefined(sym.Ident(), defined.Ident())
-			}
-
-			fmt.Printf(">>> def local var `%s`\n", sym.Name())
+			fmt.Printf(">>> def local var `%s`\n", decl.Binding.Name)
 
 			expr.t = types.Unit
 			return nil, nil
