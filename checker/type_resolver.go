@@ -534,7 +534,11 @@ func (scope *Scope) SymbolOf(ident *ast.Ident) Symbol {
 
 func typeCheckWhile(node *ast.While, scope *Scope) error {
 	tBody, err := scope.TypeOf(node.Body)
-	if err != nil && tBody != nil {
+	if err != nil {
+		return err
+	}
+
+	if !types.Unit.Equals(tBody) {
 		return NewErrorf(node.Body, "while loop body must have no type, but body has type '%s'", tBody)
 	}
 
