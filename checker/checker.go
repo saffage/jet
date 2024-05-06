@@ -1,9 +1,6 @@
 package checker
 
 import (
-	"os"
-
-	"github.com/davecgh/go-spew/spew"
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/internal/assert"
 	"github.com/saffage/jet/types"
@@ -54,15 +51,6 @@ func Check(node *ast.ModuleDecl) []error {
 		}
 
 		module.completed = true
-	}
-
-	{
-		f, err := os.Create("checker_state.txt")
-		if err != nil {
-			panic(err)
-		}
-		defer f.Close()
-		spew.Fdump(f, check)
 	}
 
 	return check.errors
