@@ -9,7 +9,7 @@ import (
 // Primitives
 //------------------------------------------------
 
-func (p *Parser) parseIdent() *ast.Ident {
+func (p *Parser) parseIdentNode() *ast.Ident {
 	if p.flags&Trace != 0 {
 		p.trace()
 		defer p.untrace()
@@ -26,8 +26,8 @@ func (p *Parser) parseIdent() *ast.Ident {
 	return nil
 }
 
-func (p *Parser) parseIdentNode() ast.Node {
-	if ident := p.parseIdent(); ident != nil {
+func (p *Parser) parseIdent() ast.Node {
+	if ident := p.parseIdentNode(); ident != nil {
 		return ident
 	}
 
@@ -351,7 +351,7 @@ func (p *Parser) parseOperand() ast.Node {
 
 	switch p.tok.Kind {
 	case token.Ident:
-		return p.parseIdentNode()
+		return p.parseIdent()
 
 	case token.At:
 		return p.parseBuiltIn()
@@ -462,7 +462,7 @@ func (p *Parser) parseMemberAccess(x ast.Node) ast.Node {
 	}
 
 	if dot := p.consume(token.Dot); dot != nil {
-		y := p.parseIdent()
+		y := p.parseIdentNode()
 
 		if y == nil {
 			return nil
@@ -485,7 +485,7 @@ func (p *Parser) parseBuiltIn() ast.Node {
 	}
 
 	if tok := p.expect(token.At); tok != nil {
-		name := p.parseIdent()
+		name := p.parseIdentNode()
 		x := ast.Node(nil)
 
 		switch p.tok.Kind {
@@ -559,7 +559,7 @@ func (p *Parser) parseFuncDecl() ast.Node {
 	}
 
 	tok := p.expect(token.KwFunc)
-	name := p.parseIdent()
+	name := p.parseIdentNode()
 
 	if name == nil {
 		return nil
@@ -685,7 +685,7 @@ func (p *Parser) parseBinding() ast.Node {
 		defer p.untrace()
 	}
 
-	name := p.parseIdent()
+	name := p.parseIdentNode()
 
 	if name == nil {
 		return nil
@@ -714,7 +714,7 @@ func (p *Parser) parseTypeName() ast.Node {
 
 	switch p.tok.Kind {
 	case token.Ident:
-		switch expr := p.parseMemberAccess(p.parseIdent()); expr.(type) {
+		switch expr := p.parseMemberAccess(p.parseIdentNode()); expr.(type) {
 		case *ast.Ident:
 			return expr
 
@@ -986,7 +986,7 @@ func (p *Parser) parseBreakOrContinue() ast.Node {
 	label := (*ast.Ident)(nil)
 
 	if p.tok.Kind == token.Ident {
-		label = p.parseIdent()
+		label = p.parseIdentNode()
 	}
 
 	switch tok.Kind {
@@ -1014,7 +1014,7 @@ func (p *Parser) parseModule() ast.Node {
 	}
 
 	if tok := p.consume(token.KwModule); tok != nil {
-		if name := p.parseIdent(); name != nil {
+		if name := p.parseIdentNode(); name != nil {
 			body := ast.Node(nil)
 
 			if p.tok.Kind == token.LCurly {
@@ -1040,7 +1040,7 @@ func (p *Parser) parseAlias() ast.Node {
 	}
 
 	if tokAlias := p.consume(token.KwAlias); tokAlias != nil {
-		id := p.parseIdent()
+		id := p.parseIdentNode()
 
 		if id == nil {
 			return nil
