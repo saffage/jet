@@ -22,6 +22,7 @@ type TypeInfo struct {
 }
 
 func Check(node *ast.ModuleDecl) (*TypeInfo, []error) {
+	module := NewModule(Global, node)
 	check := &Checker{
 		TypeInfo: &TypeInfo{
 			Data:  make(map[ast.Node]TypedValue),

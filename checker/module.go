@@ -12,15 +12,15 @@ type Module struct {
 	completed bool
 }
 
-func NewModule(node *ast.ModuleDecl) *Module {
+func NewModule(parent *Scope, node *ast.ModuleDecl) *Module {
 	return &Module{
-		scope:     NewScope(nil),
+		scope:     NewScope(parent),
 		node:      node,
 		completed: false,
 	}
 }
 
-func (m *Module) Owner() *Scope     { panic("modules have no owner") }
+func (m *Module) Owner() *Scope     { return m.scope.parent }
 func (m *Module) Type() types.Type  { panic("modules have no type") }
 func (m *Module) Name() string      { return m.node.Name.Name }
 func (m *Module) Ident() *ast.Ident { return m.node.Name }
