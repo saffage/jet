@@ -2,6 +2,7 @@ package checker
 
 import (
 	"github.com/saffage/jet/ast"
+	"github.com/saffage/jet/constant"
 	"github.com/saffage/jet/internal/assert"
 	"github.com/saffage/jet/types"
 )
@@ -27,6 +28,22 @@ var primitives = [...]Symbol{
 		node:  nil,
 		name:  &ast.Ident{Name: "int"},
 	},
+	NewConst(
+		nil,
+		&TypedValue{
+			Type:  types.Primitives[types.UntypedBool],
+			Value: constant.NewBool(true),
+		},
+		&ast.Ident{Name: "true"},
+	),
+	NewConst(
+		nil,
+		&TypedValue{
+			Type:  types.Primitives[types.UntypedBool],
+			Value: constant.NewBool(false),
+		},
+		&ast.Ident{Name: "false"},
+	),
 }
 
 func (check *Checker) defPrimitives() {

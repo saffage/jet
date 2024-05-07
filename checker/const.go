@@ -1,38 +1,28 @@
 package checker
 
-// type Const struct {
-// 	owner *Scope
-// 	node  *ast.GenericDecl
-// 	name  *ast.Ident
-// 	t     types.Type
-// 	value constant.Value
-// }
+import (
+	"github.com/saffage/jet/ast"
+	"github.com/saffage/jet/constant"
+	"github.com/saffage/jet/types"
+)
 
-// func NewConst(owner *Scope, node *ast.GenericDecl, name *ast.Ident) (*Const, error) {
-// 	if node.Kind != ast.ConstDecl {
-// 		return nil, NewError(node, "expected constant declaration")
-// 	}
+type Const struct {
+	owner *Scope
+	name  *ast.Ident
+	value *TypedValue
+}
 
-// 	if node.Field.Value == nil {
-// 		return nil, NewError(name, "value is required for constant")
-// 	}
+func NewConst(owner *Scope, value *TypedValue, name *ast.Ident) *Const {
+	return &Const{
+		owner: owner,
+		name:  name,
+		value: value,
+	}
+}
 
-// 	value := constant.FromNode(node.Field.Value)
-// 	sym := &Const{
-// 		owner: owner,
-// 		// type_: types.FromConstant(value.Kind()),
-// 		value: value,
-// 		node:  node,
-// 		name:  name,
-// 	}
-
-// 	return sym, nil
-// }
-
-// func (v *Const) Owner() *Scope     { return v.owner }
-// func (v *Const) Type() types.Type  { return v.t }
-// func (v *Const) Name() string      { return v.name.Name }
-// func (v *Const) Ident() *ast.Ident { return v.name }
-// func (v *Const) Node() ast.Node    { return v.node }
-
-// func (v *Const) setType(t types.Type) { v.t = t }
+func (v *Const) Owner() *Scope         { return v.owner }
+func (v *Const) Type() types.Type      { return v.value.Type }
+func (v *Const) Value() constant.Value { return v.value.Value }
+func (v *Const) Name() string          { return v.name.Name }
+func (v *Const) Ident() *ast.Ident     { return v.name }
+func (v *Const) Node() ast.Node        { return nil }
