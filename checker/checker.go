@@ -36,6 +36,7 @@ func Check(node *ast.ModuleDecl) (*TypeInfo, []error) {
 	}
 
 	check.defBuiltIns()
+	check.defPrimitives()
 
 	{
 		nodes := []ast.Node(nil)
