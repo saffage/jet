@@ -65,8 +65,11 @@ func FromConstant(value constant.Value) Type {
 	case constant.Int:
 		return Primitives[UntypedInt]
 
-	case constant.Float, constant.String:
-		panic("not implemented")
+	case constant.Float:
+		return Primitives[UntypedFloat]
+
+	case constant.String:
+		return Primitives[UntypedString]
 
 	default:
 		panic("unreachable")
