@@ -1,11 +1,8 @@
 package constant
 
 import (
-	"fmt"
 	"math/big"
 	"strconv"
-
-	"github.com/saffage/jet/ast"
 )
 
 type Kind byte
@@ -82,36 +79,6 @@ func AsBool(value Value) *bool {
 	}
 
 	return nil
-}
-
-func FromNode(node *ast.Literal) Value {
-	if node == nil {
-		panic("unnreachable")
-	}
-
-	switch node.Kind {
-	case ast.IntLiteral:
-		if value, ok := big.NewInt(0).SetString(node.Value, 0); ok {
-			return NewBigInt(value)
-		}
-
-		// Unreachable?
-		panic(fmt.Sprintf("invalid integer value for constant: '%s'", node.Value))
-
-	case ast.FloatLiteral:
-		if value, ok := big.NewFloat(0.0).SetString(node.Value); ok {
-			return NewBigFloat(value)
-		}
-
-		// Unreachable?
-		panic(fmt.Sprintf("invalid float value for constant: '%s'", node.Value))
-
-	case ast.StringLiteral:
-		return NewString(node.Value)
-
-	default:
-		panic("unreachable")
-	}
 }
 
 //------------------------------------------------

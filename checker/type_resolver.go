@@ -90,23 +90,6 @@ func (check *Checker) typeOfInternal(expr ast.Node) types.Type {
 	}
 }
 
-func (check *Checker) valueOfInternal(expr ast.Node) *TypedValue {
-	switch node := expr.(type) {
-	case *ast.Literal:
-		value := constant.FromNode(node)
-		type_ := types.FromConstant(value)
-		return &TypedValue{type_, value}
-
-		// case *ast.Ident:
-		// 	panic("constants are not implemented")
-
-		// case *ast.PrefixOp, *ast.PostfixOp, *ast.InfixOp:
-		// 	panic("not implemented")
-	}
-
-	return nil
-}
-
 func (check *Checker) symbolOf(ident *ast.Ident) Symbol {
 	if sym, _ := check.scope.Lookup(ident.Name); sym != nil {
 		return sym
