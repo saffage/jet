@@ -80,7 +80,7 @@ func (check *Checker) resolveVarType(typeExpr ast.Node, value types.Type) types.
 
 	// Unit can be either value and type.
 	if t.Equals(types.Unit) {
-		typedesc = types.NewTypeDesc(types.Unit).(*types.TypeDesc)
+		typedesc = types.NewTypeDesc(types.Unit)
 	}
 
 	if typedesc == nil {

@@ -10,11 +10,11 @@ type TypeDesc struct {
 	base Type
 }
 
-func NewTypeDesc(t Type) Type {
+func NewTypeDesc(t Type) *TypeDesc {
 	assert.Ok(t != nil)
 
-	if _, ok := t.(*TypeDesc); ok {
-		return t
+	if typedesc, _ := t.(*TypeDesc); typedesc != nil {
+		return typedesc
 	}
 
 	return &TypeDesc{base: t}
