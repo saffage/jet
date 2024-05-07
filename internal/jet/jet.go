@@ -146,10 +146,8 @@ func process(
 			Name: &ast.Ident{Name: cfg.Files[config.MainFileID].Name},
 			Body: nodeList,
 		}
-		errs := checker.Check(mod)
-
-		for _, err := range errs {
-			reportError(cfg, err)
+		typeinfo, errs := checker.Check(mod)
+		_ = typeinfo
 		}
 	}
 }

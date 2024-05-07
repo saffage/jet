@@ -7,10 +7,7 @@ import (
 )
 
 type Checker struct {
-	types map[ast.Node]TypedValue
-	defs  map[*ast.Ident]Symbol
-	uses  map[*ast.Ident]Symbol
-
+	*TypeInfo
 	module         *Module
 	scope          *Scope
 	builtIns       []*BuiltIn
@@ -18,12 +15,19 @@ type Checker struct {
 	isErrorHandled bool
 }
 
-func Check(node *ast.ModuleDecl) []error {
-	module := NewModule(node)
+type TypeInfo struct {
+	Data  map[ast.Node]TypedValue
+	Types map[ast.Node]TypedValue
+	Defs  map[*ast.Ident]Symbol
+}
+
+func Check(node *ast.ModuleDecl) (*TypeInfo, []error) {
 	check := &Checker{
-		types:          make(map[ast.Node]TypedValue),
-		defs:           make(map[*ast.Ident]Symbol),
-		uses:           make(map[*ast.Ident]Symbol),
+		TypeInfo: &TypeInfo{
+			Data:  make(map[ast.Node]TypedValue),
+			Types: make(map[ast.Node]TypedValue),
+			Defs:  make(map[*ast.Ident]Symbol),
+		},
 		module:         module,
 		scope:          module.scope,
 		errors:         make([]error, 0),
@@ -53,13 +57,13 @@ func Check(node *ast.ModuleDecl) []error {
 		module.completed = true
 	}
 
-	return check.errors
+	return check.TypeInfo, check.errors
 }
 
 // Type checks 'expr' and returns its type.
 // If error was occured, result is undefined
 func (check *Checker) typeOf(expr ast.Node) types.Type {
-	if t, ok := check.types[expr]; ok {
+	if t, ok := check.Types[expr]; ok {
 		return t.Type
 	}
 
@@ -77,7 +81,7 @@ func (check *Checker) typeOf(expr ast.Node) types.Type {
 }
 
 func (check *Checker) valueOf(expr ast.Node) *TypedValue {
-	if t, ok := check.types[expr]; ok {
+	if t, ok := check.Types[expr]; ok {
 		return &t
 	}
 
@@ -97,8 +101,8 @@ func (check *Checker) setType(expr ast.Node, t types.Type) {
 	assert.Ok(expr != nil)
 	assert.Ok(t != nil)
 
-	if check.types != nil {
-		check.types[expr] = TypedValue{t, nil}
+	if check.Types != nil {
+		check.Types[expr] = TypedValue{t, nil}
 	}
 }
 
@@ -106,24 +110,15 @@ func (check *Checker) setValue(expr ast.Node, value TypedValue) {
 	assert.Ok(expr != nil)
 	assert.Ok(value.Type != nil)
 
-	if check.types != nil {
-		check.types[expr] = value
+	if check.Types != nil {
+		check.Types[expr] = value
 	}
 }
 
 func (check *Checker) newDef(ident *ast.Ident, sym Symbol) {
 	assert.Ok(ident != nil)
 
-	if check.defs != nil {
-		check.defs[ident] = sym
-	}
-}
-
-func (check *Checker) newUse(ident *ast.Ident, sym Symbol) {
-	assert.Ok(ident != nil)
-	assert.Ok(sym != nil)
-
-	if check.uses != nil {
-		check.uses[ident] = sym
+	if check.Defs != nil {
+		check.Defs[ident] = sym
 	}
 }
