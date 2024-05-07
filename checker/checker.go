@@ -68,9 +68,12 @@ func (check *Checker) typeOf(expr ast.Node) types.Type {
 		return v.Type
 	}
 
-	t := check.typeOfInternal(expr)
-	check.setType(expr, t)
-	return t
+	if t := check.typeOfInternal(expr); t != nil {
+		check.setType(expr, t)
+		return t
+	}
+
+	return nil
 }
 
 func (check *Checker) valueOf(expr ast.Node) *TypedValue {
