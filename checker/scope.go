@@ -70,7 +70,7 @@ func (scope *Scope) Member(name string) Symbol {
 func errorAlreadyDefined(ident, previous *ast.Ident) *Error {
 	err := NewErrorf(ident, "name '%s' is already defined in this scope", ident.Name)
 
-	if previous != nil {
+	if previous != nil && previous.Start.Line > 0 {
 		err.Notes = []*Error{
 			NewError(previous, "previous declaration was here"),
 		}
