@@ -72,11 +72,13 @@ func _() {
 	_ = x[KwReturn-61]
 	_ = x[KwBreak-62]
 	_ = x[KwContinue-63]
+	_ = x[KwAnd-64]
+	_ = x[KwOr-65]
 }
 
-const _Kind_name = "IllegalEOFCommentWhitespaceNewLineIdentIntFloatStringLParenRParenLCurlyRCurlyLBracketRBracketCommaColonSemicolonEqEqOpBangNeOpLtOpLeOpGtOpGeOpPlusPlusEqMinusMinusEqAsteriskAsteriskEqSlashSlashEqPercentPercentEqAmpPipeCaretAtQuestionMarkArrowFatArrowShlShrDotDot2Dot2LessEllipsisKwModuleKwAliasKwStructKwEnumKwFuncKwValKwVarKwConstKwOfKwIfKwElseKwWhileKwReturnKwBreakKwContinue"
+const _Kind_name = "IllegalEOFCommentWhitespaceNewLineIdentIntFloatStringLParenRParenLCurlyRCurlyLBracketRBracketCommaColonSemicolonEqEqOpBangNeOpLtOpLeOpGtOpGeOpPlusPlusEqMinusMinusEqAsteriskAsteriskEqSlashSlashEqPercentPercentEqAmpPipeCaretAtQuestionMarkArrowFatArrowShlShrDotDot2Dot2LessEllipsisKwModuleKwAliasKwStructKwEnumKwFuncKwValKwVarKwConstKwOfKwIfKwElseKwWhileKwReturnKwBreakKwContinueKwAndKwOr"
 
-var _Kind_index = [...]uint16{0, 7, 10, 17, 27, 34, 39, 42, 47, 53, 59, 65, 71, 77, 85, 93, 98, 103, 112, 114, 118, 122, 126, 130, 134, 138, 142, 146, 152, 157, 164, 172, 182, 187, 194, 201, 210, 213, 217, 222, 224, 236, 241, 249, 252, 255, 258, 262, 270, 278, 286, 293, 301, 307, 313, 318, 323, 330, 334, 338, 344, 351, 359, 366, 376}
+var _Kind_index = [...]uint16{0, 7, 10, 17, 27, 34, 39, 42, 47, 53, 59, 65, 71, 77, 85, 93, 98, 103, 112, 114, 118, 122, 126, 130, 134, 138, 142, 146, 152, 157, 164, 172, 182, 187, 194, 201, 210, 213, 217, 222, 224, 236, 241, 249, 252, 255, 258, 262, 270, 278, 286, 293, 301, 307, 313, 318, 323, 330, 334, 338, 344, 351, 359, 366, 376, 381, 385}
 
 func (i Kind) String() string {
 	if i >= Kind(len(_Kind_index)-1) {

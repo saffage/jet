@@ -414,6 +414,15 @@ func (check *Checker) typeOfInfixOp(node *ast.InfixOp) types.Type {
 				return types.Primitives[types.Bool]
 			}
 
+		case ast.OperatorAnd, ast.OperatorOr:
+			switch primitive.Kind() {
+			case types.UntypedBool:
+				return types.Primitives[types.UntypedBool]
+
+			case types.Bool:
+				return types.Primitives[types.Bool]
+			}
+
 		default:
 			panic("unreachable")
 		}

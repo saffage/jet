@@ -89,6 +89,8 @@ const (
 	KwReturn   // keyword 'return'
 	KwBreak    // keyword 'break'
 	KwContinue // keyword 'continue'
+	KwAnd      // keyword 'and'
+	KwOr       // keyword 'or'
 )
 
 const (
@@ -241,4 +243,6 @@ var representableKinds = map[Kind]string{
 	KwReturn:     "return",
 	KwBreak:      "break",
 	KwContinue:   "continue",
+	KwAnd:        "and",
+	KwOr:         "or",
 }

@@ -30,13 +30,15 @@ func _() {
 	_ = x[OperatorBitXor-19]
 	_ = x[OperatorBitShl-20]
 	_ = x[OperatorBitShr-21]
-	_ = x[OperatorTry-22]
-	_ = x[OperatorUnwrap-23]
+	_ = x[OperatorAnd-22]
+	_ = x[OperatorOr-23]
+	_ = x[OperatorTry-24]
+	_ = x[OperatorUnwrap-25]
 }
 
-const _OperatorKind_name = "UnknownOperator!-&&var=+-*/%==!=<<=>>=&|^<<>>?!"
+const _OperatorKind_name = "UnknownOperator!-&&var=+-*/%==!=<<=>>=&|^<<>>andor?!"
 
-var _OperatorKind_index = [...]uint8{0, 15, 16, 17, 18, 22, 23, 24, 25, 26, 27, 28, 30, 32, 33, 35, 36, 38, 39, 40, 41, 43, 45, 46, 47}
+var _OperatorKind_index = [...]uint8{0, 15, 16, 17, 18, 22, 23, 24, 25, 26, 27, 28, 30, 32, 33, 35, 36, 38, 39, 40, 41, 43, 45, 48, 50, 51, 52}
 
 func (i OperatorKind) String() string {
 	if i >= OperatorKind(len(_OperatorKind_index)-1) {

@@ -72,11 +72,13 @@ func _() {
 	_ = x[KwReturn-61]
 	_ = x[KwBreak-62]
 	_ = x[KwContinue-63]
+	_ = x[KwAnd-64]
+	_ = x[KwOr-65]
 }
 
-const _Kind_user_name = "illegal characterend of filecommentwhitespacenew lineidentifieruntyped intuntyped floatuntyped string'('')''{''}''['']'','':'';'operator '='operator '=='operator '!'operator '!='operator '<'operator '<='operator '>'operator '>='operator '+'operator '+='operator '-'operator '-='operator '*'operator '*='operator '/'operator '/='operator '%'operator '%='operator '&'operator '|'operator '^'operator '@'operator '?'operator '->'operator '=>'operator '<<'operator '>>'operator '.'operator '..'operator '..<'operator '...'keyword 'module'keyword 'alias'keyword 'struct'keyword 'enum'keyword 'func'keyword 'val'keyword 'var'keyword 'const'keyword 'of'keyword 'if'keyword 'else'keyword 'while'keyword 'return'keyword 'break'keyword 'continue'"
+const _Kind_user_name = "illegal characterend of filecommentwhitespacenew lineidentifieruntyped intuntyped floatuntyped string'('')''{''}''['']'','':'';'operator '='operator '=='operator '!'operator '!='operator '<'operator '<='operator '>'operator '>='operator '+'operator '+='operator '-'operator '-='operator '*'operator '*='operator '/'operator '/='operator '%'operator '%='operator '&'operator '|'operator '^'operator '@'operator '?'operator '->'operator '=>'operator '<<'operator '>>'operator '.'operator '..'operator '..<'operator '...'keyword 'module'keyword 'alias'keyword 'struct'keyword 'enum'keyword 'func'keyword 'val'keyword 'var'keyword 'const'keyword 'of'keyword 'if'keyword 'else'keyword 'while'keyword 'return'keyword 'break'keyword 'continue'keyword 'and'keyword 'or'"
 
-var _Kind_user_index = [...]uint16{0, 17, 28, 35, 45, 53, 63, 74, 87, 101, 104, 107, 110, 113, 116, 119, 122, 125, 128, 140, 153, 165, 178, 190, 203, 215, 228, 240, 253, 265, 278, 290, 303, 315, 328, 340, 353, 365, 377, 389, 401, 413, 426, 439, 452, 465, 477, 490, 504, 518, 534, 549, 565, 579, 593, 606, 619, 634, 646, 658, 672, 687, 703, 718, 736}
+var _Kind_user_index = [...]uint16{0, 17, 28, 35, 45, 53, 63, 74, 87, 101, 104, 107, 110, 113, 116, 119, 122, 125, 128, 140, 153, 165, 178, 190, 203, 215, 228, 240, 253, 265, 278, 290, 303, 315, 328, 340, 353, 365, 377, 389, 401, 413, 426, 439, 452, 465, 477, 490, 504, 518, 534, 549, 565, 579, 593, 606, 619, 634, 646, 658, 672, 687, 703, 718, 736, 749, 761}
 
 func (i Kind) UserString() string {
 	if i >= Kind(len(_Kind_user_index)-1) {

@@ -257,9 +257,15 @@ func (p *Parser) parseBinaryExpr(lhs ast.Node, precedence token.Precedence) ast.
 
 		case token.Shl:
 			binaryOpKind = ast.OperatorBitShl
-		case token.Shr:
 
+		case token.Shr:
 			binaryOpKind = ast.OperatorBitShr
+
+		case token.KwAnd:
+			binaryOpKind = ast.OperatorAnd
+
+		case token.KwOr:
+			binaryOpKind = ast.OperatorOr
 
 		default:
 			p.errorf(

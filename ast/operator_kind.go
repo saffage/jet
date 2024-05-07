@@ -34,6 +34,8 @@ const (
 	OperatorBitXor // ^
 	OperatorBitShl // <<
 	OperatorBitShr // >>
+	OperatorAnd    // and
+	OperatorOr     // or
 
 	// Postfix.
 
