@@ -148,6 +148,12 @@ func process(
 		}
 		typeinfo, errs := checker.Check(mod)
 		_ = typeinfo
+
+		if len(errs) != 0 {
+			for _, err := range errs {
+				reportError(cfg, err)
+			}
+			return
 		}
 	}
 }
