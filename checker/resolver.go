@@ -77,6 +77,12 @@ func (check *Checker) resolveVarType(typeExpr ast.Node, value types.Type) types.
 	}
 
 	typedesc := types.AsTypeDesc(t)
+
+	// Unit can be either value and type.
+	if t.Equals(types.Unit) {
+		typedesc = types.NewTypeDesc(types.Unit).(*types.TypeDesc)
+	}
+
 	if typedesc == nil {
 		check.errorf(typeExpr, "expression is not a type")
 		return nil

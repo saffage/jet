@@ -3,8 +3,8 @@ package checker
 import (
 	"fmt"
 	"math"
+	"math/big"
 	"slices"
-	"strconv"
 
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/constant"
@@ -227,6 +227,11 @@ func (check *Checker) typeOfIndex(node *ast.Index) types.Type {
 		return nil
 	}
 
+	if t.Equals(types.Unit) {
+		check.errorf(node.X, "expession is of type (unit) and cannot be indexed")
+		return nil
+	}
+
 	if len(node.Args.Exprs) != 1 {
 		check.errorf(node.Args.ExprList, "expected 1 argument")
 		return nil
@@ -244,32 +249,26 @@ func (check *Checker) typeOfIndex(node *ast.Index) types.Type {
 		}
 
 		return array.ElemType()
+	} else if tuple := types.AsTuple(t); tuple != nil {
+		value := check.valueOf(node.Args.Exprs[0])
+		if value == nil || value.Value == nil || value.Value.Kind() != constant.Int {
+			check.errorf(node.Args.Exprs[0], "expected compile-time integer")
+			return nil
+		}
+
+		index := constant.AsInt(value.Value)
+		tupleLen := big.NewInt(int64(tuple.Len() - 1))
+
+		if index.Sign() == -1 || index.Cmp(tupleLen) == 1 {
+			check.errorf(node.Args.Exprs[0], "index must be in range 0..%d", tuple.Len()-1)
+			return nil
+		}
+
+		return tuple.Types()[index.Int64()]
 	}
 
-	tuple := types.AsTuple(t)
-	if tuple == nil {
-		check.errorf(node.X, "expression is not an array or tuple")
-		return nil
-	}
-
-	// TODO use [Scope.ValueOf]
-	lit, _ := node.Args.Exprs[0].(*ast.Literal)
-	if lit == nil || lit.Kind != ast.IntLiteral {
-		check.errorf(node.Args.Exprs[0], "expected integer literal")
-		return nil
-	}
-
-	n, err := strconv.ParseInt(lit.Value, 0, 64)
-	if err != nil {
-		panic(err)
-	}
-
-	if n < 0 || n > int64(tuple.Len())-1 {
-		check.errorf(node.Args.Exprs[0], "index must be in range 0..%d", tuple.Len()-1)
-		return nil
-	}
-
-	return tuple.Types()[uint64(n)]
+	check.errorf(node.X, "expression is not an array or tuple")
+	return nil
 }
 
 func (check *Checker) typeOfArrayType(node *ast.ArrayType) types.Type {
