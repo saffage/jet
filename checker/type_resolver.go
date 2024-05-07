@@ -589,6 +589,10 @@ func (check *Checker) typeOfElse(node *ast.Else, expectedType types.Type) types.
 	}
 
 	if !expectedType.Equals(tBody) {
+		if tTypedBody := types.SkipUntyped(tBody); !expectedType.Equals(tTypedBody) {
+			return tTypedBody
+		}
+
 		// Find the last node in the body for better error message.
 		lastNode := ast.Node(node.Body)
 
