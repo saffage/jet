@@ -23,7 +23,8 @@ func (check *Checker) blockVisitor(expr *Block) ast.Visitor {
 				expr.t = types.Unit
 
 			case *ast.TypeAliasDecl, *ast.FuncDecl, *ast.ModuleDecl:
-				panic("not implemented")
+				check.errorf(decl, "a local scope can contain only variable declarations")
+				return nil
 
 			default:
 				panic("unreachable")
