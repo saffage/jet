@@ -157,12 +157,8 @@ func (check *Checker) resolveFuncDecl(node *ast.FuncDecl) {
 		return
 	}
 
-	prevScope := check.scope
+	defer check.setScope(check.scope)
 	check.scope = local
-
-	defer func() {
-		check.scope = prevScope
-	}()
 
 	tBody := check.typeOf(sym.node.Body)
 	if tBody == nil {

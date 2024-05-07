@@ -89,6 +89,10 @@ func (check *Checker) valueOf(expr ast.Node) *TypedValue {
 	return nil
 }
 
+func (check *Checker) setScope(scope *Scope) {
+	check.scope = scope
+}
+
 func (check *Checker) setType(expr ast.Node, t types.Type) {
 	assert.Ok(expr != nil)
 	assert.Ok(t != nil)

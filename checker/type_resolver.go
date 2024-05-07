@@ -545,7 +545,11 @@ func (check *Checker) typeOfParenList(node *ast.ParenList) types.Type {
 }
 
 func (check *Checker) typeOfCurlyList(node *ast.CurlyList) types.Type {
-	block := NewBlock(NewScope(check.scope))
+	local := NewScope(check.scope)
+	block := NewBlock(local)
+
+	defer check.setScope(check.scope)
+	check.scope = local
 	fmt.Printf(">>> push local\n")
 
 	for _, node := range node.Nodes {
