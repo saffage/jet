@@ -67,6 +67,11 @@ func IsTuple(t Type) bool { return AsTuple(t) != nil }
 
 func AsTuple(t Type) *Tuple {
 	if t != nil {
+		// Tuple with 1 element.
+		if tuple, _ := t.(*Tuple); tuple != nil {
+			return tuple
+		}
+
 		if tuple, _ := t.Underlying().(*Tuple); tuple != nil {
 			return tuple
 		}
