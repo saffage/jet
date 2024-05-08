@@ -5,7 +5,7 @@ import (
 	"github.com/saffage/jet/types"
 )
 
-type BuiltInFn func(args ast.Node, scope *Scope) *TypedValue
+type BuiltInFn func(node *ast.ParenList, args []*TypedValue) *TypedValue
 
 type BuiltIn struct {
 	name string
@@ -43,6 +43,14 @@ func (check *Checker) defBuiltIns() {
 			t: types.NewFunc(
 				types.Unit,
 				types.NewTuple(types.Primitives[types.Any]),
+			),
+		},
+		{
+			name: "assert",
+			f:    check.builtInAssert,
+			t: types.NewFunc(
+				types.Unit,
+				types.NewTuple(types.Primitives[types.Bool]),
 			),
 		},
 	}

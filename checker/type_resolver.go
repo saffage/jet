@@ -149,12 +149,17 @@ func (check *Checker) typeOfBuiltInCall(node *ast.BuiltInCall) types.Type {
 		return nil
 	}
 
-	tArgs := check.typeOfParenList(args)
+	tArgList := check.typeOfParenList(args)
+	if tArgList == nil {
+		return nil
+	}
+
+	tArgs, _ := tArgList.(*types.Tuple)
 	if tArgs == nil {
 		return nil
 	}
 
-	if idx, err := builtIn.t.CheckArgs(tArgs.(*types.Tuple)); err != nil {
+	if idx, err := builtIn.t.CheckArgs(tArgs); err != nil {
 		n := ast.Node(args)
 
 		if idx < len(args.Exprs) {
@@ -165,7 +170,13 @@ func (check *Checker) typeOfBuiltInCall(node *ast.BuiltInCall) types.Type {
 		return nil
 	}
 
-	value := builtIn.f(args, check.scope)
+	vArgs := make([]*TypedValue, tArgs.Len())
+
+	for i := range len(vArgs) {
+		vArgs[i] = check.Types[args.Exprs[i]]
+	}
+
+	value := builtIn.f(args, vArgs)
 	if value == nil {
 		return nil
 	}
@@ -375,9 +386,8 @@ func (check *Checker) typeOfBracketList(node *ast.BracketList) types.Type {
 	return types.NewArray(size, elemType)
 }
 
+// The result is always [*types.Tuple] or its typedesc.
 func (check *Checker) typeOfParenList(node *ast.ParenList) types.Type {
-	// Either typedesc or tuple contructor.
-
 	if len(node.Exprs) == 0 {
 		return types.Unit
 	}

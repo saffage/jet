@@ -2,23 +2,18 @@ package checker
 
 import (
 	"github.com/saffage/jet/ast"
+	"github.com/saffage/jet/constant"
 	"github.com/saffage/jet/types"
 )
 
-func (check *Checker) builtInMagic(args ast.Node, scope *Scope) *TypedValue {
-	argList, _ := args.(*ast.ParenList)
-	if argList == nil {
-		check.errorf(args, "expected argument list")
-		return nil
+func (check *Checker) builtInMagic(node *ast.ParenList, args []*TypedValue) *TypedValue {
+	strval := constant.AsString(args[0].Value)
+
+	if strval == nil {
+		panic("unreachable")
 	}
 
-	arg1, _ := argList.Exprs[0].(*ast.Literal)
-	if arg1 == nil || arg1.Kind != ast.StringLiteral {
-		check.errorf(argList.Exprs[0], "expected string literal")
-		return nil
-	}
-
-	switch arg1.Value {
+	switch *strval {
 	case "Bool":
 		return &TypedValue{types.NewTypeDesc(types.Primitives[types.Bool]), nil}
 
@@ -26,37 +21,22 @@ func (check *Checker) builtInMagic(args ast.Node, scope *Scope) *TypedValue {
 		return &TypedValue{types.NewTypeDesc(types.Primitives[types.I32]), nil}
 
 	default:
-		check.errorf(arg1, "unknown magic '%s'", arg1.Value)
+		check.errorf(node.Exprs[0], "unknown magic '%s'", *strval)
 		return nil
 	}
 }
 
-func (check *Checker) builtInTypeOf(args ast.Node, scope *Scope) *TypedValue {
-	argList, _ := args.(*ast.ParenList)
-	if argList == nil {
-		check.errorf(args, "expected argument list")
-		return nil
+func (check *Checker) builtInTypeOf(node *ast.ParenList, args []*TypedValue) *TypedValue {
+	return &TypedValue{
+		Type:  types.NewTypeDesc(types.SkipUntyped(args[0].Type)),
+		Value: nil,
 	}
-
-	t := check.typeOf(argList.Exprs[0])
-	if t == nil {
-		return nil
-	}
-
-	return &TypedValue{types.NewTypeDesc(types.SkipUntyped(t)), nil}
 }
 
-func (check *Checker) builtInPrint(args ast.Node, scope *Scope) *TypedValue {
-	argList, _ := args.(*ast.ParenList)
-	if argList == nil {
-		check.errorf(args, "expected argument list")
-		return nil
-	}
+func (check *Checker) builtInPrint(node *ast.ParenList, args []*TypedValue) *TypedValue {
+	return &TypedValue{types.Unit, nil}
+}
 
-	t := check.typeOf(argList)
-	if t == nil {
-		return nil
-	}
-
+func (check *Checker) builtInAssert(node *ast.ParenList, args []*TypedValue) *TypedValue {
 	return &TypedValue{types.Unit, nil}
 }
