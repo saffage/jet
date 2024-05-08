@@ -8,7 +8,7 @@ type Primitive struct {
 
 func (p *Primitive) Equals(other Type) bool {
 	p2, _ := other.Underlying().(*Primitive)
-	return p.kind == Any || (p2 != nil && (p.kind == p2.kind || p.kind == SkipUntyped(p2).(*Primitive).kind))
+	return p.kind == KindAny || (p2 != nil && (p.kind == p2.kind || p.kind == SkipUntyped(p2).(*Primitive).kind))
 }
 
 func (p *Primitive) Underlying() Type { return p }
@@ -32,11 +32,11 @@ func AsPrimitive(t Type) *Primitive {
 func SkipUntyped(t Type) Type {
 	if p, _ := t.(*Primitive); p != nil {
 		switch p.kind {
-		case UntypedBool:
-			return Primitives[Bool]
+		case KindUntypedBool:
+			return Bool
 
-		case UntypedInt:
-			return Primitives[I32]
+		case KindUntypedInt:
+			return I32
 
 			// case UntypedFloat, UntypedString:
 			// 	panic("not implemented")
@@ -49,7 +49,7 @@ func SkipUntyped(t Type) Type {
 func IsUntyped(t Type) bool {
 	if p, _ := t.(*Primitive); p != nil {
 		switch p.kind {
-		case UntypedBool, UntypedInt, UntypedFloat, UntypedString:
+		case KindUntypedBool, KindUntypedInt, KindUntypedFloat, KindUntypedString:
 			return true
 		}
 	}
@@ -60,16 +60,16 @@ func IsUntyped(t Type) bool {
 func FromConstant(value constant.Value) Type {
 	switch value.Kind() {
 	case constant.Bool:
-		return Primitives[UntypedBool]
+		return UntypedBool
 
 	case constant.Int:
-		return Primitives[UntypedInt]
+		return UntypedInt
 
 	case constant.Float:
-		return Primitives[UntypedFloat]
+		return UntypedFloat
 
 	case constant.String:
-		return Primitives[UntypedString]
+		return UntypedString
 
 	default:
 		panic("unreachable")
@@ -80,32 +80,31 @@ func FromConstant(value constant.Value) Type {
 type PrimitiveKind byte
 
 const (
-	UnknownPrimitive PrimitiveKind = iota
+	UnknownPrimitiveKind PrimitiveKind = iota
 
-	UntypedBool   // untyped bool
-	UntypedInt    // untyped int
-	UntypedFloat  // untyped float
-	UntypedString // untyped string
+	KindUntypedBool   // untyped bool
+	KindUntypedInt    // untyped int
+	KindUntypedFloat  // untyped float
+	KindUntypedString // untyped string
 
-	Bool // bool
-	I32  // i32
+	KindBool // bool
+	KindI32  // i32
 
 	// Meta types.
 
-	Any         // any
-	AnyTypeDesc // typedesc
+	KindAny         // any
+	KindAnyTypeDesc // typedesc
 )
 
-var Primitives = [...]*Primitive{
-	UnknownPrimitive: {UnknownPrimitive},
-	UntypedBool:      {UntypedBool},
-	UntypedInt:       {UntypedInt},
-	UntypedFloat:     {UntypedFloat},
-	UntypedString:    {UntypedString},
+var (
+	UntypedBool   = &Primitive{KindUntypedBool}
+	UntypedInt    = &Primitive{KindUntypedInt}
+	UntypedFloat  = &Primitive{KindUntypedFloat}
+	UntypedString = &Primitive{KindUntypedString}
 
-	Bool: {Bool},
-	I32:  {I32},
+	Bool = &Primitive{KindBool}
+	I32  = &Primitive{KindI32}
 
-	Any:         {Any},
-	AnyTypeDesc: {AnyTypeDesc},
-}
+	Any         = &Primitive{KindAny}
+	AnyTypeDesc = &Primitive{KindAnyTypeDesc}
+)

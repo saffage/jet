@@ -25,16 +25,16 @@ func (check *Checker) defBuiltIns() {
 			name: "magic",
 			f:    check.builtInMagic,
 			t: types.NewFunc(
-				types.NewTuple(types.Primitives[types.AnyTypeDesc]),
-				types.NewTuple(types.Primitives[types.UntypedString]),
+				types.NewTuple(types.AnyTypeDesc),
+				types.NewTuple(types.UntypedString),
 			),
 		},
 		{
 			name: "type_of",
 			f:    check.builtInTypeOf,
 			t: types.NewFunc(
-				types.NewTuple(types.Primitives[types.AnyTypeDesc]),
-				types.NewTuple(types.Primitives[types.Any]),
+				types.NewTuple(types.AnyTypeDesc),
+				types.NewTuple(types.Any),
 			),
 		},
 		{
@@ -42,7 +42,7 @@ func (check *Checker) defBuiltIns() {
 			f:    check.builtInPrint,
 			t: types.NewFunc(
 				types.Unit,
-				types.NewTuple(types.Primitives[types.Any]),
+				types.NewTuple(types.Any),
 			),
 		},
 		{
@@ -50,7 +50,7 @@ func (check *Checker) defBuiltIns() {
 			f:    check.builtInAssert,
 			t: types.NewFunc(
 				types.Unit,
-				types.NewTuple(types.Primitives[types.Bool]),
+				types.NewTuple(types.Bool),
 			),
 		},
 	}

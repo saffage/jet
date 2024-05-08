@@ -13,7 +13,7 @@ func TestUnit(t *testing.T) {
 }
 
 func TestSingleElem(t *testing.T) {
-	elem0 := Primitives[I32]
+	elem0 := I32
 	tuple := NewTuple(elem0)
 
 	if !tuple.Equals(elem0) {
@@ -26,8 +26,8 @@ func TestSingleElem(t *testing.T) {
 }
 
 func TestMultiElem(t *testing.T) {
-	elem0 := Primitives[I32]
-	elem1 := Primitives[Bool]
+	elem0 := I32
+	elem1 := Bool
 	tuple := NewTuple(elem0, elem1)
 
 	if tuple.Equals(elem0) || tuple.Equals(elem1) {

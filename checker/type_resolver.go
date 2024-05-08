@@ -118,13 +118,13 @@ func (check *Checker) typeOfIdent(node *ast.Ident) types.Type {
 func (check *Checker) typeOfLiteral(node *ast.Literal) types.Type {
 	switch node.Kind {
 	case ast.IntLiteral:
-		return types.Primitives[types.UntypedInt]
+		return types.UntypedInt
 
 	case ast.FloatLiteral:
-		return types.Primitives[types.UntypedFloat]
+		return types.UntypedFloat
 
 	case ast.StringLiteral:
-		return types.Primitives[types.UntypedString]
+		return types.UntypedString
 
 	default:
 		panic(fmt.Sprintf("unhandled literal kind: '%s'", node.Kind.String()))
@@ -240,7 +240,7 @@ func (check *Checker) typeOfIndex(node *ast.Index) types.Type {
 	}
 
 	if array := types.AsArray(t); array != nil {
-		if !types.Primitives[types.I32].Equals(tIndex) {
+		if !types.I32.Equals(tIndex) {
 			check.errorf(node.Args.Exprs[0], "expected type (i32) for index, got (%s) instead", tIndex)
 			return nil
 		}
@@ -493,7 +493,7 @@ func (check *Checker) typeOfIf(node *ast.If) types.Type {
 		return tBody
 	}
 
-	if !types.Primitives[types.Bool].Equals(tCondition) {
+	if !types.Bool.Equals(tCondition) {
 		check.errorf(
 			node.Cond,
 			"expected type (bool) for condition, got (%s) instead",
@@ -553,7 +553,7 @@ func (check *Checker) typeOfWhile(node *ast.While) types.Type {
 		return nil
 	}
 
-	if !types.Primitives[types.Bool].Equals(tCond) {
+	if !types.Bool.Equals(tCond) {
 		check.errorf(node.Cond, "expected type 'bool' for condition, got (%s) instead", tCond)
 		return nil
 	}

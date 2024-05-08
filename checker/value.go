@@ -52,7 +52,7 @@ func (check *Checker) valueOfInternal(expr ast.Node) *TypedValue {
 		value := constantFromNode(node)
 		type_ := types.FromConstant(value)
 
-		if type_ == types.Primitives[types.UntypedString] {
+		if type_ == types.UntypedString {
 			check.Data[node] = &TypedValue{type_, value}
 		}
 

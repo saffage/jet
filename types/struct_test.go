@@ -4,12 +4,12 @@ import "testing"
 
 func TestEquals(t *testing.T) {
 	x := NewStruct(map[string]Type{
-		"age":   Primitives[I32],
-		"adult": Primitives[Bool],
+		"age":   I32,
+		"adult": Bool,
 	})
 	y := NewStruct(map[string]Type{
-		"age":   Primitives[I32],
-		"adult": Primitives[Bool],
+		"age":   I32,
+		"adult": Bool,
 	})
 
 	if !x.Equals(x) {

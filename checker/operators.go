@@ -12,7 +12,7 @@ func (check *Checker) prefix(node *ast.PrefixOp, tOperand types.Type) types.Type
 	case ast.OperatorNeg:
 		if p := types.AsPrimitive(tOperand); p != nil {
 			switch p.Kind() {
-			case types.UntypedInt, types.UntypedFloat, types.I32:
+			case types.KindUntypedInt, types.KindUntypedFloat, types.KindI32:
 				return tOperand
 			}
 		}
@@ -20,7 +20,7 @@ func (check *Checker) prefix(node *ast.PrefixOp, tOperand types.Type) types.Type
 	case ast.OperatorNot:
 		if p := types.AsPrimitive(tOperand); p != nil {
 			switch p.Kind() {
-			case types.UntypedBool, types.Bool:
+			case types.KindUntypedBool, types.KindBool:
 				return tOperand
 			}
 		}
@@ -87,7 +87,7 @@ func (check *Checker) infix(node *ast.InfixOp, tOperandX, tOperandY types.Type) 
 		ast.OperatorBitShl,
 		ast.OperatorBitShr:
 		switch primitive.Kind() {
-		case types.UntypedInt, types.UntypedFloat, types.I32:
+		case types.KindUntypedInt, types.KindUntypedFloat, types.KindI32:
 			return tOperandX
 		}
 
@@ -98,20 +98,20 @@ func (check *Checker) infix(node *ast.InfixOp, tOperandX, tOperandY types.Type) 
 		ast.OperatorGt,
 		ast.OperatorGe:
 		switch primitive.Kind() {
-		case types.UntypedBool, types.UntypedInt, types.UntypedFloat:
-			return types.Primitives[types.UntypedBool]
+		case types.KindUntypedBool, types.KindUntypedInt, types.KindUntypedFloat:
+			return types.UntypedBool
 
-		case types.Bool, types.I32:
-			return types.Primitives[types.Bool]
+		case types.KindBool, types.KindI32:
+			return types.Bool
 		}
 
 	case ast.OperatorAnd, ast.OperatorOr:
 		switch primitive.Kind() {
-		case types.UntypedBool:
-			return types.Primitives[types.UntypedBool]
+		case types.KindUntypedBool:
+			return types.UntypedBool
 
-		case types.Bool:
-			return types.Primitives[types.Bool]
+		case types.KindBool:
+			return types.Bool
 		}
 
 	default:

@@ -15,10 +15,10 @@ func (check *Checker) builtInMagic(node *ast.ParenList, args []*TypedValue) *Typ
 
 	switch *strval {
 	case "Bool":
-		return &TypedValue{types.NewTypeDesc(types.Primitives[types.Bool]), nil}
+		return &TypedValue{types.NewTypeDesc(types.Bool), nil}
 
 	case "I32":
-		return &TypedValue{types.NewTypeDesc(types.Primitives[types.I32]), nil}
+		return &TypedValue{types.NewTypeDesc(types.I32), nil}
 
 	default:
 		check.errorf(node.Exprs[0], "unknown magic '%s'", *strval)

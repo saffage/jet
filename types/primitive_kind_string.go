@@ -8,20 +8,20 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
-	_ = x[UnknownPrimitive-0]
-	_ = x[UntypedBool-1]
-	_ = x[UntypedInt-2]
-	_ = x[UntypedFloat-3]
-	_ = x[UntypedString-4]
-	_ = x[Bool-5]
-	_ = x[I32-6]
-	_ = x[Any-7]
-	_ = x[AnyTypeDesc-8]
+	_ = x[UnknownPrimitiveKind-0]
+	_ = x[KindUntypedBool-1]
+	_ = x[KindUntypedInt-2]
+	_ = x[KindUntypedFloat-3]
+	_ = x[KindUntypedString-4]
+	_ = x[KindBool-5]
+	_ = x[KindI32-6]
+	_ = x[KindAny-7]
+	_ = x[KindAnyTypeDesc-8]
 }
 
-const _PrimitiveKind_name = "UnknownPrimitiveuntyped booluntyped intuntyped floatuntyped stringbooli32anytypedesc"
+const _PrimitiveKind_name = "UnknownPrimitiveKinduntyped booluntyped intuntyped floatuntyped stringbooli32anytypedesc"
 
-var _PrimitiveKind_index = [...]uint8{0, 16, 28, 39, 52, 66, 70, 73, 76, 84}
+var _PrimitiveKind_index = [...]uint8{0, 20, 32, 43, 56, 70, 74, 77, 80, 88}
 
 func (i PrimitiveKind) String() string {
 	if i >= PrimitiveKind(len(_PrimitiveKind_index)-1) {

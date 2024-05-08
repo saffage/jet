@@ -12,26 +12,26 @@ var Global = NewScope(nil)
 var primitives = [...]Symbol{
 	&TypeAlias{
 		owner: nil,
-		t:     types.NewAlias(types.Primitives[types.Bool], "bool"),
+		t:     types.NewAlias(types.Bool, "bool"),
 		node:  nil,
 		name:  &ast.Ident{Name: "bool"},
 	},
 	&TypeAlias{
 		owner: nil,
-		t:     types.NewAlias(types.Primitives[types.I32], "i32"),
+		t:     types.NewAlias(types.I32, "i32"),
 		node:  nil,
 		name:  &ast.Ident{Name: "i32"},
 	},
 	&TypeAlias{
 		owner: nil,
-		t:     types.NewAlias(types.Primitives[types.I32], "int"),
+		t:     types.NewAlias(types.I32, "int"),
 		node:  nil,
 		name:  &ast.Ident{Name: "int"},
 	},
 	NewConst(
 		nil,
 		&TypedValue{
-			Type:  types.Primitives[types.UntypedBool],
+			Type:  types.UntypedBool,
 			Value: constant.NewBool(true),
 		},
 		&ast.Ident{Name: "true"},
@@ -39,7 +39,7 @@ var primitives = [...]Symbol{
 	NewConst(
 		nil,
 		&TypedValue{
-			Type:  types.Primitives[types.UntypedBool],
+			Type:  types.UntypedBool,
 			Value: constant.NewBool(false),
 		},
 		&ast.Ident{Name: "false"},
