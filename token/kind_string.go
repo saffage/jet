@@ -57,28 +57,28 @@ func _() {
 	_ = x[Dot2-46]
 	_ = x[Dot2Less-47]
 	_ = x[Ellipsis-48]
-	_ = x[KwModule-49]
-	_ = x[KwAlias-50]
-	_ = x[KwStruct-51]
-	_ = x[KwEnum-52]
-	_ = x[KwFunc-53]
-	_ = x[KwVal-54]
-	_ = x[KwVar-55]
-	_ = x[KwConst-56]
-	_ = x[KwOf-57]
-	_ = x[KwIf-58]
-	_ = x[KwElse-59]
-	_ = x[KwWhile-60]
-	_ = x[KwReturn-61]
-	_ = x[KwBreak-62]
-	_ = x[KwContinue-63]
-	_ = x[KwAnd-64]
-	_ = x[KwOr-65]
+	_ = x[KwAnd-49]
+	_ = x[KwOr-50]
+	_ = x[KwModule-51]
+	_ = x[KwAlias-52]
+	_ = x[KwStruct-53]
+	_ = x[KwEnum-54]
+	_ = x[KwFunc-55]
+	_ = x[KwVal-56]
+	_ = x[KwVar-57]
+	_ = x[KwConst-58]
+	_ = x[KwOf-59]
+	_ = x[KwIf-60]
+	_ = x[KwElse-61]
+	_ = x[KwWhile-62]
+	_ = x[KwReturn-63]
+	_ = x[KwBreak-64]
+	_ = x[KwContinue-65]
 }
 
-const _Kind_name = "IllegalEOFCommentWhitespaceNewLineIdentIntFloatStringLParenRParenLCurlyRCurlyLBracketRBracketCommaColonSemicolonEqEqOpBangNeOpLtOpLeOpGtOpGeOpPlusPlusEqMinusMinusEqAsteriskAsteriskEqSlashSlashEqPercentPercentEqAmpPipeCaretAtQuestionMarkArrowFatArrowShlShrDotDot2Dot2LessEllipsisKwModuleKwAliasKwStructKwEnumKwFuncKwValKwVarKwConstKwOfKwIfKwElseKwWhileKwReturnKwBreakKwContinueKwAndKwOr"
+const _Kind_name = "IllegalEOFCommentWhitespaceNewLineIdentIntFloatStringLParenRParenLCurlyRCurlyLBracketRBracketCommaColonSemicolonEqEqOpBangNeOpLtOpLeOpGtOpGeOpPlusPlusEqMinusMinusEqAsteriskAsteriskEqSlashSlashEqPercentPercentEqAmpPipeCaretAtQuestionMarkArrowFatArrowShlShrDotDot2Dot2LessEllipsisKwAndKwOrKwModuleKwAliasKwStructKwEnumKwFuncKwValKwVarKwConstKwOfKwIfKwElseKwWhileKwReturnKwBreakKwContinue"
 
-var _Kind_index = [...]uint16{0, 7, 10, 17, 27, 34, 39, 42, 47, 53, 59, 65, 71, 77, 85, 93, 98, 103, 112, 114, 118, 122, 126, 130, 134, 138, 142, 146, 152, 157, 164, 172, 182, 187, 194, 201, 210, 213, 217, 222, 224, 236, 241, 249, 252, 255, 258, 262, 270, 278, 286, 293, 301, 307, 313, 318, 323, 330, 334, 338, 344, 351, 359, 366, 376, 381, 385}
+var _Kind_index = [...]uint16{0, 7, 10, 17, 27, 34, 39, 42, 47, 53, 59, 65, 71, 77, 85, 93, 98, 103, 112, 114, 118, 122, 126, 130, 134, 138, 142, 146, 152, 157, 164, 172, 182, 187, 194, 201, 210, 213, 217, 222, 224, 236, 241, 249, 252, 255, 258, 262, 270, 278, 283, 287, 295, 302, 310, 316, 322, 327, 332, 339, 343, 347, 353, 360, 368, 375, 385}
 
 func (i Kind) String() string {
 	if i >= Kind(len(_Kind_index)-1) {

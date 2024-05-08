@@ -74,6 +74,8 @@ const (
 
 	// NOTE some keywords are unused.
 
+	KwAnd      // keyword 'and'
+	KwOr       // keyword 'or'
 	KwModule   // keyword 'module'
 	KwAlias    // keyword 'alias'
 	KwStruct   // keyword 'struct'
@@ -89,8 +91,6 @@ const (
 	KwReturn   // keyword 'return'
 	KwBreak    // keyword 'break'
 	KwContinue // keyword 'continue'
-	KwAnd      // keyword 'and'
-	KwOr       // keyword 'or'
 )
 
 const (
@@ -106,7 +106,7 @@ const (
 	_operator_begin = Eq
 	_operator_end   = Ellipsis
 
-	_keywords_begin = KwModule
+	_keywords_begin = KwAnd
 	_keywords_end   = KwContinue
 
 	_kinds_last = _keywords_end
