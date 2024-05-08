@@ -406,34 +406,34 @@ func (p *Parser) parseSuffixExpr(x ast.Node) ast.Node {
 		case token.Dot:
 			x = p.parseMemberAccess(x)
 
-		case token.QuestionMark, token.Bang:
-			opr := p.consume()
-			postfixOpKind := ast.UnknownOperator
-
-			switch opr.Kind {
-			case token.QuestionMark:
-				postfixOpKind = ast.OperatorTry
-
-			case token.Bang:
-				postfixOpKind = ast.OperatorUnwrap
-
-			default:
-				p.errorf(
-					opr.Start,
-					opr.End,
-					"%s can't be used as postfix operator",
-					opr.Kind.UserString(),
-				)
-			}
-
-			x = &ast.PostfixOp{
-				X: x,
-				Opr: &ast.Operator{
-					Start: opr.Start,
-					End:   opr.End,
-					Kind:  postfixOpKind,
-				},
-			}
+		// case token.QuestionMark, token.Bang:
+		// 	opr := p.consume()
+		// 	postfixOpKind := ast.UnknownOperator
+		//
+		// 	switch opr.Kind {
+		// 	case token.QuestionMark:
+		// 		postfixOpKind = ast.OperatorTry
+		//
+		// 	case token.Bang:
+		// 		postfixOpKind = ast.OperatorUnwrap
+		//
+		// 	default:
+		// 		p.errorf(
+		// 			opr.Start,
+		// 			opr.End,
+		// 			"%s can't be used as postfix operator",
+		// 			opr.Kind.UserString(),
+		// 		)
+		// 	}
+		//
+		// 	x = &ast.PostfixOp{
+		// 		X: x,
+		// 		Opr: &ast.Operator{
+		// 			Start: opr.Start,
+		// 			End:   opr.End,
+		// 			Kind:  postfixOpKind,
+		// 		},
+		// 	}
 
 		case token.LBracket:
 			x = &ast.Index{
@@ -778,13 +778,13 @@ func (p *Parser) parseType() ast.Node {
 
 	switch p.tok.Kind {
 	case token.Amp:
-		ampLoc := p.expect().Start
+		amp := p.consume()
 
 		if varTok := p.consume(token.KwVar); varTok != nil {
 			return &ast.PrefixOp{
 				X: p.parseType(),
 				Opr: &ast.Operator{
-					Start: ampLoc,
+					Start: amp.Start,
 					End:   varTok.End,
 					Kind:  ast.OperatorMutAddr,
 				},
@@ -794,9 +794,21 @@ func (p *Parser) parseType() ast.Node {
 		return &ast.PrefixOp{
 			X: p.parseType(),
 			Opr: &ast.Operator{
-				Start: ampLoc,
-				End:   ampLoc,
+				Start: amp.Start,
+				End:   amp.End,
 				Kind:  ast.OperatorAddr,
+			},
+		}
+
+	case token.Asterisk:
+		asterisk := p.consume()
+
+		return &ast.PrefixOp{
+			X: p.parseType(),
+			Opr: &ast.Operator{
+				Start: asterisk.Start,
+				End:   asterisk.End,
+				Kind:  ast.OperatorDeref,
 			},
 		}
 

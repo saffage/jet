@@ -14,6 +14,7 @@ const (
 	OperatorNeg     // -
 	OperatorAddr    // &
 	OperatorMutAddr // &var
+	OperatorDeref   // *
 
 	// Infix.
 
@@ -39,8 +40,8 @@ const (
 
 	// Postfix.
 
-	OperatorTry    // ?
-	OperatorUnwrap // !
+	// OperatorTry    // ?
+	// OperatorUnwrap // !
 )
 
 func (kind OperatorKind) MarshalJSON() ([]byte, error) {

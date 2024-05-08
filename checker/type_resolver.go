@@ -329,51 +329,7 @@ func (check *Checker) typeOfPrefixOp(node *ast.PrefixOp) types.Type {
 		return nil
 	}
 
-	switch node.Opr.Kind {
-	case ast.OperatorNeg:
-		if p := types.AsPrimitive(tOperand); p != nil {
-			switch p.Kind() {
-			case types.UntypedInt, types.UntypedFloat, types.I32:
-				return tOperand
-			}
-		}
-
-		check.errorf(
-			node.Opr,
-			"operator '%s' is not defined for the type (%s)",
-			node.Opr.Kind.String(),
-			tOperand.String())
-		return nil
-
-	case ast.OperatorNot:
-		if p, ok := tOperand.Underlying().(*types.Primitive); ok {
-			switch p.Kind() {
-			case types.UntypedBool, types.Bool:
-				return tOperand
-			}
-		}
-
-		check.errorf(
-			node.X,
-			"operator '%s' is not defined for the type (%s)",
-			node.Opr.Kind.String(),
-			tOperand.String())
-		return nil
-
-	case ast.OperatorAddr:
-		if types.IsTypeDesc(tOperand) {
-			t := types.NewRef(types.SkipTypeDesc(tOperand))
-			return types.NewTypeDesc(t)
-		}
-
-		return types.NewRef(types.SkipUntyped(tOperand))
-
-	case ast.OperatorMutAddr:
-		panic("not implemented")
-
-	default:
-		panic("unreachable")
-	}
+	return check.prefix(node, tOperand)
 }
 
 func (check *Checker) typeOfInfixOp(node *ast.InfixOp) types.Type {
@@ -387,76 +343,12 @@ func (check *Checker) typeOfInfixOp(node *ast.InfixOp) types.Type {
 		return nil
 	}
 
-	if !tOperandX.Equals(tOperandY) {
-		check.errorf(node, "type mismatch (%s and %s)", tOperandX, tOperandY)
-		return nil
-	}
-
-	if node.Opr.Kind == ast.OperatorAssign {
-		return types.Unit
-	}
-
-	if primitive := types.AsPrimitive(tOperandX); primitive != nil {
-		switch node.Opr.Kind {
-		case ast.OperatorAdd, ast.OperatorSub, ast.OperatorMul, ast.OperatorDiv, ast.OperatorMod,
-			ast.OperatorBitAnd, ast.OperatorBitOr, ast.OperatorBitXor, ast.OperatorBitShl, ast.OperatorBitShr:
-			switch primitive.Kind() {
-			case types.UntypedInt, types.UntypedFloat, types.I32:
-				return tOperandX
-			}
-
-		case ast.OperatorEq, ast.OperatorNe, ast.OperatorLt, ast.OperatorLe, ast.OperatorGt, ast.OperatorGe:
-			switch primitive.Kind() {
-			case types.UntypedBool, types.UntypedInt, types.UntypedFloat:
-				return types.Primitives[types.UntypedBool]
-
-			case types.Bool, types.I32:
-				return types.Primitives[types.Bool]
-			}
-
-		case ast.OperatorAnd, ast.OperatorOr:
-			switch primitive.Kind() {
-			case types.UntypedBool:
-				return types.Primitives[types.UntypedBool]
-
-			case types.Bool:
-				return types.Primitives[types.Bool]
-			}
-
-		default:
-			panic("unreachable")
-		}
-	}
-
-	check.errorf(
-		node.Opr,
-		"operator '%s' is not defined for the type '%s'",
-		node.Opr.Kind.String(),
-		tOperandX.String())
-	return nil
+	return check.infix(node, tOperandX, tOperandY)
 }
 
 func (check *Checker) typeOfPostfixOp(node *ast.PostfixOp) types.Type {
-	tOperand := check.typeOf(node.X)
-	if tOperand == nil {
-		return nil
-	}
-
-	switch node.Opr.Kind {
-	case ast.OperatorUnwrap:
-		if ref := types.AsRef(tOperand); ref != nil {
-			return ref.Base()
-		}
-
-		check.errorf(node.X, "expression is not a reference type")
-		return nil
-
-	case ast.OperatorTry:
-		panic("not inplemented")
-
-	default:
-		panic("unreachable")
-	}
+	check.errorf(node, "postfix operators are not supported")
+	return nil
 }
 
 func (check *Checker) typeOfBracketList(node *ast.BracketList) types.Type {
