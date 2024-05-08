@@ -30,6 +30,10 @@ func (err *Error) Error() string { return err.Message }
 
 func (check *Checker) errorf(node ast.Node, format string, args ...any) {
 	err := NewErrorf(node, format, args...)
+	check.addError(err)
+}
+
+func (check *Checker) addError(err error) {
 	check.errors = append(check.errors, err)
 	check.isErrorHandled = false
 }

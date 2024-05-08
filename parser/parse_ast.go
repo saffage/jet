@@ -101,6 +101,9 @@ func (p *Parser) parseStmt() ast.Node {
 	case token.KwFunc:
 		node = p.parseFuncDecl()
 
+	case token.KwStruct:
+		node = p.parseStructDecl()
+
 	case token.KwModule:
 		node = p.parseModule()
 
@@ -479,19 +482,35 @@ func (p *Parser) parseMemberAccess(x ast.Node) ast.Node {
 		panic("can't use nil node as left-hand side expression")
 	}
 
-	if dot := p.consume(token.Dot); dot != nil {
-		y := p.parseIdentNode()
+	dot := p.consume(token.Dot)
 
-		if y == nil {
-			return nil
-		}
-
-		x = p.parseMemberAccess(&ast.MemberAccess{
-			Loc:      dot.Start,
-			X:        x,
-			Selector: y,
-		})
+	if dot == nil {
+		return x
 	}
+
+	y := ast.Node(nil)
+
+	switch p.tok.Kind {
+	case token.Ident:
+		y = p.parseIdentNode()
+
+	case token.LCurly:
+		y = p.parseCurlyList(p.parseFieldAssignment)
+
+	default:
+		p.errorExpectedToken(p.tok.Start, p.tok.End, token.Ident, token.LCurly)
+		return nil
+	}
+
+	if y == nil {
+		return nil
+	}
+
+	x = p.parseMemberAccess(&ast.MemberAccess{
+		Loc:      dot.Start,
+		X:        x,
+		Selector: y,
+	})
 
 	return x
 }
@@ -616,6 +635,32 @@ func (p *Parser) parseFuncDecl() ast.Node {
 	}
 }
 
+func (p *Parser) parseStructDecl() ast.Node {
+	if p.flags&Trace != 0 {
+		p.trace()
+		defer p.untrace()
+	}
+
+	tok := p.expect(token.KwStruct)
+	name := p.parseIdentNode()
+
+	if name == nil {
+		return nil
+	}
+
+	body := p.parseCurlyList(p.parseBinding)
+
+	if body == nil {
+		return nil
+	}
+
+	return &ast.StructDecl{
+		Name: name,
+		Body: body,
+		Loc:  tok.Start,
+	}
+}
+
 //------------------------------------------------
 // IDK
 //------------------------------------------------
@@ -721,6 +766,41 @@ func (p *Parser) parseBinding() ast.Node {
 	return &ast.Binding{
 		Name: name,
 		Type: typ,
+	}
+}
+
+func (p *Parser) parseFieldAssignment() ast.Node {
+	if p.flags&Trace != 0 {
+		p.trace()
+		defer p.untrace()
+	}
+
+	name := p.parseIdentNode()
+
+	if name == nil {
+		return nil
+	}
+
+	eqTok := p.consume(token.Eq)
+
+	if eqTok == nil {
+		return name
+	}
+
+	value := p.parseExpr()
+
+	if value == nil {
+		return nil
+	}
+
+	return &ast.InfixOp{
+		X: name,
+		Y: value,
+		Opr: &ast.Operator{
+			Start: eqTok.Start,
+			End:   eqTok.End,
+			Kind:  ast.OperatorAssign,
+		},
 	}
 }
 

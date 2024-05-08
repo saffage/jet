@@ -58,6 +58,9 @@ func (check *Checker) typeOfInternal(expr ast.Node) types.Type {
 	case *ast.Signature:
 		return check.typeOfSignature(node)
 
+	case *ast.MemberAccess:
+		return check.typeOfMemberAccess(node)
+
 	case *ast.PrefixOp:
 		return check.typeOfPrefixOp(node)
 
@@ -332,6 +335,23 @@ func (check *Checker) typeOfSignature(node *ast.Signature) types.Type {
 
 	t := types.NewFunc(tResult, tParams.(*types.Tuple))
 	return types.NewTypeDesc(t)
+}
+
+func (check *Checker) typeOfMemberAccess(node *ast.MemberAccess) types.Type {
+	tOperand := check.typeOf(node.X)
+	if tOperand == nil {
+		return nil
+	}
+
+	if typedesc := types.AsTypeDesc(tOperand); typedesc != nil {
+		return check.structInit(node, typedesc)
+	}
+
+	if tStruct := types.AsStruct(tOperand); tStruct != nil {
+		return check.structMember(node, tStruct)
+	}
+
+	return nil
 }
 
 func (check *Checker) typeOfPrefixOp(node *ast.PrefixOp) types.Type {

@@ -15,6 +15,9 @@ func setAttributes(node ast.Decl, attrs *ast.AttributeList) {
 	case *ast.FuncDecl:
 		n.Attrs = attrs
 
+	case *ast.StructDecl:
+		n.Attrs = attrs
+
 	case *ast.VarDecl:
 		n.Attrs = attrs
 	}

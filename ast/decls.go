@@ -35,6 +35,13 @@ type (
 		Loc          token.Loc // `func` token.
 	}
 
+	StructDecl struct {
+		Attrs *AttributeList
+		Name  *Ident
+		Body  *CurlyList
+		Loc   token.Loc // `struct` token.
+	}
+
 	TypeAliasDecl struct {
 		Attrs        *AttributeList
 		CommentGroup *CommentGroup
@@ -71,6 +78,12 @@ func (n *FuncDecl) LocEnd() token.Loc {
 func (n *FuncDecl) Ident() *Ident              { return n.Name }
 func (n *FuncDecl) Doc() string                { return n.CommentGroup.Merged() }
 func (n *FuncDecl) Attributes() *AttributeList { return n.Attrs }
+
+func (n *StructDecl) Pos() token.Loc             { return n.Loc }
+func (n *StructDecl) LocEnd() token.Loc          { return n.Body.LocEnd() }
+func (n *StructDecl) Ident() *Ident              { return n.Name }
+func (n *StructDecl) Doc() string                { return "" }
+func (n *StructDecl) Attributes() *AttributeList { return n.Attrs }
 
 func (n *TypeAliasDecl) Pos() token.Loc             { return n.Loc }
 func (n *TypeAliasDecl) LocEnd() token.Loc          { return n.Expr.LocEnd() }

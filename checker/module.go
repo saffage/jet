@@ -45,6 +45,9 @@ func (check *Checker) visit(node ast.Node) ast.Visitor {
 	case *ast.FuncDecl:
 		check.resolveFuncDecl(decl)
 
+	case *ast.StructDecl:
+		check.resolveStructDecl(decl)
+
 	case *ast.TypeAliasDecl:
 		check.resolveTypeAliasDecl(decl)
 

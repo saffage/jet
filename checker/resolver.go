@@ -39,8 +39,7 @@ func (check *Checker) resolveVarDecl(node *ast.VarDecl) {
 	sym := NewVar(check.scope, tType, node.Binding, node.Binding.Name)
 
 	if defined := check.scope.Define(sym); defined != nil {
-		err := errorAlreadyDefined(sym.Ident(), defined.Ident())
-		check.errors = append(check.errors, err)
+		check.addError(errorAlreadyDefined(sym.Ident(), defined.Ident()))
 		return
 	}
 
@@ -183,6 +182,51 @@ func (check *Checker) resolveFuncDecl(node *ast.FuncDecl) {
 
 	check.newDef(node.Name, sym)
 	fmt.Printf(">>> def func `%s`\n", node.Name.Name)
+}
+
+func (check *Checker) resolveStructDecl(node *ast.StructDecl) {
+	fields := make(map[string]types.Type, len(node.Body.Nodes))
+
+	if node.Body == nil {
+		panic("struct body cannot be nil")
+	}
+
+	for _, bodyNode := range node.Body.Nodes {
+		binding, _ := bodyNode.(*ast.Binding)
+		if binding == nil {
+			check.errorf(binding, "expected field declaration")
+			return
+		}
+
+		tField := check.typeOf(binding.Type)
+		if tField == nil {
+			return
+		}
+
+		if !types.IsTypeDesc(tField) {
+			check.errorf(binding.Type, "expected field type, got (%s) instead", tField)
+			return
+		}
+
+		if types.IsUntyped(tField) {
+			panic("typedesc cannot have an untyped base")
+		}
+
+		t := types.AsTypeDesc(tField).Base()
+		fields[binding.Name.Name] = t
+		fmt.Printf(">>> def field `%s %s`\n", binding.Name.Name, t)
+	}
+
+	t := types.NewTypeDesc(types.NewStruct(fields))
+	sym := NewStruct(check.scope, t, node)
+
+	if defined := check.scope.Define(sym); defined != nil {
+		check.addError(errorAlreadyDefined(sym.Ident(), defined.Ident()))
+		return
+	}
+
+	check.newDef(node.Name, sym)
+	fmt.Printf(">>> def struct `%s`\n", node.Name.Name)
 }
 
 func (check *Checker) resolveTypeAliasDecl(node *ast.TypeAliasDecl) {

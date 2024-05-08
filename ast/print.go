@@ -225,6 +225,15 @@ func (n *FuncDecl) String() string {
 	)
 }
 
+func (n *StructDecl) String() string {
+	return fmt.Sprintf(
+		"%sstruct %s %s",
+		optionalAttributeList(n.Attrs),
+		n.Name.String(),
+		n.Body.String(),
+	)
+}
+
 func (n *TypeAliasDecl) String() string {
 	return fmt.Sprintf(
 		"%s%salias %s = %s",

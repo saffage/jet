@@ -77,10 +77,10 @@ type (
 		Loc    token.Loc // `func` token.
 	}
 
-	// Represents `x.selector`.
+	// Represents `x.selector` or `x.{...}`.
 	MemberAccess struct {
 		X        Node
-		Selector Node      // TODO maybe use [Ident] ?
+		Selector Node      // Can be [*Ident] or [*CurlyList]
 		Loc      token.Loc // `.` token.
 	}
 
