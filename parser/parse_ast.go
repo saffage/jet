@@ -321,6 +321,18 @@ func (p *Parser) parseUnaryExpr() ast.Node {
 			},
 		}
 
+	case token.Asterisk:
+		asterisk := p.consume()
+
+		return &ast.PrefixOp{
+			X: p.parseUnaryExpr(),
+			Opr: &ast.Operator{
+				Start: asterisk.Start,
+				End:   asterisk.End,
+				Kind:  ast.OperatorDeref,
+			},
+		}
+
 	case token.Amp:
 		loc := p.consume().Start
 
@@ -797,18 +809,6 @@ func (p *Parser) parseType() ast.Node {
 				Start: amp.Start,
 				End:   amp.End,
 				Kind:  ast.OperatorAddr,
-			},
-		}
-
-	case token.Asterisk:
-		asterisk := p.consume()
-
-		return &ast.PrefixOp{
-			X: p.parseType(),
-			Opr: &ast.Operator{
-				Start: asterisk.Start,
-				End:   asterisk.End,
-				Kind:  ast.OperatorDeref,
 			},
 		}
 
