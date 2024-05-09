@@ -10,16 +10,19 @@ import (
 
 type Struct struct {
 	owner *Scope
+	body  *Scope
 	t     *types.TypeDesc
 	node  *ast.StructDecl
 }
 
-func NewStruct(owner *Scope, t *types.TypeDesc, node *ast.StructDecl) *Struct {
+func NewStruct(owner *Scope, body *Scope, t *types.TypeDesc, node *ast.StructDecl) *Struct {
 	if !types.IsStruct(t.Base()) {
 		panic("expected struct type")
 	}
-
-	return &Struct{owner, t, node}
+	if body.Parent() != owner {
+		panic("invalid local scope parent")
+	}
+	return &Struct{owner, body, t, node}
 }
 
 func (sym *Struct) Owner() *Scope     { return sym.owner }

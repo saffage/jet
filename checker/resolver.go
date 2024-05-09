@@ -107,6 +107,7 @@ func (check *Checker) resolveFuncDecl(node *ast.FuncDecl) {
 			tParams = append(tParams, t)
 
 			paramSym := NewVar(local, t, param, param.Name)
+			paramSym.isParam = true
 
 			if defined := local.Define(paramSym); defined != nil {
 				check.errorf(param, "paramter with the same name was already defined")
@@ -186,6 +187,7 @@ func (check *Checker) resolveFuncDecl(node *ast.FuncDecl) {
 
 func (check *Checker) resolveStructDecl(node *ast.StructDecl) {
 	fields := make(map[string]types.Type, len(node.Body.Nodes))
+	local := NewScope(check.scope)
 
 	if node.Body == nil {
 		panic("struct body cannot be nil")
@@ -213,12 +215,22 @@ func (check *Checker) resolveStructDecl(node *ast.StructDecl) {
 		}
 
 		t := types.AsTypeDesc(tField).Base()
+		fieldSym := NewVar(local, t, binding, binding.Name)
+		fieldSym.isField = true
 		fields[binding.Name.Name] = t
-		fmt.Printf(">>> def field `%s %s`\n", binding.Name.Name, t)
+
+		if defined := local.Define(fieldSym); defined != nil {
+			err := NewErrorf(fieldSym.Ident(), "duplicate field '%s'", fieldSym.Name())
+			err.Notes = []*Error{NewError(defined.Ident(), "field was defined here")}
+			check.addError(err)
+			continue
+		}
+
+		check.newDef(binding.Name.Name, t)
 	}
 
 	t := types.NewTypeDesc(types.NewStruct(fields))
-	sym := NewStruct(check.scope, t, node)
+	sym := NewStruct(check.scope, local, t, node)
 
 	if defined := check.scope.Define(sym); defined != nil {
 		check.addError(errorAlreadyDefined(sym.Ident(), defined.Ident()))
