@@ -12,9 +12,9 @@ type Base struct {
 	fileID          config.FileID // Needed for token position.
 	buf             []byte        // Actual data.
 	bufPos          int           // Current character index.
-	lineNum         int           // Current line number.
-	charNum         int           // Current character number.
-	prevLineCharNum int           // Last character number in the previous line (needed for [PrevPos] function).
+	lineNum         uint32        // Current line number.
+	charNum         uint32        // Current character number.
+	prevLineCharNum uint32        // Last character number in the previous line (needed for [PrevPos] function).
 }
 
 func New(buffer []byte, fileID config.FileID) *Base {
@@ -140,9 +140,11 @@ func (base *Base) HandleNewline() (wasNewline bool) {
 }
 
 func (base Base) GetLine(n int) (line string) {
-	if n <= 0 {
+	if n <= 0 || n > 4294967295 {
 		return
 	}
+
+	num := uint32(n)
 
 	isNewLineChar := func(char byte) bool {
 		return char == '\r' || char == '\n'
@@ -151,7 +153,7 @@ func (base Base) GetLine(n int) (line string) {
 	for base.bufPos < len(base.buf) {
 		line = base.TakeUntil(isNewLineChar)
 
-		if base.lineNum >= n {
+		if base.lineNum >= num {
 			break
 		}
 
@@ -165,23 +167,23 @@ func (base Base) GetLine(n int) (line string) {
 func (base *Base) Pos() token.Loc {
 	return token.Loc{
 		FileID: base.fileID,
-		Offset: base.bufPos,
-		Line:   base.lineNum,
-		Char:   base.charNum,
+		Offset: uint64(base.bufPos),
+		Line:   uint32(base.lineNum),
+		Char:   uint32(base.charNum),
 	}
 }
 
 func (base *Base) PrevPos() token.Loc {
 	pos := token.Loc{
 		FileID: base.fileID,
-		Offset: base.bufPos - 1,
-		Line:   base.lineNum,
-		Char:   base.charNum - 1,
+		Offset: uint64(base.bufPos - 1),
+		Line:   uint32(base.lineNum),
+		Char:   uint32(base.charNum - 1),
 	}
 
 	if pos.Char == 0 {
 		pos.Line--
-		pos.Char = base.prevLineCharNum
+		pos.Char = uint32(base.prevLineCharNum)
 	}
 
 	return pos

@@ -6,27 +6,27 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
-	"github.com/saffage/jet/internal/log" // for log.NoColors
+	"github.com/saffage/jet/internal/report" // for report.NoColors
 )
 
 func (p *Parser) printTrace(args ...any) {
 	pos := p.tok.Start
 
-	if log.NoColors {
-		fmt.Printf("%6d:%4d: ", pos.Line, pos.Char)
-	} else {
+	if report.UseColors {
 		fmt.Print(color.HiCyanString("%6d:%4d: ", pos.Line, pos.Char))
+	} else {
+		fmt.Printf("%6d:%4d: ", pos.Line, pos.Char)
 	}
 
 	for i := 0; i < p.indent; i++ {
 		fmt.Print("  ")
 	}
 
-	if log.NoColors {
-		fmt.Printf("- %s", fmt.Sprint(args...))
-	} else {
+	if report.UseColors {
 		fmt.Print(color.HiGreenString("- "))
 		fmt.Println(color.YellowString(fmt.Sprint(args...)))
+	} else {
+		fmt.Printf("- %s", fmt.Sprint(args...))
 	}
 }
 

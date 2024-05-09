@@ -151,10 +151,10 @@ func (n *Break) LocEnd() token.Loc {
 	if n.Label != nil {
 		return n.Label.LocEnd()
 	}
-	const length = len("break") - 1
+	const length = uint32(len("break") - 1)
 	end := n.Loc
 	end.Char += length
-	end.Offset += length
+	end.Offset += uint64(length)
 	return end
 }
 
@@ -163,10 +163,10 @@ func (n *Continue) LocEnd() token.Loc {
 	if n.Label != nil {
 		return n.Label.LocEnd()
 	}
-	const length = len("continue") - 1
+	const length = uint32(len("continue") - 1)
 	end := n.Loc
 	end.Char += length
-	end.Offset += length
+	end.Offset += uint64(length)
 	return end
 }
 

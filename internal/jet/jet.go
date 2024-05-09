@@ -9,26 +9,19 @@ import (
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/checker"
 	"github.com/saffage/jet/config"
-	"github.com/saffage/jet/internal/log"
+	"github.com/saffage/jet/internal/report"
 	"github.com/saffage/jet/parser"
-	"github.com/saffage/jet/report"
 	"github.com/saffage/jet/scanner"
 	"github.com/saffage/jet/token"
 )
 
-var (
-	WriteAstFileHandle *os.File
-	ParseAst           = false
-	TraceParser        = false
-)
-
-func reportError(cfg *config.Config, err error) {
+func reportError(err error) {
 	switch err := err.(type) {
 	case scanner.Error:
-		report.Error(cfg, "scanner", err.Message, err.Start, err.End)
+		report.TaggedErrorAt("scanner", err.Message, err.Start, err.End)
 
 	case parser.Error:
-		report.Report(log.KindError, cfg,
+		report.TaggedErrorAt(
 			"parser",
 			err.Message,
 			err.Start,
@@ -36,7 +29,7 @@ func reportError(cfg *config.Config, err error) {
 		)
 
 		for _, note := range err.Notes {
-			report.Note(cfg, "parser", note, token.Loc{}, token.Loc{})
+			report.TaggedNoteAt("parser", note, token.Loc{}, token.Loc{})
 		}
 
 	case *checker.Error:
@@ -46,7 +39,7 @@ func reportError(cfg *config.Config, err error) {
 			start, end = err.Node.Pos(), err.Node.LocEnd()
 		}
 
-		report.Error(cfg, "checker", err.Message, start, end)
+		report.TaggedErrorAt("checker", err.Message, start, end)
 
 		for _, note := range err.Notes {
 			start, end = token.Loc{}, token.Loc{}
@@ -55,25 +48,25 @@ func reportError(cfg *config.Config, err error) {
 				start, end = note.Node.Pos(), note.Node.LocEnd()
 			}
 
-			report.Note(cfg, "checker", note.Message, start, end)
+			report.TaggedNoteAt("checker", note.Message, start, end)
 		}
 
 	default:
-		report.Error(cfg, "", err.Error(), token.Loc{}, token.Loc{})
+		report.TaggedErrorAt("", err.Error(), token.Loc{}, token.Loc{})
 	}
 }
 
 func process(
 	cfg *config.Config,
 	buffer []byte,
-	fileid config.FileID,
+	fileID config.FileID,
 	isRepl bool,
 ) {
-	toks, scanErrors := scanner.Scan(buffer, fileid, scanner.SkipWhitespace|scanner.SkipComments)
+	toks, scanErrors := scanner.Scan(buffer, fileID, scanner.SkipWhitespace|scanner.SkipComments)
 
 	if len(scanErrors) > 0 {
 		for _, err := range scanErrors {
-			reportError(cfg, err)
+			reportError(err)
 		}
 
 		return
@@ -89,7 +82,7 @@ func process(
 
 	if len(parseErrors) > 0 {
 		for _, err := range parseErrors {
-			reportError(cfg, err)
+			reportError(err)
 		}
 
 		return
@@ -127,11 +120,11 @@ func process(
 		if err := recover(); err != nil {
 			switch e := err.(type) {
 			case checker.Error:
-				reportError(cfg, &e)
+				reportError(&e)
 
 			case []checker.Error:
 				for i := range e {
-					reportError(cfg, &e[i])
+					reportError(&e[i])
 				}
 
 			default:
@@ -156,7 +149,7 @@ func process(
 
 		if len(errs) != 0 {
 			for _, err := range errs {
-				reportError(cfg, err)
+				reportError(err)
 			}
 			return
 		}

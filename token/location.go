@@ -10,12 +10,12 @@ import (
 // Zero value is invalid location.
 type Loc struct {
 	FileID config.FileID
-	Offset int
-	Line   int
-	Char   int
+	Offset uint64
+	Line   uint32
+	Char   uint32
 }
 
-// Uses [config.Global] to find the file.
+// Uses [config.Global] to get the file info.
 //
 // Return string in one of this formats depending on location data:
 //   - "file"
@@ -44,4 +44,8 @@ func (l Loc) String() string {
 	}
 
 	return s.String()
+}
+
+func (l Loc) IsValid() bool {
+	return l.FileID != 0 && l.Line > 0
 }

@@ -13,7 +13,14 @@ type Config struct {
 	MaxErrors int
 }
 
-type FileID uint64
+func New() *Config {
+	return &Config{
+		Files:     map[FileID]FileInfo{},
+		MaxErrors: 3,
+	}
+}
+
+type FileID uint16
 
 const MainFileID FileID = 1
 
@@ -21,13 +28,6 @@ type FileInfo struct {
 	Name string        // Module name (file name without extension).
 	Path string        // Path to the file.
 	Buf  *bytes.Buffer // File content.
-}
-
-func New() *Config {
-	return &Config{
-		Files:     map[FileID]FileInfo{},
-		MaxErrors: 3,
-	}
 }
 
 func init() {

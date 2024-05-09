@@ -5,12 +5,12 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/saffage/jet/internal/jet"
-	"github.com/saffage/jet/internal/log"
+	"github.com/saffage/jet/internal/report"
 )
 
 func main() {
 	// for debug
-	spew.Config.Indent = "|   "
+	spew.Config.Indent = "    "
 	spew.Config.DisableCapacities = true
 	spew.Config.DisablePointerAddresses = true
 
@@ -22,9 +22,9 @@ func main() {
 func catchInternalErrors() {
 	if panicErr := recover(); panicErr != nil {
 		if err, ok := panicErr.(error); ok {
-			log.InternalError(err.Error())
+			report.InternalErrorf(err.Error())
 		} else {
-			log.InternalError("%v", panicErr)
+			report.InternalErrorf("%v", panicErr)
 		}
 
 		// for stack trace

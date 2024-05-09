@@ -9,8 +9,14 @@ import (
 	"path/filepath"
 
 	"github.com/saffage/jet/config"
-	"github.com/saffage/jet/internal/log"
+	"github.com/saffage/jet/internal/report"
 	"github.com/saffage/jet/token"
+)
+
+var (
+	WriteAstFileHandle *os.File
+	ParseAst           = false
+	TraceParser        = false
 )
 
 func ProcessArgs([]string) {
@@ -58,12 +64,12 @@ func ProcessArgs([]string) {
 
 	stat, err := os.Stat(args[0])
 	if err != nil {
-		log.Error(err.Error())
+		report.Errorf(err.Error())
 		return
 	}
 
 	if !stat.Mode().IsRegular() {
-		log.Error("'%s' is not a file", args[0])
+		report.Errorf("'%s' is not a file", args[0])
 		return
 	}
 
@@ -71,7 +77,7 @@ func ProcessArgs([]string) {
 	fileExt := filepath.Ext(filename)
 
 	if fileExt != ".jet" {
-		log.Error("expected file extension '.jet', not '%s'", fileExt)
+		report.Errorf("expected file extension '.jet', not '%s'", fileExt)
 		return
 	}
 
@@ -79,7 +85,7 @@ func ProcessArgs([]string) {
 
 	if _, err := token.IsValidIdent(moduleName); err != nil {
 		err = errors.Join(fmt.Errorf("invalid module name (file name used as module identifier)"), err)
-		log.Error(err.Error())
+		report.Errorf(err.Error())
 		return
 	}
 
