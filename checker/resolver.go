@@ -172,12 +172,21 @@ func (check *Checker) resolveFuncDecl(node *ast.FuncDecl) {
 	}
 
 	if !tResult.Equals(tBody) {
-		check.errorf(
-			sym.node.Body.Nodes[len(sym.node.Body.Nodes)-1],
-			"expected expression of type '%s' for function result, got '%s' instead",
-			tResult,
-			tBody,
-		)
+		if len(sym.node.Body.Nodes) == 0 {
+			check.errorf(
+				sym.node.Body,
+				"expected expression of type '%s' for function result, got '%s' instead",
+				tResult,
+				tBody,
+			)
+		} else {
+			check.errorf(
+				sym.node.Body.Nodes[len(sym.node.Body.Nodes)-1],
+				"expected expression of type '%s' for function result, got '%s' instead",
+				tResult,
+				tBody,
+			)
+		}
 		return
 	}
 
