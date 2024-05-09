@@ -74,12 +74,34 @@ func (gen *Generator) Func(sym *checker.Func) {
 	for i, stmt := range node.Body.Nodes {
 		gen.indent(&gen.codeSect)
 
-		if tResultVar != nil && i == len(node.Body.Nodes)-1 {
-			gen.codeSect.WriteString("__result = ")
-		}
+		if decl, ok := stmt.(ast.Decl); ok && decl != nil {
+			switch decl := decl.(type) {
+			case *ast.VarDecl:
+				if def := gen.Defs[decl.Binding.Name]; def != nil {
+					gen.codeSect.WriteString(gen.TypeString(def.Type()))
+					gen.codeSect.WriteString(" " + def.Name() + ";\n")
 
-		gen.codeSect.WriteString(gen.ExprString(stmt))
-		gen.codeSect.WriteString(";\n")
+					if decl.Value != nil {
+						gen.indent(&gen.codeSect)
+						gen.codeSect.WriteString(def.Name() + " = ")
+						gen.codeSect.WriteString(gen.ExprString(decl.Value))
+						gen.codeSect.WriteString(";\n")
+					}
+				} else {
+					panic("unreachable")
+				}
+
+			default:
+				panic("not implemented")
+			}
+		} else {
+			if tResultVar != nil && i == len(node.Body.Nodes)-1 {
+				gen.codeSect.WriteString("__result = ")
+			}
+
+			gen.codeSect.WriteString(gen.ExprString(stmt))
+			gen.codeSect.WriteString(";\n")
+		}
 	}
 
 	// gen.indent(&gen.codeSect)
