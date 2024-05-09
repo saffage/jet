@@ -58,8 +58,10 @@ func (check *Checker) valueOfInternal(expr ast.Node) *TypedValue {
 
 		return &TypedValue{type_, value}
 
-		// case *ast.Ident:
-		// 	panic("constants are not implemented")
+	case *ast.Ident:
+		if _const, _ := check.symbolOf(node).(*Const); _const != nil {
+			return _const.value
+		}
 
 		// case *ast.PrefixOp, *ast.PostfixOp, *ast.InfixOp:
 		// 	panic("not implemented")
