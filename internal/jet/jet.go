@@ -3,7 +3,6 @@ package jet
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 
 	"github.com/fatih/color"
 	"github.com/saffage/jet/ast"
