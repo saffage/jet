@@ -44,7 +44,6 @@ func (check *Checker) resolveVarDecl(node *ast.VarDecl) {
 	}
 
 	check.newDef(node.Binding.Name, sym)
-	fmt.Printf(">>> def var `%s`\n", node.Binding.Name)
 }
 
 func (check *Checker) resolveVarValue(value ast.Node) (types.Type, bool) {
@@ -116,7 +115,6 @@ func (check *Checker) resolveFuncDecl(node *ast.FuncDecl) {
 
 			check.newDef(param.Name, paramSym)
 			fmt.Printf(">>> set `%s` type `%s`\n", paramSym.Name(), t)
-			fmt.Printf(">>> def param `%s`\n", paramSym.Name())
 
 		case *ast.BindingWithValue:
 			check.errorf(param, "parameters can't have a default value")
@@ -155,6 +153,7 @@ func (check *Checker) resolveFuncDecl(node *ast.FuncDecl) {
 
 	// Define function symbol inside their scope for recursion.
 	local.Define(sym)
+	check.newDef(node.Name, sym)
 
 	// Body.
 
@@ -189,9 +188,6 @@ func (check *Checker) resolveFuncDecl(node *ast.FuncDecl) {
 		}
 		return
 	}
-
-	check.newDef(node.Name, sym)
-	fmt.Printf(">>> def func `%s`\n", node.Name.Name)
 }
 
 func (check *Checker) resolveStructDecl(node *ast.StructDecl) {
@@ -247,7 +243,6 @@ func (check *Checker) resolveStructDecl(node *ast.StructDecl) {
 	}
 
 	check.newDef(node.Name, sym)
-	fmt.Printf(">>> def struct `%s`\n", node.Name.Name)
 }
 
 func (check *Checker) resolveTypeAliasDecl(node *ast.TypeAliasDecl) {
@@ -273,5 +268,4 @@ func (check *Checker) resolveTypeAliasDecl(node *ast.TypeAliasDecl) {
 
 	check.newDef(node.Name, sym)
 	check.setType(node, typedesc)
-	fmt.Printf(">>> def alias `%s`\n", node.Name.Name)
 }

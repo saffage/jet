@@ -82,6 +82,20 @@ func (check *Checker) structInit(node *ast.MemberAccess, typedesc *types.TypeDes
 				initFieldNames[fieldNameNode.Name] = fieldNameNode
 			}
 
+			if typeSym, ok := check.TypeSyms[tTypeStruct]; ok && typeSym != nil {
+				structSym, ok := typeSym.(*Struct)
+				if !ok || structSym == nil {
+					panic("unreachable")
+				}
+				fieldSym := structSym.body.Member(fieldNameNode.Name)
+				if fieldSym == nil {
+					panic("unreachable")
+				}
+				check.newUse(fieldNameNode, fieldSym)
+			} else {
+				panic("unreachable")
+			}
+
 		default:
 			panic(fmt.Sprintf("unexpected node of type '%T' in struct initializer", init))
 		}
@@ -153,6 +167,20 @@ func (check *Checker) structMember(node *ast.MemberAccess, t *types.Struct) type
 	if !hasField {
 		check.errorf(selector, "unknown field '%s'", selector.Name)
 		return nil
+	}
+
+	if typeSym, ok := check.TypeSyms[t]; ok && typeSym != nil {
+		structSym, ok := typeSym.(*Struct)
+		if !ok || structSym == nil {
+			panic("unreachable")
+		}
+		fieldSym := structSym.body.Member(selector.Name)
+		if fieldSym == nil {
+			panic("unreachable")
+		}
+		check.newUse(selector, fieldSym)
+	} else {
+		panic("unreachable")
 	}
 
 	return tField

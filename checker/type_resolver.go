@@ -104,6 +104,7 @@ func (check *Checker) symbolOf(ident *ast.Ident) Symbol {
 func (check *Checker) typeOfIdent(node *ast.Ident) types.Type {
 	if sym := check.symbolOf(node); sym != nil {
 		if sym.Type() != nil {
+			check.newUse(node, sym)
 			return sym.Type()
 		}
 
