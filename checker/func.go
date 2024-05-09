@@ -21,3 +21,4 @@ func (sym *Func) Type() types.Type  { return sym.t }
 func (sym *Func) Name() string      { return sym.node.Name.Name }
 func (sym *Func) Ident() *ast.Ident { return sym.node.Name }
 func (sym *Func) Node() ast.Node    { return sym.node }
+func (sym *Func) Local() *Scope     { return sym.local }
