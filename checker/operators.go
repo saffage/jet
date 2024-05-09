@@ -65,6 +65,7 @@ func (check *Checker) infix(node *ast.InfixOp, tOperandX, tOperandY types.Type) 
 
 	// Assignment operation doesn't have a value.
 	if node.Opr.Kind == ast.OperatorAssign {
+		check.assignable(node.X)
 		return types.Unit
 	}
 
@@ -125,4 +126,42 @@ func (check *Checker) infix(node *ast.InfixOp, tOperandX, tOperandY types.Type) 
 		tOperandX,
 	)
 	return nil
+}
+
+func (check *Checker) assignable(node ast.Node) bool {
+	// TODO allow assignment to a references.
+	switch operand := node.(type) {
+	case *ast.Ident:
+		if operand != nil {
+			varSym, ok := check.symbolOf(operand).(*Var)
+			if !ok || varSym == nil {
+				check.errorf(operand, "identifier is not a variable")
+				return false
+			}
+
+			fmt.Printf(">>> assign '%s' at '%s'\n", varSym.name, operand)
+			check.newUse(operand, varSym)
+			return true
+		}
+
+	case *ast.MemberAccess:
+		if operand != nil {
+			fieldIdent, _ := operand.Selector.(*ast.Ident)
+			if fieldIdent == nil {
+				break
+			}
+
+			fieldSym, ok := check.symbolOf(fieldIdent).(*Var)
+			if !ok || fieldSym == nil {
+				check.errorf(fieldIdent, "identifier is not a variable")
+				return false
+			}
+
+			check.newUse(fieldIdent, fieldSym)
+			return check.assignable(operand.X)
+		}
+	}
+
+	check.errorf(node, "expression is not assignable")
+	return false
 }

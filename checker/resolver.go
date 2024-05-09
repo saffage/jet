@@ -37,6 +37,7 @@ func (check *Checker) resolveVarDecl(node *ast.VarDecl) {
 
 	fmt.Printf(">>> var actual type '%s'\n", tType)
 	sym := NewVar(check.scope, tType, node.Binding, node.Binding.Name)
+	sym.isGlobal = sym.owner == check.module.scope
 
 	if defined := check.scope.Define(sym); defined != nil {
 		check.addError(errorAlreadyDefined(sym.Ident(), defined.Ident()))
