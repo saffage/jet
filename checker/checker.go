@@ -3,6 +3,7 @@ package checker
 import (
 	"fmt"
 
+	"github.com/fatih/color"
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/internal/assert"
 	"github.com/saffage/jet/types"
