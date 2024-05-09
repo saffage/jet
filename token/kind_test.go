@@ -3,12 +3,15 @@ package token
 import (
 	"slices"
 	"testing"
-
-	"golang.org/x/exp/maps"
 )
 
 func TestKindRepr(t *testing.T) {
-	kinds := maps.Keys(representableKinds)
+	kinds := make([]Kind, 0, len(representableKinds))
+
+	for kind := range representableKinds {
+		kinds = append(kinds, kind)
+	}
+
 	expectedKinds := append(PunctuationKinds(), append(OperatorKinds(), KeywordKinds()...)...)
 	missingKinds, extraKinds := []Kind{}, []Kind{}
 
