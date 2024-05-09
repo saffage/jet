@@ -69,7 +69,7 @@ func process(
 	fileid config.FileID,
 	isRepl bool,
 ) {
-	toks, scanErrors := scanner.Scan(buffer, fileid, scanner.SkipWhitespace)
+	toks, scanErrors := scanner.Scan(buffer, fileid, scanner.SkipWhitespace|scanner.SkipComments)
 
 	if len(scanErrors) > 0 {
 		for _, err := range scanErrors {

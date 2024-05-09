@@ -39,7 +39,8 @@ func (p *Parser) next() {
 		p.next()
 	}
 
-	if p.flags&SkipWhitespace != 0 && p.tok.Kind == token.Whitespace {
+	if p.flags&SkipWhitespace != 0 &&
+		(p.tok.Kind == token.Whitespace || p.tok.Kind == token.Tab) {
 		p.next()
 	}
 

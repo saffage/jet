@@ -83,6 +83,12 @@ func (s *Scanner) Next() token.Token {
 				Data: s.TakeWhile(func(c byte) bool { return c == ' ' }),
 			}
 
+		case s.Match('\t'):
+			tok = token.Token{
+				Kind: token.Tab,
+				Data: string(s.Advance()),
+			}
+
 		case token.IsIdentifierStartChar(s.Peek()):
 			identifier := s.TakeWhile(token.IsIdentifierChar)
 
@@ -199,7 +205,8 @@ func (s *Scanner) Next() token.Token {
 			tok.End = s.PrevPos()
 		}
 
-		if s.flags&SkipWhitespace != 0 && tok.Kind == token.Whitespace {
+		if s.flags&SkipWhitespace != 0 &&
+			(tok.Kind == token.Whitespace || tok.Kind == token.Tab) {
 			return s.Next()
 		} else if s.flags&SkipIllegal != 0 && tok.Kind == token.Illegal {
 			return s.Next()

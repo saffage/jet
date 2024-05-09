@@ -17,6 +17,7 @@ const (
 	EOF        // end of file
 	Comment    // comment
 	Whitespace // whitespace
+	Tab        // horizontal tabulation
 	NewLine    // new line
 
 	Ident  // identifier
