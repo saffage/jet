@@ -3,7 +3,7 @@ package report
 import "github.com/saffage/jet/token"
 
 // Specifies whether colors will be used when printing messages.
-var UseColors = false
+var UseColors = true
 
 // Specifies whether to output the actual code from the file.
 var ShowLine = true
