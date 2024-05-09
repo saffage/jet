@@ -9,27 +9,27 @@ import (
 	"github.com/saffage/jet/token"
 )
 
-func Note(cfg *config.Config, message string, start, end token.Loc) {
-	Report(log.KindNote, cfg, message, start, end)
+func Note(cfg *config.Config, tag, message string, start, end token.Loc) {
+	Report(log.KindNote, cfg, tag, message, start, end)
 }
 
-func Hint(cfg *config.Config, message string, start, end token.Loc) {
-	Report(log.KindHint, cfg, message, start, end)
+func Hint(cfg *config.Config, tag, message string, start, end token.Loc) {
+	Report(log.KindHint, cfg, tag, message, start, end)
 }
 
-func Warning(cfg *config.Config, message string, start, end token.Loc) {
-	Report(log.KindWarning, cfg, message, start, end)
+func Warning(cfg *config.Config, tag, message string, start, end token.Loc) {
+	Report(log.KindWarning, cfg, tag, message, start, end)
 }
 
-func Error(cfg *config.Config, message string, start, end token.Loc) {
-	Report(log.KindError, cfg, message, start, end)
+func Error(cfg *config.Config, tag, message string, start, end token.Loc) {
+	Report(log.KindError, cfg, tag, message, start, end)
 }
 
-func InternalError(cfg *config.Config, message string, start, end token.Loc) {
-	Report(log.KindInternalError, cfg, message, start, end)
+func InternalError(cfg *config.Config, tag, message string, start, end token.Loc) {
+	Report(log.KindInternalError, cfg, tag, message, start, end)
 }
 
-func Report(kind log.Kind, cfg *config.Config, message string, start, end token.Loc) {
+func Report(kind log.Kind, cfg *config.Config, tag, message string, start, end token.Loc) {
 	if start.FileID != end.FileID {
 		panic("start & end position have different file IDs")
 	}
@@ -55,5 +55,5 @@ func Report(kind log.Kind, cfg *config.Config, message string, start, end token.
 		}
 	}
 
-	fmt.Fprintf(file, "%s %s\n%s", kind.Label(), messageStyle.Sprint(message), report)
+	fmt.Fprintf(file, "%s %s\n%s", kind.LabelWithTag(tag), messageStyle.Sprint(message), report)
 }

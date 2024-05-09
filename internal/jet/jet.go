@@ -25,17 +25,18 @@ var (
 func reportError(cfg *config.Config, err error) {
 	switch err := err.(type) {
 	case scanner.Error:
-		report.Error(cfg, "scanner error: "+err.Message, err.Start, err.End)
+		report.Error(cfg, "scanner", err.Message, err.Start, err.End)
 
 	case parser.Error:
 		report.Report(log.KindError, cfg,
-			"parser error: "+err.Message,
+			"parser",
+			err.Message,
 			err.Start,
 			err.End,
 		)
 
 		for _, note := range err.Notes {
-			report.Note(cfg, "parser note: "+note, token.Loc{}, token.Loc{})
+			report.Note(cfg, "parser", note, token.Loc{}, token.Loc{})
 		}
 
 	case *checker.Error:
@@ -45,7 +46,7 @@ func reportError(cfg *config.Config, err error) {
 			start, end = err.Node.Pos(), err.Node.LocEnd()
 		}
 
-		report.Error(cfg, "checker error: "+err.Message, start, end)
+		report.Error(cfg, "checker", err.Message, start, end)
 
 		for _, note := range err.Notes {
 			start, end = token.Loc{}, token.Loc{}
@@ -54,11 +55,11 @@ func reportError(cfg *config.Config, err error) {
 				start, end = note.Node.Pos(), note.Node.LocEnd()
 			}
 
-			report.Note(cfg, "checker note: "+note.Message, start, end)
+			report.Note(cfg, "checker", note.Message, start, end)
 		}
 
 	default:
-		report.Error(cfg, err.Error(), token.Loc{}, token.Loc{})
+		report.Error(cfg, "", err.Error(), token.Loc{}, token.Loc{})
 	}
 }
 

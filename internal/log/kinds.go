@@ -25,16 +25,16 @@ func (kind Kind) String() string {
 
 // Label format is "kind:".
 func (kind Kind) Label() string {
-	return kind.LabelWithPayload("")
+	return kind.LabelWithTag("")
 }
 
-// Label format is "kind[payload]:" if `payload` is not empty.
-func (kind Kind) LabelWithPayload(payload string) string {
+// Label format is "kind(tag):" if `payload` is not empty.
+func (kind Kind) LabelWithTag(tag string) string {
 	label := strings.Builder{}
 	label.WriteString(kind.String())
 
-	if payload != "" {
-		label.WriteString(fmt.Sprintf("[%s]", payload))
+	if tag != "" {
+		label.WriteString(fmt.Sprintf("(%s)", tag))
 	}
 
 	label.WriteByte(':')
