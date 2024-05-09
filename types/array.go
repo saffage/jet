@@ -11,15 +11,13 @@ func NewArray(size int, t Type) *Array {
 	if size < 0 {
 		panic(fmt.Sprintf("invalid array size (%d)", size))
 	}
-
 	return &Array{size, t}
 }
 
 func (t *Array) Equals(other Type) bool {
-	if otherArray, ok := other.Underlying().(*Array); ok {
-		return (t.size == -1 || t.size == otherArray.size) && t.elem.Equals(otherArray.elem)
+	if t2 := AsArray(other); t2 != nil {
+		return t.size == t2.size && t.elem.Equals(t2.elem)
 	}
-
 	return false
 }
 
@@ -29,7 +27,6 @@ func (t *Array) String() string {
 	if t.size == -1 {
 		return "[_]" + t.elem.String()
 	}
-
 	return fmt.Sprintf("[%d]%s", t.size, t.elem)
 }
 

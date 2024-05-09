@@ -16,18 +16,15 @@ func NewStruct(fields map[string]Type) *Struct {
 }
 
 func (t *Struct) Equals(other Type) bool {
-	if otherStruct, _ := other.Underlying().(*Struct); otherStruct != nil {
+	if t2 := AsStruct(other); t2 != nil {
 		for name, tField := range t.fields {
-			tOtherField, ok := otherStruct.fields[name]
-
-			if !ok || !tField.Equals(tOtherField) {
+			t2Field, ok := t2.fields[name]
+			if !ok || !tField.Equals(t2Field) {
 				return false
 			}
 		}
-
 		return true
 	}
-
 	return false
 }
 

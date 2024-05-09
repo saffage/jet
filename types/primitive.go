@@ -6,9 +6,12 @@ type Primitive struct {
 	kind PrimitiveKind
 }
 
-func (p *Primitive) Equals(other Type) bool {
-	p2, _ := other.Underlying().(*Primitive)
-	return p.kind == KindAny || (p2 != nil && (p.kind == p2.kind || p.kind == SkipUntyped(p2).(*Primitive).kind))
+func (t *Primitive) Equals(other Type) bool {
+	if t2 := AsPrimitive(other); t2 != nil {
+		return t.kind == KindAny || (t2 != nil && (t.kind == t2.kind || t.kind == SkipUntyped(t2).(*Primitive).kind))
+	}
+
+	return false
 }
 
 func (p *Primitive) Underlying() Type { return p }
@@ -25,7 +28,6 @@ func AsPrimitive(t Type) *Primitive {
 	if primitive, _ := t.Underlying().(*Primitive); primitive != nil {
 		return primitive
 	}
-
 	return nil
 }
 
@@ -38,11 +40,10 @@ func SkipUntyped(t Type) Type {
 		case KindUntypedInt:
 			return I32
 
-			// case UntypedFloat, UntypedString:
-			// 	panic("not implemented")
+		// case UntypedFloat, UntypedString:
+		// 	panic("not implemented")
 		}
 	}
-
 	return t
 }
 

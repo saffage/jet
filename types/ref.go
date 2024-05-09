@@ -8,15 +8,13 @@ func NewRef(t Type) *Ref {
 	if IsTypeDesc(t) {
 		panic("references to meta type is not allowed")
 	}
-
 	return &Ref{base: t}
 }
 
 func (t *Ref) Equals(other Type) bool {
-	if otherRef, ok := other.Underlying().(*Ref); ok {
-		return t.base.Equals(otherRef.base)
+	if t2 := AsRef(other); t2 != nil {
+		return t.base.Equals(t2.base)
 	}
-
 	return false
 }
 

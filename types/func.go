@@ -15,11 +15,9 @@ func NewFunc(result *Tuple, params *Tuple) *Func {
 	if result == nil {
 		result = Unit
 	}
-
 	if params == nil {
 		params = Unit
 	}
-
 	return &Func{
 		params: params,
 		result: result,
@@ -27,11 +25,9 @@ func NewFunc(result *Tuple, params *Tuple) *Func {
 }
 
 func (t *Func) Equals(other Type) bool {
-	if otherFunc, ok := other.(*Func); ok {
-		return t.result.Equals(otherFunc.result) &&
-			t.params.Equals(otherFunc.params)
+	if t2 := AsFunc(other); t2 != nil {
+		return t.result.Equals(t2.result) && t.params.Equals(t2.params)
 	}
-
 	return false
 }
 

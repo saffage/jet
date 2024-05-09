@@ -21,8 +21,10 @@ func NewTypeDesc(t Type) *TypeDesc {
 }
 
 func (t *TypeDesc) Equals(other Type) bool {
-	typedesc, _ := other.(*TypeDesc)
-	return typedesc != nil && t.base.Equals(typedesc.base)
+	if t2 := AsTypeDesc(other); t2 != nil {
+		return t.base.Equals(t2.base)
+	}
+	return false
 }
 
 func (t *TypeDesc) Underlying() Type { return t }

@@ -19,17 +19,16 @@ func NewTuple(types ...Type) *Tuple {
 //
 // NOTE: name of the elements are not required to be the same.
 func (t *Tuple) Equals(other Type) bool {
-	if otherTuple, ok := other.Underlying().(*Tuple); ok {
+	if t2 := AsTuple(other); t2 != nil {
 		return slices.EqualFunc(
 			t.types,
-			otherTuple.types,
+			t2.types,
 			func(a, b Type) bool { return a.Equals(b) },
 		)
 	} else if underlying := t.Underlying(); underlying != t {
 		// The tuple has 1 element and can be equals to the element type.
 		return underlying.Equals(other.Underlying())
 	}
-
 	return false
 }
 

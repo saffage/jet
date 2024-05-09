@@ -12,7 +12,6 @@ func NewAlias(t Type, name string) *Alias {
 	if t == nil {
 		panic("alias to unknown must be used in built-in types only")
 	}
-
 	return &Alias{
 		base:   t,
 		actual: removeAlias(t),
@@ -41,9 +40,21 @@ func SkipAlias(t Type) Type {
 }
 
 func removeAlias(t0 Type) Type {
-	if a, ok := t0.(*Alias); ok {
-		return removeAlias(a.actual)
+	if t0 == nil {
+		return nil
 	}
 
-	return t0
+	t := t0
+	a, ok := t0.(*Alias)
+
+	for ok && a != nil {
+		t = a.actual
+		a, ok = t.(*Alias)
+	}
+
+	if t == nil {
+		panic("invalid alias")
+	}
+
+	return t
 }
