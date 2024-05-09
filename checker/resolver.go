@@ -226,7 +226,7 @@ func (check *Checker) resolveStructDecl(node *ast.StructDecl) {
 			continue
 		}
 
-		check.newDef(binding.Name.Name, t)
+		check.newDef(binding.Name, fieldSym)
 	}
 
 	t := types.NewTypeDesc(types.NewStruct(fields))
