@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/fatih/color"
 	"github.com/saffage/jet/ast"
+	"github.com/saffage/jet/cgen"
 	"github.com/saffage/jet/checker"
 	"github.com/saffage/jet/config"
 	"github.com/saffage/jet/internal/report"
@@ -152,6 +154,25 @@ func process(
 				reportError(err)
 			}
 			return
+		}
+
+		if GenC {
+			finfo := cfg.Files[fileID]
+			dir := filepath.Dir(finfo.Path)
+			f, err := os.Create(filepath.Join(dir, "out.c"))
+			if err != nil {
+				panic(err)
+			}
+			defer f.Close()
+
+			errs = cgen.Generate(f, typeinfo)
+
+			if len(errs) != 0 {
+				for _, err := range errs {
+					reportError(err)
+				}
+				return
+			}
 		}
 	}
 }

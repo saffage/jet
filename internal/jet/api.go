@@ -17,6 +17,7 @@ var (
 	WriteAstFileHandle *os.File
 	ParseAst           = false
 	TraceParser        = false
+	GenC               = false
 )
 
 func ProcessArgs([]string) {
@@ -36,6 +37,12 @@ func ProcessArgs([]string) {
 		"traceParser",
 		false,
 		"prints the parser function calls in stdout",
+	)
+	flag.BoolVar(
+		&GenC,
+		"genC",
+		false,
+		"generate C file",
 	)
 	flag.Parse()
 

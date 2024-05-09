@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/fatih/color"
 )
 
 func (n *BadNode) String() string {
@@ -15,7 +17,7 @@ func (n *Empty) String() string {
 }
 
 func (n *Ident) String() string {
-	return n.Name
+	return fmt.Sprintf("(loc: %s, name: %s)", color.CyanString(n.Start.String()), n.Name)
 }
 
 func (n *Literal) String() string {
