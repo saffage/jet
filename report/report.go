@@ -43,11 +43,22 @@ func generateReport(kind log.Kind, start, end token.Loc, buffer []byte) string {
 		buf.WriteString(line)
 		buf.WriteByte('\n')
 
+		underlinePrefix := strings.Builder{}
 		underlineStr := string(underlineChar(kind))
 		underline := strings.Repeat(underlineStr, max(1, rightBound-leftBound+1))
 
+		// Tabulation has a variable length, so you need to
+		// keep them in a string there.
+		for _, c := range lineContent[:leftBound] {
+			if c == '\t' {
+				underlinePrefix.WriteRune(c)
+			} else {
+				underlinePrefix.WriteByte(' ')
+			}
+		}
+
 		buf.WriteString(emptyLineNum)
-		buf.WriteString(strings.Repeat(" ", leftBound))
+		buf.WriteString(underlinePrefix.String())
 		buf.WriteString(kind.Style().Sprint(underline))
 	}
 
