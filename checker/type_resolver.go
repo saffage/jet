@@ -474,47 +474,40 @@ func (check *Checker) typeOfCurlyList(node *ast.CurlyList) types.Type {
 }
 
 func (check *Checker) typeOfIf(node *ast.If) types.Type {
-	// We check the body type before the condition to return the
-	// body type in case the condition is not a boolean expression.
+	tCondition := check.typeOf(node.Cond)
+	// Don't return if 'tCondition == nil', check the body.
+
+	if !types.Bool.Equals(tCondition) {
+		check.errorf(
+			node.Cond,
+			"expected type (bool) for condition, got (%s) instead",
+			tCondition,
+		)
+		// Don't return, check the body.
+	}
+
 	tBody := check.typeOf(node.Body)
 	if tBody == nil {
 		return nil
 	}
 
 	if node.Else != nil {
-		tElse := check.typeOfElse(node.Else, tBody)
-		if tElse == nil {
-			return tBody
+		if !check.typeOfElse(node.Else, tBody) {
+			return nil
 		}
-	}
-
-	tCondition := check.typeOf(node.Cond)
-	if tCondition == nil {
-		return tBody
-	}
-
-	if !types.Bool.Equals(tCondition) {
-		check.errorf(
-			node.Cond,
-			"expected type (bool) for condition, got (%s) instead",
-			tCondition)
-		return tBody
 	}
 
 	return tBody
 }
 
-func (check *Checker) typeOfElse(node *ast.Else, expectedType types.Type) types.Type {
+func (check *Checker) typeOfElse(node *ast.Else, expectedType types.Type) bool {
 	tBody := check.typeOf(node.Body)
 	if tBody == nil {
-		return nil
+		return false
 	}
 
-	if !expectedType.Equals(tBody) {
-		if tTypedBody := types.SkipUntyped(tBody); !expectedType.Equals(tTypedBody) {
-			return tTypedBody
-		}
-
+	tTypedBody := types.SkipUntyped(tBody)
+	if !expectedType.Equals(tBody) && !expectedType.Equals(tTypedBody) {
 		// Find the last node in the body for better error message.
 		lastNode := ast.Node(node.Body)
 
@@ -530,24 +523,15 @@ func (check *Checker) typeOfElse(node *ast.Else, expectedType types.Type) types.
 			lastNode,
 			"all branches must have the same type with first branch (%s), got (%s) instead",
 			expectedType,
-			tBody)
-		return nil
+			tBody,
+		)
+		return false
 	}
 
-	return tBody
+	return true
 }
 
 func (check *Checker) typeOfWhile(node *ast.While) types.Type {
-	tBody := check.typeOf(node.Body)
-	if tBody == nil {
-		return nil
-	}
-
-	if !types.Unit.Equals(tBody) {
-		check.errorf(node.Body, "while loop body must have no type, but got (%s)", tBody)
-		return nil
-	}
-
 	tCond := check.typeOf(node.Cond)
 	if tCond == nil {
 		return nil
@@ -555,6 +539,16 @@ func (check *Checker) typeOfWhile(node *ast.While) types.Type {
 
 	if !types.Bool.Equals(tCond) {
 		check.errorf(node.Cond, "expected type 'bool' for condition, got (%s) instead", tCond)
+		// Don't return, check the body.
+	}
+
+	tBody := check.typeOf(node.Body)
+	if tBody == nil {
+		return nil
+	}
+
+	if !types.Unit.Equals(tBody) {
+		check.errorf(node.Body, "while loop body must have no type, but got (%s)", tBody)
 		return nil
 	}
 
