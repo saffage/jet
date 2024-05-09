@@ -95,6 +95,10 @@ func process(
 		return
 	}
 
+	if nodeList == nil {
+		return
+	}
+
 	fmt.Println("recreated AST:")
 	for i, node := range nodeList.Nodes {
 		if _, isEmpty := node.(*ast.Empty); i < len(nodeList.Nodes)-1 || !isEmpty {
