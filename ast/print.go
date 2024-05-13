@@ -282,6 +282,10 @@ func (n *Continue) String() string {
 	return "continue"
 }
 
+func (n *Import) String() string {
+	return fmt.Sprintf("import %s", n.Module)
+}
+
 func optionalComment(commentGroup *CommentGroup) string {
 	if commentGroup == nil {
 		return ""

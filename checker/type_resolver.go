@@ -95,10 +95,10 @@ func (check *Checker) typeOfInternal(expr ast.Node) types.Type {
 
 func (check *Checker) symbolOf(ident *ast.Ident) Symbol {
 	if ident != nil {
-		if sym := check.Defs[ident]; sym != nil {
+		if sym := check.module.Defs[ident]; sym != nil {
 			return sym
 		}
-		if sym := check.Uses[ident]; sym != nil {
+		if sym := check.module.Uses[ident]; sym != nil {
 			return sym
 		}
 		if sym, _ := check.scope.Lookup(ident.Name); sym != nil {
@@ -116,7 +116,7 @@ func (check *Checker) typeOfIdent(node *ast.Ident) types.Type {
 			return sym.Type()
 		}
 
-		check.errorf(node, "expression `%s` has no type", node.Name)
+		check.errorf(node, "expression has no type")
 		return nil
 	}
 
@@ -185,7 +185,7 @@ func (check *Checker) typeOfBuiltInCall(node *ast.BuiltInCall) types.Type {
 	vArgs := make([]*TypedValue, tArgs.Len())
 
 	for i := range len(vArgs) {
-		vArgs[i] = check.Types[args.Exprs[i]]
+		vArgs[i] = check.module.Types[args.Exprs[i]]
 	}
 
 	value := builtIn.f(args, vArgs)
@@ -347,6 +347,28 @@ func (check *Checker) typeOfSignature(node *ast.Signature) types.Type {
 }
 
 func (check *Checker) typeOfMemberAccess(node *ast.MemberAccess) types.Type {
+	if ident, _ := node.X.(*ast.Ident); ident != nil {
+		if m, _ := check.symbolOf(ident).(*Module); m != nil {
+			if member, _ := node.Selector.(*ast.Ident); member != nil {
+				if sym, _ := m.Scope.Lookup(member.Name); sym != nil {
+					if sym.Type() == nil {
+						check.errorf(node.Selector, "expression has no type")
+					}
+					return sym.Type()
+				}
+				check.errorf(
+					node.Selector,
+					"identifier `%s` is not defined in the module `%s`",
+					member,
+					m.Name(),
+				)
+				return nil
+			}
+			check.errorf(node.Selector, "expected identifier in module member access expression")
+			return nil
+		}
+	}
+
 	tOperand := check.typeOf(node.X)
 	if tOperand == nil {
 		return nil

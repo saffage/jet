@@ -78,6 +78,7 @@ const (
 	KwAnd      // keyword 'and'
 	KwOr       // keyword 'or'
 	KwModule   // keyword 'module'
+	KwImport   // keyword 'import'
 	KwAlias    // keyword 'alias'
 	KwStruct   // keyword 'struct'
 	KwEnum     // keyword 'enum'
@@ -230,6 +231,7 @@ var representableKinds = map[Kind]string{
 	Dot2Less:     "..<",
 	Ellipsis:     "...",
 	KwModule:     "module",
+	KwImport:     "import",
 	KwAlias:      "alias",
 	KwStruct:     "struct",
 	KwEnum:       "enum",

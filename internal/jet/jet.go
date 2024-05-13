@@ -83,13 +83,7 @@ func process(
 		}
 	}()
 
-	mod := &ast.ModuleDecl{
-		Name: &ast.Ident{Name: cfg.Files[config.MainFileID].Name},
-		Body: nodeList,
-	}
-	typeinfo, errs := checker.Check(cfg, fileID, mod)
-	_ = typeinfo
-
+	m, errs := checker.CheckFile(cfg, fileID)
 	if len(errs) != 0 {
 		report.Report(errs...)
 		return
@@ -104,7 +98,7 @@ func process(
 		}
 		defer f.Close()
 
-		errs = cgen.Generate(f, typeinfo)
+		errs = cgen.Generate(f, m)
 
 		if len(errs) != 0 {
 			report.Report(errs...)

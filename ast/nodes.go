@@ -68,6 +68,7 @@ func (*While) implNode()    {}
 func (*Return) implNode()   {}
 func (*Break) implNode()    {}
 func (*Continue) implNode() {}
+func (*Import) implNode()   {}
 
 type (
 	Comment struct {
@@ -123,6 +124,11 @@ type (
 		Label *Ident
 		Loc   token.Loc // `continue` token.
 	}
+
+	Import struct {
+		Module *Ident
+		Loc    token.Loc // `import` token.
+	}
 )
 
 func (n *Comment) Pos() token.Loc    { return n.Start }
@@ -169,6 +175,9 @@ func (n *Continue) LocEnd() token.Loc {
 	end.Offset += uint64(length)
 	return end
 }
+
+func (n *Import) Pos() token.Loc    { return n.Loc }
+func (n *Import) LocEnd() token.Loc { return n.Module.LocEnd() }
 
 // Additional methods for nodes.
 

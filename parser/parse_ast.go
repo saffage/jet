@@ -107,6 +107,9 @@ func (p *Parser) parseStmt() ast.Node {
 	case token.KwModule:
 		node = p.parseModule()
 
+	case token.KwImport:
+		node = p.parseImport()
+
 	case token.KwAlias:
 		node = p.parseAlias()
 
@@ -1129,6 +1132,30 @@ func (p *Parser) parseModule() ast.Node {
 
 	p.error(p.tok.Start, p.tok.End, "first statement in the file should be `module`")
 	return nil
+}
+
+func (p *Parser) parseImport() ast.Node {
+	if p.flags&Trace != 0 {
+		p.trace()
+		defer p.untrace()
+	}
+
+	tok := p.consume(token.KwImport)
+
+	if tok == nil {
+		return nil
+	}
+
+	mod := p.parseIdentNode()
+
+	if mod == nil {
+		return nil
+	}
+
+	return &ast.Import{
+		Module: mod,
+		Loc:    tok.Start,
+	}
 }
 
 func (p *Parser) parseAlias() ast.Node {

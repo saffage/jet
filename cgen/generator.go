@@ -14,7 +14,7 @@ import (
 )
 
 type Generator struct {
-	*checker.TypeInfo
+	*checker.Module
 
 	dataSect     strings.Builder
 	typeSect     strings.Builder
@@ -26,10 +26,10 @@ type Generator struct {
 	numIndent    int
 }
 
-func Generate(w io.Writer, typeinfo *checker.TypeInfo) []error {
+func Generate(w io.Writer, m *checker.Module) []error {
 	gen := &Generator{
-		TypeInfo: typeinfo,
-		out:      bufio.NewWriter(w),
+		Module: m,
+		out:    bufio.NewWriter(w),
 	}
 
 	gen.out.WriteString(prelude)

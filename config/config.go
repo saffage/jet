@@ -25,11 +25,20 @@ type FileID uint16
 const MainFileID FileID = 1
 
 type FileInfo struct {
-	Name string        // Module name (file name without extension).
+	Name string        // File name without extension.
 	Path string        // Path to the file.
 	Buf  *bytes.Buffer // File content.
 }
 
+var fileID FileID
+
+func NextFileID() FileID {
+	id := fileID
+	fileID++
+	return id
+}
+
 func init() {
+	fileID = MainFileID + 1
 	Global = New()
 }

@@ -46,9 +46,9 @@ var primitives = [...]Symbol{
 	),
 }
 
-func (check *Checker) defPrimitives() {
+func (m *Module) defPrimitives() {
 	for _, primitive := range primitives {
-		defined := check.module.scope.Define(primitive)
+		defined := m.Scope.Define(primitive)
 		assert.Ok(defined == nil)
 	}
 }

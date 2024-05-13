@@ -7,52 +7,58 @@ import (
 
 // Module is a file.
 type Module struct {
-	scope     *Scope
+	*TypeInfo
+	Scope *Scope
+
 	node      *ast.ModuleDecl
 	completed bool
 }
 
-func NewModule(parent *Scope, node *ast.ModuleDecl) *Module {
+func NewModule(scope *Scope, node *ast.ModuleDecl) *Module {
 	return &Module{
-		scope:     NewScope(parent),
+		TypeInfo:  NewTypeInfo(),
+		Scope:     scope,
 		node:      node,
 		completed: false,
 	}
 }
 
-func (m *Module) Owner() *Scope     { return m.scope.parent }
-func (m *Module) Type() types.Type  { panic("modules have no type") }
+func (m *Module) Owner() *Scope     { return m.Scope.parent }
+func (m *Module) Type() types.Type  { return nil }
 func (m *Module) Name() string      { return m.node.Name.Name }
 func (m *Module) Ident() *ast.Ident { return m.node.Name }
 func (m *Module) Node() ast.Node    { return m.node }
 
 func (check *Checker) visit(node ast.Node) ast.Visitor {
-	decl, isDecl := node.(ast.Decl)
+	switch node := node.(type) {
+	case ast.Decl:
+		switch decl := node.(type) {
+		case *ast.ModuleDecl:
+			panic("not implemented")
 
-	if !isDecl {
+		case *ast.VarDecl:
+			check.resolveVarDecl(decl)
+
+		case *ast.FuncDecl:
+			check.resolveFuncDecl(decl)
+
+		case *ast.StructDecl:
+			check.resolveStructDecl(decl)
+
+		case *ast.TypeAliasDecl:
+			check.resolveTypeAliasDecl(decl)
+
+		default:
+			panic("unreachable")
+		}
+
+	case *ast.Import:
+		check.resolveImport(node)
+
+	default:
 		// NOTE parser should prevent this in future.
 		check.errorf(node, "expected declaration")
 		return nil
-	}
-
-	switch decl := decl.(type) {
-	case *ast.ModuleDecl:
-		panic("not implemented")
-
-	case *ast.VarDecl:
-		check.resolveVarDecl(decl)
-
-	case *ast.FuncDecl:
-		check.resolveFuncDecl(decl)
-
-	case *ast.StructDecl:
-		check.resolveStructDecl(decl)
-
-	case *ast.TypeAliasDecl:
-		check.resolveTypeAliasDecl(decl)
-
-	default:
-		panic("unreachable")
 	}
 
 	return nil

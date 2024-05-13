@@ -82,7 +82,7 @@ func (check *Checker) structInit(node *ast.MemberAccess, typedesc *types.TypeDes
 				initFieldNames[fieldNameNode.Name] = fieldNameNode
 			}
 
-			if typeSym, ok := check.TypeSyms[tTypeStruct]; ok && typeSym != nil {
+			if typeSym, ok := check.module.TypeSyms[tTypeStruct]; ok && typeSym != nil {
 				structSym, ok := typeSym.(*Struct)
 				if !ok || structSym == nil {
 					panic("unreachable")
@@ -169,7 +169,7 @@ func (check *Checker) structMember(node *ast.MemberAccess, t *types.Struct) type
 		return nil
 	}
 
-	if typeSym, ok := check.TypeSyms[t]; ok && typeSym != nil {
+	if typeSym, ok := check.module.TypeSyms[t]; ok && typeSym != nil {
 		structSym, ok := typeSym.(*Struct)
 		if !ok || structSym == nil {
 			panic("unreachable")

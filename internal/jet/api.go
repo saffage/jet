@@ -80,15 +80,15 @@ func ProcessArgs([]string) {
 		return
 	}
 
-	filename := filepath.Clean(args[0])
-	fileExt := filepath.Ext(filename)
+	path := filepath.Clean(args[0])
+	fileExt := filepath.Ext(path)
 
 	if fileExt != ".jet" {
 		report.Errorf("expected file extension '.jet', not '%s'", fileExt)
 		return
 	}
 
-	moduleName := filepath.Base(filename[:len(filename)-len(fileExt)])
+	moduleName := filepath.Base(path[:len(path)-len(fileExt)])
 
 	if _, err := token.IsValidIdent(moduleName); err != nil {
 		err = errors.Join(fmt.Errorf("invalid module name (file name used as module identifier)"), err)
@@ -96,16 +96,16 @@ func ProcessArgs([]string) {
 		return
 	}
 
-	fmt.Printf("reading file '%s'\n", filename)
+	fmt.Printf("reading file '%s'\n", path)
 
-	buf, err := os.ReadFile(filename)
+	buf, err := os.ReadFile(path)
 	if err != nil {
 		panic(err)
 	}
 
 	config.Global.Files[config.MainFileID] = config.FileInfo{
 		Name: moduleName,
-		Path: filename,
+		Path: path,
 		Buf:  bytes.NewBuffer(buf),
 	}
 	process(config.Global, buf, config.MainFileID)
