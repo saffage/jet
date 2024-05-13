@@ -93,10 +93,13 @@ func generateLine(kind Kind, start, end token.Loc, buffer []byte) string {
 		rightBound = len(lineContent)
 	}
 
+	kindColor := *kind.Color()
+	kindColor.Add(color.Underline)
+
 	buf.WriteByte('\n')
 	buf.WriteString(lineNum(lineNumStr))
 	buf.WriteString(applyColorInRange(
-		kind.Color().Add(color.Underline),
+		&kindColor,
 		lineContent,
 		int(leftBound),
 		int(rightBound),
