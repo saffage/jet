@@ -31,12 +31,22 @@ func display(kind Kind, message string) {
 }
 
 func reportfInternal(kind Kind, tag, format string, args ...any) {
+	if strings.TrimSpace(format) == "" {
+		format = "<no message provided>"
+	}
+
 	display(kind, fmt.Sprintf("%s %s", kind.TaggedLabel(tag), fmt.Sprintf(format, args...)))
 }
 
 func reportAtInternal(kind Kind, tag, message string, start, end token.Loc) {
 	if start.FileID != end.FileID {
 		panic("start & end position have different file IDs")
+	}
+
+	// We do it here because the message will not be empty
+	// if the location is specified.
+	if strings.TrimSpace(message) == "" {
+		message = "<no message provided>"
 	}
 
 	line := "\n" + formatLoc(start)
