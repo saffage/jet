@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/saffage/jet/internal/report"
 	"github.com/saffage/jet/token"
 )
 
@@ -27,6 +28,14 @@ func NewErrorf(start, end token.Loc, format string, args ...any) Error {
 }
 
 func (e Error) Error() string { return e.Message }
+
+func (err Error) Report() {
+	report.TaggedErrorAt( "parser", err.Message, err.Start, err.End)
+
+	for _, note := range err.Notes {
+		report.TaggedNotef("parser", note)
+	}
+}
 
 func (p *Parser) addError(err error) {
 	p.errors = append(p.errors, err)

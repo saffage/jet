@@ -65,7 +65,7 @@ func ProcessArgs([]string) {
 	args := flag.Args()
 
 	if len(args) == 0 {
-		runREPL()
+		report.Errorf("REPL is not implemented")
 		return
 	}
 
@@ -108,5 +108,5 @@ func ProcessArgs([]string) {
 		Path: filename,
 		Buf:  bytes.NewBuffer(buf),
 	}
-	process(config.Global, buf, config.MainFileID, false)
+	process(config.Global, buf, config.MainFileID)
 }

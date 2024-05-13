@@ -8,6 +8,28 @@ var UseColors = true
 // Specifies whether to output the actual code from the file.
 var ShowLine = true
 
+// Reporter is an interface that is used to make the report prettier/clearer.
+//
+// Types implementing this interface must call the functions they need
+// themselves (e.g. [TaggedErrorf]).
+type Reporter interface {
+	Report()
+}
+
+// Displays an error report for each of the errors.
+//
+// If the error implements the [Reporter] interface, it will be used instead
+// of the usual error report.
+func Report(errors ...error) {
+	for _, err := range errors {
+		if reporter, ok := err.(Reporter); ok {
+			reporter.Report()
+		} else {
+			Errorf(err.Error())
+		}
+	}
+}
+
 // Reports a formatted message of the specified kind.
 func Reportf(kind Kind, format string, args ...any) {
 	reportfInternal(kind, "", format, args...)

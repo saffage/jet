@@ -14,63 +14,16 @@ import (
 	"github.com/saffage/jet/internal/report"
 	"github.com/saffage/jet/parser"
 	"github.com/saffage/jet/scanner"
-	"github.com/saffage/jet/token"
 )
-
-func reportError(err error) {
-	switch err := err.(type) {
-	case scanner.Error:
-		report.TaggedErrorAt("scanner", err.Message, err.Start, err.End)
-
-	case parser.Error:
-		report.TaggedErrorAt(
-			"parser",
-			err.Message,
-			err.Start,
-			err.End,
-		)
-
-		for _, note := range err.Notes {
-			report.TaggedNoteAt("parser", note, token.Loc{}, token.Loc{})
-		}
-
-	case *checker.Error:
-		start, end := token.Loc{}, token.Loc{}
-
-		if err.Node != nil {
-			start, end = err.Node.Pos(), err.Node.LocEnd()
-		}
-
-		report.TaggedErrorAt("checker", err.Message, start, end)
-
-		for _, note := range err.Notes {
-			start, end = token.Loc{}, token.Loc{}
-
-			if note.Node != nil {
-				start, end = note.Node.Pos(), note.Node.LocEnd()
-			}
-
-			report.TaggedNoteAt("checker", note.Message, start, end)
-		}
-
-	default:
-		report.TaggedErrorAt("", err.Error(), token.Loc{}, token.Loc{})
-	}
-}
 
 func process(
 	cfg *config.Config,
 	buffer []byte,
 	fileID config.FileID,
-	isRepl bool,
 ) {
 	toks, scanErrors := scanner.Scan(buffer, fileID, scanner.SkipWhitespace|scanner.SkipComments)
-
 	if len(scanErrors) > 0 {
-		for _, err := range scanErrors {
-			reportError(err)
-		}
-
+		report.Report(scanErrors...)
 		return
 	}
 
@@ -81,15 +34,10 @@ func process(
 	}
 
 	nodeList, parseErrors := parser.Parse(cfg, toks, parserFlags)
-
 	if len(parseErrors) > 0 {
-		for _, err := range parseErrors {
-			reportError(err)
-		}
-
+		report.Report(parseErrors...)
 		return
 	}
-
 	if nodeList == nil {
 		return
 	}
@@ -120,13 +68,13 @@ func process(
 
 	defer func() {
 		if err := recover(); err != nil {
-			switch e := err.(type) {
-			case checker.Error:
-				reportError(&e)
+			switch err := err.(type) {
+			case *checker.Error:
+				report.Report(err)
 
-			case []checker.Error:
-				for i := range e {
-					reportError(&e[i])
+			case []*checker.Error:
+				for _, err := range err {
+					report.Report(err)
 				}
 
 			default:
@@ -135,44 +83,32 @@ func process(
 		}
 	}()
 
-	if isRepl {
-		decl := &ast.FuncDecl{
-			Name: &ast.Ident{Name: "repl"},
-			Body: &ast.CurlyList{List: nodeList},
+	mod := &ast.ModuleDecl{
+		Name: &ast.Ident{Name: cfg.Files[config.MainFileID].Name},
+		Body: nodeList,
+	}
+	typeinfo, errs := checker.Check(cfg, fileID, mod)
+	_ = typeinfo
+
+	if len(errs) != 0 {
+		report.Report(errs...)
+		return
+	}
+
+	if GenC {
+		finfo := cfg.Files[fileID]
+		dir := filepath.Dir(finfo.Path)
+		f, err := os.Create(filepath.Join(dir, "out.c"))
+		if err != nil {
+			panic(err)
 		}
-		checker.NewFunc(nil, nil, nil, decl)
-	} else {
-		mod := &ast.ModuleDecl{
-			Name: &ast.Ident{Name: cfg.Files[config.MainFileID].Name},
-			Body: nodeList,
-		}
-		typeinfo, errs := checker.Check(mod)
-		_ = typeinfo
+		defer f.Close()
+
+		errs = cgen.Generate(f, typeinfo)
 
 		if len(errs) != 0 {
-			for _, err := range errs {
-				reportError(err)
-			}
+			report.Report(errs...)
 			return
-		}
-
-		if GenC {
-			finfo := cfg.Files[fileID]
-			dir := filepath.Dir(finfo.Path)
-			f, err := os.Create(filepath.Join(dir, "out.c"))
-			if err != nil {
-				panic(err)
-			}
-			defer f.Close()
-
-			errs = cgen.Generate(f, typeinfo)
-
-			if len(errs) != 0 {
-				for _, err := range errs {
-					reportError(err)
-				}
-				return
-			}
 		}
 	}
 }
