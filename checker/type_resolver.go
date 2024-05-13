@@ -141,13 +141,13 @@ func (check *Checker) typeOfLiteral(node *ast.Literal) types.Type {
 }
 
 func (check *Checker) typeOfBuiltInCall(node *ast.BuiltInCall) types.Type {
-	builtIn := (*BuiltIn)(nil)
-	idx := slices.IndexFunc(check.builtIns, func(b *BuiltIn) bool {
+	var builtIn *BuiltIn
+	idx := slices.IndexFunc(builtIns, func(b *BuiltIn) bool {
 		return b.name == node.Name.Name
 	})
 
 	if idx != -1 {
-		builtIn = check.builtIns[idx]
+		builtIn = builtIns[idx]
 	}
 
 	if builtIn == nil {
@@ -188,7 +188,11 @@ func (check *Checker) typeOfBuiltInCall(node *ast.BuiltInCall) types.Type {
 		vArgs[i] = check.module.Types[args.Exprs[i]]
 	}
 
-	value := builtIn.f(args, vArgs)
+	value, err := builtIn.f(args, vArgs)
+	if err != nil {
+		check.addError(err)
+		return nil
+	}
 	if value == nil {
 		return nil
 	}

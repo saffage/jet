@@ -13,7 +13,6 @@ import (
 type Checker struct {
 	module         *Module
 	scope          *Scope
-	builtIns       []*BuiltIn
 	errors         []error
 	isErrorHandled bool
 

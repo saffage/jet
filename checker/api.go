@@ -26,7 +26,6 @@ func Check(cfg *config.Config, fileID config.FileID, node *ast.ModuleDecl) (*Mod
 		fileID:         fileID,
 	}
 
-	check.defBuiltIns()
 	check.module.defPrimitives()
 
 	{

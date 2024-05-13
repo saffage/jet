@@ -6,7 +6,7 @@ import (
 	"github.com/saffage/jet/types"
 )
 
-func (check *Checker) builtInMagic(node *ast.ParenList, args []*TypedValue) *TypedValue {
+func builtInMagic(node *ast.ParenList, args []*TypedValue) (*TypedValue, error) {
 	strval := constant.AsString(args[0].Value)
 
 	if strval == nil {
@@ -15,28 +15,27 @@ func (check *Checker) builtInMagic(node *ast.ParenList, args []*TypedValue) *Typ
 
 	switch *strval {
 	case "Bool":
-		return &TypedValue{types.NewTypeDesc(types.Bool), nil}
+		return &TypedValue{types.NewTypeDesc(types.Bool), nil}, nil
 
 	case "I32":
-		return &TypedValue{types.NewTypeDesc(types.I32), nil}
+		return &TypedValue{types.NewTypeDesc(types.I32), nil}, nil
 
 	default:
-		check.errorf(node.Exprs[0], "unknown magic '%s'", *strval)
-		return nil
+		return nil, NewErrorf(node.Exprs[0], "unknown magic '%s'", *strval)
 	}
 }
 
-func (check *Checker) builtInTypeOf(node *ast.ParenList, args []*TypedValue) *TypedValue {
+func builtInTypeOf(node *ast.ParenList, args []*TypedValue) (*TypedValue, error) {
 	return &TypedValue{
 		Type:  types.NewTypeDesc(types.SkipUntyped(args[0].Type)),
 		Value: nil,
-	}
+	}, nil
 }
 
-func (check *Checker) builtInPrint(node *ast.ParenList, args []*TypedValue) *TypedValue {
-	return &TypedValue{types.Unit, nil}
+func builtInPrint(node *ast.ParenList, args []*TypedValue) (*TypedValue, error) {
+	return &TypedValue{types.Unit, nil}, nil
 }
 
-func (check *Checker) builtInAssert(node *ast.ParenList, args []*TypedValue) *TypedValue {
-	return &TypedValue{types.Unit, nil}
+func builtInAssert(node *ast.ParenList, args []*TypedValue) (*TypedValue, error) {
+	return &TypedValue{types.Unit, nil}, nil
 }
