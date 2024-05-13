@@ -35,7 +35,11 @@ func reportfInternal(kind Kind, tag, format string, args ...any) {
 		format = "<no message provided>"
 	}
 
-	display(kind, fmt.Sprintf("%s %s", kind.TaggedLabel(tag), fmt.Sprintf(format, args...)))
+	display(kind, fmt.Sprintf(
+		"%s %s",
+		kind.TaggedLabel(tag),
+		fmt.Sprintf(format, args...),
+	))
 }
 
 func reportAtInternal(kind Kind, tag, message string, start, end token.Loc) {
@@ -58,7 +62,7 @@ func reportAtInternal(kind Kind, tag, message string, start, end token.Loc) {
 	}
 
 	if UseColors {
-		reportfInternal(kind, tag, messageStyle.Sprint(message)+line)
+		reportfInternal(kind, tag, message+line)
 	} else {
 		reportfInternal(kind, tag, message+line)
 	}
@@ -159,12 +163,12 @@ func formatLoc(loc token.Loc) string {
 		return fmt.Sprintf("%s%s %s",
 			strings.Repeat(" ", numLen(int(loc.Line))),
 			lineNumStyle.Sprint("-->"),
-			loc.String(),
+			color.CyanString(loc.String()),
 		)
 	}
 	return fmt.Sprintf("%s--> %s",
 		strings.Repeat(" ", numLen(int(loc.Line))),
-		loc.String(),
+		color.CyanString(loc.String()),
 	)
 }
 
@@ -179,7 +183,4 @@ func numLen(num int) (len int) {
 	return len
 }
 
-var (
-	messageStyle = color.New(color.Bold)
-	lineNumStyle = color.New(color.Bold, color.FgHiGreen)
-)
+var lineNumStyle = color.New(color.Bold, color.FgHiGreen)

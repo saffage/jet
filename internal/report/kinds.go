@@ -53,8 +53,8 @@ var kinds = map[Kind]string{
 
 var colors = map[Kind]*color.Color{
 	KindNote:          color.New(color.Bold, color.FgHiBlue),
-	KindHint:          color.New(color.Bold, color.FgCyan),
-	KindWarning:       color.New(color.Bold, color.FgYellow),
-	KindError:         color.New(color.Bold, color.FgRed),
-	KindInternalError: color.New(color.Bold, color.FgRed),
+	KindHint:          color.New(color.Bold, color.FgHiCyan),
+	KindWarning:       color.New(color.Bold, color.FgHiYellow),
+	KindError:         color.New(color.Bold, color.FgHiRed),
+	KindInternalError: color.New(color.Bold, color.FgHiMagenta),
 }
