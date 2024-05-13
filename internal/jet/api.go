@@ -3,7 +3,6 @@ package jet
 import (
 	"bytes"
 	"errors"
-	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,80 +12,24 @@ import (
 	"github.com/saffage/jet/token"
 )
 
-var (
-	WriteAstFileHandle *os.File
-	ParseAst           = false
-	TraceParser        = false
-	GenC               = false
-)
-
 func ProcessArgs([]string) {
-	writeAst := flag.String(
-		"writeAst",
-		"",
-		"output program AST into a specified file is JSON format. Filename can be specified explicitly after the flag (default is 'ast.json')",
-	)
-	flag.BoolVar(
-		&report.IsDebug,
-		"debug",
-		false,
-		"specifies whether to output debug messages",
-	)
-	flag.BoolVar(
-		&ParseAst,
-		"parseAst",
-		false,
-		"output program AST into the console and stops processing",
-	)
-	flag.BoolVar(
-		&TraceParser,
-		"traceParser",
-		false,
-		"prints the parser function calls in stdout",
-	)
-	flag.BoolVar(
-		&GenC,
-		"genC",
-		false,
-		"generate C file",
-	)
-	flag.Parse()
-
-	if writeAst != nil && *writeAst != "" {
-		filename := *writeAst
-
-		err := error(nil)
-		WriteAstFileHandle, err = os.Create(filename)
-		if err != nil {
-			panic(err)
-		}
-
-		defer func() {
-			if err := WriteAstFileHandle.Close(); err != nil {
-				panic(err)
-			}
-		}()
-	}
-
-	args := flag.Args()
-
-	if len(args) == 0 {
-		report.Errorf("REPL is not implemented")
+	if len(config.Args) != 1 {
+		report.Errorf("expected filename")
 		return
 	}
 
-	stat, err := os.Stat(args[0])
+	path := filepath.Clean(config.Args[0])
+	stat, err := os.Stat(path)
 	if err != nil {
 		report.Errorf(err.Error())
 		return
 	}
 
 	if !stat.Mode().IsRegular() {
-		report.Errorf("'%s' is not a file", args[0])
+		report.Errorf("'%s' is not a file", path)
 		return
 	}
 
-	path := filepath.Clean(args[0])
 	fileExt := filepath.Ext(path)
 
 	if fileExt != ".jet" {
@@ -94,10 +37,9 @@ func ProcessArgs([]string) {
 		return
 	}
 
-	moduleName := filepath.Base(path[:len(path)-len(fileExt)])
-
-	if _, err := token.IsValidIdent(moduleName); err != nil {
-		err = errors.Join(fmt.Errorf("invalid module name (file name used as module identifier)"), err)
+	name := filepath.Base(path[:len(path)-len(fileExt)])
+	if _, err := token.IsValidIdent(name); err != nil {
+		err = errors.Join(fmt.Errorf("invalid module name (file name must be a valid Jet identifier)"), err)
 		report.Errorf(err.Error())
 		return
 	}
@@ -109,7 +51,7 @@ func ProcessArgs([]string) {
 	}
 
 	config.Global.Files[config.MainFileID] = config.FileInfo{
-		Name: moduleName,
+		Name: name,
 		Path: path,
 		Buf:  bytes.NewBuffer(buf),
 	}
