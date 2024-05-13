@@ -31,6 +31,61 @@ func (sym *Struct) Name() string      { return sym.node.Name.Name }
 func (sym *Struct) Ident() *ast.Ident { return sym.node.Name }
 func (sym *Struct) Node() ast.Node    { return sym.node }
 
+func (check *Checker) resolveStructDecl(node *ast.StructDecl) {
+	fields := make(map[string]types.Type, len(node.Body.Nodes))
+	local := NewScope(check.scope)
+
+	if node.Body == nil {
+		panic("struct body cannot be nil")
+	}
+
+	for _, bodyNode := range node.Body.Nodes {
+		binding, _ := bodyNode.(*ast.Binding)
+		if binding == nil {
+			check.errorf(binding, "expected field declaration")
+			return
+		}
+
+		tField := check.typeOf(binding.Type)
+		if tField == nil {
+			return
+		}
+
+		if !types.IsTypeDesc(tField) {
+			check.errorf(binding.Type, "expected field type, got (%s) instead", tField)
+			return
+		}
+
+		if types.IsUntyped(tField) {
+			panic("typedesc cannot have an untyped base")
+		}
+
+		t := types.AsTypeDesc(tField).Base()
+		fieldSym := NewVar(local, t, binding, binding.Name)
+		fieldSym.isField = true
+		fields[binding.Name.Name] = t
+
+		if defined := local.Define(fieldSym); defined != nil {
+			err := NewErrorf(fieldSym.Ident(), "duplicate field '%s'", fieldSym.Name())
+			err.Notes = []*Error{NewError(defined.Ident(), "field was defined here")}
+			check.addError(err)
+			continue
+		}
+
+		check.newDef(binding.Name, fieldSym)
+	}
+
+	t := types.NewTypeDesc(types.NewStruct(fields))
+	sym := NewStruct(check.scope, local, t, node)
+
+	if defined := check.scope.Define(sym); defined != nil {
+		check.addError(errorAlreadyDefined(sym.Ident(), defined.Ident()))
+		return
+	}
+
+	check.newDef(node.Name, sym)
+}
+
 func (check *Checker) structInit(node *ast.MemberAccess, typedesc *types.TypeDesc) types.Type {
 	tTypeStruct := types.AsStruct(typedesc.Base())
 	if tTypeStruct == nil {

@@ -27,6 +27,12 @@ func ProcessArgs([]string) {
 		"output program AST into a specified file is JSON format. Filename can be specified explicitly after the flag (default is 'ast.json')",
 	)
 	flag.BoolVar(
+		&report.IsDebug,
+		"debug",
+		false,
+		"specifies whether to output debug messages",
+	)
+	flag.BoolVar(
 		&ParseAst,
 		"parseAst",
 		false,
@@ -96,10 +102,9 @@ func ProcessArgs([]string) {
 		return
 	}
 
-	fmt.Printf("reading file '%s'\n", path)
-
 	buf, err := os.ReadFile(path)
 	if err != nil {
+		report.InternalErrorf("while reading file '%s': %s", err.Error())
 		panic(err)
 	}
 
@@ -108,5 +113,6 @@ func ProcessArgs([]string) {
 		Path: path,
 		Buf:  bytes.NewBuffer(buf),
 	}
-	process(config.Global, buf, config.MainFileID)
+	report.Debugf("set file '%s' as main module", path)
+	process(config.Global, config.MainFileID)
 }

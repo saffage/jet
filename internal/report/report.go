@@ -18,7 +18,7 @@ func display(kind Kind, message string) {
 	case KindNote, KindHint, KindWarning:
 		_, err = fmt.Fprintln(os.Stdout, message)
 
-	case KindError, KindInternalError:
+	case KindDebug, KindError, KindInternalError:
 		_, err = fmt.Fprintln(os.Stderr, message)
 
 	default:
@@ -31,6 +31,10 @@ func display(kind Kind, message string) {
 }
 
 func reportfInternal(kind Kind, tag, format string, args ...any) {
+	if kind == KindDebug && !IsDebug {
+		return
+	}
+
 	if strings.TrimSpace(format) == "" {
 		format = "<no message provided>"
 	}
@@ -43,6 +47,10 @@ func reportfInternal(kind Kind, tag, format string, args ...any) {
 }
 
 func reportAtInternal(kind Kind, tag, message string, start, end token.Loc) {
+	if kind == KindDebug && !IsDebug {
+		return
+	}
+
 	if start.FileID != end.FileID {
 		panic("start & end position have different file IDs")
 	}
@@ -147,6 +155,9 @@ func applyColorInRange(color *color.Color, text string, a, b int) string {
 
 func underlineChar(kind Kind) rune {
 	switch kind {
+	case KindDebug:
+		return '-'
+
 	case KindNote, KindHint, KindWarning:
 		return '^'
 

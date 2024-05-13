@@ -9,7 +9,8 @@ import (
 type Kind byte
 
 const (
-	KindNote Kind = iota
+	KindDebug Kind = iota
+	KindNote
 	KindHint
 	KindWarning
 	KindError
@@ -44,6 +45,7 @@ func (kind Kind) TaggedLabel(tag string) string {
 }
 
 var kinds = map[Kind]string{
+	KindDebug:         "debug",
 	KindNote:          "note",
 	KindHint:          "hint",
 	KindWarning:       "warning",
@@ -52,6 +54,7 @@ var kinds = map[Kind]string{
 }
 
 var colors = map[Kind]*color.Color{
+	KindDebug:         color.New(color.Bold, color.FgHiMagenta),
 	KindNote:          color.New(color.Bold, color.FgHiBlue),
 	KindHint:          color.New(color.Bold, color.FgHiCyan),
 	KindWarning:       color.New(color.Bold, color.FgHiYellow),

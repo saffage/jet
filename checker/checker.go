@@ -1,12 +1,11 @@
 package checker
 
 import (
-	"fmt"
-
 	"github.com/fatih/color"
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/config"
 	"github.com/saffage/jet/internal/assert"
+	"github.com/saffage/jet/internal/report"
 	"github.com/saffage/jet/types"
 )
 
@@ -82,8 +81,8 @@ func (check *Checker) newDef(ident *ast.Ident, sym Symbol) {
 		} else {
 			symStr = symbolTypeNoQualifier(sym)
 		}
-		fmt.Printf(
-			">>> def %s `%s`\n",
+		report.TaggedDebugf(
+			"checker", "def %s `%s`",
 			color.HiBlueString(symStr),
 			ident,
 		)
@@ -112,8 +111,8 @@ func (check *Checker) newUse(ident *ast.Ident, sym Symbol) {
 		} else {
 			symStr = symbolTypeNoQualifier(sym)
 		}
-		fmt.Printf(
-			">>> use %s `%s` of `%s`\n",
+		report.TaggedDebugf(
+			"checker", "use %s `%s` of `%s`",
 			color.HiBlueString(symStr),
 			ident,
 			sym.Ident(),

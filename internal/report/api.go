@@ -8,6 +8,9 @@ var UseColors = true
 // Specifies whether to output the actual code from the file.
 var ShowLine = true
 
+// Specifies whether to output debug messages.
+var IsDebug = false
+
 // Reporter is an interface that is used to make the report prettier/clearer.
 //
 // Types implementing this interface must call the functions they need
@@ -38,6 +41,14 @@ func Reportf(kind Kind, format string, args ...any) {
 // Reports a tagged formatted message of the specified kind.
 func TaggedReportf(kind Kind, tag, format string, args ...any) {
 	reportfInternal(kind, tag, format, args...)
+}
+
+// [Debugf] is a convenient helper function for reporting a
+// formatted debug message.
+//
+// Same as `Reportf(KindDebug, format, args...)`.
+func Debugf(format string, args ...any) {
+	Reportf(KindDebug, format, args...)
 }
 
 // [Notef] is a convenient helper function for reporting a
@@ -78,6 +89,14 @@ func Errorf(format string, args ...any) {
 // Same as `Reportf(KindInternalError, format, args...)`.
 func InternalErrorf(format string, args ...any) {
 	Reportf(KindInternalError, format, args...)
+}
+
+// [TaggedDebugf] is a convenient helper function for reporting a
+// tagged formatted debug message.
+//
+// Same as `TaggedReportf(KindDebug, format, args...)`.
+func TaggedDebugf(tag, format string, args ...any) {
+	TaggedReportf(KindDebug, tag, format, args...)
 }
 
 // [TaggedNotef] is a convenient helper function for reporting a
@@ -138,6 +157,15 @@ func TaggedReportAt(kind Kind, tag, message string, start, end token.Loc) {
 	reportAtInternal(kind, tag, message, start, end)
 }
 
+// [DebugAt] is a convenient helper function for reporting a
+// debug message, highlighting the specified range
+// with an underscore.
+//
+// Same as `ReportAt(KindDebug, message, start, end)`.
+func DebugAt(message string, start, end token.Loc) {
+	ReportAt(KindDebug, message, start, end)
+}
+
 // [NoteAt] is a convenient helper function for reporting a
 // note with a message, highlighting the specified range
 // with an underscore.
@@ -181,6 +209,15 @@ func ErrorAt(message string, start, end token.Loc) {
 // Same as `ReportAt(KindInternalError, message, start, end)`.
 func InternalErrorAt(message string, start, end token.Loc) {
 	ReportAt(KindInternalError, message, start, end)
+}
+
+// [TaggedDebugAt] is a convenient helper function for reporting a
+// tagged debug message, highlighting the specified range
+// with an underscore.
+//
+// Same as `TaggedReportAt(KindDebug, tag, message, start, end)`.
+func TaggedDebugAt(tag, message string, start, end token.Loc) {
+	TaggedReportAt(KindDebug, tag, message, start, end)
 }
 
 // [TaggedNoteAt] is a convenient helper function for reporting a

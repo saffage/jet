@@ -8,6 +8,7 @@ import (
 
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/constant"
+	"github.com/saffage/jet/internal/report"
 	"github.com/saffage/jet/types"
 )
 
@@ -498,13 +499,13 @@ func (check *Checker) typeOfCurlyList(node *ast.CurlyList) types.Type {
 
 	defer check.setScope(check.scope)
 	check.scope = local
-	fmt.Printf(">>> push local\n")
+	report.TaggedDebugf("checker", "push local scope")
 
 	for _, node := range node.Nodes {
 		ast.WalkTopDown(check.blockVisitor(block), node)
 	}
 
-	fmt.Printf(">>> pop local\n")
+	report.TaggedDebugf("checker", "pop local scope")
 	return block.t
 }
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/saffage/jet/ast"
+	"github.com/saffage/jet/internal/report"
 	"github.com/saffage/jet/types"
 )
 
@@ -139,7 +140,7 @@ func (check *Checker) assignable(node ast.Node) bool {
 				return false
 			}
 
-			fmt.Printf(">>> assign '%s' at '%s'\n", varSym.name, operand)
+			report.TaggedDebugf("checker", "assign '%s' at '%s'", varSym.name, operand)
 			check.newUse(operand, varSym)
 			return true
 		}

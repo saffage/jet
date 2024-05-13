@@ -18,7 +18,6 @@ func (check *Checker) resolveImport(node *ast.Import) {
 		return
 	}
 
-	report.TaggedHintf("checker: import", "found file for module '%s', path is '%s'", node.Module, path)
 	fileContent, err := os.ReadFile(path)
 	if err != nil {
 		check.errorf(node.Module, "while reading file: %s", err.Error())
@@ -55,12 +54,9 @@ func (check *Checker) resolveImportPath(ident *ast.Ident) string {
 }
 
 func makeWalkFunc(root string, expectedName string, result *string) filepath.WalkFunc {
-	const tag = "checker: import: walk"
-
 	return func(path string, info fs.FileInfo, err error) error {
 		if info.IsDir() {
 			if path != "." && path != root {
-				report.TaggedHintf(tag, "skipping dir: '%s'", path)
 				return fs.SkipDir
 			}
 			return nil
@@ -68,14 +64,13 @@ func makeWalkFunc(root string, expectedName string, result *string) filepath.Wal
 
 		ext := filepath.Ext(path)
 		name := filepath.Base(path[:len(path)-len(ext)])
-		report.TaggedHintf(tag, "file: '%s', name: '%s', ext: '%s'", path, name, ext)
 
 		if name == expectedName && ext == ".jet" {
 			if result != nil {
 				*result = path
 			}
 
-			report.TaggedHintf(tag, "found file: '%s'", path)
+			report.TaggedDebugf("importer", "found file: '%s'", path)
 			return filepath.SkipAll
 		}
 
