@@ -6,6 +6,7 @@ import (
 
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/constant"
+	"github.com/saffage/jet/internal/assert"
 	"github.com/saffage/jet/types"
 )
 
@@ -63,9 +64,62 @@ func (check *Checker) valueOfInternal(expr ast.Node) *TypedValue {
 			return _const.value
 		}
 
-		// case *ast.PrefixOp, *ast.PostfixOp, *ast.InfixOp:
-		// 	panic("not implemented")
+	case *ast.InfixOp:
+		x := check.valueOf(node.X)
+		y := check.valueOf(node.Y)
+
+		if x == nil || y == nil {
+			return nil
+		}
+
+		t := check.infix(node, x.Type, y.Type)
+		if t == nil {
+			return nil
+		}
+
+		if x.Value.Kind() == y.Value.Kind() {
+			return &TypedValue{
+				Type:  t,
+				Value: comptimeOp(x.Value, y.Value, node.Opr.Kind),
+			}
+		} else {
+			panic("not implemented")
+		}
 	}
 
 	return nil
+}
+
+func comptimeOp(x, y constant.Value, opKind ast.OperatorKind) constant.Value {
+	assert.Ok(x.Kind() == y.Kind())
+
+	switch opKind {
+	case ast.OperatorEq:
+		switch x.Kind() {
+		case constant.Bool:
+			x, y := constant.AsBool(x), constant.AsBool(y)
+			return constant.NewBool(*x == *y)
+
+		case constant.Int:
+			x, y := constant.AsInt(x), constant.AsInt(y)
+			return constant.NewBool(x.Cmp(y) == 0)
+
+		case constant.Float:
+			x, y := constant.AsFloat(x), constant.AsFloat(y)
+			return constant.NewBool(x.Cmp(y) == 0)
+
+		case constant.String:
+			panic("unreachable")
+
+		default:
+			panic("unreachable")
+		}
+
+	case ast.OperatorNe:
+		result := constant.AsBool(comptimeOp(x, y, ast.OperatorEq))
+		return constant.NewBool(!*result)
+
+	default:
+		panic("not implemented")
+	}
 }

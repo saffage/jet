@@ -26,8 +26,6 @@ func Check(cfg *config.Config, fileID config.FileID, node *ast.ModuleDecl) (*Mod
 		fileID:         fileID,
 	}
 
-	check.module.defPrimitives()
-
 	{
 		nodes := []ast.Node(nil)
 

@@ -1,6 +1,6 @@
 alias bool = @magic('Bool')
 alias i32  = @magic('I32')
-alias int  = i32
+alias int  = @magic('I32')
 
 const false = 0 != 0
 const true  = 0 == 0

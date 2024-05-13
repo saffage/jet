@@ -92,6 +92,9 @@ func (p *Parser) parseStmt() ast.Node {
 	case token.KwVar:
 		node = p.parseVarDecl()
 
+	case token.KwConst:
+		node = p.parseConstDecl()
+
 	// case token.KwVar, token.KwVal, token.KwConst:
 	// 	node = p.parseGenericDecl()
 
@@ -592,6 +595,25 @@ func (p *Parser) parseVarDecl() ast.Node {
 	}
 }
 
+func (p *Parser) parseConstDecl() ast.Node {
+	if p.flags&Trace != 0 {
+		p.trace()
+		defer p.untrace()
+	}
+
+	tok := p.expect(token.KwConst)
+	bindingWithValue, ok := p.parseBindingAndValue(true).(*ast.BindingWithValue)
+
+	if !ok || bindingWithValue == nil {
+		return nil
+	}
+
+	return &ast.ConstDecl{
+		Binding: bindingWithValue,
+		Loc:     tok.Start,
+	}
+}
+
 func (p *Parser) parseFuncDecl() ast.Node {
 	if p.flags&Trace != 0 {
 		p.trace()
@@ -702,7 +724,7 @@ func (p *Parser) parseBracketExpr() ast.Node {
 	return nil
 }
 
-func (p *Parser) parseBindingAndValue() ast.Node {
+func (p *Parser) parseBindingAndValue(valueRequired bool) ast.Node {
 	if p.flags&Trace != 0 {
 		p.trace()
 		defer p.untrace()
@@ -735,6 +757,9 @@ func (p *Parser) parseBindingAndValue() ast.Node {
 			},
 			Value: value,
 		}
+	} else if valueRequired {
+		p.errorExpected(p.tok.Start, p.tok.End, "value is required")
+		return nil
 	}
 
 	if binding.Type == nil {
@@ -838,7 +863,7 @@ func (p *Parser) parseSignature(funcTok *token.Token) *ast.Signature {
 		defer p.untrace()
 	}
 
-	paramList := p.parseParenList(p.parseBindingAndValue)
+	paramList := p.parseParenList(p.parseBinding)
 
 	if paramList == nil {
 		return nil

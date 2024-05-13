@@ -5,12 +5,21 @@ import (
 	"github.com/saffage/jet/types"
 )
 
+type ModuleKind byte
+
+const (
+	ModuleKindRegular ModuleKind = iota
+	ModuleKindTypes
+	ModuleKindC
+)
+
 // Module is a file.
 type Module struct {
 	*TypeInfo
 	Scope *Scope
 
 	node      *ast.ModuleDecl
+	kind      ModuleKind
 	completed bool
 }
 
@@ -19,6 +28,7 @@ func NewModule(scope *Scope, node *ast.ModuleDecl) *Module {
 		TypeInfo:  NewTypeInfo(),
 		Scope:     scope,
 		node:      node,
+		kind:      ModuleKindRegular,
 		completed: false,
 	}
 }
@@ -38,6 +48,9 @@ func (check *Checker) visit(node ast.Node) ast.Visitor {
 
 		case *ast.VarDecl:
 			check.resolveVarDecl(decl)
+
+		case *ast.ConstDecl:
+			check.resolveConstDecl(decl)
 
 		case *ast.FuncDecl:
 			check.resolveFuncDecl(decl)

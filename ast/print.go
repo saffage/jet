@@ -205,6 +205,15 @@ func (n *VarDecl) String() string {
 	)
 }
 
+func (n *ConstDecl) String() string {
+	return fmt.Sprintf(
+		"%s%sconst %s",
+		optionalComment(n.CommentGroup),
+		optionalAttributeList(n.Attrs),
+		n.Binding.String(),
+	)
+}
+
 func (n *FuncDecl) String() string {
 	if n.Body != nil {
 		return fmt.Sprintf(

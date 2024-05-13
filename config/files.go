@@ -2,7 +2,14 @@ package config
 
 import "bytes"
 
-const MainFileID FileID = 1
+const (
+	_ FileID = iota
+	MainFileID
+	TypesModuleFileID
+	CModuleFileID
+
+	firstFreeFileID
+)
 
 type FileID uint16
 
@@ -18,4 +25,4 @@ func NextFileID() FileID {
 	return id
 }
 
-var fileID = MainFileID + 1
+var fileID = firstFreeFileID

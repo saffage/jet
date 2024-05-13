@@ -51,6 +51,7 @@ func (*Else) implNode() {}
 
 func (*ModuleDecl) implNode()    {}
 func (*VarDecl) implNode()       {}
+func (*ConstDecl) implNode()     {}
 func (*FuncDecl) implNode()      {}
 func (*StructDecl) implNode()    {}
 func (*TypeAliasDecl) implNode() {}

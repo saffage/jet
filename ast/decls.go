@@ -26,6 +26,13 @@ type (
 		Loc          token.Loc
 	}
 
+	ConstDecl struct {
+		Attrs        *AttributeList
+		CommentGroup *CommentGroup
+		Binding      *BindingWithValue
+		Loc          token.Loc
+	}
+
 	FuncDecl struct {
 		Attrs        *AttributeList
 		CommentGroup *CommentGroup
@@ -67,6 +74,12 @@ func (n *VarDecl) LocEnd() token.Loc {
 func (n *VarDecl) Ident() *Ident              { return n.Binding.Name }
 func (n *VarDecl) Doc() string                { return n.CommentGroup.Merged() }
 func (n *VarDecl) Attributes() *AttributeList { return n.Attrs }
+
+func (n *ConstDecl) Pos() token.Loc             { return n.Loc }
+func (n *ConstDecl) LocEnd() token.Loc          { return n.Binding.LocEnd() }
+func (n *ConstDecl) Ident() *Ident              { return n.Binding.Name }
+func (n *ConstDecl) Doc() string                { return n.CommentGroup.Merged() }
+func (n *ConstDecl) Attributes() *AttributeList { return n.Attrs }
 
 func (n *FuncDecl) Pos() token.Loc { return n.Loc }
 func (n *FuncDecl) LocEnd() token.Loc {

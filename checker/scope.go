@@ -2,6 +2,8 @@ package checker
 
 import "github.com/saffage/jet/ast"
 
+var Global = NewScope(nil)
+
 type Scope struct {
 	parent  *Scope
 	symbols map[string]Symbol
