@@ -1075,7 +1075,7 @@ func (p *Parser) parseWhile() ast.Node {
 		return nil
 	}
 
-	body := p.parseBlock()
+	body := p.parseCurlyList(p.parseStmt)
 	if body == nil {
 		return nil
 	}

@@ -107,7 +107,7 @@ type (
 
 	While struct {
 		Cond Node
-		Body Node
+		Body *CurlyList
 		Loc  token.Loc // `while` token.
 	}
 
