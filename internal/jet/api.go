@@ -12,7 +12,10 @@ import (
 	"github.com/saffage/jet/token"
 )
 
-func ProcessArgs([]string) {
+func ProcessArgs(args []string) {
+	config.ParseArgs(args)
+	report.IsDebug = config.FlagDebug
+
 	if len(config.Args) != 1 {
 		report.Errorf("expected filename")
 		return

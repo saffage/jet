@@ -1,9 +1,6 @@
 package config
 
-import (
-	"flag"
-	"os"
-)
+import "flag"
 
 // Enable debug information.
 var FlagDebug = false
@@ -25,7 +22,7 @@ var Args []string
 
 var Exe string
 
-func init() {
+func ParseArgs(args []string) {
 	flagSet := flag.NewFlagSet("jet", flag.ExitOnError)
 
 	flagSet.BoolVar(
@@ -59,11 +56,11 @@ func init() {
 		"Specifies the path to the core library",
 	)
 
-	if err := flagSet.Parse(os.Args[1:]); err != nil {
+	if err := flagSet.Parse(args[1:]); err != nil {
 		// Must be unreachable due to specified error handling.
 		panic(err)
 	}
 
 	Args = flagSet.Args()
-	Exe = os.Args[0]
+	Exe = args[0]
 }
