@@ -22,9 +22,9 @@ func main() {
 func catchInternalErrors() {
 	if panicErr := recover(); panicErr != nil {
 		if err, ok := panicErr.(error); ok {
-			report.InternalErrorf(err.Error())
+			report.TaggedErrorf("internal", err.Error())
 		} else {
-			report.InternalErrorf("%v", panicErr)
+			report.TaggedErrorf("internal", "%v", panicErr)
 		}
 
 		// for stack trace

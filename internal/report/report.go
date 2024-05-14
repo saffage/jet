@@ -18,7 +18,7 @@ func display(kind Kind, message string) {
 	case KindNote, KindHint, KindWarning:
 		_, err = fmt.Fprintln(os.Stdout, message)
 
-	case KindDebug, KindError, KindInternalError:
+	case KindDebug, KindError:
 		_, err = fmt.Fprintln(os.Stderr, message)
 
 	default:
@@ -164,7 +164,7 @@ func underlineChar(kind Kind) rune {
 	case KindNote, KindHint, KindWarning:
 		return '^'
 
-	case KindError, KindInternalError:
+	case KindError:
 		return '~'
 
 	default:

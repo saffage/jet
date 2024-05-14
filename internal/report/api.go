@@ -83,14 +83,6 @@ func Errorf(format string, args ...any) {
 	Reportf(KindError, format, args...)
 }
 
-// [InternalErrorf] is a convenient helper function for reporting an
-// internal error with a formatted message.
-//
-// Same as `Reportf(KindInternalError, format, args...)`.
-func InternalErrorf(format string, args ...any) {
-	Reportf(KindInternalError, format, args...)
-}
-
 // [TaggedDebugf] is a convenient helper function for reporting a
 // tagged formatted debug message.
 //
@@ -129,14 +121,6 @@ func TaggedWarningf(tag, format string, args ...any) {
 // Same as `TaggedReportf(KindError, format, args...)`.
 func TaggedErrorf(tag, format string, args ...any) {
 	TaggedReportf(KindError, tag, format, args...)
-}
-
-// [TaggedInternalErrorf] is a convenient helper function for reporting an
-// internal error with a tagged formatted message.
-//
-// Same as `TaggedReportf(KindInternalError, format, args...)`.
-func TaggedInternalErrorf(tag, format string, args ...any) {
-	TaggedReportf(KindInternalError, tag, format, args...)
 }
 
 // [ReportAt] function reports a message of the specified kind,
@@ -202,15 +186,6 @@ func ErrorAt(message string, start, end token.Loc) {
 	ReportAt(KindError, message, start, end)
 }
 
-// [InternalErrorAt] is a convenient helper function for reporting an
-// internal error with a message, highlighting the specified range
-// with an underscore.
-//
-// Same as `ReportAt(KindInternalError, message, start, end)`.
-func InternalErrorAt(message string, start, end token.Loc) {
-	ReportAt(KindInternalError, message, start, end)
-}
-
 // [TaggedDebugAt] is a convenient helper function for reporting a
 // tagged debug message, highlighting the specified range
 // with an underscore.
@@ -254,13 +229,4 @@ func TaggedWarningAt(tag, message string, start, end token.Loc) {
 // Same as `TaggedReportAt(KindError, tag, message, start, end)`.
 func TaggedErrorAt(tag, message string, start, end token.Loc) {
 	TaggedReportAt(KindError, tag, message, start, end)
-}
-
-// [TaggedInternalErrorAt] is a convenient helper function for reporting an
-// internal error with a tagged message, highlighting the specified range
-// with an underscore.
-//
-// Same as `TaggedReportAt(KindInternalError, tag, message, start, end)`.
-func TaggedInternalErrorAt(tag, message string, start, end token.Loc) {
-	TaggedReportAt(KindInternalError, tag, message, start, end)
 }
