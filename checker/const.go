@@ -46,7 +46,7 @@ func (check *Checker) resolveConstDecl(node *ast.ConstDecl) {
 
 	report.TaggedDebugf("checker", "const: specified type: %s", tType)
 
-	if value.Type != nil && !tType.Equals(value.Type) {
+	if value.Type != nil && !value.Type.Equals(tType) {
 		check.errorf(
 			node.Binding.Name,
 			"type mismatch, expected '%s', got '%s'",

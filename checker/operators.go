@@ -74,7 +74,7 @@ func (check *Checker) prefix(node *ast.PrefixOp, tOperand types.Type) types.Type
 }
 
 func (check *Checker) infix(node *ast.InfixOp, tOperandX, tOperandY types.Type) types.Type {
-	if !tOperandX.Equals(tOperandY) {
+	if !tOperandY.Equals(tOperandX) {
 		check.errorf(node, "type mismatch (%s and %s)", tOperandX, tOperandY)
 		return nil
 	}
@@ -96,15 +96,20 @@ func (check *Checker) infix(node *ast.InfixOp, tOperandX, tOperandY types.Type) 
 	case ast.OperatorAdd,
 		ast.OperatorSub,
 		ast.OperatorMul,
-		ast.OperatorDiv,
-		ast.OperatorMod,
+		ast.OperatorDiv:
+		switch primitive.Kind() {
+		case types.KindUntypedInt, types.KindUntypedFloat, types.KindI32, types.KindU8:
+			return tOperandX
+		}
+
+	case ast.OperatorMod,
 		ast.OperatorBitAnd,
 		ast.OperatorBitOr,
 		ast.OperatorBitXor,
 		ast.OperatorBitShl,
 		ast.OperatorBitShr:
 		switch primitive.Kind() {
-		case types.KindUntypedInt, types.KindUntypedFloat, types.KindI32:
+		case types.KindUntypedInt, types.KindI32, types.KindU8:
 			return tOperandX
 		}
 
@@ -118,7 +123,7 @@ func (check *Checker) infix(node *ast.InfixOp, tOperandX, tOperandY types.Type) 
 		case types.KindUntypedBool, types.KindUntypedInt, types.KindUntypedFloat:
 			return types.UntypedBool
 
-		case types.KindBool, types.KindI32:
+		case types.KindBool, types.KindI32, types.KindU8:
 			return types.Bool
 		}
 

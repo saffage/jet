@@ -167,7 +167,7 @@ func (check *Checker) structInit(node *ast.MemberAccess, typedesc *types.TypeDes
 			continue
 		}
 
-		if !tStructField.Equals(tInitField) {
+		if !tInitField.Equals(tStructField) {
 			check.errorf(
 				initFieldValues[structFieldName],
 				"type mismatch, expected (%s) for field '%s', got (%s) instead",

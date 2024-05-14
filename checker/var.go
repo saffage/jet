@@ -2,6 +2,7 @@ package checker
 
 import (
 	"github.com/saffage/jet/ast"
+	"github.com/saffage/jet/internal/assert"
 	"github.com/saffage/jet/internal/report"
 	"github.com/saffage/jet/types"
 )
@@ -17,6 +18,8 @@ type Var struct {
 }
 
 func NewVar(owner *Scope, t types.Type, node *ast.Binding, name *ast.Ident) *Var {
+	assert.Ok(!types.IsUntyped(t))
+
 	return &Var{
 		owner: owner,
 		t:     t,
@@ -54,15 +57,17 @@ func (check *Checker) resolveVarDecl(node *ast.VarDecl) {
 
 	report.TaggedDebugf("checker", "var: specified type: %s", tType)
 
-	if tValue != nil && !tType.Equals(tValue) {
+	if tValue != nil && !tValue.Equals(tType) {
 		check.errorf(
-			node.Binding.Name,
+			node.Value,
 			"type mismatch, expected '%s', got '%s'",
 			tType,
 			tValue,
 		)
 		return
 	}
+
+	tType = types.SkipUntyped(tType)
 
 	report.TaggedDebugf("checker", "var type: %s", tType)
 	sym := NewVar(check.scope, tType, node.Binding, node.Binding.Name)
@@ -88,7 +93,7 @@ func (check *Checker) resolveVarValue(value ast.Node) (types.Type, bool) {
 			return nil, false
 		}
 
-		return types.SkipUntyped(t), true
+		return t, true
 	}
 
 	return nil, true

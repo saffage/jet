@@ -17,7 +17,7 @@ import (
 func (check *Checker) typeOfInternal(expr ast.Node) types.Type {
 	switch node := expr.(type) {
 	case nil:
-		panic("got nil not for expr")
+		panic("got nil node for expr")
 
 	case ast.Decl:
 		panic("declaration must be handled somewhere else")
@@ -213,7 +213,7 @@ func (check *Checker) typeOfCall(node *ast.Call) types.Type {
 		return nil
 	}
 
-	tArgs := check.typeOfParenList(node.Args)
+	tArgs := types.SkipUntyped(check.typeOfParenList(node.Args))
 	if tArgs == nil {
 		return nil
 	}
@@ -460,7 +460,7 @@ func (check *Checker) typeOfParenList(node *ast.ParenList) types.Type {
 		isTypeDescTuple = true
 		elemTypes = append(elemTypes, types.SkipTypeDesc(t))
 	} else {
-		elemTypes = append(elemTypes, types.SkipUntyped(t))
+		elemTypes = append(elemTypes, t)
 	}
 
 	for _, expr := range node.Exprs[1:] {
@@ -482,7 +482,7 @@ func (check *Checker) typeOfParenList(node *ast.ParenList) types.Type {
 				return nil
 			}
 
-			elemTypes = append(elemTypes, types.SkipUntyped(t))
+			elemTypes = append(elemTypes, t)
 		}
 	}
 
