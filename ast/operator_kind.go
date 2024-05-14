@@ -10,11 +10,10 @@ const (
 
 	// Prefix.
 
-	OperatorNot     // !
-	OperatorNeg     // -
-	OperatorAddr    // &
-	OperatorMutAddr // &var
-	OperatorDeref   // *
+	OperatorNot   // !
+	OperatorNeg   // -
+	OperatorAddr  // &
+	OperatorDeref // *
 
 	// Infix.
 

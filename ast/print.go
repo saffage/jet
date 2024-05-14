@@ -169,7 +169,7 @@ func (n *PrefixOp) String() string {
 }
 
 func (n *InfixOp) String() string {
-	return fmt.Sprintf("%s %s %s", n.X.String(), n.Opr.String(), n.Y.String())
+	return fmt.Sprintf("(%s %s %s)", n.X.String(), n.Opr.String(), n.Y.String())
 }
 
 func (n *PostfixOp) String() string {

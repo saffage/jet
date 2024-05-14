@@ -10,14 +10,6 @@ import (
 
 func (check *Checker) prefix(node *ast.PrefixOp, tOperand types.Type) types.Type {
 	switch node.Opr.Kind {
-	case ast.OperatorNeg:
-		if p := types.AsPrimitive(tOperand); p != nil {
-			switch p.Kind() {
-			case types.KindUntypedInt, types.KindUntypedFloat, types.KindI32:
-				return tOperand
-			}
-		}
-
 	case ast.OperatorNot:
 		if p := types.AsPrimitive(tOperand); p != nil {
 			switch p.Kind() {
@@ -26,13 +18,13 @@ func (check *Checker) prefix(node *ast.PrefixOp, tOperand types.Type) types.Type
 			}
 		}
 
-	case ast.OperatorDeref:
-		if ref := types.AsRef(tOperand); ref != nil {
-			return ref.Base()
+	case ast.OperatorNeg:
+		if p := types.AsPrimitive(tOperand); p != nil {
+			switch p.Kind() {
+			case types.KindUntypedInt, types.KindUntypedFloat, types.KindI32:
+				return tOperand
+			}
 		}
-
-		check.errorf(node.X, "expression is not a reference type")
-		return nil
 
 	case ast.OperatorAddr:
 		if types.IsTypeDesc(tOperand) {
@@ -40,10 +32,33 @@ func (check *Checker) prefix(node *ast.PrefixOp, tOperand types.Type) types.Type
 			return types.NewTypeDesc(t)
 		}
 
-		return types.NewRef(types.SkipUntyped(tOperand))
+		switch operand := node.X.(type) {
+		case *ast.Ident:
+			if sym, _ := check.symbolOf(operand).(*Var); sym != nil {
+				return types.NewRef(tOperand)
+			}
 
-	case ast.OperatorMutAddr:
-		panic("not implemented")
+		case *ast.MemberAccess:
+			if types.IsStruct(check.typeOf(operand.X)) {
+				return types.NewRef(tOperand)
+			}
+
+		case *ast.InfixOp:
+			if operand.Opr.Kind == ast.OperatorDeref {
+				return types.NewRef(tOperand)
+			}
+		}
+
+		check.errorf(node.X, "expression is not an addressable location.")
+		return nil
+
+	case ast.OperatorDeref:
+		if ref := types.AsRef(tOperand); ref != nil {
+			return ref.Base()
+		}
+
+		check.errorf(node.X, "expression is not a reference type")
+		return nil
 
 	default:
 		panic(fmt.Sprintf("unknown prefix operator: '%s'", node.Opr.Kind))

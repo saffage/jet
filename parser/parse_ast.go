@@ -345,16 +345,16 @@ func (p *Parser) parseUnaryExpr() ast.Node {
 	case token.Amp:
 		loc := p.consume().Start
 
-		if varTok := p.consume(token.KwVar); varTok != nil {
-			return &ast.PrefixOp{
-				X: p.parseUnaryExpr(),
-				Opr: &ast.Operator{
-					Start: loc,
-					End:   varTok.End,
-					Kind:  ast.OperatorMutAddr,
-				},
-			}
-		}
+		// if varTok := p.consume(token.KwVar); varTok != nil {
+		// 	return &ast.PrefixOp{
+		// 		X: p.parseUnaryExpr(),
+		// 		Opr: &ast.Operator{
+		// 			Start: loc,
+		// 			End:   varTok.End,
+		// 			Kind:  ast.OperatorMutAddr,
+		// 		},
+		// 	}
+		// }
 
 		return &ast.PrefixOp{
 			X: p.parseUnaryExpr(),
@@ -900,16 +900,16 @@ func (p *Parser) parseType() ast.Node {
 	case token.Amp:
 		amp := p.consume()
 
-		if varTok := p.consume(token.KwVar); varTok != nil {
-			return &ast.PrefixOp{
-				X: p.parseType(),
-				Opr: &ast.Operator{
-					Start: amp.Start,
-					End:   varTok.End,
-					Kind:  ast.OperatorMutAddr,
-				},
-			}
-		}
+		// if varTok := p.consume(token.KwVar); varTok != nil {
+		// 	return &ast.PrefixOp{
+		// 		X: p.parseType(),
+		// 		Opr: &ast.Operator{
+		// 			Start: amp.Start,
+		// 			End:   varTok.End,
+		// 			Kind:  ast.OperatorMutAddr,
+		// 		},
+		// 	}
+		// }
 
 		return &ast.PrefixOp{
 			X: p.parseType(),
