@@ -2,9 +2,9 @@ package parser
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"slices"
-	"strings"
 	"testing"
 
 	"github.com/saffage/jet/config"
@@ -27,8 +27,8 @@ func cleanup() {
 }
 
 type testCase struct {
-	name         string
 	input        string
+	name         string
 	expectedJSON string
 	errors       []error
 	scannerFlags scanner.Flags
@@ -40,74 +40,121 @@ func TestExprs(t *testing.T) {
 
 	cases := []testCase{
 		{
+			input:        `10`,
 			name:         "untyped integer literal",
-			input:        "10",
 			expectedJSON: "untyped_integer_literal_ast.json",
 		},
 		{
+			input:        `'hi'`,
 			name:         "untyped string literal",
-			input:        "'hi'",
 			expectedJSON: "untyped_string_literal_ast.json",
+		},
+		{
+			input:        `()`,
+			name:         "empty parentheses",
+			expectedJSON: "empty_parentheses.json",
+		},
+		{
+			input:        `(,)`,
+			name:         "empty tuple constructor",
+			expectedJSON: "empty_tuple_constructor.json",
+			errors:       []error{errors.New("expected operand, found ','")},
+		},
+		{
+			input:        `(1)`,
+			name:         "parentheses with 1 expr",
+			expectedJSON: "parentheses_with_1_expr.json",
+		},
+		{
+			input:        `(1,)`,
+			name:         "tuple constructor",
+			expectedJSON: "tuple_constructor.json",
 		},
 	}
 
 	for _, c := range cases {
-		tokens, errs := scanner.Scan(([]byte)(c.input), 1, c.scannerFlags)
+		test(t, c)
+	}
+}
 
-		if len(errs) != 0 {
-			t.Fatalf("unexpected scanner errors: %v", errs)
+func test(t *testing.T, c testCase) {
+	tokens, errs := scanner.Scan(([]byte)(c.input), 1, c.scannerFlags)
+
+	if len(errs) != 0 {
+		t.Fatalf("unexpected scanner errors: %v", errs)
+	}
+
+	t.Run(c.name, func(t *testing.T) {
+		ast, errs := Parse(cfg, tokens, c.parserFlags)
+		if !checkErrors(t, errs, c.errors) {
+			return
 		}
 
-		t.Run(c.name, func(t *testing.T) {
-			ast, errs := Parse(cfg, tokens, c.parserFlags)
-
-			if errs != nil {
-				if c.errors != nil {
-					for i, err := range errs {
-						if i < len(c.errors) && err.Error() == c.errors[i].Error() {
-							continue
-						}
-
-						t.Errorf("parsing failed with unexpected error: '%s'", err.Error())
-					}
-				}
-
-				if c.errors != nil {
-					cmpResult := slices.CompareFunc(errs, c.errors, func(got, want error) int {
-						return strings.Compare(got.Error(), want.Error())
-					})
-
-					if cmpResult != 0 {
-						t.Errorf("unexpected error: ")
-					}
-				}
-
-				t.Errorf("parsing failed with unexpected errors: %v", errs)
+		if c.expectedJSON != "" {
+			filename := "./testdata/" + c.expectedJSON
+			expect, err := os.ReadFile(filename)
+			if err != nil {
+				t.Errorf("unexpected error while reading file '%s': %s", filename, err)
+				return
 			}
 
-			if c.expectedJSON != "" {
-				filename := "./testdata/" + c.expectedJSON
-				want, err := os.ReadFile(filename)
-				if err != nil {
-					t.Errorf("unexpected error while reading file '%s': %s", filename, err)
-				}
-
-				got, err := json.MarshalIndent(ast, "", "    ")
-				if err != nil {
-					t.Error("unexpected JSON marshal error:", err)
-				}
-
-				if slices.Compare(got, want) != 0 {
-					t.Errorf("unexpected AST was parsed\nwant %s\ngot  %s", string(want), string(got))
-				}
-			} else {
-				encoded, err := json.MarshalIndent(ast, "", "    ")
-				if err != nil {
-					t.Error("unexpected JSON marshal error:", err)
-				}
-
-				t.Logf("no AST was expected\ngot %s", string(encoded))
+			actual, err := json.MarshalIndent(ast, "", "    ")
+			if err != nil {
+				t.Error("unexpected JSON marshal error:", err)
+				return
 			}
-		})
+
+			if slices.Compare(actual, expect) != 0 {
+				t.Errorf("unexpected AST was parsed\nexpect %s\nactual %s", string(expect), string(actual))
+				return
+			}
+		} else {
+			encoded, err := json.MarshalIndent(ast, "", "    ")
+			if err != nil {
+				t.Error("unexpected JSON marshal error:", err)
+				return
+			}
+
+			t.Logf("no AST was expected\ngot %s", string(encoded))
+		}
+	})
+}
+
+func checkErrors(t *testing.T, gotErrors, wantErrors []error) bool {
+	maxIndex := max(len(gotErrors), len(wantErrors))
+
+	for i := 0; i < maxIndex; i++ {
+		var got, want error
+
+		if i < len(gotErrors) {
+			got = gotErrors[i]
+		}
+
+		if i < len(wantErrors) {
+			want = wantErrors[i]
+		}
+
+		if got == nil && want == nil {
+			panic("unreachable")
+		}
+
+		if want == nil {
+			t.Errorf("parsing failed with unexpected error: '%s'", got.Error())
+			return false
+		} else if got == nil {
+			t.Errorf("expected an error: '%s', got nothing", want.Error())
+			return false
+		}
+
+		if got.Error() != want.Error() {
+			t.Errorf(
+				"unexpected error:\nexpect: '%s'\nactual: '%s'",
+				got.Error(),
+				want.Error(),
+			)
+			return false
+		}
 	}
+
+	return true
 }
