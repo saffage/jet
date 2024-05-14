@@ -387,7 +387,7 @@ func (p *Parser) parseOperand() ast.Node {
 		return p.parseLiteral()
 
 	case token.LParen:
-		return p.parseParenList(p.parseExpr)
+		return p.parseParenExpr(p.parseExpr)
 
 	default:
 		p.errorExpected(p.tok.Start, p.tok.End, "operand")
@@ -929,7 +929,7 @@ func (p *Parser) parseType() ast.Node {
 		}
 
 	case token.LParen:
-		if tuple := p.parseParenList(p.parseType); tuple != nil {
+		if tuple := p.parseParenExpr(p.parseType); tuple != nil {
 			return tuple
 		}
 
@@ -1226,7 +1226,7 @@ func (p *Parser) parseBracketList(f func() ast.Node) *ast.BracketList {
 		defer p.untrace()
 	}
 
-	if exprs, openLoc, closeLoc := p.parseBracketedList(
+	if exprs, openLoc, closeLoc, _ := p.parseBracketedList(
 		f,
 		token.LBracket,
 		token.RBracket,
@@ -1248,12 +1248,38 @@ func (p *Parser) parseParenList(f func() ast.Node) *ast.ParenList {
 		defer p.untrace()
 	}
 
-	if exprs, openLoc, closeLoc := p.parseBracketedList(
+	if exprs, openLoc, closeLoc, _ := p.parseBracketedList(
 		f,
 		token.LParen,
 		token.RParen,
 		token.Comma,
 	); exprs != nil {
+		return &ast.ParenList{
+			ExprList: &ast.ExprList{Exprs: exprs},
+			Open:     openLoc,
+			Close:    closeLoc,
+		}
+	}
+
+	return nil
+}
+
+func (p *Parser) parseParenExpr(f func() ast.Node) ast.Node {
+	if p.flags&Trace != 0 {
+		p.trace()
+		defer p.untrace()
+	}
+
+	if exprs, openLoc, closeLoc, wasSeparator := p.parseBracketedList(
+		f,
+		token.LParen,
+		token.RParen,
+		token.Comma,
+	); exprs != nil {
+		if !wasSeparator && len(exprs) == 1 {
+			return exprs[0]
+		}
+
 		return &ast.ParenList{
 			ExprList: &ast.ExprList{Exprs: exprs},
 			Open:     openLoc,
@@ -1270,7 +1296,7 @@ func (p *Parser) parseCurlyList(f func() ast.Node) *ast.CurlyList {
 		defer p.untrace()
 	}
 
-	if nodes, openLoc, closeLoc := p.parseBracketedList(
+	if nodes, openLoc, closeLoc, _ := p.parseBracketedList(
 		f,
 		token.LCurly,
 		token.RCurly,
@@ -1306,7 +1332,7 @@ func (p *Parser) parseStmtList() *ast.List {
 		defer p.untrace()
 	}
 
-	if nodes := p.listWithDelimiter(
+	if nodes, _ := p.listWithDelimiter(
 		p.parseStmt,
 		token.EOF,
 		token.Semicolon,
@@ -1326,7 +1352,7 @@ func (p *Parser) listWithDelimiter(
 	f func() ast.Node,
 	delimiter token.Kind,
 	separators ...token.Kind,
-) []ast.Node {
+) (nodes []ast.Node, wasSeparator bool) {
 	if len(separators) < 1 {
 		panic("expect at least 1 separator")
 	}
@@ -1336,7 +1362,7 @@ func (p *Parser) listWithDelimiter(
 		defer p.untrace()
 	}
 
-	nodes := []ast.Node{}
+	nodes = []ast.Node{}
 
 	// List = Expr {Separator Expr} [Separator]
 	for {
@@ -1352,21 +1378,26 @@ func (p *Parser) listWithDelimiter(
 		if p.tok.Kind == delimiter {
 			break
 		} else if p.tok.Kind == token.EOF {
-			return nil
+			return nil, false
 		}
 
 		nodeStart := p.tok.Start
 
 		if node := f(); node != nil {
-			if p.consume(separators...) != nil || p.match(delimiter) {
-				// All is OK.
+			switch {
+			case p.consume(separators...) != nil:
+				wasSeparator = true
+				fallthrough
+
+			case p.match(delimiter):
 				nodes = append(nodes, node)
 				continue
-			}
 
-			// [parseFunc] set the correct node, but no separator was found.
-			// Report it and assign [ast.BadNode] instead.
-			p.error(node.Pos(), node.LocEnd(), "unterminated expression")
+			default:
+				// [parseFunc] set the correct node, but no separator was found.
+				// Report it and assign [ast.BadNode] instead.
+				p.error(node.Pos(), node.LocEnd(), "unterminated expression")
+			}
 		}
 
 		// Something went wrong, advance to some delimiter and
@@ -1376,14 +1407,14 @@ func (p *Parser) listWithDelimiter(
 		nodes = append(nodes, &ast.BadNode{Loc: nodeStart})
 	}
 
-	return nodes
+	return nodes, wasSeparator
 }
 
 func (p *Parser) parseBracketedList(
 	f func() ast.Node,
 	opening, closing token.Kind,
 	separators ...token.Kind,
-) (nodes []ast.Node, openLoc, closeLoc token.Loc) {
+) (nodes []ast.Node, openLoc, closeLoc token.Loc, wasSeparator bool) {
 	if p.flags&Trace != 0 {
 		p.trace()
 		defer p.untrace()
@@ -1392,13 +1423,13 @@ func (p *Parser) parseBracketedList(
 	if tok := p.expect(opening); tok != nil {
 		openLoc = tok.Start
 	} else {
-		return nil, token.Loc{}, token.Loc{}
+		return nil, token.Loc{}, token.Loc{}, false
 	}
 
-	nodes = p.listWithDelimiter(f, closing, separators...)
+	nodes, wasSeparator = p.listWithDelimiter(f, closing, separators...)
 
 	if nodes == nil {
-		return nil, token.Loc{}, token.Loc{}
+		return nil, token.Loc{}, token.Loc{}, false
 	}
 
 	if tok := p.consume(closing); tok != nil {
@@ -1410,9 +1441,8 @@ func (p *Parser) parseBracketedList(
 			start, end := p.skipTo()
 			p.errorExpectedToken(start, end, append(separators, closing)...)
 		}
-
-		return nil, token.Loc{}, token.Loc{}
+		return nil, token.Loc{}, token.Loc{}, false
 	}
 
-	return nodes, openLoc, closeLoc
+	return nodes, openLoc, closeLoc, wasSeparator
 }
