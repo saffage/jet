@@ -15,13 +15,14 @@ func _() {
 	_ = x[KindUntypedString-4]
 	_ = x[KindBool-5]
 	_ = x[KindI32-6]
-	_ = x[KindAny-7]
-	_ = x[KindAnyTypeDesc-8]
+	_ = x[KindU8-7]
+	_ = x[KindAny-8]
+	_ = x[KindAnyTypeDesc-9]
 }
 
-const _PrimitiveKind_name = "UnknownPrimitiveKinduntyped booluntyped intuntyped floatuntyped stringbooli32anytypedesc"
+const _PrimitiveKind_name = "UnknownPrimitiveKinduntyped booluntyped intuntyped floatuntyped stringbooli32u8anytypedesc"
 
-var _PrimitiveKind_index = [...]uint8{0, 20, 32, 43, 56, 70, 74, 77, 80, 88}
+var _PrimitiveKind_index = [...]uint8{0, 20, 32, 43, 56, 70, 74, 77, 79, 82, 90}
 
 func (i PrimitiveKind) String() string {
 	if i >= PrimitiveKind(len(_PrimitiveKind_index)-1) {

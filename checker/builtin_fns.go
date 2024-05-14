@@ -20,6 +20,12 @@ func builtInMagic(node *ast.ParenList, args []*TypedValue) (*TypedValue, error) 
 	case "I32":
 		return &TypedValue{types.NewTypeDesc(types.I32), nil}, nil
 
+	case "U8":
+		return &TypedValue{types.NewTypeDesc(types.U8), nil}, nil
+
+	case "String":
+		return &TypedValue{types.NewTypeDesc(types.String), nil}, nil
+
 	default:
 		return nil, NewErrorf(node.Exprs[0], "unknown magic '%s'", *strval)
 	}

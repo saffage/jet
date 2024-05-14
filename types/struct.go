@@ -12,6 +12,11 @@ type Struct struct {
 }
 
 func NewStruct(fields map[string]Type) *Struct {
+	for _, t := range fields {
+		if IsUntyped(t) {
+			panic("struct fields cannot be untyped")
+		}
+	}
 	return &Struct{fields}
 }
 
