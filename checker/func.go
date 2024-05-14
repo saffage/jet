@@ -9,14 +9,16 @@ import (
 )
 
 type Func struct {
-	owner *Scope
-	local *Scope
-	t     *types.Func
-	node  *ast.FuncDecl
+	owner    *Scope
+	local    *Scope
+	params   []*Var
+	t        *types.Func
+	node     *ast.FuncDecl
+	isExtern bool
 }
 
 func NewFunc(owner *Scope, local *Scope, t *types.Func, node *ast.FuncDecl) *Func {
-	return &Func{owner, local, t, node}
+	return &Func{owner, local, nil, t, node, false}
 }
 
 func (sym *Func) Owner() *Scope     { return sym.owner }
@@ -25,10 +27,13 @@ func (sym *Func) Name() string      { return sym.node.Name.Name }
 func (sym *Func) Ident() *ast.Ident { return sym.node.Name }
 func (sym *Func) Node() ast.Node    { return sym.node }
 func (sym *Func) Local() *Scope     { return sym.local }
+func (sym *Func) Params() []*Var    { return sym.params }
+func (sym *Func) IsExtern() bool    { return sym.isExtern }
 
 func (check *Checker) resolveFuncDecl(node *ast.FuncDecl) {
 	sig := node.Signature
 	tParams := []types.Type{}
+	params := []*Var{}
 	local := NewScope(check.scope)
 
 	for _, param := range sig.Params.Exprs {
@@ -50,6 +55,7 @@ func (check *Checker) resolveFuncDecl(node *ast.FuncDecl) {
 				return
 			}
 
+			params = append(params, paramSym)
 			check.newDef(param.Name, paramSym)
 			report.TaggedDebugf("checker", "func: def param: %s", paramSym.Name())
 			report.TaggedDebugf("checker", "func: set param type: %s", t)
@@ -80,6 +86,7 @@ func (check *Checker) resolveFuncDecl(node *ast.FuncDecl) {
 
 	t := types.NewFunc(tResult, types.NewTuple(tParams...))
 	sym := NewFunc(check.scope, local, t, node)
+	sym.params = params
 	report.TaggedDebugf("checker", "func: set type: %s", t)
 
 	if defined := check.scope.Define(sym); defined != nil {
@@ -94,8 +101,20 @@ func (check *Checker) resolveFuncDecl(node *ast.FuncDecl) {
 
 	// Body.
 
+	attrExternC := getAttribute(sym, "ExternC")
+
 	if sym.node.Body == nil {
-		check.errorf(sym.Ident(), "functions without body is not allowed")
+		if attrExternC == nil {
+			check.errorf(sym.Ident(), "functions without body is not allowed")
+			return
+		}
+
+		sym.isExtern = true
+		return
+	}
+
+	if attrExternC != nil {
+		check.errorf(sym.Ident(), "functions with 'ExternC' attribute must have no body")
 		return
 	}
 
