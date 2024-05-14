@@ -384,7 +384,8 @@ func (s *Scanner) scanNumber() token.Token {
 		}
 	}
 
-	if s.Consume('.') {
+	if s.Match('.') && ascii.IsDigit(s.LookAhead(1)) {
+		s.Advance()
 		fracPart = "."
 
 		if num := s.parseNumber(ascii.IsDigit, "number after the point"); num.Kind != token.Illegal {
