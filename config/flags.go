@@ -5,6 +5,8 @@ import "flag"
 // Enable debug information.
 var FlagDebug = false
 
+var FlagDumpCheckerState = false
+
 // Display a program AST of the specified Jet module and exit.
 var FlagParseAst = false
 
@@ -30,6 +32,12 @@ func ParseArgs(args []string) {
 		"debug",
 		false,
 		"Enable debug information",
+	)
+	flagSet.BoolVar(
+		&FlagDumpCheckerState,
+		"dump_checker_state",
+		false,
+		"",
 	)
 	flagSet.BoolVar(
 		&FlagParseAst,

@@ -29,29 +29,27 @@ func Check(cfg *config.Config, fileID config.FileID, node *ast.ModuleDecl) (*Mod
 		fileID:         fileID,
 	}
 
-	{
-		nodes := []ast.Node(nil)
+	nodes := []ast.Node(nil)
 
-		switch body := node.Body.(type) {
-		case *ast.List:
-			nodes = body.Nodes
+	switch body := node.Body.(type) {
+	case *ast.List:
+		nodes = body.Nodes
 
-		case *ast.CurlyList:
-			nodes = body.List.Nodes
+	case *ast.CurlyList:
+		nodes = body.List.Nodes
 
-		default:
-			panic("ill-formed AST")
-		}
-
-		for _, node := range nodes {
-			ast.WalkTopDown(check.visit, node)
-		}
-
-		module.completed = true
+	default:
+		panic("ill-formed AST")
 	}
 
-	{
-		f, err := os.Create("_test/checker_state.txt")
+	for _, node := range nodes {
+		ast.WalkTopDown(check.visit, node)
+	}
+
+	module.completed = true
+
+	if config.FlagDumpCheckerState {
+		f, err := os.Create(".jet/checker_state.txt")
 		if err != nil {
 			panic(err)
 		}
