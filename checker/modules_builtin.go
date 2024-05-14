@@ -28,7 +28,7 @@ func init() {
 		libDir = filepath.Join(compilerDir, "lib")
 	}
 
-	if dir, err := os.Stat(libDir); os.IsNotExist(err) || !dir.IsDir() {
+	if dir, err := os.Stat(libDir); os.IsNotExist(err) || (dir != nil && !dir.IsDir()) {
 		panic(fmt.Errorf("invalid path to the core library: '%s'", libDir))
 	}
 
