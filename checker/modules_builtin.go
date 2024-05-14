@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/saffage/jet/config"
 	"github.com/saffage/jet/internal/report"
@@ -18,7 +19,9 @@ var ModuleTypes *Module = NewModule(NewScope(nil), nil)
 // interacting with the C backend.
 var ModuleC *Module = NewModule(NewScope(nil), nil)
 
-func init() {
+var CheckBuiltInPkgs = sync.OnceFunc(func() {
+	report.Hintf("checking package 'builtin'")
+
 	var libDir string
 
 	if config.FlagCoreLibPath != "" {
@@ -100,7 +103,7 @@ func init() {
 	for _, sym := range ModuleTypes.Scope.symbols {
 		_ = Global.Define(sym)
 	}
-}
+})
 
 func checkErrors(errs []error) {
 	if len(errs) != 0 {

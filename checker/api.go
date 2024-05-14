@@ -9,6 +9,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/config"
+	"github.com/saffage/jet/internal/report"
 	"github.com/saffage/jet/parser"
 	"github.com/saffage/jet/scanner"
 )
@@ -16,6 +17,8 @@ import (
 var ErrorEmptyFileBuf = errors.New("empty file buffer or invalid file ID")
 
 func Check(cfg *config.Config, fileID config.FileID, node *ast.ModuleDecl) (*Module, []error) {
+	report.Hintf("checking module '%s'", cfg.Files[fileID].Name)
+
 	module := NewModule(NewScope(Global), node)
 	check := &Checker{
 		module:         module,
@@ -82,7 +85,7 @@ func CheckFile(cfg *config.Config, fileID config.FileID) (*Module, []error) {
 		return NewModule(NewScope(nil), nil), nil
 	}
 
-	printRecreatedAST(nodeList)
+	// printRecreatedAST(nodeList)
 
 	return Check(cfg, fileID, &ast.ModuleDecl{
 		Name: &ast.Ident{Name: fi.Name},

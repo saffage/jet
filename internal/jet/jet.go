@@ -11,6 +11,8 @@ import (
 )
 
 func process(cfg *config.Config, fileID config.FileID) {
+	checker.CheckBuiltInPkgs()
+
 	m, errs := checker.CheckFile(cfg, fileID)
 	if len(errs) != 0 {
 		report.Report(errs...)
@@ -26,6 +28,7 @@ func process(cfg *config.Config, fileID config.FileID) {
 		}
 		defer f.Close()
 
+		report.Hintf("emit C...")
 		errs = cgen.Generate(f, m)
 
 		if len(errs) != 0 {
