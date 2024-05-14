@@ -16,6 +16,10 @@ func (gen *Generator) Func(sym *checker.Func) {
 	if sym.Name() == "main" {
 		gen.codeSect.WriteString(fnMainHead)
 	} else {
+		if sym.IsExtern() {
+			declBuf.WriteString("extern ")
+		}
+
 		result := t.Result()
 
 		if result.Len() == 0 {
@@ -32,18 +36,8 @@ func (gen *Generator) Func(sym *checker.Func) {
 		declBuf.WriteString(sym.Name())
 		declBuf.WriteByte('(')
 
-		params := []*checker.Var{}
-
-		// Find params.
-		for _, def := range gen.Defs {
-			_var, _ := def.(*checker.Var)
-			if _var != nil && _var.Owner() == sym.Local() && _var.IsParam() {
-				params = append(params, _var)
-			}
-		}
-
 		// Gen params.
-		for i, param := range params {
+		for i, param := range sym.Params() {
 			if i != 0 {
 				declBuf.WriteString(", ")
 			}
@@ -57,6 +51,11 @@ func (gen *Generator) Func(sym *checker.Func) {
 
 		gen.declFnsSect.WriteString(declBuf.String())
 		gen.declFnsSect.WriteString(";\n")
+
+		if sym.IsExtern() {
+			return
+		}
+
 		gen.codeSect.WriteString(declBuf.String())
 	}
 
@@ -74,33 +73,12 @@ func (gen *Generator) Func(sym *checker.Func) {
 	for i, stmt := range node.Body.Nodes {
 		gen.indent(&gen.codeSect)
 
-		if decl, ok := stmt.(ast.Decl); ok && decl != nil {
-			switch decl := decl.(type) {
-			case *ast.VarDecl:
-				if def := gen.Defs[decl.Binding.Name]; def != nil {
-					gen.codeSect.WriteString(gen.TypeString(def.Type()))
-					gen.codeSect.WriteString(" " + def.Name() + ";\n")
-
-					if decl.Value != nil {
-						gen.indent(&gen.codeSect)
-						gen.codeSect.WriteString(def.Name() + " = ")
-						gen.codeSect.WriteString(gen.ExprString(decl.Value))
-						gen.codeSect.WriteString(";\n")
-					}
-				} else {
-					panic("unreachable")
-				}
-
-			default:
-				panic("not implemented")
-			}
-		} else {
-			if tResultVar != nil && i == len(node.Body.Nodes)-1 {
-				gen.codeSect.WriteString("__result = ")
-			}
-
+		if tResultVar != nil && i == len(node.Body.Nodes)-1 {
+			gen.codeSect.WriteString("__result = ")
 			gen.codeSect.WriteString(gen.ExprString(stmt))
 			gen.codeSect.WriteString(";\n")
+		} else {
+			gen.codeSect.WriteString(gen.StmtString(stmt))
 		}
 	}
 

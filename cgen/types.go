@@ -34,6 +34,9 @@ func (gen *Generator) TypeString(t types.Type) string {
 		case types.KindI32:
 			return "Ti32"
 
+		case types.KindU8:
+			return "Tu8"
+
 		default:
 			panic("unreachable")
 		}
@@ -55,14 +58,16 @@ func (gen *Generator) TypeString(t types.Type) string {
 		return gen.TypeString(t.Base()) + "*"
 
 	case *types.Struct:
+		if t.Underlying() == types.String {
+			return "char*"
+		}
+
 		for _, sym := range gen.Defs {
 			switch sym.(type) {
 			case *checker.Struct, *checker.TypeAlias:
-			default:
-				continue
-			}
-			if types.SkipTypeDesc(sym.Type()) == t {
-				return "Ty" + sym.Name()
+				if types.SkipTypeDesc(sym.Type()) == t {
+					return "Ty" + sym.Name()
+				}
 			}
 		}
 

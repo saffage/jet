@@ -2,6 +2,7 @@ package cgen
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/saffage/jet/ast"
@@ -82,64 +83,30 @@ func (gen *Generator) ExprString(expr ast.Node) string {
 		}
 
 	case *ast.PrefixOp:
-		switch node.Opr.Kind {
-		case ast.OperatorNot:
-			exprStr = "!" + gen.ExprString(node.X)
+		typedValue := gen.Types[node]
 
-		default:
-			panic("not implemented")
+		if typedValue == nil {
+			typedValue = gen.Types[expr]
 		}
+
+		if typedValue == nil {
+			panic("cannot get a type of the expr node")
+		}
+
+		return gen.unary(node.X, typedValue.Type, node.Opr.Kind)
 
 	case *ast.InfixOp:
-		switch node.Opr.Kind {
-		case ast.OperatorLt:
-			exprStr = fmt.Sprintf(
-				"%s < %s",
-				gen.ExprString(node.X),
-				gen.ExprString(node.Y),
-			)
+		typedValue := gen.Types[node]
 
-		case ast.OperatorLe:
-			exprStr = fmt.Sprintf(
-				"%s <= %s",
-				gen.ExprString(node.X),
-				gen.ExprString(node.Y),
-			)
-
-		case ast.OperatorGt:
-			exprStr = fmt.Sprintf(
-				"%s > %s",
-				gen.ExprString(node.X),
-				gen.ExprString(node.Y),
-			)
-
-		case ast.OperatorGe:
-			exprStr = fmt.Sprintf(
-				"%s >= %s",
-				gen.ExprString(node.X),
-				gen.ExprString(node.Y),
-			)
-
-		case ast.OperatorEq:
-			exprStr = fmt.Sprintf(
-				"%s == %s",
-				gen.ExprString(node.X),
-				gen.ExprString(node.Y),
-			)
-
-		case ast.OperatorNe:
-			exprStr = fmt.Sprintf(
-				"%s != %s",
-				gen.ExprString(node.X),
-				gen.ExprString(node.Y),
-			)
-
-		case ast.OperatorAssign:
-			
-
-		default:
-			panic(fmt.Sprintf("not implemented: infix operator '%s'", node.Opr.Kind))
+		if typedValue == nil {
+			typedValue = gen.Types[expr]
 		}
+
+		if typedValue == nil {
+			panic("cannot get a type of the expr node")
+		}
+
+		return gen.binary(node.X, node.Y, typedValue.Type, node.Opr.Kind)
 
 	case *ast.Call:
 		buf := strings.Builder{}
@@ -190,6 +157,54 @@ func (gen *Generator) structInitFields(selector ast.Node) string {
 	return buf.String()
 }
 
+func (gen *Generator) unary(x ast.Node, t types.Type, op ast.OperatorKind) string {
+	switch op {
+	case ast.OperatorAddr:
+		return fmt.Sprintf("(%s)(&%s)", gen.TypeString(t), x)
+
+	case ast.OperatorNot:
+		return fmt.Sprintf("(!%s)", x)
+
+	default:
+		panic(fmt.Sprintf("not a binary operator: '%s'", op))
+	}
+}
+
+func (gen *Generator) binary(x, y ast.Node, t types.Type, op ast.OperatorKind) string {
+	switch op {
+	case ast.OperatorBitAnd,
+		ast.OperatorBitOr,
+		ast.OperatorBitXor,
+		ast.OperatorBitShl,
+		ast.OperatorBitShr:
+		return fmt.Sprintf("(%[3]s)((%[1]s) %[4]s (%[2]s))", x, y, gen.TypeString(t), op)
+
+	case ast.OperatorAdd,
+		ast.OperatorSub,
+		ast.OperatorMul,
+		ast.OperatorDiv,
+		ast.OperatorMod:
+		return fmt.Sprintf("((%[3]s)(%[1]s) %[4]s (%[3]s)(%[2]s))", x, y, gen.TypeString(t), op)
+
+	case ast.OperatorEq,
+		ast.OperatorNe,
+		ast.OperatorGt,
+		ast.OperatorGe,
+		ast.OperatorLt,
+		ast.OperatorLe:
+		return fmt.Sprintf("((%[1]s) %[3]s (%[2]s))", x, y, op)
+
+	case ast.OperatorAnd:
+		return fmt.Sprintf("((%[3]s)(%[1]s) && (%[3]s)(%[2]s))", x, y, gen.TypeString(t))
+
+	case ast.OperatorOr:
+		return fmt.Sprintf("((%[3]s)(%[1]s) || (%[3]s)(%[2]s))", x, y, gen.TypeString(t))
+
+	default:
+		panic(fmt.Sprintf("not a binary operator: '%s'", op))
+	}
+}
+
 func (gen *Generator) constant(value constant.Value) string {
 	if value == nil {
 		panic("nil constant value")
@@ -204,6 +219,10 @@ func (gen *Generator) constant(value constant.Value) string {
 
 	case constant.Int:
 		return (*constant.AsInt(value)).String()
+
+	case constant.String:
+		value := constant.AsString(value)
+		return strconv.Quote(*value)
 
 	default:
 		panic("unreachable")
