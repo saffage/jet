@@ -160,20 +160,20 @@ func (check *Checker) structInit(node *ast.MemberAccess, typedesc *types.TypeDes
 
 	// Check fields.
 	for structFieldName, tStructField := range tTypeStruct.Fields() {
-		tInitField, initialized := initFields[structFieldName]
+		tInit, initialized := initFields[structFieldName]
 
 		if !initialized {
 			missingFieldNames = append(missingFieldNames, structFieldName)
 			continue
 		}
 
-		if !tInitField.Equals(tStructField) {
+		if !tInit.Equals(tStructField) {
 			check.errorf(
 				initFieldValues[structFieldName],
 				"type mismatch, expected (%s) for field '%s', got (%s) instead",
 				tStructField,
 				structFieldName,
-				tInitField,
+				tInit,
 			)
 		}
 

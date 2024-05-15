@@ -1,7 +1,7 @@
 package types
 
 type Type interface {
-	Equals(Type) bool
+	Equals(expected Type) bool
 	Underlying() Type
 
 	// A human readable representation.

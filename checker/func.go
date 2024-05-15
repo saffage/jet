@@ -126,7 +126,7 @@ func (check *Checker) resolveFuncDecl(node *ast.FuncDecl) {
 		return
 	}
 
-	if !tResult.Equals(tBody) {
+	if !tBody.Equals(tResult) {
 		if len(sym.node.Body.Nodes) == 0 {
 			check.errorf(
 				sym.node.Body,
