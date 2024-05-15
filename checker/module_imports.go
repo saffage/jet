@@ -32,7 +32,8 @@ func (check *Checker) resolveImport(node *ast.Import) {
 
 	m, errors := CheckFile(check.cfg, fileID)
 	if len(errors) != 0 {
-		panic(errors)
+		report.Report(errors...)
+		check.errorf(node.Module, "the module check was finished with errors")
 	}
 
 	if defined := check.module.Scope.Define(m); defined != nil {
