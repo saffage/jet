@@ -229,7 +229,7 @@ func (check *Checker) typeOfCall(node *ast.Call) types.Type {
 		return nil
 	}
 
-	return fn.Result()
+	return fn.Result().Underlying()
 }
 
 func (check *Checker) typeOfIndex(node *ast.Index) types.Type {
