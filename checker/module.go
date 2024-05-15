@@ -39,6 +39,21 @@ func (m *Module) Name() string      { return m.node.Name.Name }
 func (m *Module) Ident() *ast.Ident { return m.node.Name }
 func (m *Module) Node() ast.Node    { return m.node }
 
+func (m *Module) SymbolOf(ident *ast.Ident) Symbol {
+	if ident != nil {
+		if sym := m.Defs[ident]; sym != nil {
+			return sym
+		}
+		if sym := m.Uses[ident]; sym != nil {
+			return sym
+		}
+		if sym, _ := m.Scope.Lookup(ident.Name); sym != nil {
+			return sym
+		}
+	}
+	return nil
+}
+
 func (check *Checker) visit(node ast.Node) ast.Visitor {
 	switch node := node.(type) {
 	case ast.Decl:
