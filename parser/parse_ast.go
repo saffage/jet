@@ -840,15 +840,16 @@ func (p *Parser) parseTypeName() ast.Node {
 
 	switch p.tok.Kind {
 	case token.Ident:
-		switch expr := p.parseMemberAccess(p.parseIdentNode()); expr.(type) {
-		case *ast.Ident:
-			return expr
+		ident := p.parseIdentNode()
+		expr := p.parseMemberAccess(ident)
 
-		default:
+		if expr == nil {
 			start, end := p.skipTo()
 			p.errorExpected(start, end, "type name")
 			return nil
 		}
+
+		return expr
 
 	default:
 		start, end := p.skipTo()
