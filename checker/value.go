@@ -60,9 +60,15 @@ func (check *Checker) valueOfInternal(expr ast.Node) *TypedValue {
 		return &TypedValue{type_, value}
 
 	case *ast.Ident:
-		if _const, _ := check.symbolOf(node).(*Const); _const != nil {
-			return _const.value
+		if sym := check.symbolOf(node); sym != nil {
+			if _const, _ := sym.(*Const); _const != nil {
+				return _const.value
+			}
+
+			return nil
 		}
+
+		check.errorf(node, "identifier is undefined")
 
 	case *ast.InfixOp:
 		x := check.valueOf(node.X)
