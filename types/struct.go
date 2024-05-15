@@ -61,7 +61,7 @@ func IsStruct(t Type) bool { return AsStruct(t) != nil }
 
 func AsStruct(t Type) *Struct {
 	if t != nil {
-		if s, _ := t.Underlying().(*Struct); t != nil {
+		if s, _ := t.Underlying().(*Struct); s != nil {
 			return s
 		}
 	}
