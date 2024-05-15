@@ -12,6 +12,7 @@ type Var struct {
 	t        types.Type
 	node     *ast.Binding
 	name     *ast.Ident
+	value    ast.Node // TODO move somewhere else.
 	isParam  bool
 	isField  bool
 	isGlobal bool
@@ -33,6 +34,7 @@ func (v *Var) Type() types.Type  { return v.t }
 func (v *Var) Name() string      { return v.name.Name }
 func (v *Var) Ident() *ast.Ident { return v.name }
 func (v *Var) Node() ast.Node    { return v.node }
+func (v *Var) Value() ast.Node   { return v.value }
 func (v *Var) IsLocal() bool     { return !v.isParam && !v.isField && !v.isGlobal }
 func (v *Var) IsParam() bool     { return v.isParam }
 func (v *Var) IsField() bool     { return v.isField }
@@ -71,6 +73,7 @@ func (check *Checker) resolveVarDecl(node *ast.VarDecl) {
 
 	report.TaggedDebugf("checker", "var type: %s", tType)
 	sym := NewVar(check.scope, tType, node.Binding, node.Binding.Name)
+	sym.value = node.Value
 	sym.isGlobal = sym.owner == check.module.Scope
 
 	if defined := check.scope.Define(sym); defined != nil {
