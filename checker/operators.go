@@ -181,6 +181,25 @@ func (check *Checker) assignable(node ast.Node) bool {
 			check.newUse(fieldIdent, fieldSym)
 			return check.assignable(operand.X)
 		}
+
+	case *ast.Index:
+		if operand != nil {
+			operandName, _ := operand.X.(*ast.Ident)
+			if operandName == nil {
+				check.errorf(operand.X, "expected identifier")
+				return false
+			}
+
+			varSym, ok := check.symbolOf(operandName).(*Var)
+			if !ok || varSym == nil {
+				check.errorf(operand, "identifier is not a variable")
+				return false
+			}
+
+			report.TaggedDebugf("checker", "assign '%s' at '%s'", varSym.name, operand)
+			check.newUse(operandName, varSym)
+			return true
+		}
 	}
 
 	check.errorf(node, "expression is not assignable")
