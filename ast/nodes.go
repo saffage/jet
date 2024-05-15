@@ -54,6 +54,7 @@ func (*VarDecl) implNode()       {}
 func (*ConstDecl) implNode()     {}
 func (*FuncDecl) implNode()      {}
 func (*StructDecl) implNode()    {}
+func (*EnumDecl) implNode()      {}
 func (*TypeAliasDecl) implNode() {}
 
 // Stmts.

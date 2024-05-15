@@ -49,6 +49,13 @@ type (
 		Loc   token.Loc // `struct` token.
 	}
 
+	EnumDecl struct {
+		Attrs *AttributeList
+		Name  *Ident
+		Body  *CurlyList
+		Loc   token.Loc // `struct` token.
+	}
+
 	TypeAliasDecl struct {
 		Attrs        *AttributeList
 		CommentGroup *CommentGroup
@@ -97,6 +104,12 @@ func (n *StructDecl) LocEnd() token.Loc          { return n.Body.LocEnd() }
 func (n *StructDecl) Ident() *Ident              { return n.Name }
 func (n *StructDecl) Doc() string                { return "" }
 func (n *StructDecl) Attributes() *AttributeList { return n.Attrs }
+
+func (n *EnumDecl) Pos() token.Loc             { return n.Loc }
+func (n *EnumDecl) LocEnd() token.Loc          { return n.Body.LocEnd() }
+func (n *EnumDecl) Ident() *Ident              { return n.Name }
+func (n *EnumDecl) Doc() string                { return "" }
+func (n *EnumDecl) Attributes() *AttributeList { return n.Attrs }
 
 func (n *TypeAliasDecl) Pos() token.Loc             { return n.Loc }
 func (n *TypeAliasDecl) LocEnd() token.Loc          { return n.Expr.LocEnd() }

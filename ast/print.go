@@ -244,6 +244,15 @@ func (n *StructDecl) String() string {
 	)
 }
 
+func (n *EnumDecl) String() string {
+	return fmt.Sprintf(
+		"%senum %s %s",
+		optionalAttributeList(n.Attrs),
+		n.Name.String(),
+		n.Body.String(),
+	)
+}
+
 func (n *TypeAliasDecl) String() string {
 	return fmt.Sprintf(
 		"%s%salias %s = %s",
