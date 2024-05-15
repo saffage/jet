@@ -95,6 +95,9 @@ func (check *Checker) typeOfInternal(expr ast.Node) types.Type {
 }
 
 func (check *Checker) symbolOf(ident *ast.Ident) Symbol {
+	if sym, _ := check.scope.Lookup(ident.Name); sym != nil {
+		return sym
+	}
 	return check.module.SymbolOf(ident)
 }
 
