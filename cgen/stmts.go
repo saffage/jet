@@ -37,6 +37,17 @@ func (gen *Generator) StmtString(stmt ast.Node) string {
 		gen.indent(&buf)
 		buf.WriteString("}\n")
 
+	case *ast.If:
+		buf.WriteString(fmt.Sprintf("if (%s) {\n", gen.ExprString(stmt.Cond)))
+		gen.numIndent++
+		for _, stmt := range stmt.Body.Nodes {
+			gen.indent(&buf)
+			buf.WriteString(gen.StmtString(stmt))
+		}
+		gen.numIndent--
+		gen.indent(&buf)
+		buf.WriteString("}\n")
+
 	default:
 		return gen.ExprString(stmt) + ";\n"
 	}

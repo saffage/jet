@@ -8,6 +8,7 @@ import (
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/checker"
 	"github.com/saffage/jet/constant"
+	"github.com/saffage/jet/internal/report"
 	"github.com/saffage/jet/types"
 )
 
@@ -16,9 +17,11 @@ func (gen *Generator) ExprString(expr ast.Node) string {
 		return "ERROR_CGEN__EXPR_IS_DECL"
 	}
 
+	report.Debugf("expr = %s", expr)
+
 	typedValue, ok := gen.Types[expr]
 	if !ok {
-		fmt.Printf("expr without type '%T'\n", expr)
+		fmt.Printf("expr without type '%[1]T': %[1]s\n", expr)
 		return "ERROR_CGEN__EXPR"
 	}
 
@@ -34,7 +37,7 @@ func (gen *Generator) ExprString(expr ast.Node) string {
 
 	case *ast.Ident:
 	outer:
-		switch sym := gen.Uses[node].(type) {
+		switch sym := gen.SymbolOf(node).(type) {
 		case *checker.Var:
 			switch {
 			case sym.IsParam():
@@ -48,8 +51,10 @@ func (gen *Generator) ExprString(expr ast.Node) string {
 		case *checker.Func:
 			return sym.Name()
 
+		case nil:
+			report.TaggedErrorf("cgen", "expression `%s` have no uses", expr)
+
 		default:
-			fmt.Printf("%#v\n", sym)
 			panic("idk")
 		}
 
@@ -121,6 +126,19 @@ func (gen *Generator) ExprString(expr ast.Node) string {
 		buf.WriteByte(')')
 		return "(" + buf.String() + ")"
 
+	case *ast.Index:
+		buf := strings.Builder{}
+		buf.WriteString(gen.ExprString(node.X))
+		buf.WriteByte('[')
+
+		if len(node.Args.Exprs) != 1 {
+			panic("idk how to handle it")
+		}
+
+		buf.WriteString(gen.ExprString(node.Args.Exprs[0]))
+		buf.WriteByte(']')
+		return "(" + buf.String() + ")"
+
 	default:
 		fmt.Printf("not implemented '%T'\n", node)
 	}
@@ -177,14 +195,24 @@ func (gen *Generator) binary(x, y ast.Node, t types.Type, op ast.OperatorKind) s
 		ast.OperatorBitXor,
 		ast.OperatorBitShl,
 		ast.OperatorBitShr:
-		return fmt.Sprintf("(%[3]s)((%[1]s) %[4]s (%[2]s))", x, y, gen.TypeString(t), op)
+		return fmt.Sprintf("(%[3]s)((%[1]s) %[4]s (%[2]s))",
+			gen.ExprString(x),
+			gen.ExprString(y),
+			gen.TypeString(t),
+			op,
+		)
 
 	case ast.OperatorAdd,
 		ast.OperatorSub,
 		ast.OperatorMul,
 		ast.OperatorDiv,
 		ast.OperatorMod:
-		return fmt.Sprintf("((%[3]s)(%[1]s) %[4]s (%[3]s)(%[2]s))", x, y, gen.TypeString(t), op)
+		return fmt.Sprintf("((%[3]s)(%[1]s) %[4]s (%[3]s)(%[2]s))",
+			gen.ExprString(x),
+			gen.ExprString(y),
+			gen.TypeString(t),
+			op,
+		)
 
 	case ast.OperatorEq,
 		ast.OperatorNe,
@@ -192,13 +220,31 @@ func (gen *Generator) binary(x, y ast.Node, t types.Type, op ast.OperatorKind) s
 		ast.OperatorGe,
 		ast.OperatorLt,
 		ast.OperatorLe:
-		return fmt.Sprintf("((%[1]s) %[3]s (%[2]s))", x, y, op)
+		return fmt.Sprintf("((%[1]s) %[3]s (%[2]s))",
+			gen.ExprString(x),
+			gen.ExprString(y),
+			op,
+		)
 
 	case ast.OperatorAnd:
-		return fmt.Sprintf("((%[3]s)(%[1]s) && (%[3]s)(%[2]s))", x, y, gen.TypeString(t))
+		return fmt.Sprintf("((%[3]s)(%[1]s) && (%[3]s)(%[2]s))",
+			gen.ExprString(x),
+			gen.ExprString(y),
+			gen.TypeString(t),
+		)
 
 	case ast.OperatorOr:
-		return fmt.Sprintf("((%[3]s)(%[1]s) || (%[3]s)(%[2]s))", x, y, gen.TypeString(t))
+		return fmt.Sprintf("((%[3]s)(%[1]s) || (%[3]s)(%[2]s))",
+			gen.ExprString(x),
+			gen.ExprString(y),
+			gen.TypeString(t),
+		)
+
+	case ast.OperatorAssign:
+		return fmt.Sprintf("%s = %s",
+			gen.ExprString(x),
+			gen.ExprString(y),
+		)
 
 	default:
 		panic(fmt.Sprintf("not a binary operator: '%s'", op))

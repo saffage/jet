@@ -31,28 +31,52 @@ func (gen *Generator) TypeString(t types.Type) string {
 		case types.KindUntypedBool, types.KindBool:
 			return "Tbool"
 
+		case types.KindI8:
+			return "Ti8"
+
+		case types.KindI16:
+			return "Ti16"
+
 		case types.KindI32:
 			return "Ti32"
 
+		case types.KindI64:
+			return "Ti64"
+
 		case types.KindU8:
 			return "Tu8"
+
+		case types.KindU16:
+			return "Tu16"
+
+		case types.KindU32:
+			return "Tu32"
+
+		case types.KindU64:
+			return "Tu64"
+
+		case types.KindF32:
+			return "Tf32"
+
+		case types.KindF64:
+			return "Tf64"
 
 		default:
 			panic("unreachable")
 		}
 
-	case *types.Array:
-		panic("not implemented")
-
 	case *types.Func:
 		panic("not implemented")
 
 	case *types.Tuple:
-		if types.Unit.Equals(t) {
+		if t.Equals(types.Unit) {
 			return "void"
 		}
 
 		panic("not implemented")
+
+	case *types.Array:
+		return gen.TypeString(t.ElemType()) + "*"
 
 	case *types.Ref:
 		return gen.TypeString(t.Base()) + "*"

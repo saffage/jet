@@ -70,6 +70,21 @@ func (gen *Generator) Func(sym *checker.Func) {
 		gen.codeSect.WriteString(" __result;\n\n")
 	}
 
+	if sym.Name() == "main" {
+		for _, def := range gen.Defs {
+			if _var, _ := def.(*checker.Var); _var != nil && _var.IsGlobal() && _var.Value() != nil {
+				gen.indent(&gen.codeSect)
+				gen.codeSect.WriteString(gen.binary(
+					_var.Node().(*ast.Binding).Name,
+					_var.Value(),
+					types.Unit,
+					ast.OperatorAssign,
+				))
+				gen.codeSect.WriteString(";\n")
+			}
+		}
+	}
+
 	for i, stmt := range node.Body.Nodes {
 		gen.indent(&gen.codeSect)
 
