@@ -87,6 +87,7 @@ func (check *Checker) newDef(ident *ast.Ident, sym Symbol) {
 			ident,
 		)
 		check.module.Defs[ident] = sym
+		check.setType(ident, sym.Type())
 	}
 
 	if check.module.TypeSyms != nil {

@@ -137,19 +137,21 @@ func (check *Checker) structInit(node *ast.MemberAccess, typedesc *types.TypeDes
 				initFieldNames[fieldNameNode.Name] = fieldNameNode
 			}
 
-			if typeSym, ok := check.module.TypeSyms[tTypeStruct]; ok && typeSym != nil {
-				structSym, ok := typeSym.(*Struct)
-				if !ok || structSym == nil {
-					panic("unreachable")
-				}
-				fieldSym := structSym.body.Member(fieldNameNode.Name)
-				if fieldSym == nil {
-					panic("unreachable")
-				}
-				check.newUse(fieldNameNode, fieldSym)
-			} else {
-				panic("unreachable")
-			}
+			// TODO this doesn't catch all cases, so temporarily remove this
+
+			// if typeSym, ok := check.module.TypeSyms[tTypeStruct]; ok && typeSym != nil {
+			// 	structSym, ok := typeSym.(*Struct)
+			// 	if !ok || structSym == nil {
+			// 		panic("unreachable")
+			// 	}
+			// 	fieldSym := structSym.body.Member(fieldNameNode.Name)
+			// 	if fieldSym == nil {
+			// 		panic("unreachable")
+			// 	}
+			// 	check.newUse(fieldNameNode, fieldSym)
+			// } else {
+			// 	panic("unreachable")
+			// }
 
 		default:
 			panic(fmt.Sprintf("unexpected node of type '%T' in struct initializer", init))
