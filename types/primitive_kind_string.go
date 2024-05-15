@@ -14,15 +14,23 @@ func _() {
 	_ = x[KindUntypedFloat-3]
 	_ = x[KindUntypedString-4]
 	_ = x[KindBool-5]
-	_ = x[KindI32-6]
-	_ = x[KindU8-7]
-	_ = x[KindAny-8]
-	_ = x[KindAnyTypeDesc-9]
+	_ = x[KindI8-6]
+	_ = x[KindI16-7]
+	_ = x[KindI32-8]
+	_ = x[KindI64-9]
+	_ = x[KindU8-10]
+	_ = x[KindU16-11]
+	_ = x[KindU32-12]
+	_ = x[KindU64-13]
+	_ = x[KindF32-14]
+	_ = x[KindF64-15]
+	_ = x[KindAny-16]
+	_ = x[KindAnyTypeDesc-17]
 }
 
-const _PrimitiveKind_name = "UnknownPrimitiveKinduntyped booluntyped intuntyped floatuntyped stringbooli32u8anytypedesc"
+const _PrimitiveKind_name = "UnknownPrimitiveKinduntyped booluntyped intuntyped floatuntyped stringbooli8i16i32i64u8u16u32u64f32f64anytypedesc"
 
-var _PrimitiveKind_index = [...]uint8{0, 20, 32, 43, 56, 70, 74, 77, 79, 82, 90}
+var _PrimitiveKind_index = [...]uint8{0, 20, 32, 43, 56, 70, 74, 76, 79, 82, 85, 87, 90, 93, 96, 99, 102, 105, 113}
 
 func (i PrimitiveKind) String() string {
 	if i >= PrimitiveKind(len(_PrimitiveKind_index)-1) {

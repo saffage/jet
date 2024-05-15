@@ -17,11 +17,29 @@ func builtInMagic(node *ast.ParenList, args []*TypedValue) (*TypedValue, error) 
 	case "Bool":
 		return &TypedValue{types.NewTypeDesc(types.Bool), nil}, nil
 
+	case "I8":
+		return &TypedValue{types.NewTypeDesc(types.I8), nil}, nil
+
+	case "I16":
+		return &TypedValue{types.NewTypeDesc(types.I16), nil}, nil
+
 	case "I32":
 		return &TypedValue{types.NewTypeDesc(types.I32), nil}, nil
 
+	case "I64":
+		return &TypedValue{types.NewTypeDesc(types.I64), nil}, nil
+
 	case "U8":
 		return &TypedValue{types.NewTypeDesc(types.U8), nil}, nil
+
+	case "U16":
+		return &TypedValue{types.NewTypeDesc(types.U16), nil}, nil
+
+	case "U32":
+		return &TypedValue{types.NewTypeDesc(types.U32), nil}, nil
+
+	case "U64":
+		return &TypedValue{types.NewTypeDesc(types.U64), nil}, nil
 
 	case "String":
 		return &TypedValue{types.NewTypeDesc(types.String), nil}, nil

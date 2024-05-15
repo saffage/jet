@@ -79,7 +79,7 @@ func (t *Func) CheckArgs(args *Tuple) (idx int, err error) {
 	for i := 0; i < args.Len(); i++ {
 		expected, actual := t.params.types[i], args.types[i]
 
-		if !expected.Equals(actual) {
+		if !actual.Equals(expected) {
 			return i, fmt.Errorf(
 				"expected '%s' for %s argument, got '%s' instead",
 				expected,

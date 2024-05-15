@@ -107,6 +107,9 @@ func (p *Parser) parseStmt() ast.Node {
 	case token.KwStruct:
 		node = p.parseStructDecl()
 
+	case token.KwEnum:
+		node = p.parseEnumDecl()
+
 	case token.KwModule:
 		node = p.parseModule()
 
@@ -680,6 +683,32 @@ func (p *Parser) parseStructDecl() ast.Node {
 	}
 
 	return &ast.StructDecl{
+		Name: name,
+		Body: body,
+		Loc:  tok.Start,
+	}
+}
+
+func (p *Parser) parseEnumDecl() ast.Node {
+	if p.flags&Trace != 0 {
+		p.trace()
+		defer p.untrace()
+	}
+
+	tok := p.expect(token.KwEnum)
+	name := p.parseIdentNode()
+
+	if name == nil {
+		return nil
+	}
+
+	body := p.parseCurlyList(p.parseIdent)
+
+	if body == nil {
+		return nil
+	}
+
+	return &ast.EnumDecl{
 		Name: name,
 		Body: body,
 		Loc:  tok.Start,
