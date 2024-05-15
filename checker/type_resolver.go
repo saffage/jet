@@ -379,8 +379,15 @@ func (check *Checker) typeOfMemberAccess(node *ast.MemberAccess) types.Type {
 		return nil
 	}
 
+	// TODO get symbol of the type.
 	if typedesc := types.AsTypeDesc(tOperand); typedesc != nil {
-		return check.structInit(node, typedesc)
+		switch t := typedesc.Base().Underlying().(type) {
+		case *types.Struct:
+			return check.structInit(node, typedesc)
+
+		case *types.Enum:
+			return check.enumMember(node, t)
+		}
 	}
 
 	if tStruct := types.AsStruct(tOperand); tStruct != nil {
