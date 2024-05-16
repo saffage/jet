@@ -40,6 +40,7 @@ func (check *Checker) resolveImport(node *ast.Import) {
 		check.addError(errorAlreadyDefined(node.Module, defined.Ident()))
 		return
 	}
+	check.module.Imports = append(check.module.Imports, m)
 	check.newDef(node.Module, m)
 }
 

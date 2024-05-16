@@ -16,7 +16,8 @@ const (
 // Module is a file.
 type Module struct {
 	*TypeInfo
-	Scope *Scope
+	Scope   *Scope
+	Imports []*Module
 
 	node      *ast.ModuleDecl
 	kind      ModuleKind

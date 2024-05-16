@@ -22,18 +22,32 @@ func process(cfg *config.Config, fileID config.FileID) {
 	if config.FlagGenC {
 		finfo := cfg.Files[fileID]
 		dir := filepath.Dir(finfo.Path)
-		f, err := os.Create(filepath.Join(dir, "out.c"))
-		if err != nil {
+
+		err := os.Mkdir(filepath.Join(dir, ".jet"), os.ModePerm)
+		if err != nil && !os.IsExist(err) {
 			panic(err)
 		}
-		defer f.Close()
 
+		dir = filepath.Join(dir, ".jet")
 		report.Hintf("emit C...")
-		errs = cgen.Generate(f, m)
 
-		if len(errs) != 0 {
-			report.Report(errs...)
-			return
+		for _, mImported := range m.Imports {
+			genCFile(mImported, dir)
 		}
+
+		genCFile(m, dir)
+	}
+}
+
+func genCFile(m *checker.Module, dir string) {
+	f, err := os.Create(filepath.Join(dir, m.Name()+"__jet.c"))
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+
+	if errs := cgen.Generate(f, m); len(errs) != 0 {
+		report.Report(errs...)
+		return
 	}
 }
