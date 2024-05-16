@@ -425,7 +425,7 @@ func (check *Checker) typeOfBracketList(node *ast.BracketList) types.Type {
 		}
 
 		if elemType == nil {
-			elemType = types.SkipUntyped(t)
+			elemType = t
 			continue
 		}
 

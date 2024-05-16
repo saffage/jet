@@ -59,10 +59,10 @@ func (check *Checker) resolveVarDecl(node *ast.VarDecl) {
 	}
 
 	if tValue != nil {
-		report.TaggedDebugf("checker", "var: value type: %s", tValue)
+		report.TaggedDebugf("checker", "var value type: %s", tValue)
 	}
 
-	report.TaggedDebugf("checker", "var: specified type: %s", tType)
+	report.TaggedDebugf("checker", "var specified type: %s", tType)
 
 	if tValue != nil && !tValue.Equals(tType) {
 		check.errorf(
@@ -75,6 +75,13 @@ func (check *Checker) resolveVarDecl(node *ast.VarDecl) {
 	}
 
 	tType = types.SkipUntyped(tType)
+
+	// Set a correct type to the value.
+	if tValue := types.AsArray(tValue); tValue != nil && types.IsUntyped(tValue.ElemType()) {
+		// TODO this causes codegen to generate two similar typedefs.
+		check.setType(node.Value, tType)
+		report.TaggedDebugf("checker", "var set value type: %s", tValue)
+	}
 
 	report.TaggedDebugf("checker", "var type: %s", tType)
 	sym := NewVar(check.scope, tType, node.Binding, node.Binding.Name)

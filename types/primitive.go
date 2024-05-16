@@ -142,6 +142,9 @@ func SkipUntyped(t Type) Type {
 				elems[i] = SkipUntyped(t.types[i])
 			}
 			return NewTuple(elems...)
+
+		case *Array:
+			return NewArray(t.size, SkipUntyped(t.elem))
 		}
 	}
 	return t
@@ -162,6 +165,9 @@ func IsUntyped(t Type) bool {
 					return true
 				}
 			}
+
+		case *Array:
+			return IsUntyped(t.elem)
 		}
 	}
 	return false
