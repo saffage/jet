@@ -341,7 +341,7 @@ func (p *Parser) parseUnaryExpr() ast.Node {
 			Opr: &ast.Operator{
 				Start: asterisk.Start,
 				End:   asterisk.End,
-				Kind:  ast.OperatorDeref,
+				Kind:  ast.OperatorStar,
 			},
 		}
 
@@ -364,7 +364,7 @@ func (p *Parser) parseUnaryExpr() ast.Node {
 			Opr: &ast.Operator{
 				Start: loc,
 				End:   loc,
-				Kind:  ast.OperatorAddr,
+				Kind:  ast.OperatorAddrOf,
 			},
 		}
 
@@ -919,34 +919,21 @@ func (p *Parser) parseSignature(funcTok *token.Token) *ast.Signature {
 }
 
 func (p *Parser) parseType() ast.Node {
-	// Type <- ('&' 'var'?)? TypeName ('.' TypeName)
-	// TypeName <- Macro | Ident
 	if p.flags&Trace != 0 {
 		p.trace()
 		defer p.untrace()
 	}
 
 	switch p.tok.Kind {
-	case token.Amp:
-		amp := p.consume()
-
-		// if varTok := p.consume(token.KwVar); varTok != nil {
-		// 	return &ast.PrefixOp{
-		// 		X: p.parseType(),
-		// 		Opr: &ast.Operator{
-		// 			Start: amp.Start,
-		// 			End:   varTok.End,
-		// 			Kind:  ast.OperatorMutAddr,
-		// 		},
-		// 	}
-		// }
+	case token.Asterisk:
+		star := p.consume()
 
 		return &ast.PrefixOp{
 			X: p.parseType(),
 			Opr: &ast.Operator{
-				Start: amp.Start,
-				End:   amp.End,
-				Kind:  ast.OperatorAddr,
+				Start: star.Start,
+				End:   star.End,
+				Kind:  ast.OperatorStar,
 			},
 		}
 

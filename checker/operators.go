@@ -26,12 +26,7 @@ func (check *Checker) prefix(node *ast.PrefixOp, tOperand types.Type) types.Type
 			}
 		}
 
-	case ast.OperatorAddr:
-		if types.IsTypeDesc(tOperand) {
-			t := types.NewRef(types.SkipTypeDesc(tOperand))
-			return types.NewTypeDesc(t)
-		}
-
+	case ast.OperatorAddrOf:
 		switch operand := node.X.(type) {
 		case *ast.Ident:
 			if sym, _ := check.symbolOf(operand).(*Var); sym != nil {
@@ -43,8 +38,13 @@ func (check *Checker) prefix(node *ast.PrefixOp, tOperand types.Type) types.Type
 				return types.NewRef(tOperand)
 			}
 
-		case *ast.InfixOp:
-			if operand.Opr.Kind == ast.OperatorDeref {
+		case *ast.Index:
+			if tArray := types.AsArray(check.typeOf(operand.X)); tArray != nil {
+				return types.NewRef(tArray.ElemType())
+			}
+
+		case *ast.PrefixOp:
+			if operand.Opr.Kind == ast.OperatorStar {
 				return types.NewRef(tOperand)
 			}
 		}
@@ -52,7 +52,12 @@ func (check *Checker) prefix(node *ast.PrefixOp, tOperand types.Type) types.Type
 		check.errorf(node.X, "expression is not an addressable location.")
 		return nil
 
-	case ast.OperatorDeref:
+	case ast.OperatorStar:
+		if types.IsTypeDesc(tOperand) {
+			t := types.NewRef(types.SkipTypeDesc(tOperand))
+			return types.NewTypeDesc(t)
+		}
+
 		if ref := types.AsRef(tOperand); ref != nil {
 			return ref.Base()
 		}

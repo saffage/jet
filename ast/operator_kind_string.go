@@ -11,8 +11,8 @@ func _() {
 	_ = x[UnknownOperator-0]
 	_ = x[OperatorNot-1]
 	_ = x[OperatorNeg-2]
-	_ = x[OperatorAddr-3]
-	_ = x[OperatorDeref-4]
+	_ = x[OperatorAddrOf-3]
+	_ = x[OperatorStar-4]
 	_ = x[OperatorAssign-5]
 	_ = x[OperatorAdd-6]
 	_ = x[OperatorSub-7]
@@ -34,7 +34,7 @@ func _() {
 	_ = x[OperatorOr-23]
 }
 
-const _OperatorKind_name = "UnknownOperator!-**=+-*/%==!=<<=>>=&|^<<>>andor"
+const _OperatorKind_name = "UnknownOperator!-&*=+-*/%==!=<<=>>=&|^<<>>andor"
 
 var _OperatorKind_index = [...]uint8{0, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 27, 29, 30, 32, 33, 35, 36, 37, 38, 40, 42, 45, 47}
 
