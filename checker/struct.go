@@ -2,6 +2,7 @@ package checker
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/saffage/jet/ast"
@@ -32,14 +33,14 @@ func (sym *Struct) Ident() *ast.Ident { return sym.node.Name }
 func (sym *Struct) Node() ast.Node    { return sym.node }
 
 func (check *Checker) resolveStructDecl(node *ast.StructDecl) {
-	fields := make(map[string]types.Type, len(node.Body.Nodes))
-	local := NewScope(check.scope)
+	fields := make([]types.StructField, len(node.Body.Nodes))
+	local := NewScope(check.scope, "struct "+node.Name.Name)
 
 	if node.Body == nil {
 		panic("struct body cannot be nil")
 	}
 
-	for _, bodyNode := range node.Body.Nodes {
+	for i, bodyNode := range node.Body.Nodes {
 		binding, _ := bodyNode.(*ast.Binding)
 		if binding == nil {
 			check.errorf(binding, "expected field declaration")
@@ -63,7 +64,7 @@ func (check *Checker) resolveStructDecl(node *ast.StructDecl) {
 		t := types.AsTypeDesc(tField).Base()
 		fieldSym := NewVar(local, t, binding, binding.Name)
 		fieldSym.isField = true
-		fields[binding.Name.Name] = t
+		fields[i] = types.StructField{binding.Name.Name, t}
 
 		if defined := local.Define(fieldSym); defined != nil {
 			err := NewErrorf(fieldSym.Ident(), "duplicate field '%s'", fieldSym.Name())
@@ -75,7 +76,7 @@ func (check *Checker) resolveStructDecl(node *ast.StructDecl) {
 		check.newDef(binding.Name, fieldSym)
 	}
 
-	t := types.NewTypeDesc(types.NewStruct(fields))
+	t := types.NewTypeDesc(types.NewStruct(fields...))
 	sym := NewStruct(check.scope, local, t, node)
 
 	if defined := check.scope.Define(sym); defined != nil {
@@ -161,27 +162,27 @@ func (check *Checker) structInit(node *ast.MemberAccess, typedesc *types.TypeDes
 	missingFieldNames := []string{}
 
 	// Check fields.
-	for structFieldName, tStructField := range tTypeStruct.Fields() {
-		tInit, initialized := initFields[structFieldName]
+	for _, field := range tTypeStruct.Fields() {
+		tInit, initialized := initFields[field.Name]
 
 		if !initialized {
-			missingFieldNames = append(missingFieldNames, structFieldName)
+			missingFieldNames = append(missingFieldNames, field.Name)
 			continue
 		}
 
-		if !tInit.Equals(tStructField) {
+		if !tInit.Equals(field.Type) {
 			check.errorf(
-				initFieldValues[structFieldName],
+				initFieldValues[field.Name],
 				"type mismatch, expected (%s) for field '%s', got (%s) instead",
-				tStructField,
-				structFieldName,
+				field.Type,
+				field.Name,
 				tInit,
 			)
 		}
 
 		// Delete this field so we can find extra fields later.
-		delete(initFields, structFieldName)
-		delete(initFieldValues, structFieldName)
+		delete(initFields, field.Name)
+		delete(initFieldValues, field.Name)
 	}
 
 	if len(missingFieldNames) == 1 {
@@ -219,9 +220,11 @@ func (check *Checker) structMember(node *ast.MemberAccess, t *types.Struct) type
 		return nil
 	}
 
-	tField, hasField := t.Fields()[selector.Name]
+	fieldIndex := slices.IndexFunc(t.Fields(), func(field types.StructField) bool {
+		return field.Name == selector.Name
+	})
 
-	if !hasField {
+	if fieldIndex == -1 {
 		check.errorf(selector, "unknown field '%s'", selector.Name)
 		return nil
 	}
@@ -240,5 +243,5 @@ func (check *Checker) structMember(node *ast.MemberAccess, t *types.Struct) type
 		panic("unreachable")
 	}
 
-	return tField
+	return t.Fields()[fieldIndex].Type
 }

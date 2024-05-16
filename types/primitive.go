@@ -236,8 +236,8 @@ var (
 	Any         = &Primitive{KindAny}
 	AnyTypeDesc = &Primitive{KindAnyTypeDesc}
 
-	String = &Struct{fields: map[string]Type{
-		"len": I32,
-		"ptr": &Ref{base: U8},
+	String = &Struct{fields: []StructField{
+		{"len", I32},
+		{"ptr", &Ref{base: U8}},
 	}}
 )
