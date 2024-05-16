@@ -163,7 +163,6 @@ func (check *Checker) infix(node *ast.InfixOp, tOperandX, tOperandY types.Type) 
 }
 
 func (check *Checker) assignable(node ast.Node) bool {
-	// TODO allow assignment to a references.
 	switch operand := node.(type) {
 	case *ast.Ident:
 		if operand != nil {
@@ -197,20 +196,30 @@ func (check *Checker) assignable(node ast.Node) bool {
 
 	case *ast.Index:
 		if operand != nil {
-			operandName, _ := operand.X.(*ast.Ident)
-			if operandName == nil {
-				check.errorf(operand.X, "expected identifier")
-				return false
+			if t := types.AsArray(check.typeOf(operand.X)); t != nil {
+				return true
 			}
 
-			varSym, ok := check.symbolOf(operandName).(*Var)
-			if !ok || varSym == nil {
-				check.errorf(operand, "identifier is not a variable")
-				return false
-			}
+			// operandName, _ := operand.X.(*ast.Ident)
+			// if operandName == nil {
+			// 	check.errorf(operand.X, "expected identifier")
+			// 	return false
+			// }
 
-			report.TaggedDebugf("checker", "assign '%s' at '%s'", varSym.name, operand)
-			check.newUse(operandName, varSym)
+			// varSym, ok := check.symbolOf(operandName).(*Var)
+			// if !ok || varSym == nil {
+			// 	check.errorf(operand, "identifier is not a variable")
+			// 	return false
+			// }
+
+			// report.TaggedDebugf("checker", "assign '%s' at '%s'", varSym.name, operand)
+			// check.newUse(operandName, varSym)
+			// return true
+		}
+
+	case *ast.PrefixOp:
+		// TODO allow only if the pointer points to a mutable location.
+		if operand.Opr.Kind == ast.OperatorStar {
 			return true
 		}
 	}
