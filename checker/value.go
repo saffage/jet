@@ -54,7 +54,7 @@ func (check *Checker) valueOfInternal(expr ast.Node) *TypedValue {
 		type_ := types.FromConstant(value)
 
 		if type_ == types.UntypedString {
-			check.module.Data[node] = &TypedValue{type_, value}
+			check.module.Data.Set(node, &TypedValue{type_, value})
 		}
 
 		return &TypedValue{type_, value}

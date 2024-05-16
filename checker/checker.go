@@ -42,7 +42,7 @@ func (check *Checker) valueOf(expr ast.Node) *TypedValue {
 	}
 
 	if value := check.valueOfInternal(expr); value != nil {
-		check.setValue(expr, *value)
+		check.setValue(expr, value)
 		return value
 	}
 
@@ -50,6 +50,8 @@ func (check *Checker) valueOf(expr ast.Node) *TypedValue {
 }
 
 func (check *Checker) setScope(scope *Scope) {
+	assert.Ok(scope != nil)
+
 	check.scope = scope
 }
 
@@ -57,44 +59,40 @@ func (check *Checker) setType(expr ast.Node, t types.Type) {
 	assert.Ok(expr != nil)
 	assert.Ok(t != nil)
 
-	if check.module.Types != nil {
-		check.module.Types[expr] = &TypedValue{t, nil}
-	}
+	check.module.Types[expr] = &TypedValue{t, nil}
 }
 
-func (check *Checker) setValue(expr ast.Node, value TypedValue) {
+func (check *Checker) setValue(expr ast.Node, value *TypedValue) {
 	assert.Ok(expr != nil)
+	assert.Ok(value != nil)
 	assert.Ok(value.Type != nil)
 
-	if check.module.Types != nil {
-		check.module.Types[expr] = &value
-	}
+	check.module.Types[expr] = value
 }
 
 func (check *Checker) newDef(ident *ast.Ident, sym Symbol) {
 	assert.Ok(ident != nil)
+	assert.Ok(sym != nil)
 
-	if check.module.Defs != nil {
-		symStr := ""
-		if debugPrinter, _ := sym.(debugSymbolPrinter); debugPrinter != nil {
-			symStr = debugPrinter.debug()
-		} else {
-			symStr = symbolTypeNoQualifier(sym)
-		}
-		report.TaggedDebugf(
-			"checker", "def %s `%s`",
-			color.HiBlueString(symStr),
-			ident,
-		)
-		check.module.Defs[ident] = sym
-		check.setType(ident, sym.Type())
+	symStr := ""
+	if debugPrinter, _ := sym.(debugSymbolPrinter); debugPrinter != nil {
+		symStr = debugPrinter.debug()
+	} else {
+		symStr = symbolTypeNoQualifier(sym)
 	}
+	report.TaggedDebugf(
+		"checker", "def %s `%s`",
+		color.HiBlueString(symStr),
+		ident,
+	)
+	if !check.module.Defs.Set(ident, sym) {
+		report.TaggedWarningf("checker", "identifier '%s' was redefined", ident.Name)
+	}
+	// check.setType(ident, sym.Type())
 
-	if check.module.TypeSyms != nil {
-		switch sym.(type) {
-		case *Struct:
-			check.module.TypeSyms[types.SkipTypeDesc(sym.Type())] = sym
-		}
+	switch sym.(type) {
+	case *Struct, *Enum:
+		check.module.TypeSyms[types.SkipTypeDesc(sym.Type())] = sym
 	}
 }
 
@@ -102,22 +100,20 @@ func (check *Checker) newUse(ident *ast.Ident, sym Symbol) {
 	assert.Ok(ident != nil)
 	assert.Ok(sym != nil)
 
-	_, isDef := check.module.Defs[ident]
+	_, isDef := check.module.Defs.Get(ident)
 	assert.Ok(!isDef)
 
-	if check.module.Uses != nil {
-		symStr := ""
-		if debugPrinter, _ := sym.(debugSymbolPrinter); debugPrinter != nil {
-			symStr = debugPrinter.debug()
-		} else {
-			symStr = symbolTypeNoQualifier(sym)
-		}
-		report.TaggedDebugf(
-			"checker", "use %s `%s` of `%s`",
-			color.HiBlueString(symStr),
-			ident,
-			sym.Ident(),
-		)
-		check.module.Uses[ident] = sym
+	symStr := ""
+	if debugPrinter, _ := sym.(debugSymbolPrinter); debugPrinter != nil {
+		symStr = debugPrinter.debug()
+	} else {
+		symStr = symbolTypeNoQualifier(sym)
 	}
+	report.TaggedDebugf(
+		"checker", "use %s `%s` of `%s`",
+		color.HiBlueString(symStr),
+		ident,
+		sym.Ident(),
+	)
+	check.module.Uses[ident] = sym
 }

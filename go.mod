@@ -9,6 +9,7 @@ require (
 )
 
 require (
+	github.com/elliotchance/orderedmap/v2 v2.2.0
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/smarty/assertions v1.15.1 // indirect

@@ -39,12 +39,37 @@ func (m *Module) Name() string      { return m.node.Name.Name }
 func (m *Module) Ident() *ast.Ident { return m.node.Name }
 func (m *Module) Node() ast.Node    { return m.node }
 
+func (m *Module) TypeOf(expr ast.Node) types.Type {
+	if expr != nil {
+		if t := m.TypeInfo.TypeOf(expr); t != nil {
+			return t
+		}
+		if ident, _ := expr.(*ast.Ident); ident != nil {
+			if sym := m.SymbolOf(ident); sym != nil {
+				return sym.Type()
+			}
+		}
+	}
+	return nil
+}
+
+func (m *Module) ValueOf(expr ast.Node) *TypedValue {
+	if expr != nil {
+		if t := m.TypeInfo.ValueOf(expr); t != nil {
+			return t
+		}
+		if ident, _ := expr.(*ast.Ident); ident != nil {
+			if _const, _ := m.SymbolOf(ident).(*Const); _const != nil {
+				return _const.value
+			}
+		}
+	}
+	return nil
+}
+
 func (m *Module) SymbolOf(ident *ast.Ident) Symbol {
 	if ident != nil {
-		if sym := m.Defs[ident]; sym != nil {
-			return sym
-		}
-		if sym := m.Uses[ident]; sym != nil {
+		if sym := m.TypeInfo.SymbolOf(ident); sym != nil {
 			return sym
 		}
 		if sym, _ := m.Scope.Lookup(ident.Name); sym != nil {
