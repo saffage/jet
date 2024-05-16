@@ -31,7 +31,7 @@ func (sym *Enum) Ident() *ast.Ident { return sym.node.Name }
 func (sym *Enum) Node() ast.Node    { return sym.node }
 
 func (check *Checker) resolveEnumDecl(node *ast.EnumDecl) {
-	local := NewScope(check.scope)
+	local := NewScope(check.scope, "enum "+node.Name.Name)
 	fields := make([]string, 0, len(node.Body.Nodes))
 
 	// TODO field names as distinct symbols.

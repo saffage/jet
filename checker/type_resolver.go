@@ -492,7 +492,7 @@ func (check *Checker) typeOfParenList(node *ast.ParenList) types.Type {
 }
 
 func (check *Checker) typeOfCurlyList(node *ast.CurlyList) types.Type {
-	local := NewScope(check.scope)
+	local := NewScope(check.scope, "block")
 	block := NewBlock(local)
 
 	defer check.setScope(check.scope)

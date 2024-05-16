@@ -13,11 +13,11 @@ import (
 )
 
 // This module contains the declaration of the Jet built-in types.
-var ModuleTypes *Module = NewModule(NewScope(nil), nil)
+var ModuleTypes *Module = NewModule(NewScope(nil, "module Types"), nil)
 
 // This module contains C type declarations and other tools for
 // interacting with the C backend.
-var ModuleC *Module = NewModule(NewScope(nil), nil)
+var ModuleC *Module = NewModule(NewScope(nil, "module C"), nil)
 
 var CheckBuiltInPkgs = sync.OnceFunc(func() {
 	report.Hintf("checking package 'builtin'")

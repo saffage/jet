@@ -34,7 +34,7 @@ func (check *Checker) resolveFuncDecl(node *ast.FuncDecl) {
 	sig := node.Signature
 	tParams := []types.Type{}
 	params := []*Var{}
-	local := NewScope(check.scope)
+	local := NewScope(check.scope, "func "+node.Name.Name)
 
 	for _, param := range sig.Params.Exprs {
 		switch param := param.(type) {

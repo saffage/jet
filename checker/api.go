@@ -19,7 +19,7 @@ var ErrorEmptyFileBuf = errors.New("empty file buffer or invalid file ID")
 func Check(cfg *config.Config, fileID config.FileID, node *ast.ModuleDecl) (*Module, []error) {
 	report.Hintf("checking module '%s'", cfg.Files[fileID].Name)
 
-	module := NewModule(NewScope(Global), node)
+	module := NewModule(NewScope(Global, "module "+node.Name.Name), node)
 	check := &Checker{
 		module:         module,
 		scope:          module.Scope,
@@ -80,7 +80,7 @@ func CheckFile(cfg *config.Config, fileID config.FileID) (*Module, []error) {
 	}
 	if nodeList == nil {
 		// Empty file, nothing to check.
-		return NewModule(NewScope(nil), nil), nil
+		return NewModule(NewScope(nil, "module "+fi.Name), nil), nil
 	}
 
 	// printRecreatedAST(nodeList)
