@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/saffage/jet/ast"
+	"github.com/saffage/jet/internal/report"
 	"github.com/saffage/jet/types"
 )
 
@@ -134,7 +135,7 @@ func (check *Checker) structInit(node *ast.MemberAccess, typedesc *types.TypeDes
 				check.addError(err)
 			} else {
 				initFields[fieldNameNode.Name] = tFieldValue
-				initFieldValues[fieldNameNode.Name] = init
+				initFieldValues[fieldNameNode.Name] = init.Y
 				initFieldNames[fieldNameNode.Name] = fieldNameNode
 			}
 
@@ -178,6 +179,13 @@ func (check *Checker) structInit(node *ast.MemberAccess, typedesc *types.TypeDes
 				field.Name,
 				tInit,
 			)
+		}
+
+		// Set a correct type to the value.
+		if tValue := types.AsArray(tInit); tValue != nil && types.IsUntyped(tValue.ElemType()) {
+			// TODO this causes codegen to generate two similar typedefs.
+			check.setType(initFieldValues[field.Name], field.Type)
+			report.TaggedDebugf("checker", "struct init set value type: %s", field.Type)
 		}
 
 		// Delete this field so we can find extra fields later.

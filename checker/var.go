@@ -80,7 +80,7 @@ func (check *Checker) resolveVarDecl(node *ast.VarDecl) {
 	if tValue := types.AsArray(tValue); tValue != nil && types.IsUntyped(tValue.ElemType()) {
 		// TODO this causes codegen to generate two similar typedefs.
 		check.setType(node.Value, tType)
-		report.TaggedDebugf("checker", "var set value type: %s", tValue)
+		report.TaggedDebugf("checker", "var set value type: %s", tType)
 	}
 
 	report.TaggedDebugf("checker", "var type: %s", tType)
