@@ -648,7 +648,7 @@ func (p *Parser) parseFuncDecl() ast.Node {
 		}
 	} else if p.tok.Kind != token.NewLine && p.tok.Kind != token.EOF {
 		start, end := p.skipTo()
-		p.errorExpectedToken(start, end, token.Arrow, token.LCurly, token.NewLine)
+		p.errorExpectedToken(start, end, token.LCurly, token.NewLine)
 	}
 
 	// if body == nil {
@@ -901,7 +901,7 @@ func (p *Parser) parseSignature(funcTok *token.Token) *ast.Signature {
 
 	returnType := ast.Node(nil)
 
-	if p.tok.Kind != token.Arrow && p.tok.Kind != token.LCurly {
+	if p.tok.Kind != token.LCurly {
 		returnType = p.parseType()
 	}
 
