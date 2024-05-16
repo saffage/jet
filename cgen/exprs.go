@@ -119,7 +119,7 @@ func (gen *generator) ExprString(expr ast.Node) string {
 			buf.WriteString(gen.ExprString(arg))
 		}
 		buf.WriteByte(')')
-		return "(" + buf.String() + ")"
+		return buf.String()
 
 	case *ast.Index:
 		buf := strings.Builder{}
