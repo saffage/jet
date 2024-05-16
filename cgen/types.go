@@ -15,6 +15,8 @@ const (
 	_ErrorMetaType = "ERROR_CGEN__META_TYPE"
 )
 
+var arrayTypes = map[types.Type]string{}
+
 func (gen *generator) TypeString(t types.Type) string {
 	assert.Ok(!types.IsTypeDesc(t))
 
@@ -81,11 +83,15 @@ func (gen *generator) TypeString(t types.Type) string {
 		panic("not implemented")
 
 	case *types.Array:
+		if s, ok := arrayTypes[t]; ok {
+			return s
+		}
 		elemTypeStr := gen.TypeString(t.ElemType())
 		typeStr := fmt.Sprintf("%s_array%d", elemTypeStr, t.Size())
 		gen.typeSect.WriteString(
 			fmt.Sprintf("typedef %s %s[%d];\n\n", elemTypeStr, typeStr, t.Size()),
 		)
+		arrayTypes[t] = typeStr
 		return typeStr
 
 	case *types.Ref:
