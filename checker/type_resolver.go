@@ -112,7 +112,6 @@ func (check *Checker) typeOfIdent(node *ast.Ident) types.Type {
 		return nil
 	}
 
-	check.errorf(node, "identifier `%s` is undefined", node.Name)
 	return nil
 }
 
