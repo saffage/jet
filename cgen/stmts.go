@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/saffage/jet/ast"
+	"github.com/saffage/jet/types"
 )
 
 func (gen *generator) StmtString(stmt ast.Node) string {
@@ -18,8 +19,12 @@ func (gen *generator) StmtString(stmt ast.Node) string {
 
 			if stmt.Value != nil {
 				gen.indent(&buf)
-				buf.WriteString(gen.name(sym) + " = ")
-				buf.WriteString(gen.ExprString(stmt.Value))
+				buf.WriteString(gen.binary(
+					stmt.Binding.Name,
+					stmt.Value,
+					types.Unit,
+					ast.OperatorAssign,
+				))
 				buf.WriteString(";\n")
 			}
 		} else {

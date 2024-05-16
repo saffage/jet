@@ -135,9 +135,11 @@ func (gen *generator) ExprString(expr ast.Node) string {
 		return "(" + buf.String() + ")"
 
 	case *ast.BracketList:
+		// NOTE when array is used not in assignment they
+		// must be prefixes with the type.
 		if tv := gen.Types[expr]; tv != nil {
 			buf := strings.Builder{}
-			buf.WriteString(fmt.Sprintf("(%s){", gen.TypeString(tv.Type)))
+			buf.WriteString("{")
 			gen.numIndent++
 
 			for i, elem := range node.Exprs {
@@ -261,12 +263,13 @@ func (gen *generator) binary(x, y ast.Node, t types.Type, op ast.OperatorKind) s
 		)
 
 	case ast.OperatorAssign:
-		t := gen.TypeOf(y)
-		fmt.Printf("%s\n", t)
+		t := gen.Module.TypeOf(y)
+
 		if types.IsArray(t) {
-			return fmt.Sprintf("memcpy(&%[1]s, %[2]s, sizeof(%[1]s))",
+			return fmt.Sprintf("memcpy(&%[1]s, (%[3]s)%[2]s, sizeof(%[1]s))",
 				gen.ExprString(x),
 				gen.ExprString(y),
+				gen.TypeString(t),
 			)
 		}
 
