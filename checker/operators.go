@@ -87,7 +87,10 @@ func (check *Checker) infix(node *ast.InfixOp, tOperandX, tOperandY types.Type) 
 
 	// Assignment operation doesn't have a value.
 	if node.Opr.Kind == ast.OperatorAssign {
-		check.assignable(node.X)
+		if !check.assignable(node.X) {
+			check.errorf(node.X, "expression cannot be assigned")
+		}
+		check.setType(node.Y, tOperandX)
 		return types.Unit
 	}
 
@@ -223,7 +226,5 @@ func (check *Checker) assignable(node ast.Node) bool {
 			return true
 		}
 	}
-
-	check.errorf(node, "expression is not assignable")
 	return false
 }

@@ -248,7 +248,10 @@ func (check *Checker) typeOfIndex(node *ast.Index) types.Type {
 			check.errorf(node.Args.Exprs[0], "expected type (i32) for index, got (%s) instead", tIndex)
 			return nil
 		}
-
+		if !check.assignable(node.X) {
+			check.errorf(node.X, "expression cannot be indexed")
+			return nil
+		}
 		return array.ElemType()
 	} else if tuple := types.AsTuple(t); tuple != nil {
 		value := check.valueOf(node.Args.Exprs[0])
