@@ -180,9 +180,6 @@ func (p *Parser) parseExpr() ast.Node {
 	case token.LCurly:
 		return p.parseBlock()
 
-	case token.LBracket:
-		return p.parseBracketExpr()
-
 	default:
 		return p.parseSimpleExpr()
 	}
@@ -391,6 +388,9 @@ func (p *Parser) parseOperand() ast.Node {
 
 	case token.LParen:
 		return p.parseParenExpr(p.parseExpr)
+
+	case token.LBracket:
+		return p.parseBracketExpr()
 
 	default:
 		p.errorExpected(p.tok.Start, p.tok.End, "operand")
