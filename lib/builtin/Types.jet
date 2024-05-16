@@ -1,7 +1,15 @@
 alias bool = @magic('Bool')
-alias i32  = @magic('I32')
-alias u8   = @magic('U8')
 alias int  = @magic('I32')
+alias i8   = @magic('I8')
+alias i16  = @magic('I16')
+alias i32  = @magic('I32')
+alias i64  = @magic('I64')
+alias u8   = @magic('U8')
+alias u16  = @magic('U16')
+alias u32  = @magic('U32')
+alias u64  = @magic('U64')
+alias f32  = @magic('F32')
+alias f64  = @magic('F64')
 
 const false = 0 != 0
 const true  = 0 == 0
