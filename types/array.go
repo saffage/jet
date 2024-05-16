@@ -34,7 +34,7 @@ func (t *Array) Size() int { return t.size }
 
 func (t *Array) ElemType() Type { return t.elem }
 
-func IsArray(t Type) bool { return AsRef(t) != nil }
+func IsArray(t Type) bool { return AsArray(t) != nil }
 
 func AsArray(t Type) *Array {
 	if t != nil {
