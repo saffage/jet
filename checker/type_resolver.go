@@ -510,7 +510,7 @@ func (check *Checker) typeOfIf(node *ast.If) types.Type {
 	tCondition := check.typeOf(node.Cond)
 	// Don't return if 'tCondition == nil', check the body.
 
-	if !tCondition.Equals(types.Bool) {
+	if tCondition != nil && !tCondition.Equals(types.Bool) {
 		check.errorf(
 			node.Cond,
 			"expected type (bool) for condition, got (%s) instead",
