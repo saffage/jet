@@ -41,13 +41,18 @@ func (v *Var) IsField() bool     { return v.isField }
 func (v *Var) IsGlobal() bool    { return v.isGlobal }
 
 func (check *Checker) resolveVarDecl(node *ast.VarDecl) {
+	if node.Binding.Name.Name == "_" {
+		check.errorf(node.Binding.Name, "attempt to declare an empty identifier")
+		return
+	}
+
 	// 'tValue' can be nil.
 	tValue, ok := check.resolveVarValue(node.Value)
 	if !ok {
 		return
 	}
 
-	// 'tType' must be not nil.
+	// 'tType' cannot be nil.
 	tType := check.resolveVarType(node.Binding.Type, tValue)
 	if tType == nil {
 		return
