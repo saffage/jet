@@ -49,11 +49,18 @@ func Check(cfg *config.Config, fileID config.FileID, node *ast.ModuleDecl) (*Mod
 	module.completed = true
 
 	if config.FlagDumpCheckerState {
+		err := os.Mkdir(".jet", os.ModePerm)
+		if err != nil && !os.IsExist(err) {
+			panic(err)
+		}
+
 		f, err := os.Create(".jet/checker_state.txt")
 		if err != nil {
 			panic(err)
 		}
+
 		defer f.Close()
+		report.TaggedHintf("checker", "dumping checker state")
 		spew.Fdump(f, check)
 	}
 
