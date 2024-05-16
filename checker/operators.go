@@ -94,7 +94,14 @@ func (check *Checker) infix(node *ast.InfixOp, tOperandX, tOperandY types.Type) 
 	primitive := types.AsPrimitive(tOperandX)
 
 	if primitive == nil {
-		check.errorf(node, "only primitive types have operators")
+		if _enum := types.AsEnum(tOperandX); _enum != nil {
+			switch node.Opr.Kind {
+			case ast.OperatorEq, ast.OperatorNe:
+				return types.Bool
+			}
+		}
+
+		check.errorf(node, "only primitive types and enums have operators")
 		return nil
 	}
 
