@@ -7,18 +7,18 @@ import (
 	"github.com/saffage/jet/ast"
 )
 
-func (gen *Generator) StmtString(stmt ast.Node) string {
+func (gen *generator) StmtString(stmt ast.Node) string {
 	buf := strings.Builder{}
 
 	switch stmt := stmt.(type) {
 	case *ast.VarDecl:
-		if def := gen.Defs[stmt.Binding.Name]; def != nil {
-			buf.WriteString(gen.TypeString(def.Type()))
-			buf.WriteString(" " + def.Name() + ";\n")
+		if sym, _ := gen.Defs.Get(stmt.Binding.Name); sym != nil {
+			buf.WriteString(gen.TypeString(sym.Type()))
+			buf.WriteString(" " + gen.name(sym) + ";\n")
 
 			if stmt.Value != nil {
 				gen.indent(&buf)
-				buf.WriteString(def.Name() + " = ")
+				buf.WriteString(gen.name(sym) + " = ")
 				buf.WriteString(gen.ExprString(stmt.Value))
 				buf.WriteString(";\n")
 			}

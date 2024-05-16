@@ -3,7 +3,10 @@ package cgen
 import (
 	"fmt"
 
+	"github.com/elliotchance/orderedmap/v2"
+	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/checker"
+	"github.com/saffage/jet/internal/assert"
 	"github.com/saffage/jet/types"
 )
 
@@ -12,7 +15,9 @@ const (
 	_ErrorMetaType = "ERROR_CGEN__META_TYPE"
 )
 
-func (gen *Generator) TypeString(t types.Type) string {
+func (gen *generator) TypeString(t types.Type) string {
+	assert.Ok(!types.IsTypeDesc(t))
+
 	switch t := t.Underlying().(type) {
 	case nil:
 		return _ErrorNilType
@@ -76,28 +81,59 @@ func (gen *Generator) TypeString(t types.Type) string {
 		panic("not implemented")
 
 	case *types.Array:
-		return gen.TypeString(t.ElemType()) + "*"
+		elemTypeStr := gen.TypeString(t.ElemType())
+		typeStr := fmt.Sprintf("%s_array%d", elemTypeStr, t.Size())
+		gen.typeSect.WriteString(
+			fmt.Sprintf("typedef %s %s[%d];\n\n", elemTypeStr, typeStr, t.Size()),
+		)
+		return typeStr
 
 	case *types.Ref:
 		return gen.TypeString(t.Base()) + "*"
 
 	case *types.Struct:
-		if t.Underlying() == types.String {
+		if t == types.String {
 			return "char*"
 		}
+		return gen.findTypeSym(gen.Defs, t)
 
-		for _, sym := range gen.Defs {
-			switch sym.(type) {
-			case *checker.Struct, *checker.TypeAlias:
-				if types.SkipTypeDesc(sym.Type()) == t {
-					return "Ty" + sym.Name()
-				}
-			}
-		}
-
-		return "ERROR_CGEN__CANNOT_FIND_TYPE_NAME"
+	case *types.Enum:
+		return gen.findTypeSym(gen.Defs, t)
 
 	default:
 		panic(fmt.Sprintf("unknown type '%T'", t))
 	}
+}
+
+func (gen *generator) findTypeSym(
+	defs *orderedmap.OrderedMap[*ast.Ident, checker.Symbol],
+	t types.Type,
+	// prefix string,
+) string {
+	otherModulesDefs := []*orderedmap.OrderedMap[*ast.Ident, checker.Symbol]{}
+
+	for def := defs.Front(); def != nil; def = def.Next() {
+		def := def.Value
+
+		switch sym := def.(type) {
+		case *checker.Module:
+			otherModulesDefs = append(otherModulesDefs, sym.Defs)
+
+		case *checker.Struct, *checker.Enum, *checker.TypeAlias:
+			if types.SkipTypeDesc(sym.Type()) == t {
+				// return prefix + "Ty" + sym.Name()
+				return gen.name(sym)
+			}
+		}
+	}
+
+	for _, otherMod := range otherModulesDefs {
+		typeSymStr := gen.findTypeSym(otherMod, t)
+
+		if typeSymStr != "ERROR_CGEN__CANNOT_FIND_TYPE_NAME" {
+			return typeSymStr
+		}
+	}
+
+	return "ERROR_CGEN__CANNOT_FIND_TYPE_NAME"
 }

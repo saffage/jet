@@ -20,6 +20,6 @@ func newErrorf(sym checker.Symbol, format string, args ...any) *Error {
 
 func (e *Error) Error() string { return e.Message }
 
-func (gen *Generator) errorf(sym checker.Symbol, format string, args ...any) {
+func (gen *generator) errorf(sym checker.Symbol, format string, args ...any) {
 	gen.errors = append(gen.errors, newErrorf(sym, format, args...))
 }

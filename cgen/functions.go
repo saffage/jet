@@ -1,6 +1,7 @@
 package cgen
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/saffage/jet/ast"
@@ -8,7 +9,7 @@ import (
 	"github.com/saffage/jet/types"
 )
 
-func (gen *Generator) Func(sym *checker.Func) {
+func (gen *generator) funcDecl(sym *checker.Func) {
 	t := sym.Type().(*types.Func)
 	declBuf := strings.Builder{}
 	tResultVar := types.Type(nil)
@@ -33,18 +34,22 @@ func (gen *Generator) Func(sym *checker.Func) {
 		}
 
 		declBuf.WriteByte(' ')
-		declBuf.WriteString(sym.Name())
+		declBuf.WriteString(gen.name(sym))
 		declBuf.WriteByte('(')
 
 		// Gen params.
-		for i, param := range sym.Params() {
-			if i != 0 {
-				declBuf.WriteString(", ")
-			}
+		if len(sym.Params()) == 0 {
+			declBuf.WriteString("void")
+		} else {
+			for i, param := range sym.Params() {
+				if i != 0 {
+					declBuf.WriteString(", ")
+				}
 
-			declBuf.WriteString(gen.TypeString(param.Type()))
-			declBuf.WriteByte(' ')
-			declBuf.WriteString("p_" + param.Name())
+				declBuf.WriteString(gen.TypeString(param.Type()))
+				declBuf.WriteByte(' ')
+				declBuf.WriteString(gen.name(param))
+			}
 		}
 
 		declBuf.WriteByte(')')
@@ -71,18 +76,8 @@ func (gen *Generator) Func(sym *checker.Func) {
 	}
 
 	if sym.Name() == "main" {
-		for _, def := range gen.Defs {
-			if _var, _ := def.(*checker.Var); _var != nil && _var.IsGlobal() && _var.Value() != nil {
-				gen.indent(&gen.codeSect)
-				gen.codeSect.WriteString(gen.binary(
-					_var.Node().(*ast.Binding).Name,
-					_var.Value(),
-					types.Unit,
-					ast.OperatorAssign,
-				))
-				gen.codeSect.WriteString(";\n")
-			}
-		}
+		gen.indent(&gen.codeSect)
+		gen.codeSect.WriteString(fmt.Sprintf("init%s();\n", gen.Module.Name()))
 	}
 
 	for i, stmt := range node.Body.Nodes {

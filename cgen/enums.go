@@ -1,30 +1,30 @@
 package cgen
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/saffage/jet/checker"
 	"github.com/saffage/jet/types"
 )
 
-func (gen *generator) structDecl(sym *checker.Struct) {
+func (gen *generator) enumDecl(sym *checker.Enum) {
 	buf := strings.Builder{}
-	buf.WriteString("typedef struct ")
+	buf.WriteString("typedef enum ")
 	buf.WriteString(sym.Name())
 	buf.WriteString(" {\n")
 	gen.numIndent++
 
-	for _, field := range types.SkipTypeDesc(sym.Type()).(*types.Struct).Fields() {
+	enumName := gen.name(sym)
+
+	for i, field := range types.SkipTypeDesc(sym.Type()).(*types.Enum).Fields() {
 		gen.indent(&buf)
-		buf.WriteString(gen.TypeString(field.Type))
-		buf.WriteByte(' ')
-		buf.WriteString(field.Name)
-		buf.WriteString(";\n")
+		buf.WriteString(fmt.Sprintf("%s = %d,\n", enumName+"__"+field, i))
 	}
 
 	gen.numIndent--
 	buf.WriteString("} ")
-	buf.WriteString(gen.name(sym))
+	buf.WriteString(enumName)
 	buf.WriteString(";\n\n")
 	gen.typeSect.WriteString(buf.String())
 }

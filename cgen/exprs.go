@@ -12,44 +12,28 @@ import (
 	"github.com/saffage/jet/types"
 )
 
-func (gen *Generator) ExprString(expr ast.Node) string {
+func (gen *generator) ExprString(expr ast.Node) string {
 	if _, isDecl := expr.(ast.Decl); isDecl {
 		return "ERROR_CGEN__EXPR_IS_DECL"
 	}
 
 	report.Debugf("expr = %s", expr)
-
-	typedValue, ok := gen.Types[expr]
-	if !ok {
-		fmt.Printf("expr without type '%[1]T': %[1]s\n", expr)
-		return "ERROR_CGEN__EXPR"
-	}
-
 	exprStr := ""
 
-	if typedValue.Value != nil {
-		return gen.constant(typedValue.Value)
-	}
-
 	switch node := expr.(type) {
+	case *ast.Empty:
+		return ""
+
 	case *ast.BuiltInCall:
 		exprStr = gen.BuiltInCall(node)
 
 	case *ast.Ident:
-	outer:
 		switch sym := gen.SymbolOf(node).(type) {
-		case *checker.Var:
-			switch {
-			case sym.IsParam():
-				exprStr = "p_" + sym.Name()
-				break outer
+		case *checker.Var, *checker.Func:
+			return gen.name(sym)
 
-			default:
-				return sym.Name()
-			}
-
-		case *checker.Func:
-			return sym.Name()
+		case *checker.Const:
+			return gen.constant(sym.Value())
 
 		case nil:
 			report.TaggedErrorf("cgen", "expression `%s` have no uses", expr)
@@ -58,29 +42,45 @@ func (gen *Generator) ExprString(expr ast.Node) string {
 			panic("idk")
 		}
 
+	case *ast.Literal:
+		typedValue, ok := gen.Types[expr]
+		if !ok {
+			fmt.Printf("literal without type '%[1]T': %[1]s\n", expr)
+			return "ERROR_CGEN__EXPR"
+		}
+
+		if typedValue.Value != nil {
+			return gen.constant(typedValue.Value)
+		}
+
 	case *ast.MemberAccess:
 		tv := gen.Types[node.X]
-
-		if !types.IsStruct(types.SkipTypeDesc(tv.Type)) {
-			return "ERROR_CGEN__INVALID_MEMBER_ACCESS"
+		if tv == nil {
+			// Defined in another module?
+			panic("idk")
 		}
 
 		if types.IsTypeDesc(tv.Type) {
 			buf := strings.Builder{}
-			buf.WriteString("{\n")
+			t := types.SkipTypeDesc(tv.Type)
 
-			gen.numIndent++
-			buf.WriteString(gen.structInitFields(node.Selector))
-			gen.numIndent--
-
-			gen.indent(&buf)
-			buf.WriteString("}")
-
-			exprStr = buf.String()
+			if _struct := types.AsStruct(t); _struct != nil {
+				buf.WriteString(fmt.Sprintf("(%s){\n", gen.TypeString(_struct)))
+				gen.numIndent++
+				buf.WriteString(gen.structInitFields(_struct, node.Selector))
+				gen.numIndent--
+				gen.indent(&buf)
+				buf.WriteString("}")
+				return buf.String()
+			} else if _enum := types.AsEnum(t); _enum != nil {
+				return gen.TypeString(_enum) + "__" + node.Selector.String()
+			} else {
+				return "ERROR_CGEN__INVALID_MEMBER_ACCESS"
+			}
 		} else {
 			switch y := node.Selector.(type) {
 			case *ast.Ident:
-				exprStr = gen.ExprString(node.X) + "." + y.Name
+				return gen.ExprString(node.X) + "." + y.Name
 
 			default:
 				panic("not implemented")
@@ -101,17 +101,12 @@ func (gen *Generator) ExprString(expr ast.Node) string {
 		return gen.unary(node.X, typedValue.Type, node.Opr.Kind)
 
 	case *ast.InfixOp:
-		typedValue := gen.Types[node]
-
-		if typedValue == nil {
-			typedValue = gen.Types[expr]
-		}
-
-		if typedValue == nil {
+		t := gen.TypeOf(node)
+		if t == nil {
 			panic("cannot get a type of the expr node")
 		}
 
-		return gen.binary(node.X, node.Y, typedValue.Type, node.Opr.Kind)
+		return gen.binary(node.X, node.Y, t, node.Opr.Kind)
 
 	case *ast.Call:
 		buf := strings.Builder{}
@@ -139,6 +134,25 @@ func (gen *Generator) ExprString(expr ast.Node) string {
 		buf.WriteByte(']')
 		return "(" + buf.String() + ")"
 
+	case *ast.BracketList:
+		if tv := gen.Types[expr]; tv != nil {
+			buf := strings.Builder{}
+			buf.WriteString(fmt.Sprintf("(%s){", gen.TypeString(tv.Type)))
+			gen.numIndent++
+
+			for i, elem := range node.Exprs {
+				if i != 0 {
+					buf.WriteString(", ")
+				}
+
+				buf.WriteString(gen.ExprString(elem))
+			}
+
+			gen.numIndent--
+			buf.WriteString("}")
+			return buf.String()
+		}
+
 	default:
 		fmt.Printf("not implemented '%T'\n", node)
 	}
@@ -148,11 +162,12 @@ func (gen *Generator) ExprString(expr ast.Node) string {
 		return "ERROR_CGEN__EXPR"
 	}
 
-	typeStr := gen.TypeString(typedValue.Type)
-	return fmt.Sprintf("((%s)%s)", typeStr, exprStr)
+	// typeStr := gen.TypeString(typedValue.Type)
+	// return fmt.Sprintf("((%s)%s)", typeStr, exprStr)
+	return exprStr
 }
 
-func (gen *Generator) structInitFields(selector ast.Node) string {
+func (gen *generator) structInitFields(t *types.Struct, selector ast.Node) string {
 	buf := strings.Builder{}
 
 	if list, _ := selector.(*ast.CurlyList); list != nil {
@@ -175,20 +190,25 @@ func (gen *Generator) structInitFields(selector ast.Node) string {
 	return buf.String()
 }
 
-func (gen *Generator) unary(x ast.Node, t types.Type, op ast.OperatorKind) string {
+func (gen *generator) unary(x ast.Node, _ types.Type, op ast.OperatorKind) string {
 	switch op {
-	case ast.OperatorAddr:
-		return fmt.Sprintf("(%s)(&%s)", gen.TypeString(t), x)
+	case ast.OperatorAddrOf:
+		return fmt.Sprintf("(&%s)", gen.ExprString(x))
+
+	case ast.OperatorStar:
+		return fmt.Sprintf("(*%s)", gen.ExprString(x))
 
 	case ast.OperatorNot:
-		return fmt.Sprintf("(!%s)", x)
+		return fmt.Sprintf("(!%s)", gen.ExprString(x))
 
 	default:
 		panic(fmt.Sprintf("not a binary operator: '%s'", op))
 	}
 }
 
-func (gen *Generator) binary(x, y ast.Node, t types.Type, op ast.OperatorKind) string {
+func (gen *generator) binary(x, y ast.Node, t types.Type, op ast.OperatorKind) string {
+	t = types.SkipUntyped(t)
+
 	switch op {
 	case ast.OperatorBitAnd,
 		ast.OperatorBitOr,
@@ -241,6 +261,15 @@ func (gen *Generator) binary(x, y ast.Node, t types.Type, op ast.OperatorKind) s
 		)
 
 	case ast.OperatorAssign:
+		t := gen.TypeOf(y)
+		fmt.Printf("%s\n", t)
+		if types.IsArray(t) {
+			return fmt.Sprintf("memcpy(&%[1]s, %[2]s, sizeof(%[1]s))",
+				gen.ExprString(x),
+				gen.ExprString(y),
+			)
+		}
+
 		return fmt.Sprintf("%s = %s",
 			gen.ExprString(x),
 			gen.ExprString(y),
@@ -251,7 +280,7 @@ func (gen *Generator) binary(x, y ast.Node, t types.Type, op ast.OperatorKind) s
 	}
 }
 
-func (gen *Generator) constant(value constant.Value) string {
+func (gen *generator) constant(value constant.Value) string {
 	if value == nil {
 		panic("nil constant value")
 	}

@@ -7,7 +7,7 @@ import (
 	"github.com/saffage/jet/types"
 )
 
-func (gen *Generator) BuiltInCall(call *ast.BuiltInCall) string {
+func (gen *generator) BuiltInCall(call *ast.BuiltInCall) string {
 	switch call.Name.Name {
 	case "print":
 		return gen.builtInPrint(call)
@@ -20,7 +20,7 @@ func (gen *Generator) BuiltInCall(call *ast.BuiltInCall) string {
 	}
 }
 
-func (gen *Generator) builtInPrint(call *ast.BuiltInCall) string {
+func (gen *generator) builtInPrint(call *ast.BuiltInCall) string {
 	argList, _ := call.Args.(*ast.ParenList)
 	value := gen.Types[argList.Exprs[0]]
 
@@ -63,7 +63,7 @@ func (gen *Generator) builtInPrint(call *ast.BuiltInCall) string {
 	}
 }
 
-func (gen *Generator) builtInAssert(call *ast.BuiltInCall) string {
+func (gen *generator) builtInAssert(call *ast.BuiltInCall) string {
 	expr := gen.ExprString(call.Args.(*ast.ParenList).Exprs[0])
 	return fmt.Sprintf("assert(%s)", expr)
 }
