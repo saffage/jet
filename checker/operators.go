@@ -79,7 +79,8 @@ func (check *Checker) prefix(node *ast.PrefixOp, tOperand types.Type) types.Type
 }
 
 func (check *Checker) infix(node *ast.InfixOp, tOperandX, tOperandY types.Type) types.Type {
-	if !tOperandY.Equals(tOperandX) {
+	// TODO invalid type will be inferred is one of them is untyped
+	if !tOperandY.Equals(tOperandX) && !types.SkipUntyped(tOperandY).Equals(types.SkipUntyped(tOperandX)) {
 		check.errorf(node, "type mismatch (%s and %s)", tOperandX, tOperandY)
 		return nil
 	}
