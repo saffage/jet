@@ -59,7 +59,11 @@ func (check *Checker) setType(expr ast.Node, t types.Type) {
 	assert.Ok(expr != nil)
 	assert.Ok(t != nil)
 
-	check.module.Types[expr] = &TypedValue{t, nil}
+	if prev := check.module.Types[expr]; prev != nil {
+		check.module.Types[expr] = &TypedValue{t, prev.Value}
+	} else {
+		check.module.Types[expr] = &TypedValue{t, nil}
+	}
 }
 
 func (check *Checker) setValue(expr ast.Node, value *TypedValue) {
