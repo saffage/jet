@@ -15,29 +15,34 @@ func _() {
 	_ = x[OperatorStar-4]
 	_ = x[OperatorElipsis-5]
 	_ = x[OperatorAssign-6]
-	_ = x[OperatorAdd-7]
-	_ = x[OperatorSub-8]
-	_ = x[OperatorMul-9]
-	_ = x[OperatorDiv-10]
-	_ = x[OperatorMod-11]
-	_ = x[OperatorEq-12]
-	_ = x[OperatorNe-13]
-	_ = x[OperatorLt-14]
-	_ = x[OperatorLe-15]
-	_ = x[OperatorGt-16]
-	_ = x[OperatorGe-17]
-	_ = x[OperatorBitAnd-18]
-	_ = x[OperatorBitOr-19]
-	_ = x[OperatorBitXor-20]
-	_ = x[OperatorBitShl-21]
-	_ = x[OperatorBitShr-22]
-	_ = x[OperatorAnd-23]
-	_ = x[OperatorOr-24]
+	_ = x[OperatorAddAndAssign-7]
+	_ = x[OperatorSubAndAssign-8]
+	_ = x[OperatorMultAndAssign-9]
+	_ = x[OperatorDivAndAssign-10]
+	_ = x[OperatorModAndAssign-11]
+	_ = x[OperatorAdd-12]
+	_ = x[OperatorSub-13]
+	_ = x[OperatorMul-14]
+	_ = x[OperatorDiv-15]
+	_ = x[OperatorMod-16]
+	_ = x[OperatorEq-17]
+	_ = x[OperatorNe-18]
+	_ = x[OperatorLt-19]
+	_ = x[OperatorLe-20]
+	_ = x[OperatorGt-21]
+	_ = x[OperatorGe-22]
+	_ = x[OperatorBitAnd-23]
+	_ = x[OperatorBitOr-24]
+	_ = x[OperatorBitXor-25]
+	_ = x[OperatorBitShl-26]
+	_ = x[OperatorBitShr-27]
+	_ = x[OperatorAnd-28]
+	_ = x[OperatorOr-29]
 }
 
-const _OperatorKind_name = "UnknownOperator!-&*...=+-*/%==!=<<=>>=&|^<<>>andor"
+const _OperatorKind_name = "UnknownOperator!-&*...=+=-=*=/=%=+-*/%==!=<<=>>=&|^<<>>andor"
 
-var _OperatorKind_index = [...]uint8{0, 15, 16, 17, 18, 19, 22, 23, 24, 25, 26, 27, 28, 30, 32, 33, 35, 36, 38, 39, 40, 41, 43, 45, 48, 50}
+var _OperatorKind_index = [...]uint8{0, 15, 16, 17, 18, 19, 22, 23, 25, 27, 29, 31, 33, 34, 35, 36, 37, 38, 40, 42, 43, 45, 46, 48, 49, 50, 51, 53, 55, 58, 60}
 
 func (i OperatorKind) String() string {
 	if i >= OperatorKind(len(_OperatorKind_index)-1) {

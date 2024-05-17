@@ -118,6 +118,18 @@ func (check *Checker) infix(node *ast.InfixOp, tOperandX, tOperandY types.Type) 
 			return tOperandX
 		}
 
+	case ast.OperatorAddAndAssign,
+		ast.OperatorSubAndAssign,
+		ast.OperatorMultAndAssign,
+		ast.OperatorDivAndAssign:
+		switch primitive.Kind() {
+		case types.KindUntypedInt, types.KindUntypedFloat, types.KindI32, types.KindU8:
+			if !check.assignable(node.X) {
+				check.errorf(node.X, "expression cannot be assigned")
+			}
+			return types.Unit
+		}
+
 	case ast.OperatorMod,
 		ast.OperatorBitAnd,
 		ast.OperatorBitOr,
@@ -127,6 +139,15 @@ func (check *Checker) infix(node *ast.InfixOp, tOperandX, tOperandY types.Type) 
 		switch primitive.Kind() {
 		case types.KindUntypedInt, types.KindI32, types.KindU8:
 			return tOperandX
+		}
+
+	case ast.OperatorModAndAssign:
+		switch primitive.Kind() {
+		case types.KindUntypedInt, types.KindI32, types.KindU8:
+			if !check.assignable(node.X) {
+				check.errorf(node.X, "expression cannot be assigned")
+			}
+			return types.Unit
 		}
 
 	case ast.OperatorEq,

@@ -237,6 +237,21 @@ func (p *Parser) parseBinaryExpr(lhs ast.Node, precedence token.Precedence) ast.
 		case token.Eq:
 			binaryOpKind = ast.OperatorAssign
 
+		case token.PlusEq:
+			binaryOpKind = ast.OperatorAddAndAssign
+
+		case token.MinusEq:
+			binaryOpKind = ast.OperatorSubAndAssign
+
+		case token.AsteriskEq:
+			binaryOpKind = ast.OperatorMultAndAssign
+
+		case token.SlashEq:
+			binaryOpKind = ast.OperatorDivAndAssign
+
+		case token.PercentEq:
+			binaryOpKind = ast.OperatorModAndAssign
+
 		case token.EqOp:
 			binaryOpKind = ast.OperatorEq
 

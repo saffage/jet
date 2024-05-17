@@ -278,6 +278,36 @@ func (gen *generator) binary(x, y ast.Node, t types.Type, op ast.OperatorKind) s
 			gen.ExprString(y),
 		)
 
+	case ast.OperatorAddAndAssign:
+		return fmt.Sprintf("%s += %s",
+			gen.ExprString(x),
+			gen.ExprString(y),
+		)
+
+	case ast.OperatorSubAndAssign:
+		return fmt.Sprintf("%s -= %s",
+			gen.ExprString(x),
+			gen.ExprString(y),
+		)
+
+	case ast.OperatorMultAndAssign:
+		return fmt.Sprintf("%s *= %s",
+			gen.ExprString(x),
+			gen.ExprString(y),
+		)
+
+	case ast.OperatorDivAndAssign:
+		return fmt.Sprintf("%s /= %s",
+			gen.ExprString(x),
+			gen.ExprString(y),
+		)
+
+	case ast.OperatorModAndAssign:
+		return fmt.Sprintf("%s %%= %s",
+			gen.ExprString(x),
+			gen.ExprString(y),
+		)
+
 	default:
 		panic(fmt.Sprintf("not a binary operator: '%s'", op))
 	}

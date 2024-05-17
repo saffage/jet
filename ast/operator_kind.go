@@ -18,25 +18,30 @@ const (
 
 	// Infix.
 
-	OperatorAssign // =
-	OperatorAdd    // +
-	OperatorSub    // -
-	OperatorMul    // *
-	OperatorDiv    // /
-	OperatorMod    // %
-	OperatorEq     // ==
-	OperatorNe     // !=
-	OperatorLt     // <
-	OperatorLe     // <=
-	OperatorGt     // >
-	OperatorGe     // >=
-	OperatorBitAnd // &
-	OperatorBitOr  // |
-	OperatorBitXor // ^
-	OperatorBitShl // <<
-	OperatorBitShr // >>
-	OperatorAnd    // and
-	OperatorOr     // or
+	OperatorAssign        // =
+	OperatorAddAndAssign  // +=
+	OperatorSubAndAssign  // -=
+	OperatorMultAndAssign // *=
+	OperatorDivAndAssign  // /=
+	OperatorModAndAssign  // %=
+	OperatorAdd           // +
+	OperatorSub           // -
+	OperatorMul           // *
+	OperatorDiv           // /
+	OperatorMod           // %
+	OperatorEq            // ==
+	OperatorNe            // !=
+	OperatorLt            // <
+	OperatorLe            // <=
+	OperatorGt            // >
+	OperatorGe            // >=
+	OperatorBitAnd        // &
+	OperatorBitOr         // |
+	OperatorBitXor        // ^
+	OperatorBitShl        // <<
+	OperatorBitShr        // >>
+	OperatorAnd           // and
+	OperatorOr            // or
 
 	// Postfix.
 
