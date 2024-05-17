@@ -38,6 +38,11 @@ func (check *Checker) prefix(node *ast.PrefixOp, tOperand types.Type) types.Type
 				return types.NewRef(tOperand)
 			}
 
+		case *ast.SafeMemberAccess:
+			if ptr := types.AsRef(check.typeOf(operand.X)); ptr != nil && types.IsStruct(ptr.Base()) {
+				return types.NewRef(tOperand)
+			}
+
 		case *ast.Index:
 			if tArray := types.AsArray(check.typeOf(operand.X)); tArray != nil {
 				return types.NewRef(tArray.ElemType())
@@ -49,7 +54,7 @@ func (check *Checker) prefix(node *ast.PrefixOp, tOperand types.Type) types.Type
 			}
 		}
 
-		check.errorf(node.X, "expression is not an addressable location.")
+		check.errorf(node.X, "expression is not an addressable location")
 		return nil
 
 	case ast.OperatorStar:
