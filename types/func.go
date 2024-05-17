@@ -7,11 +7,12 @@ import (
 )
 
 type Func struct {
-	params *Tuple
-	result *Tuple
+	params   *Tuple
+	result   *Tuple
+	variadic bool
 }
 
-func NewFunc(result *Tuple, params *Tuple) *Func {
+func NewFunc(result *Tuple, params *Tuple, variadic bool) *Func {
 	if result == nil {
 		result = Unit
 	}
@@ -19,8 +20,9 @@ func NewFunc(result *Tuple, params *Tuple) *Func {
 		params = Unit
 	}
 	return &Func{
-		params: params,
-		result: result,
+		params:   params,
+		result:   result,
+		variadic: variadic,
 	}
 }
 
@@ -54,6 +56,8 @@ func (t *Func) String() string {
 func (t *Func) Result() *Tuple { return t.result }
 
 func (t *Func) Params() *Tuple { return t.params }
+
+func (t *Func) Variadic() bool { return t.variadic }
 
 func (t *Func) CheckArgs(args *Tuple) (idx int, err error) {
 	{

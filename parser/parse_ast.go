@@ -927,6 +927,23 @@ func (p *Parser) parseType() ast.Node {
 	}
 
 	switch p.tok.Kind {
+	case token.Ellipsis:
+		elipsis := p.consume()
+		opr := &ast.Operator{
+			Start: elipsis.Start,
+			End:   elipsis.End,
+			Kind:  ast.OperatorElipsis,
+		}
+
+		if x := p.parseType(); x != nil {
+			return &ast.PrefixOp{
+				X:   p.parseType(),
+				Opr: opr,
+			}
+		}
+
+		return opr
+
 	case token.Asterisk:
 		star := p.consume()
 

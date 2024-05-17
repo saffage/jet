@@ -41,8 +41,8 @@ func (check *Checker) typeOfInternal(expr ast.Node) types.Type {
 	case *ast.Literal:
 		return check.typeOfLiteral(node)
 
-	// case *ast.Operator:
-	// 	panic("not implemented")
+	case *ast.Operator:
+		return check.typeOfOperator(node)
 
 	case *ast.BuiltInCall:
 		return check.typeOfBuiltInCall(node)
@@ -129,6 +129,10 @@ func (check *Checker) typeOfLiteral(node *ast.Literal) types.Type {
 	default:
 		panic(fmt.Sprintf("unhandled literal kind: '%s'", node.Kind.String()))
 	}
+}
+
+func (check *Checker) typeOfOperator(node *ast.Operator) types.Type {
+	return nil
 }
 
 func (check *Checker) typeOfBuiltInCall(node *ast.BuiltInCall) types.Type {
@@ -340,7 +344,7 @@ func (check *Checker) typeOfSignature(node *ast.Signature) types.Type {
 		tResult = types.WrapInTuple(types.SkipTypeDesc(tActualResult))
 	}
 
-	t := types.NewFunc(tResult, tParams.(*types.Tuple))
+	t := types.NewFunc(tResult, tParams.(*types.Tuple), false)
 	return types.NewTypeDesc(t)
 }
 

@@ -4,12 +4,12 @@ import "testing"
 
 func TestCheckArgs(t *testing.T) {
 	params := Unit
-	funcType := NewFunc(nil, params)
+	funcType := NewFunc(nil, params, false)
 	idx, err := funcType.CheckArgs(params)
 	checkArgs(t, idx, -1, err, "")
 
 	params = NewTuple(I32)
-	funcType = NewFunc(nil, params)
+	funcType = NewFunc(nil, params, false)
 	idx, err = funcType.CheckArgs(params)
 	checkArgs(t, idx, -1, err, "")
 }
@@ -17,37 +17,37 @@ func TestCheckArgs(t *testing.T) {
 func TestCheckArgsFail(t *testing.T) {
 	params := Unit
 	args := NewTuple(I32)
-	funcType := NewFunc(nil, params)
+	funcType := NewFunc(nil, params, false)
 	idx, err := funcType.CheckArgs(args)
 	checkArgs(t, idx, 0, err, "too many arguments (expected 0, got 1)")
 
 	params = NewTuple(I32)
 	args = Unit
-	funcType = NewFunc(nil, params)
+	funcType = NewFunc(nil, params, false)
 	idx, err = funcType.CheckArgs(args)
 	checkArgs(t, idx, 0, err, "not enough arguments (expected 1, got 0)")
 
 	params = NewTuple(I32)
 	args = NewTuple(I32, Bool, I32)
-	funcType = NewFunc(nil, params)
+	funcType = NewFunc(nil, params, false)
 	idx, err = funcType.CheckArgs(args)
 	checkArgs(t, idx, 1, err, "too many arguments (expected 1, got 3)")
 
 	params = NewTuple(I32, Bool, I32)
 	args = NewTuple(I32)
-	funcType = NewFunc(nil, params)
+	funcType = NewFunc(nil, params, false)
 	idx, err = funcType.CheckArgs(args)
 	checkArgs(t, idx, 1, err, "not enough arguments (expected 3, got 1)")
 
 	params = NewTuple(Bool)
 	args = NewTuple(I32)
-	funcType = NewFunc(nil, params)
+	funcType = NewFunc(nil, params, false)
 	idx, err = funcType.CheckArgs(args)
 	checkArgs(t, idx, 0, err, "expected 'bool' for 1st argument, got 'i32' instead")
 
 	params = NewTuple(I32, Bool)
 	args = NewTuple(I32, I32)
-	funcType = NewFunc(nil, params)
+	funcType = NewFunc(nil, params, false)
 	idx, err = funcType.CheckArgs(args)
 	checkArgs(t, idx, 1, err, "expected 'bool' for 2nd argument, got 'i32' instead")
 }

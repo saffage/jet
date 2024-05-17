@@ -29,19 +29,29 @@ func (sym *Func) Node() ast.Node    { return sym.node }
 func (sym *Func) Local() *Scope     { return sym.local }
 func (sym *Func) Params() []*Var    { return sym.params }
 func (sym *Func) IsExtern() bool    { return sym.isExtern }
+func (sym *Func) Variadic() bool    { return sym.t.Variadic() }
 
 func (check *Checker) resolveFuncDecl(node *ast.FuncDecl) {
 	sig := node.Signature
 	tParams := []types.Type{}
 	params := []*Var{}
 	local := NewScope(check.scope, "func "+node.Name.Name)
+	isVariadic := false
 
-	for _, param := range sig.Params.Exprs {
+	for i, param := range sig.Params.Exprs {
 		switch param := param.(type) {
 		case *ast.Binding:
-			t := check.typeOf(param.Type)
-			if t == nil {
+			var t types.Type
+
+			if opr, _ := param.Type.(*ast.Operator); opr != nil && opr.Kind == ast.OperatorElipsis {
+				t = types.Any
+				isVariadic = true
+			} else if t = check.typeOf(param.Type); t == nil {
 				return
+			}
+
+			if isVariadic && i != len(sig.Params.Exprs)-1 {
+				check.errorf(param.Name, "parameter with ... can only be the last in the list")
 			}
 
 			t = types.SkipTypeDesc(t)
@@ -84,7 +94,7 @@ func (check *Checker) resolveFuncDecl(node *ast.FuncDecl) {
 
 	// Produce function type.
 
-	t := types.NewFunc(tResult, types.NewTuple(tParams...))
+	t := types.NewFunc(tResult, types.NewTuple(tParams...), isVariadic)
 	sym := NewFunc(check.scope, local, t, node)
 	sym.params = params
 	report.TaggedDebugf("checker", "func: set type: %s", t)
@@ -102,6 +112,11 @@ func (check *Checker) resolveFuncDecl(node *ast.FuncDecl) {
 	// Body.
 
 	attrExternC := GetAttribute(sym, "ExternC")
+
+	if isVariadic && attrExternC == nil {
+		check.errorf(sym.Ident(), "only a function with attribute @(ExternC) can be variadic")
+		return
+	}
 
 	if sym.node.Body == nil {
 		if attrExternC == nil {

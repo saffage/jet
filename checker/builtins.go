@@ -26,6 +26,7 @@ var builtIns = []*BuiltIn{
 		t: types.NewFunc(
 			types.NewTuple(types.AnyTypeDesc),
 			types.NewTuple(types.UntypedString),
+			false,
 		),
 	},
 	{
@@ -34,6 +35,7 @@ var builtIns = []*BuiltIn{
 		t: types.NewFunc(
 			types.NewTuple(types.AnyTypeDesc),
 			types.NewTuple(types.Any),
+			false,
 		),
 	},
 	{
@@ -42,6 +44,7 @@ var builtIns = []*BuiltIn{
 		t: types.NewFunc(
 			types.Unit,
 			types.NewTuple(types.Any),
+			false,
 		),
 	},
 	{
@@ -50,6 +53,7 @@ var builtIns = []*BuiltIn{
 		t: types.NewFunc(
 			types.Unit,
 			types.NewTuple(types.Bool),
+			false,
 		),
 	},
 }

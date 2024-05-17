@@ -10,10 +10,11 @@ const (
 
 	// Prefix.
 
-	OperatorNot    // !
-	OperatorNeg    // -
-	OperatorAddrOf // &
-	OperatorStar   // *
+	OperatorNot     // !
+	OperatorNeg     // -
+	OperatorAddrOf  // &
+	OperatorStar    // *
+	OperatorElipsis // ...
 
 	// Infix.
 

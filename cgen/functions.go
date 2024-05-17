@@ -45,10 +45,18 @@ func (gen *generator) funcDecl(sym *checker.Func) {
 				if i != 0 {
 					declBuf.WriteString(", ")
 				}
-
-				declBuf.WriteString(gen.TypeString(param.Type()))
-				declBuf.WriteByte(' ')
-				declBuf.WriteString(gen.name(param))
+				if i == len(sym.Params())-1 && sym.Variadic() {
+					declBuf.WriteString("...")
+				} else {
+					// TODO this is not a valic place for the const qualifier,
+					// but currently its here for making `const char*` param.
+					if checker.GetAttribute(param, "ConstC") != nil {
+						declBuf.WriteString("const ")
+					}
+					declBuf.WriteString(gen.TypeString(param.Type()))
+					declBuf.WriteByte(' ')
+					declBuf.WriteString(gen.name(param))
+				}
 			}
 		}
 
