@@ -21,8 +21,12 @@ func (t *Primitive) IsImplicitlyConvertibleTo(target Type) bool {
 		switch target := target.Underlying().(type) {
 		case *Primitive:
 			switch target.kind {
-			case KindUntypedBool, KindUntypedInt, KindUntypedFloat, KindUntypedString:
+			case KindUntypedBool, KindUntypedInt, KindUntypedString:
 				return t.kind == target.kind
+
+			case KindUntypedFloat:
+				return t.kind == KindUntypedFloat ||
+					t.kind == KindUntypedInt
 
 			case KindBool:
 				return t.kind == KindUntypedBool ||
@@ -226,7 +230,8 @@ const (
 
 	// For C interrop.
 
-	KindChar // char
+	KindChar    // char
+	KindPointer // pointer
 
 	// Meta types.
 
@@ -252,7 +257,8 @@ var (
 	F32  = &Primitive{KindF32}
 	F64  = &Primitive{KindF64}
 
-	Char = &Primitive{KindChar}
+	Char    = &Primitive{KindChar}
+	Pointer = &Primitive{KindPointer}
 
 	Any         = &Primitive{KindAny}
 	AnyTypeDesc = &Primitive{KindAnyTypeDesc}

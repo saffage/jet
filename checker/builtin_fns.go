@@ -50,6 +50,9 @@ func builtInMagic(node *ast.ParenList, args []*TypedValue) (*TypedValue, error) 
 	case "Char":
 		return &TypedValue{types.NewTypeDesc(types.Char), nil}, nil
 
+	case "Pointer":
+		return &TypedValue{types.NewTypeDesc(types.Pointer), nil}, nil
+
 	case "String":
 		return &TypedValue{types.NewTypeDesc(types.String), nil}, nil
 

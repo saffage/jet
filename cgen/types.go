@@ -71,6 +71,9 @@ func (gen *generator) TypeString(t types.Type) string {
 		case types.KindChar:
 			return "char"
 
+		case types.KindPointer:
+			return "void*"
+
 		default:
 			panic("unreachable")
 		}

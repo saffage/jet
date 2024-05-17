@@ -14,5 +14,6 @@ alias f64  = @magic('F64')
 const false = 0 != 0
 const true  = 0 == 0
 
-alias string = @magic('String')
-alias char   = @magic('Char')
+alias string  = @magic('String')
+alias char    = @magic('Char')
+alias pointer = @magic('Pointer')
