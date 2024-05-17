@@ -1,10 +1,13 @@
-# To compile this file use the next CLI commands.
-#
+# General compilation:
 #   $ go build .
 #   $ ./jet --lib_path="./lib/" --gen_c "examples/TestTetris.jet"
+#
+# Compilation for Linux/Windows utilizing MSYS2:
 #   $ gcc -o examples/.jet/TestTetris examples/.jet/TestTetris__jet.c -lraylib -lgdi32 -lwinmm
 #
-# NOTE: MSYS2 environment is required on windows.
+# Compilation for native Windows using Clang:
+#   $ clang .\TestTetris__jet.c .\raylib.lib -o tetris.exe -O2 -Wno-everything \
+#       -lGdi32 -lWinMM -lshell32 -lUser32 -Xlinker /NODEFAULTLIB:libcmt
 
 struct Color {
     r u8
