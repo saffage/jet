@@ -101,7 +101,7 @@ func (check *Checker) resolveFuncDecl(node *ast.FuncDecl) {
 
 	// Body.
 
-	attrExternC := getAttribute(sym, "ExternC")
+	attrExternC := GetAttribute(sym, "ExternC")
 
 	if sym.node.Body == nil {
 		if attrExternC == nil {

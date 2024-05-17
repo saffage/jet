@@ -805,6 +805,7 @@ func (p *Parser) parseBinding() ast.Node {
 		defer p.untrace()
 	}
 
+	attrs := p.parseAttributes()
 	name := p.parseIdentNode()
 
 	if name == nil {
@@ -821,8 +822,9 @@ func (p *Parser) parseBinding() ast.Node {
 	// }
 
 	return &ast.Binding{
-		Name: name,
-		Type: typ,
+		Attrs: attrs,
+		Name:  name,
+		Type:  typ,
 	}
 }
 

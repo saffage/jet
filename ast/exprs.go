@@ -34,8 +34,9 @@ type (
 
 	// Represents `name Type`.
 	Binding struct {
-		Name *Ident
-		Type Node
+		Attrs *AttributeList
+		Name  *Ident
+		Type  Node
 	}
 
 	// Represents `name Type = value`.
