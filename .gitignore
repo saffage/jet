@@ -13,3 +13,6 @@ go.work
 
 # For local testing
 /_test
+
+# Jet
+.jet/
