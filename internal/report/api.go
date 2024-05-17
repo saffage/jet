@@ -23,7 +23,7 @@ type Reporter interface {
 //
 // If the error implements the [Reporter] interface, it will be used instead
 // of the usual error report.
-func Report(errors ...error) {
+func Error(errors ...error) {
 	for _, err := range errors {
 		if reporter, ok := err.(Reporter); ok {
 			reporter.Report()

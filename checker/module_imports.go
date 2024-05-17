@@ -32,7 +32,7 @@ func (check *Checker) resolveImport(node *ast.Import) {
 
 	m, errors := CheckFile(check.cfg, fileID)
 	if len(errors) != 0 {
-		report.Report(errors...)
+		report.Error(errors...)
 		check.errorf(node.Module, "the module check was finished with errors")
 	}
 
