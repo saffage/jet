@@ -20,7 +20,7 @@ func (t *Ref) Equals(other Type) bool {
 
 func (t *Ref) Underlying() Type { return t }
 
-func (t *Ref) String() string { return "&" + t.base.String() }
+func (t *Ref) String() string { return "*" + t.base.String() }
 
 func (t *Ref) Base() Type { return t.base }
 

@@ -36,6 +36,10 @@ func (t *Struct) Equals(other Type) bool {
 		return slices.EqualFunc(t.fields, t2.fields, func(f1, f2 StructField) bool {
 			return f1.Name == f2.Name && f1.Type.Equals(f2.Type)
 		})
+	} else if ref := AsRef(other); ref != nil && t == String {
+		if p, _ := ref.base.Underlying().(*Primitive); p != nil && p.kind == KindChar {
+			return true
+		}
 	}
 	return false
 }

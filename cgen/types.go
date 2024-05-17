@@ -68,6 +68,9 @@ func (gen *generator) TypeString(t types.Type) string {
 		case types.KindF64:
 			return "Tf64"
 
+		case types.KindChar:
+			return "char"
+
 		default:
 			panic("unreachable")
 		}

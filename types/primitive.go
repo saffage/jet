@@ -87,6 +87,10 @@ func (t *Primitive) IsImplicitlyConvertibleTo(target Type) bool {
 					t.kind == KindF64 ||
 					t.kind == KindF32
 
+			case KindChar:
+				return t.kind == KindChar ||
+					t.kind == KindU8
+
 			case KindAnyTypeDesc:
 				return false
 
@@ -99,6 +103,11 @@ func (t *Primitive) IsImplicitlyConvertibleTo(target Type) bool {
 
 		case *Struct:
 			if target == String {
+				return t.kind == KindUntypedString
+			}
+
+		case *Ref:
+			if p, _ := target.base.Underlying().(*Primitive); p != nil && p.kind == KindChar {
 				return t.kind == KindUntypedString
 			}
 		}
@@ -215,6 +224,10 @@ const (
 	KindF32  // f32
 	KindF64  // f64
 
+	// For C interrop.
+
+	KindChar // char
+
 	// Meta types.
 
 	KindAny         // any
@@ -238,6 +251,8 @@ var (
 	U64  = &Primitive{KindU64}
 	F32  = &Primitive{KindF32}
 	F64  = &Primitive{KindF64}
+
+	Char = &Primitive{KindChar}
 
 	Any         = &Primitive{KindAny}
 	AnyTypeDesc = &Primitive{KindAnyTypeDesc}
