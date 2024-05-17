@@ -96,7 +96,9 @@ func (check *Checker) infix(node *ast.InfixOp, tOperandX, tOperandY types.Type) 
 
 	switch tX := tOperandX.Underlying().(type) {
 	case *types.Primitive:
-		return check.infixPrimitive(node, tX, tOperandY)
+		if t := check.infixPrimitive(node, tX, tOperandY); t != nil {
+			return t
+		}
 
 	case *types.Ref, *types.Enum:
 		switch node.Opr.Kind {
