@@ -120,7 +120,18 @@ func (check *Checker) infixPrimitive(
 		ast.OperatorMul,
 		ast.OperatorDiv:
 		switch tOperandX.Kind() {
-		case types.KindUntypedInt, types.KindUntypedFloat, types.KindI32, types.KindU8:
+		case types.KindUntypedInt,
+			types.KindUntypedFloat,
+			types.KindI8,
+			types.KindI16,
+			types.KindI32,
+			types.KindI64,
+			types.KindU8,
+			types.KindU16,
+			types.KindU32,
+			types.KindU64,
+			types.KindF32,
+			types.KindF64:
 			return tOperandX
 		}
 
@@ -129,7 +140,18 @@ func (check *Checker) infixPrimitive(
 		ast.OperatorMultAndAssign,
 		ast.OperatorDivAndAssign:
 		switch tOperandX.Kind() {
-		case types.KindUntypedInt, types.KindUntypedFloat, types.KindI32, types.KindU8:
+		case types.KindUntypedInt,
+			types.KindUntypedFloat,
+			types.KindI8,
+			types.KindI16,
+			types.KindI32,
+			types.KindI64,
+			types.KindU8,
+			types.KindU16,
+			types.KindU32,
+			types.KindU64,
+			types.KindF32,
+			types.KindF64:
 			if !check.assignable(node.X) {
 				check.errorf(node.X, "expression cannot be assigned")
 			}
@@ -143,13 +165,29 @@ func (check *Checker) infixPrimitive(
 		ast.OperatorBitShl,
 		ast.OperatorBitShr:
 		switch tOperandX.Kind() {
-		case types.KindUntypedInt, types.KindI32, types.KindU8:
+		case types.KindUntypedInt,
+			types.KindI8,
+			types.KindI16,
+			types.KindI32,
+			types.KindI64,
+			types.KindU8,
+			types.KindU16,
+			types.KindU32,
+			types.KindU64:
 			return tOperandX
 		}
 
 	case ast.OperatorModAndAssign:
 		switch tOperandX.Kind() {
-		case types.KindUntypedInt, types.KindI32, types.KindU8:
+		case types.KindUntypedInt,
+			types.KindI8,
+			types.KindI16,
+			types.KindI32,
+			types.KindI64,
+			types.KindU8,
+			types.KindU16,
+			types.KindU32,
+			types.KindU64:
 			if !check.assignable(node.X) {
 				check.errorf(node.X, "expression cannot be assigned")
 			}
@@ -166,7 +204,17 @@ func (check *Checker) infixPrimitive(
 		case types.KindUntypedBool, types.KindUntypedInt, types.KindUntypedFloat:
 			return types.UntypedBool
 
-		case types.KindBool, types.KindI32, types.KindU8:
+		case types.KindBool,
+			types.KindI8,
+			types.KindI16,
+			types.KindI32,
+			types.KindI64,
+			types.KindU8,
+			types.KindU16,
+			types.KindU32,
+			types.KindU64,
+			types.KindF32,
+			types.KindF64:
 			return types.Bool
 		}
 

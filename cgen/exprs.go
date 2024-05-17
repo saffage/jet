@@ -337,6 +337,9 @@ func (gen *generator) constant(value constant.Value) string {
 	case constant.Int:
 		return (*constant.AsInt(value)).String()
 
+	case constant.Float:
+		return (*constant.AsFloat(value)).String()
+
 	case constant.String:
 		value := constant.AsString(value)
 		return strconv.Quote(*value)
