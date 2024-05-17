@@ -30,23 +30,19 @@ func display(kind Kind, message string) {
 	}
 }
 
-func reportfInternal(kind Kind, tag, format string, args ...any) {
+func reportInternal(kind Kind, tag, message string) {
 	if kind == KindDebug && !IsDebug {
 		return
 	}
 
-	if strings.TrimSpace(format) == "" {
-		format = "<no message provided>"
+	if strings.TrimSpace(message) == "" {
+		message = "<no message provided>"
 	}
 
-	display(kind, fmt.Sprintf(
-		"%s %s",
-		kind.TaggedLabel(tag),
-		fmt.Sprintf(format, args...),
-	))
+	display(kind, fmt.Sprintf("%s %s", kind.TaggedLabel(tag), message))
 }
 
-func reportAtInternal(kind Kind, tag, message string, start, end token.Loc) {
+func reportAtInternal(kind Kind, tag string, start, end token.Loc, message string) {
 	if kind == KindDebug && !IsDebug {
 		return
 	}
@@ -70,9 +66,9 @@ func reportAtInternal(kind Kind, tag, message string, start, end token.Loc) {
 	}
 
 	if UseColors {
-		reportfInternal(kind, tag, message+line)
+		reportInternal(kind, tag, message+line)
 	} else {
-		reportfInternal(kind, tag, message+line)
+		reportInternal(kind, tag, message+line)
 	}
 }
 

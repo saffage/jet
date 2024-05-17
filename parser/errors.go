@@ -29,11 +29,11 @@ func NewErrorf(start, end token.Loc, format string, args ...any) Error {
 
 func (e Error) Error() string { return e.Message }
 
-func (err Error) Report() {
-	report.TaggedErrorAt( "parser", err.Message, err.Start, err.End)
+func (e Error) Report() {
+	report.TaggedErrorAt("parser", e.Start, e.End, e.Message)
 
-	for _, note := range err.Notes {
-		report.TaggedNotef("parser", note)
+	for _, note := range e.Notes {
+		report.TaggedNote("parser", note)
 	}
 }
 

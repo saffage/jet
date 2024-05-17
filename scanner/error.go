@@ -22,7 +22,7 @@ func (e Error) Error() string {
 }
 
 func (e Error) Report() {
-	report.TaggedErrorAt("scanner", e.Message, e.Start, e.End)
+	report.TaggedErrorAt("scanner", e.Start, e.End, e.Message)
 }
 
 // Emits an error. Error end is a current scanner position.

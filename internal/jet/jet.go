@@ -15,7 +15,7 @@ func process(cfg *config.Config, fileID config.FileID) {
 
 	m, errs := checker.CheckFile(cfg, fileID)
 	if len(errs) != 0 {
-		report.Error(errs...)
+		report.Errors(errs...)
 		return
 	}
 
@@ -47,7 +47,7 @@ func genCFile(m *checker.Module, dir string) {
 	defer f.Close()
 
 	if errs := cgen.Generate(f, m); len(errs) != 0 {
-		report.Error(errs...)
+		report.Errors(errs...)
 		return
 	}
 }

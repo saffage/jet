@@ -108,7 +108,7 @@ var CheckBuiltInPkgs = sync.OnceFunc(func() {
 func checkErrors(errs []error) {
 	if len(errs) != 0 {
 		report.TaggedErrorf("internal", "while checking package 'builtin'")
-		report.Error(errs...)
+		report.Errors(errs...)
 		os.Exit(1)
 	}
 }

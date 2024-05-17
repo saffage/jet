@@ -35,14 +35,14 @@ func (err *Error) Report() {
 	if err.Node != nil {
 		start, end = err.Node.Pos(), err.Node.LocEnd()
 	}
-	report.TaggedErrorAt("checker", err.Message, start, end)
+	report.TaggedErrorAt("checker", start, end, err.Message)
 
 	for _, note := range err.Notes {
 		var start, end token.Loc
 		if note.Node != nil {
 			start, end = note.Node.Pos(), note.Node.LocEnd()
 		}
-		report.TaggedNoteAt("checker", note.Message, start, end)
+		report.TaggedNoteAt("checker", start, end, note.Message)
 	}
 }
 
