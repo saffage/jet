@@ -87,6 +87,15 @@ func (gen *generator) ExprString(expr ast.Node) string {
 			}
 		}
 
+	case *ast.SafeMemberAccess:
+		exprStr = gen.ExprString(node.X)
+		gen.codeSect.WriteString(fmt.Sprintf(
+			"assert(%s && \"nil pointer dereference\");\n",
+			exprStr,
+		))
+		gen.indent(&gen.codeSect)
+		return exprStr + "->" + node.Selector.Name
+
 	case *ast.PrefixOp:
 		typedValue := gen.Types[node]
 

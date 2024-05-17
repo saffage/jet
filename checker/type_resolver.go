@@ -62,6 +62,9 @@ func (check *Checker) typeOfInternal(expr ast.Node) types.Type {
 	case *ast.MemberAccess:
 		return check.typeOfMemberAccess(node)
 
+	case *ast.SafeMemberAccess:
+		return check.typeOfSafeMemberAccess(node)
+
 	case *ast.PrefixOp:
 		return check.typeOfPrefixOp(node)
 
@@ -388,10 +391,31 @@ func (check *Checker) typeOfMemberAccess(node *ast.MemberAccess) types.Type {
 	}
 
 	if tStruct := types.AsStruct(tOperand); tStruct != nil {
-		return check.structMember(node, tStruct)
+		return check.structMember(node.X, node.Selector, tStruct)
 	}
 
 	return nil
+}
+
+func (check *Checker) typeOfSafeMemberAccess(node *ast.SafeMemberAccess) types.Type {
+	tOperand := check.typeOf(node.X)
+	if tOperand == nil {
+		return nil
+	}
+
+	tPtr := types.AsRef(tOperand)
+	if tPtr == nil {
+		check.errorf(node.X, "expected pointer to struct")
+		return nil
+	}
+
+	tStruct := types.AsStruct(tPtr.Base())
+	if tStruct == nil {
+		check.errorf(node.X, "expected pointer to struct")
+		return nil
+	}
+
+	return check.structMember(node.X, node.Selector, tStruct)
 }
 
 func (check *Checker) typeOfPrefixOp(node *ast.PrefixOp) types.Type {

@@ -59,19 +59,20 @@ const (
 
 	// End of position dependent tokens.
 
-	Amp          // operator '&'
-	Pipe         // operator '|'
-	Caret        // operator '^'
-	At           // operator '@'
-	QuestionMark // operator '?'
-	Arrow        // operator '->'
-	FatArrow     // operator '=>'
-	Shl          // operator '<<'
-	Shr          // operator '>>'
-	Dot          // operator '.'
-	Dot2         // operator '..'
-	Dot2Less     // operator '..<'
-	Ellipsis     // operator '...'
+	Amp             // operator '&'
+	Pipe            // operator '|'
+	Caret           // operator '^'
+	At              // operator '@'
+	QuestionMark    // operator '?'
+	QuestionMarkDot // operator '?.'
+	Arrow           // operator '->'
+	FatArrow        // operator '=>'
+	Shl             // operator '<<'
+	Shr             // operator '>>'
+	Dot             // operator '.'
+	Dot2            // operator '..'
+	Dot2Less        // operator '..<'
+	Ellipsis        // operator '...'
 
 	// NOTE some keywords are unused.
 

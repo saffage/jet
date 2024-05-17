@@ -41,6 +41,16 @@ func WalkTopDown(visit Visitor, tree Node) {
 	case *BadNode, *Empty, *Ident, *Literal, *Operator, *Comment, *CommentGroup:
 		// Nothing to walk
 
+	case *Binding:
+		assert.Ok(n.Name != nil)
+		assert.Ok(n.Type != nil)
+
+		WalkTopDown(visit, n.Name)
+
+		if n.Type != nil {
+			WalkTopDown(visit, n.Type)
+		}
+
 	case *BindingWithValue:
 		assert.Ok(n.Binding.Name != nil)
 		assert.Ok(n.Binding.Type != nil || (n.Value != nil && n.Operator != nil))
@@ -56,14 +66,12 @@ func WalkTopDown(visit Visitor, tree Node) {
 			WalkTopDown(visit, n.Value)
 		}
 
-	case *Signature:
-		assert.Ok(n.Params != nil)
+	case *BuiltInCall:
+		assert.Ok(n.Name != nil)
+		assert.Ok(n.Args != nil)
 
-		walkExprList(visit, n.Params.ExprList)
-
-		if n.Result != nil {
-			WalkTopDown(visit, n.Result)
-		}
+		WalkTopDown(visit, n.Name)
+		WalkTopDown(visit, n.Args)
 
 	case *Call:
 		assert.Ok(n.X != nil)
@@ -86,7 +94,23 @@ func WalkTopDown(visit Visitor, tree Node) {
 		WalkTopDown(visit, n.X)
 		walkExprList(visit, n.Args.ExprList)
 
+	case *Signature:
+		assert.Ok(n.Params != nil)
+
+		walkExprList(visit, n.Params.ExprList)
+
+		if n.Result != nil {
+			WalkTopDown(visit, n.Result)
+		}
+
 	case *MemberAccess:
+		assert.Ok(n.X != nil)
+		assert.Ok(n.Selector != nil)
+
+		WalkTopDown(visit, n.X)
+		WalkTopDown(visit, n.Selector)
+
+	case *SafeMemberAccess:
 		assert.Ok(n.X != nil)
 		assert.Ok(n.Selector != nil)
 
@@ -110,12 +134,6 @@ func WalkTopDown(visit Visitor, tree Node) {
 
 		WalkTopDown(visit, n.X)
 
-	case *List:
-		walkList(visit, n)
-
-	case *ExprList:
-		walkExprList(visit, n)
-
 	case *BracketList:
 		walkExprList(visit, n.ExprList)
 
@@ -125,17 +143,21 @@ func WalkTopDown(visit Visitor, tree Node) {
 	case *CurlyList:
 		walkList(visit, n.List)
 
-	case *AttributeList:
-		assert.Ok(n.List != nil)
+	case *If:
+		assert.Ok(n.Cond != nil)
+		assert.Ok(n.Body != nil)
 
-		walkExprList(visit, n.List.ExprList)
+		WalkTopDown(visit, n.Cond)
+		WalkTopDown(visit, n.Body)
 
-	case *BuiltInCall:
-		assert.Ok(n.Name != nil)
-		assert.Ok(n.Args != nil)
+		if n.Else != nil {
+			WalkTopDown(visit, n.Else)
+		}
 
-		WalkTopDown(visit, n.Name)
-		WalkTopDown(visit, n.Args)
+	case *Else:
+		assert.Ok(n.Body != nil)
+
+		WalkTopDown(visit, n.Body)
 
 	case *ModuleDecl:
 		assert.Ok(n.Name != nil)
@@ -179,6 +201,22 @@ func WalkTopDown(visit Visitor, tree Node) {
 			WalkTopDown(visit, n.Binding.Type)
 		}
 
+	case *ConstDecl:
+		assert.Ok(n.Binding.Name != nil)
+		assert.Ok(n.Binding.Value != nil)
+
+		if n.Attrs != nil {
+			WalkTopDown(visit, n.Attrs)
+		}
+
+		WalkTopDown(visit, n.Binding.Name)
+
+		if n.Binding.Type != nil {
+			WalkTopDown(visit, n.Binding.Type)
+		}
+
+		WalkTopDown(visit, n.Binding.Type)
+
 	case *FuncDecl:
 		assert.Ok(n.Name != nil)
 		assert.Ok(n.Signature != nil)
@@ -194,6 +232,28 @@ func WalkTopDown(visit Visitor, tree Node) {
 			WalkTopDown(visit, n.Body)
 		}
 
+	case *StructDecl:
+		assert.Ok(n.Name != nil)
+		assert.Ok(n.Body != nil)
+
+		if n.Attrs != nil {
+			WalkTopDown(visit, n.Attrs)
+		}
+
+		WalkTopDown(visit, n.Name)
+		WalkTopDown(visit, n.Body)
+
+	case *EnumDecl:
+		assert.Ok(n.Name != nil)
+		assert.Ok(n.Body != nil)
+
+		if n.Attrs != nil {
+			WalkTopDown(visit, n.Attrs)
+		}
+
+		WalkTopDown(visit, n.Name)
+		WalkTopDown(visit, n.Body)
+
 	case *TypeAliasDecl:
 		assert.Ok(n.Name != nil)
 		assert.Ok(n.Expr != nil)
@@ -205,21 +265,16 @@ func WalkTopDown(visit Visitor, tree Node) {
 		WalkTopDown(visit, n.Name)
 		WalkTopDown(visit, n.Expr)
 
-	case *If:
-		assert.Ok(n.Cond != nil)
-		assert.Ok(n.Body != nil)
+	case *List:
+		walkList(visit, n)
 
-		WalkTopDown(visit, n.Cond)
-		WalkTopDown(visit, n.Body)
+	case *ExprList:
+		walkExprList(visit, n)
 
-		if n.Else != nil {
-			WalkTopDown(visit, n.Else)
-		}
+	case *AttributeList:
+		assert.Ok(n.List != nil)
 
-	case *Else:
-		assert.Ok(n.Body != nil)
-
-		WalkTopDown(visit, n.Body)
+		walkExprList(visit, n.List.ExprList)
 
 	case *While:
 		assert.Ok(n.Cond != nil)
@@ -242,6 +297,11 @@ func WalkTopDown(visit Visitor, tree Node) {
 		if n.Label != nil {
 			WalkTopDown(visit, n.Label)
 		}
+
+	case *Import:
+		assert.Ok(n.Module != nil)
+
+		WalkTopDown(visit, n.Module)
 
 	default:
 		// Should not happen.

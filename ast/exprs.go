@@ -85,6 +85,13 @@ type (
 		Loc      token.Loc // `.` token.
 	}
 
+	// Represents `x?.selector`.
+	SafeMemberAccess struct {
+		X        Node
+		Selector *Ident
+		Loc      token.Loc // `?.` token.
+	}
+
 	// Represents `!x`, where `!` is an prefix operator.
 	PrefixOp struct {
 		X   Node
@@ -195,6 +202,9 @@ func (n *Signature) LocEnd() token.Loc { return n.Result.LocEnd() }
 
 func (n *MemberAccess) Pos() token.Loc    { return n.X.Pos() }
 func (n *MemberAccess) LocEnd() token.Loc { return n.Selector.LocEnd() }
+
+func (n *SafeMemberAccess) Pos() token.Loc    { return n.X.Pos() }
+func (n *SafeMemberAccess) LocEnd() token.Loc { return n.Selector.LocEnd() }
 
 func (n *PrefixOp) Pos() token.Loc    { return n.Opr.Pos() }
 func (n *PrefixOp) LocEnd() token.Loc { return n.X.LocEnd() }

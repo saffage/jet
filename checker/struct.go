@@ -221,24 +221,24 @@ func (check *Checker) structInit(node *ast.MemberAccess, typedesc *types.TypeDes
 	return typedesc.Base()
 }
 
-func (check *Checker) structMember(node *ast.MemberAccess, t *types.Struct) types.Type {
+func (check *Checker) structMember(operand, selector ast.Node, t *types.Struct) types.Type {
 	if t == types.String {
-		check.errorf(node, "member access on string type is not implemented")
+		check.errorf(operand, "member access on string type is not implemented")
 		return nil
 	}
 
-	selector, _ := node.Selector.(*ast.Ident)
-	if selector == nil {
-		check.errorf(node.Selector, "expected field identifier")
+	fieldIdent, _ := selector.(*ast.Ident)
+	if fieldIdent == nil {
+		check.errorf(selector, "expected field identifier")
 		return nil
 	}
 
 	fieldIndex := slices.IndexFunc(t.Fields(), func(field types.StructField) bool {
-		return field.Name == selector.Name
+		return field.Name == fieldIdent.Name
 	})
 
 	if fieldIndex == -1 {
-		check.errorf(selector, "unknown field '%s'", selector.Name)
+		check.errorf(selector, "unknown field '%s'", fieldIdent.Name)
 		return nil
 	}
 

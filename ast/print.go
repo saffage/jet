@@ -93,6 +93,10 @@ func (n *MemberAccess) String() string {
 	return n.X.String() + "." + n.Selector.String()
 }
 
+func (n *SafeMemberAccess) String() string {
+	return n.X.String() + "?." + n.Selector.String()
+}
+
 func (n *Call) String() string {
 	return n.X.String() + n.Args.String()
 }

@@ -445,6 +445,9 @@ func (p *Parser) parseSuffixExpr(x ast.Node) ast.Node {
 		case token.Dot:
 			x = p.parseMemberAccess(x)
 
+		case token.QuestionMarkDot:
+			x = p.parseSafeMemberAccess(x)
+
 		// case token.QuestionMark, token.Bang:
 		// 	opr := p.consume()
 		// 	postfixOpKind := ast.UnknownOperator
@@ -530,13 +533,35 @@ func (p *Parser) parseMemberAccess(x ast.Node) ast.Node {
 		return nil
 	}
 
-	x = p.parseMemberAccess(&ast.MemberAccess{
+	return &ast.MemberAccess{
 		Loc:      dot.Start,
 		X:        x,
 		Selector: y,
-	})
+	}
+}
 
-	return x
+func (p *Parser) parseSafeMemberAccess(x ast.Node) ast.Node {
+	if p.flags&Trace != 0 {
+		p.trace()
+		defer p.untrace()
+	}
+
+	if x == nil {
+		panic("can't use nil node as left-hand side expression")
+	}
+
+	tok := p.consume(token.QuestionMarkDot)
+	y := p.parseIdentNode()
+
+	if y == nil {
+		return nil
+	}
+
+	return &ast.SafeMemberAccess{
+		X:        x,
+		Selector: y,
+		Loc:      tok.Start,
+	}
 }
 
 func (p *Parser) parseBuiltIn() ast.Node {

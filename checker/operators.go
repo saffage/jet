@@ -218,6 +218,9 @@ func (check *Checker) assignable(node ast.Node) bool {
 			return check.assignable(operand.X)
 		}
 
+	case *ast.SafeMemberAccess:
+		return true
+
 	case *ast.Index:
 		if operand != nil {
 			if t := types.AsArray(check.typeOf(operand.X)); t != nil {

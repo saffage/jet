@@ -36,6 +36,7 @@ func (*Index) implNode()            {}
 func (*ArrayType) implNode()        {}
 func (*Signature) implNode()        {}
 func (*MemberAccess) implNode()     {}
+func (*SafeMemberAccess) implNode() {}
 func (*PrefixOp) implNode()         {}
 func (*InfixOp) implNode()          {}
 func (*PostfixOp) implNode()        {}
