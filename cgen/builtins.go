@@ -25,6 +25,9 @@ func (gen *generator) BuiltInCall(call *ast.BuiltInCall) string {
 	case "sizeOf":
 		return gen.builtInSizeOf(call)
 
+	case "emit":
+		return gen.builtInEmit(call)
+
 	default:
 		report.Warningf("unknown built-in: '@%s'", call.Name.Name)
 		return "ERROR_CGEN"
@@ -96,4 +99,9 @@ func (gen *generator) builtInAs(call *ast.BuiltInCall) string {
 func (gen *generator) builtInSizeOf(call *ast.BuiltInCall) string {
 	val := gen.TypeOf(call.Args.(*ast.ParenList).Exprs[0])
 	return fmt.Sprintf("sizeof(%s)", gen.TypeString(types.SkipTypeDesc(val)))
+}
+
+func (gen *generator) builtInEmit(call *ast.BuiltInCall) string {
+	val := gen.ValueOf(call.Args.(*ast.ParenList).Exprs[0])
+	return gen.constant(val.Value)
 }

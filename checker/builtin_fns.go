@@ -88,3 +88,7 @@ func builtInAs(node *ast.ParenList, args []*TypedValue) (*TypedValue, error) {
 func builtInSizeOf(node *ast.ParenList, args []*TypedValue) (*TypedValue, error) {
 	return &TypedValue{types.U64, nil}, nil
 }
+
+func builtInEmit(node *ast.ParenList, args []*TypedValue) (*TypedValue, error) {
+	return &TypedValue{types.Unit, nil}, nil
+}

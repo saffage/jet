@@ -83,4 +83,13 @@ var builtIns = []*BuiltIn{
 			false,
 		),
 	},
+	{
+		name: "emit",
+		f:    builtInEmit,
+		t: types.NewFunc(
+			types.NewTuple(types.Unit),
+			types.NewTuple(types.UntypedString),
+			false,
+		),
+	},
 }
