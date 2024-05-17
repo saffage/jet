@@ -531,13 +531,13 @@ func (check *Checker) typeOfCurlyList(node *ast.CurlyList) types.Type {
 
 	defer check.setScope(check.scope)
 	check.scope = local
-	report.TaggedDebugf("checker", "push local scope")
+	report.TaggedDebugf("checker", "push %s", local.name)
 
 	for _, node := range node.Nodes {
 		ast.WalkTopDown(check.blockVisitor(block), node)
 	}
 
-	report.TaggedDebugf("checker", "pop local scope")
+	report.TaggedDebugf("checker", "pop %s", local.name)
 	return block.t
 }
 

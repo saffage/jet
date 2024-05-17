@@ -104,18 +104,17 @@ func (gen *generator) ExprString(expr ast.Node) string {
 		}
 
 		if typedValue == nil {
-			panic("cannot get a type of the expr node")
+			panic("cannot get a type of the expression")
 		}
 
 		return gen.unary(node.X, typedValue.Type, node.Opr.Kind)
 
 	case *ast.InfixOp:
-		t := gen.TypeOf(node)
-		if t == nil {
-			panic("cannot get a type of the expr node")
+		if t := gen.TypeOf(node); t != nil {
+			return gen.binary(node.X, node.Y, t, node.Opr.Kind)
 		}
 
-		return gen.binary(node.X, node.Y, t, node.Opr.Kind)
+		report.Warningf("cannot get a type of the expression: `%s`", node)
 
 	case *ast.Call:
 		buf := strings.Builder{}
