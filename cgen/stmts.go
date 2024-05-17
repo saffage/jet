@@ -51,6 +51,23 @@ func (gen *generator) StmtString(stmt ast.Node) string {
 		}
 		gen.numIndent--
 		gen.indent(&buf)
+		buf.WriteString("}")
+		if stmt.Else != nil {
+			buf.WriteString(" else ")
+			buf.WriteString(gen.StmtString(stmt.Else.Body))
+		} else {
+			buf.WriteString("\n")
+		}
+
+	case *ast.CurlyList:
+		buf.WriteString("{\n")
+		gen.numIndent++
+		for _, stmt := range stmt.Nodes {
+			gen.indent(&buf)
+			buf.WriteString(gen.StmtString(stmt))
+		}
+		gen.numIndent--
+		gen.indent(&buf)
 		buf.WriteString("}\n")
 
 	case *ast.Break:
