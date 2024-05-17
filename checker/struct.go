@@ -242,19 +242,19 @@ func (check *Checker) structMember(node *ast.MemberAccess, t *types.Struct) type
 		return nil
 	}
 
-	if typeSym, ok := check.module.TypeSyms[t]; ok && typeSym != nil {
-		structSym, ok := typeSym.(*Struct)
-		if !ok || structSym == nil {
-			panic("unreachable")
-		}
-		fieldSym := structSym.body.Member(selector.Name)
-		if fieldSym == nil {
-			panic("unreachable")
-		}
-		check.newUse(selector, fieldSym)
-	} else {
-		panic("unreachable")
-	}
+	// if typeSym, ok := check.module.TypeSyms[t]; ok && typeSym != nil {
+	// 	structSym, ok := typeSym.(*Struct)
+	// 	if !ok || structSym == nil {
+	// 		panic("unreachable")
+	// 	}
+	// 	fieldSym := structSym.body.Member(selector.Name)
+	// 	if fieldSym == nil {
+	// 		panic("unreachable")
+	// 	}
+	// 	check.newUse(selector, fieldSym)
+	// } else {
+	// 	panic("unreachable")
+	// }
 
 	return t.Fields()[fieldIndex].Type
 }

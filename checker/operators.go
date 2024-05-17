@@ -182,18 +182,18 @@ func (check *Checker) assignable(node ast.Node) bool {
 
 	case *ast.MemberAccess:
 		if operand != nil {
-			fieldIdent, _ := operand.Selector.(*ast.Ident)
-			if fieldIdent == nil {
-				break
-			}
+			// fieldIdent, _ := operand.Selector.(*ast.Ident)
+			// if fieldIdent == nil {
+			// 	break
+			// }
 
-			fieldSym, ok := check.symbolOf(fieldIdent).(*Var)
-			if !ok || fieldSym == nil {
-				check.errorf(fieldIdent, "identifier is not a variable")
-				return false
-			}
+			// fieldSym, ok := check.symbolOf(fieldIdent).(*Var)
+			// if !ok || fieldSym == nil {
+			// 	check.errorf(fieldIdent, "identifier is not a variable")
+			// 	return false
+			// }
 
-			check.newUse(fieldIdent, fieldSym)
+			// check.newUse(fieldIdent, fieldSym)
 			return check.assignable(operand.X)
 		}
 
