@@ -74,4 +74,13 @@ var builtIns = []*BuiltIn{
 			false,
 		),
 	},
+	{
+		name: "sizeOf",
+		f:    builtInSizeOf,
+		t: types.NewFunc(
+			types.NewTuple(types.U64),
+			types.NewTuple(types.AnyTypeDesc),
+			false,
+		),
+	},
 }

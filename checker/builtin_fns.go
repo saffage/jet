@@ -84,3 +84,7 @@ func builtInAs(node *ast.ParenList, args []*TypedValue) (*TypedValue, error) {
 	// TODO some additional checks
 	return &TypedValue{types.SkipTypeDesc(args[0].Type), nil}, nil
 }
+
+func builtInSizeOf(node *ast.ParenList, args []*TypedValue) (*TypedValue, error) {
+	return &TypedValue{types.U64, nil}, nil
+}
