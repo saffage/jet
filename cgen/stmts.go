@@ -53,6 +53,12 @@ func (gen *generator) StmtString(stmt ast.Node) string {
 		gen.indent(&buf)
 		buf.WriteString("}\n")
 
+	case *ast.Break:
+		return "break;\n"
+
+	case *ast.Continue:
+		return "continue;\n"
+
 	default:
 		return gen.ExprString(stmt) + ";\n"
 	}

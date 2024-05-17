@@ -89,8 +89,18 @@ func (check *Checker) typeOfInternal(expr ast.Node) types.Type {
 	case *ast.While:
 		return check.typeOfWhile(node)
 
-	// case *ast.Return, *ast.Break, *ast.Continue:
-	// 	panic("not implemented")
+	// NOTE implementation of break & continue are not finished.
+	case *ast.Break:
+		if node.Label != nil {
+			check.errorf(node.Label, "labels are not implemented")
+		}
+		return types.Unit
+
+	case *ast.Continue:
+		if node.Label != nil {
+			check.errorf(node.Label, "labels are not implemented")
+		}
+		return types.Unit
 
 	default:
 		panic(fmt.Sprintf("type checking of %T is not implemented", expr))
