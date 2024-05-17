@@ -210,6 +210,11 @@ func (p *Parser) parseBinaryExpr(lhs ast.Node, precedence token.Precedence) ast.
 
 	for p.tok.Precedence() >= precedence {
 		tok := p.consume()
+
+		for p.tok.Kind == token.NewLine {
+			p.next()
+		}
+
 		rhs := p.parseBinaryExpr(nil, tok.Precedence()+1)
 
 		if rhs == nil {
@@ -808,7 +813,10 @@ func (p *Parser) parseBindingAndValue(valueRequired bool) ast.Node {
 	}
 
 	if opr := p.consume(token.Eq); opr != nil {
-		p.consume(token.NewLine)
+		for p.tok.Kind == token.NewLine {
+			p.next()
+		}
+
 		value := p.parseExpr()
 
 		if value == nil {
@@ -1273,7 +1281,10 @@ func (p *Parser) parseAlias() ast.Node {
 		}
 
 		p.expect(token.Eq)
-		p.consume(token.NewLine)
+
+		for p.tok.Kind == token.NewLine {
+			p.next()
+		}
 
 		expr := p.parseType()
 
