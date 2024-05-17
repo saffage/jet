@@ -49,7 +49,7 @@ func ProcessArgs(args []string) {
 
 	buf, err := os.ReadFile(path)
 	if err != nil {
-		report.TaggedErrorf("internal", "while reading file '%s': %s", err.Error())
+		report.TaggedErrorf("internal", "while reading file '%s': %s", path, err.Error())
 		panic(err)
 	}
 
