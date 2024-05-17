@@ -45,7 +45,7 @@ func (gen *generator) ExprString(expr ast.Node) string {
 	case *ast.Literal:
 		typedValue, ok := gen.Types[expr]
 		if !ok {
-			fmt.Printf("literal without type '%[1]T': %[1]s\n", expr)
+			report.Warningf("literal without type '%[1]T': %[1]s", expr)
 			return "ERROR_CGEN__EXPR"
 		}
 
@@ -169,7 +169,7 @@ func (gen *generator) ExprString(expr ast.Node) string {
 	}
 
 	if exprStr == "" {
-		fmt.Printf("empty expr at node '%T'\n", expr)
+		report.Warningf("empty expr at node '%T'", expr)
 		return "ERROR_CGEN__EXPR"
 	}
 
