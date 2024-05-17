@@ -477,19 +477,21 @@ func (check *Checker) typeOfParenList(node *ast.ParenList) types.Type {
 	}
 
 	elemTypes := []types.Type{}
-	isTypeDescTuple := false
+	// isTypeDescTuple := false
 
 	t := check.typeOf(node.Exprs[0])
 	if t == nil {
 		return nil
 	}
 
-	if types.IsTypeDesc(t) {
-		isTypeDescTuple = true
-		elemTypes = append(elemTypes, types.SkipTypeDesc(t))
-	} else {
-		elemTypes = append(elemTypes, t)
-	}
+	// if types.IsTypeDesc(t) {
+	// 	isTypeDescTuple = true
+	// 	elemTypes = append(elemTypes, types.SkipTypeDesc(t))
+	// } else {
+	// 	elemTypes = append(elemTypes, t)
+	// }
+
+	elemTypes = append(elemTypes, t)
 
 	for _, expr := range node.Exprs[1:] {
 		t := check.typeOf(expr)
@@ -497,26 +499,28 @@ func (check *Checker) typeOfParenList(node *ast.ParenList) types.Type {
 			return nil
 		}
 
-		if isTypeDescTuple {
-			if !types.IsTypeDesc(t) {
-				check.errorf(expr, "expected type, got '%s' instead", t)
-				return nil
-			}
+		// if isTypeDescTuple {
+		// 	if !types.IsTypeDesc(t) {
+		// 		check.errorf(expr, "expected type, got (%s) instead", t)
+		// 		return nil
+		// 	}
 
-			elemTypes = append(elemTypes, types.SkipTypeDesc(t))
-		} else {
-			if types.IsTypeDesc(t) {
-				check.errorf(expr, "expected expression, got type '%s' instead", t)
-				return nil
-			}
+		// 	elemTypes = append(elemTypes, types.SkipTypeDesc(t))
+		// } else {
+		// 	if types.IsTypeDesc(t) {
+		// 		check.errorf(expr, "expected expression, got type '%s' instead", t)
+		// 		return nil
+		// 	}
 
-			elemTypes = append(elemTypes, t)
-		}
+		// 	elemTypes = append(elemTypes, t)
+		// }
+
+		elemTypes = append(elemTypes, t)
 	}
 
-	if isTypeDescTuple {
-		return types.NewTypeDesc(types.NewTuple(elemTypes...))
-	}
+	// if isTypeDescTuple {
+	// 	return types.NewTypeDesc(types.NewTuple(elemTypes...))
+	// }
 
 	return types.NewTuple(elemTypes...)
 }
