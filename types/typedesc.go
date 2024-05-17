@@ -24,6 +24,9 @@ func (t *TypeDesc) Equals(other Type) bool {
 	if t2 := AsTypeDesc(other); t2 != nil {
 		return t.base.Equals(t2.base)
 	}
+	if t2 := AsPrimitive(other); t2 != nil {
+		return t2.kind == KindAnyTypeDesc
+	}
 	return false
 }
 

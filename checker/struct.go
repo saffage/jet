@@ -2,9 +2,11 @@ package checker
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/saffage/jet/ast"
+	"github.com/saffage/jet/internal/report"
 	"github.com/saffage/jet/types"
 )
 
@@ -30,6 +32,61 @@ func (sym *Struct) Type() types.Type  { return sym.t }
 func (sym *Struct) Name() string      { return sym.node.Name.Name }
 func (sym *Struct) Ident() *ast.Ident { return sym.node.Name }
 func (sym *Struct) Node() ast.Node    { return sym.node }
+
+func (check *Checker) resolveStructDecl(node *ast.StructDecl) {
+	fields := make([]types.StructField, len(node.Body.Nodes))
+	local := NewScope(check.scope, "struct "+node.Name.Name)
+
+	if node.Body == nil {
+		panic("struct body cannot be nil")
+	}
+
+	for i, bodyNode := range node.Body.Nodes {
+		binding, _ := bodyNode.(*ast.Binding)
+		if binding == nil {
+			check.errorf(binding, "expected field declaration")
+			return
+		}
+
+		tField := check.typeOf(binding.Type)
+		if tField == nil {
+			return
+		}
+
+		if !types.IsTypeDesc(tField) {
+			check.errorf(binding.Type, "expected field type, got (%s) instead", tField)
+			return
+		}
+
+		if types.IsUntyped(tField) {
+			panic("typedesc cannot have an untyped base")
+		}
+
+		t := types.AsTypeDesc(tField).Base()
+		fieldSym := NewVar(local, t, binding, binding.Name)
+		fieldSym.isField = true
+		fields[i] = types.StructField{binding.Name.Name, t}
+
+		if defined := local.Define(fieldSym); defined != nil {
+			err := NewErrorf(fieldSym.Ident(), "duplicate field '%s'", fieldSym.Name())
+			err.Notes = []*Error{NewError(defined.Ident(), "field was defined here")}
+			check.addError(err)
+			continue
+		}
+
+		check.newDef(binding.Name, fieldSym)
+	}
+
+	t := types.NewTypeDesc(types.NewStruct(fields...))
+	sym := NewStruct(check.scope, local, t, node)
+
+	if defined := check.scope.Define(sym); defined != nil {
+		check.addError(errorAlreadyDefined(sym.Ident(), defined.Ident()))
+		return
+	}
+
+	check.newDef(node.Name, sym)
+}
 
 func (check *Checker) structInit(node *ast.MemberAccess, typedesc *types.TypeDesc) types.Type {
 	tTypeStruct := types.AsStruct(typedesc.Base())
@@ -78,23 +135,25 @@ func (check *Checker) structInit(node *ast.MemberAccess, typedesc *types.TypeDes
 				check.addError(err)
 			} else {
 				initFields[fieldNameNode.Name] = tFieldValue
-				initFieldValues[fieldNameNode.Name] = init
+				initFieldValues[fieldNameNode.Name] = init.Y
 				initFieldNames[fieldNameNode.Name] = fieldNameNode
 			}
 
-			if typeSym, ok := check.TypeSyms[tTypeStruct]; ok && typeSym != nil {
-				structSym, ok := typeSym.(*Struct)
-				if !ok || structSym == nil {
-					panic("unreachable")
-				}
-				fieldSym := structSym.body.Member(fieldNameNode.Name)
-				if fieldSym == nil {
-					panic("unreachable")
-				}
-				check.newUse(fieldNameNode, fieldSym)
-			} else {
-				panic("unreachable")
-			}
+			// TODO this doesn't catch all cases, so temporarily remove this
+
+			// if typeSym, ok := check.module.TypeSyms[tTypeStruct]; ok && typeSym != nil {
+			// 	structSym, ok := typeSym.(*Struct)
+			// 	if !ok || structSym == nil {
+			// 		panic("unreachable")
+			// 	}
+			// 	fieldSym := structSym.body.Member(fieldNameNode.Name)
+			// 	if fieldSym == nil {
+			// 		panic("unreachable")
+			// 	}
+			// 	check.newUse(fieldNameNode, fieldSym)
+			// } else {
+			// 	panic("unreachable")
+			// }
 
 		default:
 			panic(fmt.Sprintf("unexpected node of type '%T' in struct initializer", init))
@@ -104,27 +163,34 @@ func (check *Checker) structInit(node *ast.MemberAccess, typedesc *types.TypeDes
 	missingFieldNames := []string{}
 
 	// Check fields.
-	for structFieldName, tStructField := range tTypeStruct.Fields() {
-		tInitField, initialized := initFields[structFieldName]
+	for _, field := range tTypeStruct.Fields() {
+		tInit, initialized := initFields[field.Name]
 
 		if !initialized {
-			missingFieldNames = append(missingFieldNames, structFieldName)
+			missingFieldNames = append(missingFieldNames, field.Name)
 			continue
 		}
 
-		if !tStructField.Equals(tInitField) {
+		if !tInit.Equals(field.Type) {
 			check.errorf(
-				initFieldValues[structFieldName],
+				initFieldValues[field.Name],
 				"type mismatch, expected (%s) for field '%s', got (%s) instead",
-				tStructField,
-				structFieldName,
-				tInitField,
+				field.Type,
+				field.Name,
+				tInit,
 			)
 		}
 
+		// Set a correct type to the value.
+		if tValue := types.AsArray(tInit); tValue != nil && types.IsUntyped(tValue.ElemType()) {
+			// TODO this causes codegen to generate two similar typedefs.
+			check.setType(initFieldValues[field.Name], field.Type)
+			report.TaggedDebugf("checker", "struct init set value type: %s", field.Type)
+		}
+
 		// Delete this field so we can find extra fields later.
-		delete(initFields, structFieldName)
-		delete(initFieldValues, structFieldName)
+		delete(initFields, field.Name)
+		delete(initFieldValues, field.Name)
 	}
 
 	if len(missingFieldNames) == 1 {
@@ -155,33 +221,40 @@ func (check *Checker) structInit(node *ast.MemberAccess, typedesc *types.TypeDes
 	return typedesc.Base()
 }
 
-func (check *Checker) structMember(node *ast.MemberAccess, t *types.Struct) types.Type {
-	selector, _ := node.Selector.(*ast.Ident)
-	if selector == nil {
-		check.errorf(node.Selector, "expected field identifier")
+func (check *Checker) structMember(operand, selector ast.Node, t *types.Struct) types.Type {
+	if t == types.String {
+		check.errorf(operand, "member access on string type is not implemented")
 		return nil
 	}
 
-	tField, hasField := t.Fields()[selector.Name]
-
-	if !hasField {
-		check.errorf(selector, "unknown field '%s'", selector.Name)
+	fieldIdent, _ := selector.(*ast.Ident)
+	if fieldIdent == nil {
+		check.errorf(selector, "expected field identifier")
 		return nil
 	}
 
-	if typeSym, ok := check.TypeSyms[t]; ok && typeSym != nil {
-		structSym, ok := typeSym.(*Struct)
-		if !ok || structSym == nil {
-			panic("unreachable")
-		}
-		fieldSym := structSym.body.Member(selector.Name)
-		if fieldSym == nil {
-			panic("unreachable")
-		}
-		check.newUse(selector, fieldSym)
-	} else {
-		panic("unreachable")
+	fieldIndex := slices.IndexFunc(t.Fields(), func(field types.StructField) bool {
+		return field.Name == fieldIdent.Name
+	})
+
+	if fieldIndex == -1 {
+		check.errorf(selector, "unknown field '%s'", fieldIdent.Name)
+		return nil
 	}
 
-	return tField
+	// if typeSym, ok := check.module.TypeSyms[t]; ok && typeSym != nil {
+	// 	structSym, ok := typeSym.(*Struct)
+	// 	if !ok || structSym == nil {
+	// 		panic("unreachable")
+	// 	}
+	// 	fieldSym := structSym.body.Member(selector.Name)
+	// 	if fieldSym == nil {
+	// 		panic("unreachable")
+	// 	}
+	// 	check.newUse(selector, fieldSym)
+	// } else {
+	// 	panic("unreachable")
+	// }
+
+	return t.Fields()[fieldIndex].Type
 }

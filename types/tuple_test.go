@@ -3,7 +3,7 @@ package types
 import "testing"
 
 func TestUnit(t *testing.T) {
-	if !Unit.Equals(NewTuple()) {
+	if !NewTuple().Equals(Unit) {
 		t.Error("[types.Unit] must be equals to empty tuple")
 	}
 

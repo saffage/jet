@@ -8,6 +8,7 @@ import (
 
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/constant"
+	"github.com/saffage/jet/internal/report"
 	"github.com/saffage/jet/types"
 )
 
@@ -16,7 +17,7 @@ import (
 func (check *Checker) typeOfInternal(expr ast.Node) types.Type {
 	switch node := expr.(type) {
 	case nil:
-		panic("got nil not for expr")
+		panic("got nil node for expr")
 
 	case ast.Decl:
 		panic("declaration must be handled somewhere else")
@@ -40,8 +41,8 @@ func (check *Checker) typeOfInternal(expr ast.Node) types.Type {
 	case *ast.Literal:
 		return check.typeOfLiteral(node)
 
-	// case *ast.Operator:
-	// 	panic("not implemented")
+	case *ast.Operator:
+		return check.typeOfOperator(node)
 
 	case *ast.BuiltInCall:
 		return check.typeOfBuiltInCall(node)
@@ -60,6 +61,9 @@ func (check *Checker) typeOfInternal(expr ast.Node) types.Type {
 
 	case *ast.MemberAccess:
 		return check.typeOfMemberAccess(node)
+
+	case *ast.SafeMemberAccess:
+		return check.typeOfSafeMemberAccess(node)
 
 	case *ast.PrefixOp:
 		return check.typeOfPrefixOp(node)
@@ -85,8 +89,18 @@ func (check *Checker) typeOfInternal(expr ast.Node) types.Type {
 	case *ast.While:
 		return check.typeOfWhile(node)
 
-	// case *ast.Return, *ast.Break, *ast.Continue:
-	// 	panic("not implemented")
+	// NOTE implementation of break & continue are not finished.
+	case *ast.Break:
+		if node.Label != nil {
+			check.errorf(node.Label, "labels are not implemented")
+		}
+		return types.Unit
+
+	case *ast.Continue:
+		if node.Label != nil {
+			check.errorf(node.Label, "labels are not implemented")
+		}
+		return types.Unit
 
 	default:
 		panic(fmt.Sprintf("type checking of %T is not implemented", expr))
@@ -97,8 +111,7 @@ func (check *Checker) symbolOf(ident *ast.Ident) Symbol {
 	if sym, _ := check.scope.Lookup(ident.Name); sym != nil {
 		return sym
 	}
-
-	return nil
+	return check.module.SymbolOf(ident)
 }
 
 func (check *Checker) typeOfIdent(node *ast.Ident) types.Type {
@@ -108,11 +121,10 @@ func (check *Checker) typeOfIdent(node *ast.Ident) types.Type {
 			return sym.Type()
 		}
 
-		check.errorf(node, "expression `%s` has no type", node.Name)
+		check.errorf(node, "expression has no type")
 		return nil
 	}
 
-	check.errorf(node, "identifier `%s` is undefined", node.Name)
 	return nil
 }
 
@@ -132,14 +144,18 @@ func (check *Checker) typeOfLiteral(node *ast.Literal) types.Type {
 	}
 }
 
+func (check *Checker) typeOfOperator(node *ast.Operator) types.Type {
+	return nil
+}
+
 func (check *Checker) typeOfBuiltInCall(node *ast.BuiltInCall) types.Type {
-	builtIn := (*BuiltIn)(nil)
-	idx := slices.IndexFunc(check.builtIns, func(b *BuiltIn) bool {
+	var builtIn *BuiltIn
+	idx := slices.IndexFunc(builtIns, func(b *BuiltIn) bool {
 		return b.name == node.Name.Name
 	})
 
 	if idx != -1 {
-		builtIn = check.builtIns[idx]
+		builtIn = builtIns[idx]
 	}
 
 	if builtIn == nil {
@@ -177,10 +193,14 @@ func (check *Checker) typeOfBuiltInCall(node *ast.BuiltInCall) types.Type {
 	vArgs := make([]*TypedValue, tArgs.Len())
 
 	for i := range len(vArgs) {
-		vArgs[i] = check.Types[args.Exprs[i]]
+		vArgs[i] = check.module.Types[args.Exprs[i]]
 	}
 
-	value := builtIn.f(args, vArgs)
+	value, err := builtIn.f(args, vArgs)
+	if err != nil {
+		check.addError(err)
+		return nil
+	}
 	if value == nil {
 		return nil
 	}
@@ -200,7 +220,7 @@ func (check *Checker) typeOfCall(node *ast.Call) types.Type {
 		return nil
 	}
 
-	tArgs := check.typeOfParenList(node.Args)
+	tArgs := types.SkipUntyped(check.typeOfParenList(node.Args))
 	if tArgs == nil {
 		return nil
 	}
@@ -216,7 +236,7 @@ func (check *Checker) typeOfCall(node *ast.Call) types.Type {
 		return nil
 	}
 
-	return fn.Result()
+	return fn.Result().Underlying()
 }
 
 func (check *Checker) typeOfIndex(node *ast.Index) types.Type {
@@ -241,11 +261,14 @@ func (check *Checker) typeOfIndex(node *ast.Index) types.Type {
 	}
 
 	if array := types.AsArray(t); array != nil {
-		if !types.I32.Equals(tIndex) {
+		if !tIndex.Equals(types.I32) {
 			check.errorf(node.Args.Exprs[0], "expected type (i32) for index, got (%s) instead", tIndex)
 			return nil
 		}
-
+		if !check.assignable(node.X) {
+			check.errorf(node.X, "expression cannot be indexed")
+			return nil
+		}
 		return array.ElemType()
 	} else if tuple := types.AsTuple(t); tuple != nil {
 		value := check.valueOf(node.Args.Exprs[0])
@@ -334,25 +357,75 @@ func (check *Checker) typeOfSignature(node *ast.Signature) types.Type {
 		tResult = types.WrapInTuple(types.SkipTypeDesc(tActualResult))
 	}
 
-	t := types.NewFunc(tResult, tParams.(*types.Tuple))
+	t := types.NewFunc(tResult, tParams.(*types.Tuple), false)
 	return types.NewTypeDesc(t)
 }
 
 func (check *Checker) typeOfMemberAccess(node *ast.MemberAccess) types.Type {
+	if ident, _ := node.X.(*ast.Ident); ident != nil {
+		if m, _ := check.symbolOf(ident).(*Module); m != nil {
+			if member, _ := node.Selector.(*ast.Ident); member != nil {
+				if sym, _ := m.Scope.Lookup(member.Name); sym != nil {
+					if sym.Type() == nil {
+						check.errorf(node.Selector, "expression has no type")
+					}
+					return sym.Type()
+				}
+				check.errorf(
+					node.Selector,
+					"identifier `%s` is not defined in the module `%s`",
+					member,
+					m.Name(),
+				)
+				return nil
+			}
+			check.errorf(node.Selector, "expected identifier in module member access expression")
+			return nil
+		}
+	}
+
 	tOperand := check.typeOf(node.X)
 	if tOperand == nil {
 		return nil
 	}
 
+	// TODO get symbol of the type.
 	if typedesc := types.AsTypeDesc(tOperand); typedesc != nil {
-		return check.structInit(node, typedesc)
+		switch t := typedesc.Base().Underlying().(type) {
+		case *types.Struct:
+			return check.structInit(node, typedesc)
+
+		case *types.Enum:
+			return check.enumMember(node, t)
+		}
 	}
 
 	if tStruct := types.AsStruct(tOperand); tStruct != nil {
-		return check.structMember(node, tStruct)
+		return check.structMember(node.X, node.Selector, tStruct)
 	}
 
 	return nil
+}
+
+func (check *Checker) typeOfSafeMemberAccess(node *ast.SafeMemberAccess) types.Type {
+	tOperand := check.typeOf(node.X)
+	if tOperand == nil {
+		return nil
+	}
+
+	tPtr := types.AsRef(tOperand)
+	if tPtr == nil {
+		check.errorf(node.X, "expected pointer to struct")
+		return nil
+	}
+
+	tStruct := types.AsStruct(tPtr.Base())
+	if tStruct == nil {
+		check.errorf(node.X, "expected pointer to struct")
+		return nil
+	}
+
+	return check.structMember(node.X, node.Selector, tStruct)
 }
 
 func (check *Checker) typeOfPrefixOp(node *ast.PrefixOp) types.Type {
@@ -393,11 +466,11 @@ func (check *Checker) typeOfBracketList(node *ast.BracketList) types.Type {
 		}
 
 		if elemType == nil {
-			elemType = types.SkipUntyped(t)
+			elemType = t
 			continue
 		}
 
-		if !elemType.Equals(t) {
+		if !t.Equals(elemType) {
 			check.errorf(expr, "expected type (%s) for element, got (%s) instead", elemType, t)
 			return nil
 		}
@@ -414,19 +487,21 @@ func (check *Checker) typeOfParenList(node *ast.ParenList) types.Type {
 	}
 
 	elemTypes := []types.Type{}
-	isTypeDescTuple := false
+	// isTypeDescTuple := false
 
 	t := check.typeOf(node.Exprs[0])
 	if t == nil {
 		return nil
 	}
 
-	if types.IsTypeDesc(t) {
-		isTypeDescTuple = true
-		elemTypes = append(elemTypes, types.SkipTypeDesc(t))
-	} else {
-		elemTypes = append(elemTypes, types.SkipUntyped(t))
-	}
+	// if types.IsTypeDesc(t) {
+	// 	isTypeDescTuple = true
+	// 	elemTypes = append(elemTypes, types.SkipTypeDesc(t))
+	// } else {
+	// 	elemTypes = append(elemTypes, t)
+	// }
+
+	elemTypes = append(elemTypes, t)
 
 	for _, expr := range node.Exprs[1:] {
 		t := check.typeOf(expr)
@@ -434,43 +509,45 @@ func (check *Checker) typeOfParenList(node *ast.ParenList) types.Type {
 			return nil
 		}
 
-		if isTypeDescTuple {
-			if !types.IsTypeDesc(t) {
-				check.errorf(expr, "expected type, got '%s' instead", t)
-				return nil
-			}
+		// if isTypeDescTuple {
+		// 	if !types.IsTypeDesc(t) {
+		// 		check.errorf(expr, "expected type, got (%s) instead", t)
+		// 		return nil
+		// 	}
 
-			elemTypes = append(elemTypes, types.SkipTypeDesc(t))
-		} else {
-			if types.IsTypeDesc(t) {
-				check.errorf(expr, "expected expression, got type '%s' instead", t)
-				return nil
-			}
+		// 	elemTypes = append(elemTypes, types.SkipTypeDesc(t))
+		// } else {
+		// 	if types.IsTypeDesc(t) {
+		// 		check.errorf(expr, "expected expression, got type '%s' instead", t)
+		// 		return nil
+		// 	}
 
-			elemTypes = append(elemTypes, types.SkipUntyped(t))
-		}
+		// 	elemTypes = append(elemTypes, t)
+		// }
+
+		elemTypes = append(elemTypes, t)
 	}
 
-	if isTypeDescTuple {
-		return types.NewTypeDesc(types.NewTuple(elemTypes...))
-	}
+	// if isTypeDescTuple {
+	// 	return types.NewTypeDesc(types.NewTuple(elemTypes...))
+	// }
 
 	return types.NewTuple(elemTypes...)
 }
 
 func (check *Checker) typeOfCurlyList(node *ast.CurlyList) types.Type {
-	local := NewScope(check.scope)
+	local := NewScope(check.scope, "block")
 	block := NewBlock(local)
 
 	defer check.setScope(check.scope)
 	check.scope = local
-	fmt.Printf(">>> push local\n")
+	report.TaggedDebugf("checker", "push %s", local.name)
 
 	for _, node := range node.Nodes {
 		ast.WalkTopDown(check.blockVisitor(block), node)
 	}
 
-	fmt.Printf(">>> pop local\n")
+	report.TaggedDebugf("checker", "pop %s", local.name)
 	return block.t
 }
 
@@ -478,7 +555,7 @@ func (check *Checker) typeOfIf(node *ast.If) types.Type {
 	tCondition := check.typeOf(node.Cond)
 	// Don't return if 'tCondition == nil', check the body.
 
-	if !types.Bool.Equals(tCondition) {
+	if tCondition != nil && !tCondition.Equals(types.Bool) {
 		check.errorf(
 			node.Cond,
 			"expected type (bool) for condition, got (%s) instead",
@@ -501,14 +578,14 @@ func (check *Checker) typeOfIf(node *ast.If) types.Type {
 	return tBody
 }
 
-func (check *Checker) typeOfElse(node *ast.Else, expectedType types.Type) bool {
+func (check *Checker) typeOfElse(node *ast.Else, tExpected types.Type) bool {
 	tBody := check.typeOf(node.Body)
 	if tBody == nil {
 		return false
 	}
 
 	tTypedBody := types.SkipUntyped(tBody)
-	if !expectedType.Equals(tBody) && !expectedType.Equals(tTypedBody) {
+	if !tBody.Equals(tExpected) && !tTypedBody.Equals(tExpected) {
 		// Find the last node in the body for better error message.
 		lastNode := ast.Node(node.Body)
 
@@ -523,7 +600,7 @@ func (check *Checker) typeOfElse(node *ast.Else, expectedType types.Type) bool {
 		check.errorf(
 			lastNode,
 			"all branches must have the same type with first branch (%s), got (%s) instead",
-			expectedType,
+			tExpected,
 			tBody,
 		)
 		return false
@@ -538,7 +615,7 @@ func (check *Checker) typeOfWhile(node *ast.While) types.Type {
 		return nil
 	}
 
-	if !types.Bool.Equals(tCond) {
+	if !tCond.Equals(types.Bool) {
 		check.errorf(node.Cond, "expected type 'bool' for condition, got (%s) instead", tCond)
 		// Don't return, check the body.
 	}
@@ -548,7 +625,7 @@ func (check *Checker) typeOfWhile(node *ast.While) types.Type {
 		return nil
 	}
 
-	if !types.Unit.Equals(tBody) {
+	if !tBody.Equals(types.Unit) {
 		check.errorf(node.Body, "while loop body must have no type, but got (%s)", tBody)
 		return nil
 	}

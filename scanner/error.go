@@ -3,6 +3,7 @@ package scanner
 import (
 	"fmt"
 
+	"github.com/saffage/jet/internal/report"
 	"github.com/saffage/jet/token"
 )
 
@@ -18,6 +19,10 @@ func (e Error) Error() string {
 	}
 
 	return e.Message + "; " + e.Details
+}
+
+func (e Error) Report() {
+	report.TaggedErrorAt("scanner", e.Start, e.End, e.Message)
 }
 
 // Emits an error. Error end is a current scanner position.

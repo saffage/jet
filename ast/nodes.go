@@ -36,6 +36,7 @@ func (*Index) implNode()            {}
 func (*ArrayType) implNode()        {}
 func (*Signature) implNode()        {}
 func (*MemberAccess) implNode()     {}
+func (*SafeMemberAccess) implNode() {}
 func (*PrefixOp) implNode()         {}
 func (*InfixOp) implNode()          {}
 func (*PostfixOp) implNode()        {}
@@ -51,8 +52,10 @@ func (*Else) implNode() {}
 
 func (*ModuleDecl) implNode()    {}
 func (*VarDecl) implNode()       {}
+func (*ConstDecl) implNode()     {}
 func (*FuncDecl) implNode()      {}
 func (*StructDecl) implNode()    {}
+func (*EnumDecl) implNode()      {}
 func (*TypeAliasDecl) implNode() {}
 
 // Stmts.
@@ -68,6 +71,7 @@ func (*While) implNode()    {}
 func (*Return) implNode()   {}
 func (*Break) implNode()    {}
 func (*Continue) implNode() {}
+func (*Import) implNode()   {}
 
 type (
 	Comment struct {
@@ -105,7 +109,7 @@ type (
 
 	While struct {
 		Cond Node
-		Body Node
+		Body *CurlyList
 		Loc  token.Loc // `while` token.
 	}
 
@@ -122,6 +126,11 @@ type (
 	Continue struct {
 		Label *Ident
 		Loc   token.Loc // `continue` token.
+	}
+
+	Import struct {
+		Module *Ident
+		Loc    token.Loc // `import` token.
 	}
 )
 
@@ -169,6 +178,9 @@ func (n *Continue) LocEnd() token.Loc {
 	end.Offset += uint64(length)
 	return end
 }
+
+func (n *Import) Pos() token.Loc    { return n.Loc }
+func (n *Import) LocEnd() token.Loc { return n.Module.LocEnd() }
 
 // Additional methods for nodes.
 

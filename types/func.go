@@ -7,11 +7,12 @@ import (
 )
 
 type Func struct {
-	params *Tuple
-	result *Tuple
+	params   *Tuple
+	result   *Tuple
+	variadic bool
 }
 
-func NewFunc(result *Tuple, params *Tuple) *Func {
+func NewFunc(result *Tuple, params *Tuple, variadic bool) *Func {
 	if result == nil {
 		result = Unit
 	}
@@ -19,14 +20,18 @@ func NewFunc(result *Tuple, params *Tuple) *Func {
 		params = Unit
 	}
 	return &Func{
-		params: params,
-		result: result,
+		params:   params,
+		result:   result,
+		variadic: variadic,
 	}
 }
 
 func (t *Func) Equals(other Type) bool {
+	if t2 := AsPrimitive(other); t2 != nil {
+		return t2.kind == KindAny
+	}
 	if t2 := AsFunc(other); t2 != nil {
-		return t.result.Equals(t2.result) && t.params.Equals(t2.params)
+		return t.variadic == t2.variadic && t.result.Equals(t2.result) && t.params.Equals(t2.params)
 	}
 	return false
 }
@@ -55,6 +60,8 @@ func (t *Func) Result() *Tuple { return t.result }
 
 func (t *Func) Params() *Tuple { return t.params }
 
+func (t *Func) Variadic() bool { return t.variadic }
+
 func (t *Func) CheckArgs(args *Tuple) (idx int, err error) {
 	{
 		diff := t.params.Len() - args.Len()
@@ -79,7 +86,7 @@ func (t *Func) CheckArgs(args *Tuple) (idx int, err error) {
 	for i := 0; i < args.Len(); i++ {
 		expected, actual := t.params.types[i], args.types[i]
 
-		if !expected.Equals(actual) {
+		if !actual.Equals(expected) {
 			return i, fmt.Errorf(
 				"expected '%s' for %s argument, got '%s' instead",
 				expected,

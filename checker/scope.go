@@ -2,19 +2,35 @@ package checker
 
 import "github.com/saffage/jet/ast"
 
+var Global = NewScope(nil, "global")
+
 type Scope struct {
 	parent  *Scope
+	name    string
 	symbols map[string]Symbol
 }
 
-func NewScope(parent *Scope) *Scope {
-	return &Scope{parent, nil}
+func NewScope(parent *Scope, name string) *Scope {
+	return &Scope{parent, name, nil}
 }
 
 // Returns the scope in which the current scope was defined,
 // or nil if the current scope has no parent.
 func (scope *Scope) Parent() *Scope {
 	return scope.parent
+}
+
+// Returns a name of the scope. Used in code generator.
+//
+// Name can be next:
+//   - module <name>
+//   - func <name>
+//   - struct <name>
+//   - enum <name>
+//   - block
+//   - global
+func (scope *Scope) Name() string {
+	return scope.name
 }
 
 // Defines a symbol in the scope. If a symbol with the same

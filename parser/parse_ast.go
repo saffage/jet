@@ -92,6 +92,9 @@ func (p *Parser) parseStmt() ast.Node {
 	case token.KwVar:
 		node = p.parseVarDecl()
 
+	case token.KwConst:
+		node = p.parseConstDecl()
+
 	// case token.KwVar, token.KwVal, token.KwConst:
 	// 	node = p.parseGenericDecl()
 
@@ -104,8 +107,14 @@ func (p *Parser) parseStmt() ast.Node {
 	case token.KwStruct:
 		node = p.parseStructDecl()
 
+	case token.KwEnum:
+		node = p.parseEnumDecl()
+
 	case token.KwModule:
 		node = p.parseModule()
+
+	case token.KwImport:
+		node = p.parseImport()
 
 	case token.KwAlias:
 		node = p.parseAlias()
@@ -171,9 +180,6 @@ func (p *Parser) parseExpr() ast.Node {
 	case token.LCurly:
 		return p.parseBlock()
 
-	case token.LBracket:
-		return p.parseBracketExpr()
-
 	default:
 		return p.parseSimpleExpr()
 	}
@@ -204,6 +210,11 @@ func (p *Parser) parseBinaryExpr(lhs ast.Node, precedence token.Precedence) ast.
 
 	for p.tok.Precedence() >= precedence {
 		tok := p.consume()
+
+		for p.tok.Kind == token.NewLine {
+			p.next()
+		}
+
 		rhs := p.parseBinaryExpr(nil, tok.Precedence()+1)
 
 		if rhs == nil {
@@ -230,6 +241,21 @@ func (p *Parser) parseBinaryExpr(lhs ast.Node, precedence token.Precedence) ast.
 
 		case token.Eq:
 			binaryOpKind = ast.OperatorAssign
+
+		case token.PlusEq:
+			binaryOpKind = ast.OperatorAddAndAssign
+
+		case token.MinusEq:
+			binaryOpKind = ast.OperatorSubAndAssign
+
+		case token.AsteriskEq:
+			binaryOpKind = ast.OperatorMultAndAssign
+
+		case token.SlashEq:
+			binaryOpKind = ast.OperatorDivAndAssign
+
+		case token.PercentEq:
+			binaryOpKind = ast.OperatorModAndAssign
 
 		case token.EqOp:
 			binaryOpKind = ast.OperatorEq
@@ -332,30 +358,30 @@ func (p *Parser) parseUnaryExpr() ast.Node {
 			Opr: &ast.Operator{
 				Start: asterisk.Start,
 				End:   asterisk.End,
-				Kind:  ast.OperatorDeref,
+				Kind:  ast.OperatorStar,
 			},
 		}
 
 	case token.Amp:
 		loc := p.consume().Start
 
-		if varTok := p.consume(token.KwVar); varTok != nil {
-			return &ast.PrefixOp{
-				X: p.parseUnaryExpr(),
-				Opr: &ast.Operator{
-					Start: loc,
-					End:   varTok.End,
-					Kind:  ast.OperatorMutAddr,
-				},
-			}
-		}
+		// if varTok := p.consume(token.KwVar); varTok != nil {
+		// 	return &ast.PrefixOp{
+		// 		X: p.parseUnaryExpr(),
+		// 		Opr: &ast.Operator{
+		// 			Start: loc,
+		// 			End:   varTok.End,
+		// 			Kind:  ast.OperatorMutAddr,
+		// 		},
+		// 	}
+		// }
 
 		return &ast.PrefixOp{
 			X: p.parseUnaryExpr(),
 			Opr: &ast.Operator{
 				Start: loc,
 				End:   loc,
-				Kind:  ast.OperatorAddr,
+				Kind:  ast.OperatorAddrOf,
 			},
 		}
 
@@ -381,7 +407,10 @@ func (p *Parser) parseOperand() ast.Node {
 		return p.parseLiteral()
 
 	case token.LParen:
-		return p.parseParenList(p.parseExpr)
+		return p.parseParenExpr(p.parseExpr)
+
+	case token.LBracket:
+		return p.parseBracketExpr()
 
 	default:
 		p.errorExpected(p.tok.Start, p.tok.End, "operand")
@@ -420,6 +449,9 @@ func (p *Parser) parseSuffixExpr(x ast.Node) ast.Node {
 		switch p.tok.Kind {
 		case token.Dot:
 			x = p.parseMemberAccess(x)
+
+		case token.QuestionMarkDot:
+			x = p.parseSafeMemberAccess(x)
 
 		// case token.QuestionMark, token.Bang:
 		// 	opr := p.consume()
@@ -506,13 +538,35 @@ func (p *Parser) parseMemberAccess(x ast.Node) ast.Node {
 		return nil
 	}
 
-	x = p.parseMemberAccess(&ast.MemberAccess{
+	return &ast.MemberAccess{
 		Loc:      dot.Start,
 		X:        x,
 		Selector: y,
-	})
+	}
+}
 
-	return x
+func (p *Parser) parseSafeMemberAccess(x ast.Node) ast.Node {
+	if p.flags&Trace != 0 {
+		p.trace()
+		defer p.untrace()
+	}
+
+	if x == nil {
+		panic("can't use nil node as left-hand side expression")
+	}
+
+	tok := p.consume(token.QuestionMarkDot)
+	y := p.parseIdentNode()
+
+	if y == nil {
+		return nil
+	}
+
+	return &ast.SafeMemberAccess{
+		X:        x,
+		Selector: y,
+		Loc:      tok.Start,
+	}
 }
 
 func (p *Parser) parseBuiltIn() ast.Node {
@@ -589,6 +643,25 @@ func (p *Parser) parseVarDecl() ast.Node {
 	}
 }
 
+func (p *Parser) parseConstDecl() ast.Node {
+	if p.flags&Trace != 0 {
+		p.trace()
+		defer p.untrace()
+	}
+
+	tok := p.expect(token.KwConst)
+	bindingWithValue, ok := p.parseBindingAndValue(true).(*ast.BindingWithValue)
+
+	if !ok || bindingWithValue == nil {
+		return nil
+	}
+
+	return &ast.ConstDecl{
+		Binding: bindingWithValue,
+		Loc:     tok.Start,
+	}
+}
+
 func (p *Parser) parseFuncDecl() ast.Node {
 	if p.flags&Trace != 0 {
 		p.trace()
@@ -620,7 +693,7 @@ func (p *Parser) parseFuncDecl() ast.Node {
 		}
 	} else if p.tok.Kind != token.NewLine && p.tok.Kind != token.EOF {
 		start, end := p.skipTo()
-		p.errorExpectedToken(start, end, token.Arrow, token.LCurly, token.NewLine)
+		p.errorExpectedToken(start, end, token.LCurly, token.NewLine)
 	}
 
 	// if body == nil {
@@ -655,6 +728,32 @@ func (p *Parser) parseStructDecl() ast.Node {
 	}
 
 	return &ast.StructDecl{
+		Name: name,
+		Body: body,
+		Loc:  tok.Start,
+	}
+}
+
+func (p *Parser) parseEnumDecl() ast.Node {
+	if p.flags&Trace != 0 {
+		p.trace()
+		defer p.untrace()
+	}
+
+	tok := p.expect(token.KwEnum)
+	name := p.parseIdentNode()
+
+	if name == nil {
+		return nil
+	}
+
+	body := p.parseCurlyList(p.parseIdent)
+
+	if body == nil {
+		return nil
+	}
+
+	return &ast.EnumDecl{
 		Name: name,
 		Body: body,
 		Loc:  tok.Start,
@@ -699,7 +798,7 @@ func (p *Parser) parseBracketExpr() ast.Node {
 	return nil
 }
 
-func (p *Parser) parseBindingAndValue() ast.Node {
+func (p *Parser) parseBindingAndValue(valueRequired bool) ast.Node {
 	if p.flags&Trace != 0 {
 		p.trace()
 		defer p.untrace()
@@ -714,7 +813,10 @@ func (p *Parser) parseBindingAndValue() ast.Node {
 	}
 
 	if opr := p.consume(token.Eq); opr != nil {
-		p.consume(token.NewLine)
+		for p.tok.Kind == token.NewLine {
+			p.next()
+		}
+
 		value := p.parseExpr()
 
 		if value == nil {
@@ -732,6 +834,9 @@ func (p *Parser) parseBindingAndValue() ast.Node {
 			},
 			Value: value,
 		}
+	} else if valueRequired {
+		p.errorExpected(p.tok.Start, p.tok.End, "value is required")
+		return nil
 	}
 
 	if binding.Type == nil {
@@ -748,6 +853,7 @@ func (p *Parser) parseBinding() ast.Node {
 		defer p.untrace()
 	}
 
+	attrs := p.parseAttributes()
 	name := p.parseIdentNode()
 
 	if name == nil {
@@ -764,8 +870,9 @@ func (p *Parser) parseBinding() ast.Node {
 	// }
 
 	return &ast.Binding{
-		Name: name,
-		Type: typ,
+		Attrs: attrs,
+		Name:  name,
+		Type:  typ,
 	}
 }
 
@@ -812,15 +919,16 @@ func (p *Parser) parseTypeName() ast.Node {
 
 	switch p.tok.Kind {
 	case token.Ident:
-		switch expr := p.parseMemberAccess(p.parseIdentNode()); expr.(type) {
-		case *ast.Ident:
-			return expr
+		ident := p.parseIdentNode()
+		expr := p.parseMemberAccess(ident)
 
-		default:
+		if expr == nil {
 			start, end := p.skipTo()
 			p.errorExpected(start, end, "type name")
 			return nil
 		}
+
+		return expr
 
 	default:
 		start, end := p.skipTo()
@@ -835,7 +943,7 @@ func (p *Parser) parseSignature(funcTok *token.Token) *ast.Signature {
 		defer p.untrace()
 	}
 
-	paramList := p.parseParenList(p.parseBindingAndValue)
+	paramList := p.parseParenList(p.parseBinding)
 
 	if paramList == nil {
 		return nil
@@ -843,7 +951,7 @@ func (p *Parser) parseSignature(funcTok *token.Token) *ast.Signature {
 
 	returnType := ast.Node(nil)
 
-	if p.tok.Kind != token.Arrow && p.tok.Kind != token.LCurly {
+	if p.tok.Kind != token.LCurly {
 		returnType = p.parseType()
 	}
 
@@ -861,34 +969,38 @@ func (p *Parser) parseSignature(funcTok *token.Token) *ast.Signature {
 }
 
 func (p *Parser) parseType() ast.Node {
-	// Type <- ('&' 'var'?)? TypeName ('.' TypeName)
-	// TypeName <- Macro | Ident
 	if p.flags&Trace != 0 {
 		p.trace()
 		defer p.untrace()
 	}
 
 	switch p.tok.Kind {
-	case token.Amp:
-		amp := p.consume()
+	case token.Ellipsis:
+		elipsis := p.consume()
+		opr := &ast.Operator{
+			Start: elipsis.Start,
+			End:   elipsis.End,
+			Kind:  ast.OperatorElipsis,
+		}
 
-		if varTok := p.consume(token.KwVar); varTok != nil {
+		if x := p.parseType(); x != nil {
 			return &ast.PrefixOp{
-				X: p.parseType(),
-				Opr: &ast.Operator{
-					Start: amp.Start,
-					End:   varTok.End,
-					Kind:  ast.OperatorMutAddr,
-				},
+				X:   p.parseType(),
+				Opr: opr,
 			}
 		}
+
+		return opr
+
+	case token.Asterisk:
+		star := p.consume()
 
 		return &ast.PrefixOp{
 			X: p.parseType(),
 			Opr: &ast.Operator{
-				Start: amp.Start,
-				End:   amp.End,
-				Kind:  ast.OperatorAddr,
+				Start: star.Start,
+				End:   star.End,
+				Kind:  ast.OperatorStar,
 			},
 		}
 
@@ -901,7 +1013,7 @@ func (p *Parser) parseType() ast.Node {
 		}
 
 	case token.LParen:
-		if tuple := p.parseParenList(p.parseType); tuple != nil {
+		if tuple := p.parseParenExpr(p.parseType); tuple != nil {
 			return tuple
 		}
 
@@ -1047,7 +1159,7 @@ func (p *Parser) parseWhile() ast.Node {
 		return nil
 	}
 
-	body := p.parseBlock()
+	body := p.parseCurlyList(p.parseStmt)
 	if body == nil {
 		return nil
 	}
@@ -1131,6 +1243,30 @@ func (p *Parser) parseModule() ast.Node {
 	return nil
 }
 
+func (p *Parser) parseImport() ast.Node {
+	if p.flags&Trace != 0 {
+		p.trace()
+		defer p.untrace()
+	}
+
+	tok := p.consume(token.KwImport)
+
+	if tok == nil {
+		return nil
+	}
+
+	mod := p.parseIdentNode()
+
+	if mod == nil {
+		return nil
+	}
+
+	return &ast.Import{
+		Module: mod,
+		Loc:    tok.Start,
+	}
+}
+
 func (p *Parser) parseAlias() ast.Node {
 	if p.flags&Trace != 0 {
 		p.trace()
@@ -1145,7 +1281,10 @@ func (p *Parser) parseAlias() ast.Node {
 		}
 
 		p.expect(token.Eq)
-		p.consume(token.NewLine)
+
+		for p.tok.Kind == token.NewLine {
+			p.next()
+		}
 
 		expr := p.parseType()
 
@@ -1174,7 +1313,7 @@ func (p *Parser) parseBracketList(f func() ast.Node) *ast.BracketList {
 		defer p.untrace()
 	}
 
-	if exprs, openLoc, closeLoc := p.parseBracketedList(
+	if exprs, openLoc, closeLoc, _ := p.parseBracketedList(
 		f,
 		token.LBracket,
 		token.RBracket,
@@ -1196,12 +1335,38 @@ func (p *Parser) parseParenList(f func() ast.Node) *ast.ParenList {
 		defer p.untrace()
 	}
 
-	if exprs, openLoc, closeLoc := p.parseBracketedList(
+	if exprs, openLoc, closeLoc, _ := p.parseBracketedList(
 		f,
 		token.LParen,
 		token.RParen,
 		token.Comma,
 	); exprs != nil {
+		return &ast.ParenList{
+			ExprList: &ast.ExprList{Exprs: exprs},
+			Open:     openLoc,
+			Close:    closeLoc,
+		}
+	}
+
+	return nil
+}
+
+func (p *Parser) parseParenExpr(f func() ast.Node) ast.Node {
+	if p.flags&Trace != 0 {
+		p.trace()
+		defer p.untrace()
+	}
+
+	if exprs, openLoc, closeLoc, wasSeparator := p.parseBracketedList(
+		f,
+		token.LParen,
+		token.RParen,
+		token.Comma,
+	); exprs != nil {
+		if !wasSeparator && len(exprs) == 1 {
+			return exprs[0]
+		}
+
 		return &ast.ParenList{
 			ExprList: &ast.ExprList{Exprs: exprs},
 			Open:     openLoc,
@@ -1218,7 +1383,7 @@ func (p *Parser) parseCurlyList(f func() ast.Node) *ast.CurlyList {
 		defer p.untrace()
 	}
 
-	if nodes, openLoc, closeLoc := p.parseBracketedList(
+	if nodes, openLoc, closeLoc, _ := p.parseBracketedList(
 		f,
 		token.LCurly,
 		token.RCurly,
@@ -1254,7 +1419,7 @@ func (p *Parser) parseStmtList() *ast.List {
 		defer p.untrace()
 	}
 
-	if nodes := p.listWithDelimiter(
+	if nodes, _ := p.listWithDelimiter(
 		p.parseStmt,
 		token.EOF,
 		token.Semicolon,
@@ -1274,7 +1439,7 @@ func (p *Parser) listWithDelimiter(
 	f func() ast.Node,
 	delimiter token.Kind,
 	separators ...token.Kind,
-) []ast.Node {
+) (nodes []ast.Node, wasSeparator bool) {
 	if len(separators) < 1 {
 		panic("expect at least 1 separator")
 	}
@@ -1284,7 +1449,7 @@ func (p *Parser) listWithDelimiter(
 		defer p.untrace()
 	}
 
-	nodes := []ast.Node{}
+	nodes = []ast.Node{}
 
 	// List = Expr {Separator Expr} [Separator]
 	for {
@@ -1300,21 +1465,26 @@ func (p *Parser) listWithDelimiter(
 		if p.tok.Kind == delimiter {
 			break
 		} else if p.tok.Kind == token.EOF {
-			return nil
+			return nil, false
 		}
 
 		nodeStart := p.tok.Start
 
 		if node := f(); node != nil {
-			if p.consume(separators...) != nil || p.match(delimiter) {
-				// All is OK.
+			switch {
+			case p.consume(separators...) != nil:
+				wasSeparator = true
+				fallthrough
+
+			case p.match(delimiter):
 				nodes = append(nodes, node)
 				continue
-			}
 
-			// [parseFunc] set the correct node, but no separator was found.
-			// Report it and assign [ast.BadNode] instead.
-			p.error(node.Pos(), node.LocEnd(), "unterminated expression")
+			default:
+				// [parseFunc] set the correct node, but no separator was found.
+				// Report it and assign [ast.BadNode] instead.
+				p.error(node.Pos(), node.LocEnd(), "unterminated expression")
+			}
 		}
 
 		// Something went wrong, advance to some delimiter and
@@ -1324,14 +1494,14 @@ func (p *Parser) listWithDelimiter(
 		nodes = append(nodes, &ast.BadNode{Loc: nodeStart})
 	}
 
-	return nodes
+	return nodes, wasSeparator
 }
 
 func (p *Parser) parseBracketedList(
 	f func() ast.Node,
 	opening, closing token.Kind,
 	separators ...token.Kind,
-) (nodes []ast.Node, openLoc, closeLoc token.Loc) {
+) (nodes []ast.Node, openLoc, closeLoc token.Loc, wasSeparator bool) {
 	if p.flags&Trace != 0 {
 		p.trace()
 		defer p.untrace()
@@ -1340,13 +1510,13 @@ func (p *Parser) parseBracketedList(
 	if tok := p.expect(opening); tok != nil {
 		openLoc = tok.Start
 	} else {
-		return nil, token.Loc{}, token.Loc{}
+		return nil, token.Loc{}, token.Loc{}, false
 	}
 
-	nodes = p.listWithDelimiter(f, closing, separators...)
+	nodes, wasSeparator = p.listWithDelimiter(f, closing, separators...)
 
 	if nodes == nil {
-		return nil, token.Loc{}, token.Loc{}
+		return nil, token.Loc{}, token.Loc{}, false
 	}
 
 	if tok := p.consume(closing); tok != nil {
@@ -1358,9 +1528,8 @@ func (p *Parser) parseBracketedList(
 			start, end := p.skipTo()
 			p.errorExpectedToken(start, end, append(separators, closing)...)
 		}
-
-		return nil, token.Loc{}, token.Loc{}
+		return nil, token.Loc{}, token.Loc{}, false
 	}
 
-	return nodes, openLoc, closeLoc
+	return nodes, openLoc, closeLoc, wasSeparator
 }

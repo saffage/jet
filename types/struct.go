@@ -1,29 +1,48 @@
 package types
 
 import (
+	"fmt"
+	"slices"
 	"strings"
 )
 
 // TODO add named types.
 
-type Struct struct {
-	// TODO use ordered map.
-	fields map[string]Type
+type StructField struct {
+	Name string
+	Type Type
 }
 
-func NewStruct(fields map[string]Type) *Struct {
+type Struct struct {
+	fields []StructField
+}
+
+func NewStruct(fields ...StructField) *Struct {
+	fieldNames := make([]string, 0, len(fields))
+	for _, field := range fields {
+		if IsUntyped(field.Type) {
+			panic("struct fields cannot be untyped")
+		}
+		if slices.Index(fieldNames, field.Name) != -1 {
+			panic(fmt.Sprintf("duplicate fields in %#v", fields))
+		}
+		fieldNames = append(fieldNames, field.Name)
+	}
 	return &Struct{fields}
 }
 
 func (t *Struct) Equals(other Type) bool {
+	if t2 := AsPrimitive(other); t2 != nil {
+		return t2.kind == KindAny
+	}
 	if t2 := AsStruct(other); t2 != nil {
-		for name, tField := range t.fields {
-			t2Field, ok := t2.fields[name]
-			if !ok || !tField.Equals(t2Field) {
-				return false
-			}
+		return slices.EqualFunc(t.fields, t2.fields, func(f1, f2 StructField) bool {
+			return f1.Name == f2.Name && f1.Type.Equals(f2.Type)
+		})
+	} else if ref := AsRef(other); ref != nil && t == String {
+		if p, _ := ref.base.Underlying().(*Primitive); p != nil && p.kind == KindChar {
+			return true
 		}
-		return true
 	}
 	return false
 }
@@ -34,29 +53,27 @@ func (t *Struct) String() string {
 	buf := strings.Builder{}
 	buf.WriteString("struct{")
 
-	first := true
-	for name, tField := range t.fields {
-		if !first {
+	for i, field := range t.fields {
+		if i != 0 {
 			buf.WriteString("; ")
 		}
 
-		buf.WriteString(name)
+		buf.WriteString(field.Name)
 		buf.WriteByte(' ')
-		buf.WriteString(tField.String())
-		first = false
+		buf.WriteString(field.Type.String())
 	}
 
 	buf.WriteByte('}')
 	return buf.String()
 }
 
-func (t *Struct) Fields() map[string]Type { return t.fields }
+func (t *Struct) Fields() []StructField { return t.fields }
 
 func IsStruct(t Type) bool { return AsStruct(t) != nil }
 
 func AsStruct(t Type) *Struct {
 	if t != nil {
-		if s, _ := t.Underlying().(*Struct); t != nil {
+		if s, _ := t.Underlying().(*Struct); s != nil {
 			return s
 		}
 	}

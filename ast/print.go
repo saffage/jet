@@ -15,6 +15,7 @@ func (n *Empty) String() string {
 }
 
 func (n *Ident) String() string {
+	// return fmt.Sprintf("(loc: %s, name: %s)", color.CyanString(n.Start.String()), n.Name)
 	return n.Name
 }
 
@@ -90,6 +91,10 @@ func (n *BuiltInCall) String() string {
 
 func (n *MemberAccess) String() string {
 	return n.X.String() + "." + n.Selector.String()
+}
+
+func (n *SafeMemberAccess) String() string {
+	return n.X.String() + "?." + n.Selector.String()
 }
 
 func (n *Call) String() string {
@@ -168,7 +173,7 @@ func (n *PrefixOp) String() string {
 }
 
 func (n *InfixOp) String() string {
-	return fmt.Sprintf("%s %s %s", n.X.String(), n.Opr.String(), n.Y.String())
+	return fmt.Sprintf("(%s %s %s)", n.X.String(), n.Opr.String(), n.Y.String())
 }
 
 func (n *PostfixOp) String() string {
@@ -204,6 +209,15 @@ func (n *VarDecl) String() string {
 	)
 }
 
+func (n *ConstDecl) String() string {
+	return fmt.Sprintf(
+		"%s%sconst %s",
+		optionalComment(n.CommentGroup),
+		optionalAttributeList(n.Attrs),
+		n.Binding.String(),
+	)
+}
+
 func (n *FuncDecl) String() string {
 	if n.Body != nil {
 		return fmt.Sprintf(
@@ -228,6 +242,15 @@ func (n *FuncDecl) String() string {
 func (n *StructDecl) String() string {
 	return fmt.Sprintf(
 		"%sstruct %s %s",
+		optionalAttributeList(n.Attrs),
+		n.Name.String(),
+		n.Body.String(),
+	)
+}
+
+func (n *EnumDecl) String() string {
+	return fmt.Sprintf(
+		"%senum %s %s",
 		optionalAttributeList(n.Attrs),
 		n.Name.String(),
 		n.Body.String(),
@@ -278,6 +301,10 @@ func (n *Continue) String() string {
 	}
 
 	return "continue"
+}
+
+func (n *Import) String() string {
+	return fmt.Sprintf("import %s", n.Module)
 }
 
 func optionalComment(commentGroup *CommentGroup) string {

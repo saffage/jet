@@ -18,7 +18,7 @@ func display(kind Kind, message string) {
 	case KindNote, KindHint, KindWarning:
 		_, err = fmt.Fprintln(os.Stdout, message)
 
-	case KindError, KindInternalError:
+	case KindDebug, KindError:
 		_, err = fmt.Fprintln(os.Stderr, message)
 
 	default:
@@ -30,13 +30,31 @@ func display(kind Kind, message string) {
 	}
 }
 
-func reportfInternal(kind Kind, tag, format string, args ...any) {
-	display(kind, fmt.Sprintf("%s %s", kind.TaggedLabel(tag), fmt.Sprintf(format, args...)))
+func reportInternal(kind Kind, tag, message string) {
+	if kind == KindDebug && !IsDebug {
+		return
+	}
+
+	if strings.TrimSpace(message) == "" {
+		message = "<no message provided>"
+	}
+
+	display(kind, fmt.Sprintf("%s %s", kind.TaggedLabel(tag), message))
 }
 
-func reportAtInternal(kind Kind, tag, message string, start, end token.Loc) {
+func reportAtInternal(kind Kind, tag string, start, end token.Loc, message string) {
+	if kind == KindDebug && !IsDebug {
+		return
+	}
+
 	if start.FileID != end.FileID {
 		panic("start & end position have different file IDs")
+	}
+
+	// We do it here because the message will not be empty
+	// if the location is specified.
+	if strings.TrimSpace(message) == "" {
+		message = "<no message provided>"
 	}
 
 	line := "\n" + formatLoc(start)
@@ -48,9 +66,9 @@ func reportAtInternal(kind Kind, tag, message string, start, end token.Loc) {
 	}
 
 	if UseColors {
-		reportfInternal(kind, tag, messageStyle.Sprint(message)+line)
+		reportInternal(kind, tag, message+line)
 	} else {
-		reportfInternal(kind, tag, message+line)
+		reportInternal(kind, tag, message+line)
 	}
 }
 
@@ -71,10 +89,13 @@ func generateLine(kind Kind, start, end token.Loc, buffer []byte) string {
 		rightBound = len(lineContent)
 	}
 
+	kindColor := *kind.Color()
+	kindColor.Add(color.Underline)
+
 	buf.WriteByte('\n')
 	buf.WriteString(lineNum(lineNumStr))
 	buf.WriteString(applyColorInRange(
-		kind.Color().Add(color.Underline),
+		&kindColor,
 		lineContent,
 		int(leftBound),
 		int(rightBound),
@@ -133,10 +154,13 @@ func applyColorInRange(color *color.Color, text string, a, b int) string {
 
 func underlineChar(kind Kind) rune {
 	switch kind {
+	case KindDebug:
+		return '-'
+
 	case KindNote, KindHint, KindWarning:
 		return '^'
 
-	case KindError, KindInternalError:
+	case KindError:
 		return '~'
 
 	default:
@@ -149,12 +173,12 @@ func formatLoc(loc token.Loc) string {
 		return fmt.Sprintf("%s%s %s",
 			strings.Repeat(" ", numLen(int(loc.Line))),
 			lineNumStyle.Sprint("-->"),
-			loc.String(),
+			color.CyanString(loc.String()),
 		)
 	}
 	return fmt.Sprintf("%s--> %s",
 		strings.Repeat(" ", numLen(int(loc.Line))),
-		loc.String(),
+		color.CyanString(loc.String()),
 	)
 }
 
@@ -169,7 +193,4 @@ func numLen(num int) (len int) {
 	return len
 }
 
-var (
-	messageStyle = color.New(color.Bold)
-	lineNumStyle = color.New(color.Bold, color.FgHiGreen)
-)
+var lineNumStyle = color.New(color.Bold, color.FgHiGreen)

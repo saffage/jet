@@ -182,11 +182,20 @@ func (s *Scanner) Next() token.Token {
 
 			tok = token.Token{Kind: kind}
 
-		case s.Match('?', '&', '|', '^', ',', ':', ';', '(', ')', '[', ']', '{', '}'):
+		case s.Match('&', '|', '^', ',', ':', ';', '(', ')', '[', ']', '{', '}'):
 			kind := token.KindFromString(string(s.Advance()))
 
 			if kind == token.Illegal {
 				panic("unreachable")
+			}
+
+			tok = token.Token{Kind: kind}
+
+		case s.Consume('?'):
+			kind := token.QuestionMark
+
+			if s.Consume('.') {
+				kind = token.QuestionMarkDot
 			}
 
 			tok = token.Token{Kind: kind}
@@ -384,7 +393,8 @@ func (s *Scanner) scanNumber() token.Token {
 		}
 	}
 
-	if s.Consume('.') {
+	if s.Match('.') && ascii.IsDigit(s.LookAhead(1)) {
+		s.Advance()
 		fracPart = "."
 
 		if num := s.parseNumber(ascii.IsDigit, "number after the point"); num.Kind != token.Illegal {

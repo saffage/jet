@@ -15,6 +15,9 @@ func NewArray(size int, t Type) *Array {
 }
 
 func (t *Array) Equals(other Type) bool {
+	if t2 := AsPrimitive(other); t2 != nil {
+		return t2.kind == KindAny
+	}
 	if t2 := AsArray(other); t2 != nil {
 		return t.size == t2.size && t.elem.Equals(t2.elem)
 	}
@@ -34,7 +37,7 @@ func (t *Array) Size() int { return t.size }
 
 func (t *Array) ElemType() Type { return t.elem }
 
-func IsArray(t Type) bool { return AsRef(t) != nil }
+func IsArray(t Type) bool { return AsArray(t) != nil }
 
 func AsArray(t Type) *Array {
 	if t != nil {
