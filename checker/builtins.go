@@ -56,4 +56,13 @@ var builtIns = []*BuiltIn{
 			false,
 		),
 	},
+	{
+		name: "asPtr",
+		f:    builtInAsPtr,
+		t: types.NewFunc(
+			types.NewTuple(types.NewRef(types.U8)),
+			types.NewTuple(types.String),
+			false,
+		),
+	},
 }

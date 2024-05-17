@@ -222,6 +222,11 @@ func (check *Checker) structInit(node *ast.MemberAccess, typedesc *types.TypeDes
 }
 
 func (check *Checker) structMember(node *ast.MemberAccess, t *types.Struct) types.Type {
+	if t == types.String {
+		check.errorf(node, "member access on string type is not implemented")
+		return nil
+	}
+
 	selector, _ := node.Selector.(*ast.Ident)
 	if selector == nil {
 		check.errorf(node.Selector, "expected field identifier")

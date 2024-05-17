@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/saffage/jet/ast"
+	"github.com/saffage/jet/internal/report"
 	"github.com/saffage/jet/types"
 )
 
@@ -15,7 +16,11 @@ func (gen *generator) BuiltInCall(call *ast.BuiltInCall) string {
 	case "assert":
 		return gen.builtInAssert(call)
 
+	case "asPtr":
+		return gen.builtInAsPtr(call)
+
 	default:
+		report.Warningf("unknown built-in: '@%s'", call.Name.Name)
 		return "ERROR_CGEN"
 	}
 }
@@ -66,4 +71,8 @@ func (gen *generator) builtInPrint(call *ast.BuiltInCall) string {
 func (gen *generator) builtInAssert(call *ast.BuiltInCall) string {
 	expr := gen.ExprString(call.Args.(*ast.ParenList).Exprs[0])
 	return fmt.Sprintf("assert(%s)", expr)
+}
+
+func (gen *generator) builtInAsPtr(call *ast.BuiltInCall) string {
+	return gen.ExprString(call.Args.(*ast.ParenList).Exprs[0])
 }

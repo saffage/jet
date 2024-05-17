@@ -69,3 +69,7 @@ func builtInPrint(node *ast.ParenList, args []*TypedValue) (*TypedValue, error) 
 func builtInAssert(node *ast.ParenList, args []*TypedValue) (*TypedValue, error) {
 	return &TypedValue{types.Unit, nil}, nil
 }
+
+func builtInAsPtr(node *ast.ParenList, args []*TypedValue) (*TypedValue, error) {
+	return &TypedValue{types.NewRef(types.U8), nil}, nil
+}
