@@ -22,7 +22,7 @@ func (check *Checker) blockVisitor(expr *Block) ast.Visitor {
 				check.resolveVarDecl(decl)
 				expr.t = types.Unit
 
-			case *ast.TypeAliasDecl, *ast.FuncDecl, *ast.ModuleDecl:
+			case *ast.TypeAliasDecl, *ast.FuncDecl, *ast.ModuleDecl, *ast.ConstDecl:
 				check.errorf(decl, "a local scope can contain only variable declarations")
 				return nil
 
