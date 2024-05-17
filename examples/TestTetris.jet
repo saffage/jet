@@ -2,7 +2,7 @@
 #   $ go build .
 #   $ ./jet --lib_path="./lib/" --gen_c "examples/TestTetris.jet"
 #
-# Compilation for Linux/Windows utilizing MSYS2:
+# Compilation for Linux/Windows utilizing MinGW64:
 #   $ gcc -o examples/.jet/TestTetris examples/.jet/TestTetris__jet.c -lraylib -lgdi32 -lwinmm
 #
 # Compilation for native Windows using Clang:
