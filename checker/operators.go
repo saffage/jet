@@ -94,26 +94,32 @@ func (check *Checker) infix(node *ast.InfixOp, tOperandX, tOperandY types.Type) 
 		return types.Unit
 	}
 
-	primitive := types.AsPrimitive(tOperandX)
+	switch tX := tOperandX.Underlying().(type) {
+	case *types.Primitive:
+		return check.infixPrimitive(node, tX, tOperandY)
 
-	if primitive == nil {
-		if _enum := types.AsEnum(tOperandX); _enum != nil {
-			switch node.Opr.Kind {
-			case ast.OperatorEq, ast.OperatorNe:
-				return types.Bool
-			}
+	case *types.Ref, *types.Enum:
+		switch node.Opr.Kind {
+		case ast.OperatorEq, ast.OperatorNe:
+			return types.Bool
 		}
-
-		check.errorf(node, "only primitive types and enums have operators")
-		return nil
 	}
 
+	check.errorf(node, "type mismatch (%s and %s)", tOperandX, tOperandY)
+	return nil
+}
+
+func (check *Checker) infixPrimitive(
+	node *ast.InfixOp,
+	tOperandX *types.Primitive,
+	tOperandY types.Type,
+) types.Type {
 	switch node.Opr.Kind {
 	case ast.OperatorAdd,
 		ast.OperatorSub,
 		ast.OperatorMul,
 		ast.OperatorDiv:
-		switch primitive.Kind() {
+		switch tOperandX.Kind() {
 		case types.KindUntypedInt, types.KindUntypedFloat, types.KindI32, types.KindU8:
 			return tOperandX
 		}
@@ -122,7 +128,7 @@ func (check *Checker) infix(node *ast.InfixOp, tOperandX, tOperandY types.Type) 
 		ast.OperatorSubAndAssign,
 		ast.OperatorMultAndAssign,
 		ast.OperatorDivAndAssign:
-		switch primitive.Kind() {
+		switch tOperandX.Kind() {
 		case types.KindUntypedInt, types.KindUntypedFloat, types.KindI32, types.KindU8:
 			if !check.assignable(node.X) {
 				check.errorf(node.X, "expression cannot be assigned")
@@ -136,13 +142,13 @@ func (check *Checker) infix(node *ast.InfixOp, tOperandX, tOperandY types.Type) 
 		ast.OperatorBitXor,
 		ast.OperatorBitShl,
 		ast.OperatorBitShr:
-		switch primitive.Kind() {
+		switch tOperandX.Kind() {
 		case types.KindUntypedInt, types.KindI32, types.KindU8:
 			return tOperandX
 		}
 
 	case ast.OperatorModAndAssign:
-		switch primitive.Kind() {
+		switch tOperandX.Kind() {
 		case types.KindUntypedInt, types.KindI32, types.KindU8:
 			if !check.assignable(node.X) {
 				check.errorf(node.X, "expression cannot be assigned")
@@ -156,7 +162,7 @@ func (check *Checker) infix(node *ast.InfixOp, tOperandX, tOperandY types.Type) 
 		ast.OperatorLe,
 		ast.OperatorGt,
 		ast.OperatorGe:
-		switch primitive.Kind() {
+		switch tOperandX.Kind() {
 		case types.KindUntypedBool, types.KindUntypedInt, types.KindUntypedFloat:
 			return types.UntypedBool
 
@@ -165,7 +171,7 @@ func (check *Checker) infix(node *ast.InfixOp, tOperandX, tOperandY types.Type) 
 		}
 
 	case ast.OperatorAnd, ast.OperatorOr:
-		switch primitive.Kind() {
+		switch tOperandX.Kind() {
 		case types.KindUntypedBool:
 			return types.UntypedBool
 
@@ -177,12 +183,6 @@ func (check *Checker) infix(node *ast.InfixOp, tOperandX, tOperandY types.Type) 
 		panic(fmt.Sprintf("unknown infix operator: '%s'", node.Opr.Kind))
 	}
 
-	check.errorf(
-		node.Opr,
-		"operator '%s' is not defined for the type (%s)",
-		node.Opr.Kind,
-		tOperandX,
-	)
 	return nil
 }
 
