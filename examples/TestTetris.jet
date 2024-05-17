@@ -1,7 +1,7 @@
 # To compile this file use the next CLI commands.
 #
 #   $ go build .
-#   $ ./jet --lib_path="./lib/" --gen_c "_test/TestTetris.jet"
+#   $ ./jet --lib_path="./lib/" --gen_c "examples/TestTetris.jet"
 #   $ gcc -o examples/.jet/TestTetris examples/.jet/TestTetris__jet.c -lraylib -lgdi32 -lwinmm
 #
 # NOTE: MSYS2 environment is required on windows.
