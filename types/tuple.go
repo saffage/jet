@@ -19,8 +19,8 @@ func NewTuple(types ...Type) *Tuple {
 //
 // NOTE: name of the elements are not required to be the same.
 func (t *Tuple) Equals(other Type) bool {
-	if t2 := AsPrimitive(other); t2 != nil {
-		return t2.kind == KindAny
+	if t2 := AsPrimitive(other); t2 != nil && t2.kind == KindAny {
+		return true
 	}
 	if t2 := AsTuple(other); t2 != nil {
 		return slices.EqualFunc(
