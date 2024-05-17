@@ -27,6 +27,9 @@ func NewFunc(result *Tuple, params *Tuple, variadic bool) *Func {
 }
 
 func (t *Func) Equals(other Type) bool {
+	if t2 := AsPrimitive(other); t2 != nil {
+		return t2.kind == KindAny
+	}
 	if t2 := AsFunc(other); t2 != nil {
 		return t.variadic == t2.variadic && t.result.Equals(t2.result) && t.params.Equals(t2.params)
 	}

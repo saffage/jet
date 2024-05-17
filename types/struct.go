@@ -32,6 +32,9 @@ func NewStruct(fields ...StructField) *Struct {
 }
 
 func (t *Struct) Equals(other Type) bool {
+	if t2 := AsPrimitive(other); t2 != nil {
+		return t2.kind == KindAny
+	}
 	if t2 := AsStruct(other); t2 != nil {
 		return slices.EqualFunc(t.fields, t2.fields, func(f1, f2 StructField) bool {
 			return f1.Name == f2.Name && f1.Type.Equals(f2.Type)

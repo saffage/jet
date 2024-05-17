@@ -11,6 +11,9 @@ func NewEnum(fields ...string) *Enum {
 }
 
 func (t *Enum) Equals(other Type) bool {
+	if t2 := AsPrimitive(other); t2 != nil {
+		return t2.kind == KindAny
+	}
 	if t2 := AsEnum(other); t2 != nil {
 		if len(t2.fields) != len(t.fields) {
 			return false
