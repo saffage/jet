@@ -76,3 +76,8 @@ func builtInAssert(node *ast.ParenList, args []*TypedValue) (*TypedValue, error)
 func builtInAsPtr(node *ast.ParenList, args []*TypedValue) (*TypedValue, error) {
 	return &TypedValue{types.NewRef(types.U8), nil}, nil
 }
+
+func builtInAs(node *ast.ParenList, args []*TypedValue) (*TypedValue, error) {
+	// TODO some additional checks
+	return &TypedValue{types.SkipTypeDesc(args[0].Type), nil}, nil
+}

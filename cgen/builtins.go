@@ -19,6 +19,9 @@ func (gen *generator) BuiltInCall(call *ast.BuiltInCall) string {
 	case "asPtr":
 		return gen.builtInAsPtr(call)
 
+	case "as":
+		return gen.builtInAs(call)
+
 	default:
 		report.Warningf("unknown built-in: '@%s'", call.Name.Name)
 		return "ERROR_CGEN"
@@ -75,4 +78,14 @@ func (gen *generator) builtInAssert(call *ast.BuiltInCall) string {
 
 func (gen *generator) builtInAsPtr(call *ast.BuiltInCall) string {
 	return gen.ExprString(call.Args.(*ast.ParenList).Exprs[0])
+}
+
+func (gen *generator) builtInAs(call *ast.BuiltInCall) string {
+	t := gen.TypeOf(call.Args.(*ast.ParenList).Exprs[0])
+	if t == nil {
+		panic("unreachable")
+	}
+
+	val := call.Args.(*ast.ParenList).Exprs[1]
+	return fmt.Sprintf("(%s)%s", gen.TypeString(types.SkipTypeDesc(t)), gen.ExprString(val))
 }
