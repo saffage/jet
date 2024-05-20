@@ -92,9 +92,7 @@ func (gen *generator) funcDecl(sym *checker.Func) {
 		gen.indent(&gen.codeSect)
 
 		if tResultVar != nil && i == len(node.Body.Nodes)-1 {
-			gen.codeSect.WriteString("__result = ")
-			gen.codeSect.WriteString(gen.ExprString(stmt))
-			gen.codeSect.WriteString(";\n")
+			gen.codeSect.WriteString(fmt.Sprintf("__result = %s;\n", gen.ExprString(stmt)))
 		} else {
 			gen.codeSect.WriteString(gen.StmtString(stmt))
 		}
