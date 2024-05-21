@@ -420,7 +420,7 @@ func resolveClears(game *Game) {
 
 func lockTetraminoInstance(instance *TetraminoInstance, game *Game) {
     var renderCoords [8]u8
-    if canRenderTetrominoInstance(instance, @as(*u8, &renderCoords)) {
+    if canRenderTetrominoInstance(instance, &renderCoords[0]) {
         var i = 0
         while i < 8 {
             var x u8 = renderCoords[i]
@@ -465,7 +465,7 @@ func handleAction(action Action, game *Game) {
         var currentCoords [8]u8
         var renderCoords [8]u8
 
-        getCoords(game?.currentTetramino, @as(*u8, &currentCoords))
+        getCoords(game?.currentTetramino, &currentCoords[0])
         var request TetraminoInstance = *game?.currentTetramino
 
         if action == Action.Rotate {
@@ -477,7 +477,7 @@ func handleAction(action Action, game *Game) {
         } else if action == Action.AutoDrop {
             request.y -= 1
         } else if action == Action.HardDrop {
-            while canRenderTetrominoInstance(&request, @as(*u8, &renderCoords)) {
+            while canRenderTetrominoInstance(&request, &renderCoords[0]) {
                 request.y -= 1
             }
             request.y += 1
@@ -493,7 +493,7 @@ func handleAction(action Action, game *Game) {
             i += 2
         }
 
-        var canRender = canRenderTetrominoInstance(&request, @as(*u8, &renderCoords))
+        var canRender = canRenderTetrominoInstance(&request, &renderCoords[0])
 
         if canRender {
             game?.currentTetramino?.x = request.x
@@ -512,7 +512,7 @@ func renderTetrominoInstance(instance *TetraminoInstance) bool {
     var renderCoords [8]u8
     var rendered = false
 
-    if canRenderTetrominoInstance(instance, @as(*u8, &renderCoords)) {
+    if canRenderTetrominoInstance(instance, &renderCoords[0]) {
         var i = 0
         while i < 8 {
             var x u8 = renderCoords[i]
@@ -529,10 +529,10 @@ func renderTetrominoInstance(instance *TetraminoInstance) bool {
 func renderGhostTetrominoInstance(instance *TetraminoInstance) {
     var renderCoords [8]u8
 
-    if canRenderTetrominoInstance(instance, @as(*u8, &renderCoords)) {
+    if canRenderTetrominoInstance(instance, &renderCoords[0]) {
         var ghost = *instance
         ghost.tetramino.color.a = 120
-        while canRenderTetrominoInstance(&ghost, @as(*u8, &renderCoords)) {
+        while canRenderTetrominoInstance(&ghost, &renderCoords[0]) {
             ghost.y -= 1
         }
         ghost.y += 1
