@@ -43,8 +43,7 @@ func (p *Parser) addError(err error) {
 
 func (p *Parser) error(start, end token.Loc, message string) {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	p.addError(NewError(start, end, message))
@@ -52,8 +51,7 @@ func (p *Parser) error(start, end token.Loc, message string) {
 
 func (p *Parser) errorf(start, end token.Loc, format string, args ...any) {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	p.addError(NewErrorf(start, end, format, args...))

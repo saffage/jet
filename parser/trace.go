@@ -9,7 +9,7 @@ import (
 	"github.com/saffage/jet/internal/report" // for report.NoColors
 )
 
-func (p *Parser) printTrace(args ...any) {
+func printTrace(p *Parser, args ...any) {
 	pos := p.tok.Start
 
 	if report.UseColors {
@@ -30,7 +30,7 @@ func (p *Parser) printTrace(args ...any) {
 	}
 }
 
-func (p *Parser) trace() {
+func trace(p *Parser) *Parser {
 	caller := "unknown caller"
 
 	if pc, _, _, ok := runtime.Caller(1); ok {
@@ -53,10 +53,11 @@ func (p *Parser) trace() {
 		}
 	}
 
-	p.printTrace(caller)
+	printTrace(p, caller)
 	p.indent++
+	return p
 }
 
-func (p *Parser) untrace() {
+func un(p *Parser) {
 	p.indent--
 }

@@ -11,8 +11,7 @@ import (
 
 func (p *Parser) parseIdentNode() *ast.Ident {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	if id := p.expect(token.Ident); id != nil {
@@ -69,8 +68,7 @@ func (p *Parser) parseLiteral() ast.Node {
 
 func (p *Parser) parseStmt() ast.Node {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	for p.tok.Kind == token.NewLine {
@@ -151,8 +149,7 @@ func (p *Parser) parseStmt() ast.Node {
 
 func (p *Parser) parseEmptyStmt() ast.Node {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	if p.tok.Kind == token.Semicolon {
@@ -169,8 +166,7 @@ func (p *Parser) parseEmptyStmt() ast.Node {
 
 func (p *Parser) parseExpr() ast.Node {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	switch p.tok.Kind {
@@ -187,8 +183,7 @@ func (p *Parser) parseExpr() ast.Node {
 
 func (p *Parser) parseSimpleExpr() ast.Node {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	return p.parseBinaryExpr(nil, token.LowestPrec+1)
@@ -196,8 +191,7 @@ func (p *Parser) parseSimpleExpr() ast.Node {
 
 func (p *Parser) parseBinaryExpr(lhs ast.Node, precedence token.Precedence) ast.Node {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	if lhs == nil {
@@ -321,8 +315,7 @@ func (p *Parser) parseBinaryExpr(lhs ast.Node, precedence token.Precedence) ast.
 
 func (p *Parser) parseUnaryExpr() ast.Node {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	switch p.tok.Kind {
@@ -392,8 +385,7 @@ func (p *Parser) parseUnaryExpr() ast.Node {
 
 func (p *Parser) parseOperand() ast.Node {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	switch p.tok.Kind {
@@ -420,8 +412,7 @@ func (p *Parser) parseOperand() ast.Node {
 
 func (p *Parser) parsePrimaryExpr(x ast.Node) ast.Node {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	if x == nil {
@@ -437,8 +428,7 @@ func (p *Parser) parsePrimaryExpr(x ast.Node) ast.Node {
 
 func (p *Parser) parseSuffixExpr(x ast.Node) ast.Node {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	if x == nil {
@@ -506,8 +496,7 @@ func (p *Parser) parseSuffixExpr(x ast.Node) ast.Node {
 
 func (p *Parser) parseMemberAccess(x ast.Node) ast.Node {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	if x == nil {
@@ -547,8 +536,7 @@ func (p *Parser) parseMemberAccess(x ast.Node) ast.Node {
 
 func (p *Parser) parseSafeMemberAccess(x ast.Node) ast.Node {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	if x == nil {
@@ -571,8 +559,7 @@ func (p *Parser) parseSafeMemberAccess(x ast.Node) ast.Node {
 
 func (p *Parser) parseBuiltIn() ast.Node {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	if tok := p.expect(token.At); tok != nil {
@@ -614,8 +601,7 @@ func (p *Parser) parseBuiltIn() ast.Node {
 
 func (p *Parser) parseVarDecl() ast.Node {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	tok := p.expect(token.KwVar)
@@ -645,8 +631,7 @@ func (p *Parser) parseVarDecl() ast.Node {
 
 func (p *Parser) parseConstDecl() ast.Node {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	tok := p.expect(token.KwConst)
@@ -664,8 +649,7 @@ func (p *Parser) parseConstDecl() ast.Node {
 
 func (p *Parser) parseFuncDecl() ast.Node {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	tok := p.expect(token.KwFunc)
@@ -710,8 +694,7 @@ func (p *Parser) parseFuncDecl() ast.Node {
 
 func (p *Parser) parseStructDecl() ast.Node {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	tok := p.expect(token.KwStruct)
@@ -736,8 +719,7 @@ func (p *Parser) parseStructDecl() ast.Node {
 
 func (p *Parser) parseEnumDecl() ast.Node {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	tok := p.expect(token.KwEnum)
@@ -766,8 +748,7 @@ func (p *Parser) parseEnumDecl() ast.Node {
 
 func (p *Parser) parseAttributes() *ast.AttributeList {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	tokenIdx := p.save()
@@ -787,8 +768,7 @@ func (p *Parser) parseAttributes() *ast.AttributeList {
 
 func (p *Parser) parseBracketExpr() ast.Node {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	if list := p.parseBracketList(p.parseExpr); list != nil {
@@ -798,10 +778,9 @@ func (p *Parser) parseBracketExpr() ast.Node {
 	return nil
 }
 
-func (p *Parser) parseBindingAndValue(valueRequired bool) ast.Node {
+func (p *Parser) parseBindingAndValue() ast.Node {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	var binding *ast.Binding
@@ -849,8 +828,7 @@ func (p *Parser) parseBindingAndValue(valueRequired bool) ast.Node {
 
 func (p *Parser) parseBinding() ast.Node {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	attrs := p.parseAttributes()
@@ -878,8 +856,7 @@ func (p *Parser) parseBinding() ast.Node {
 
 func (p *Parser) parseFieldAssignment() ast.Node {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	name := p.parseIdentNode()
@@ -913,8 +890,7 @@ func (p *Parser) parseFieldAssignment() ast.Node {
 
 func (p *Parser) parseTypeName() ast.Node {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	switch p.tok.Kind {
@@ -939,8 +915,7 @@ func (p *Parser) parseTypeName() ast.Node {
 
 func (p *Parser) parseSignature(funcTok *token.Token) *ast.Signature {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	paramList := p.parseParenList(p.parseBinding)
@@ -970,8 +945,7 @@ func (p *Parser) parseSignature(funcTok *token.Token) *ast.Signature {
 
 func (p *Parser) parseType() ast.Node {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	switch p.tok.Kind {
@@ -1036,8 +1010,7 @@ func (p *Parser) parseType() ast.Node {
 /*
 func (p *Parser) parseGenericDecl() ast.Node {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	tok := p.expect(token.KwVar, token.KwVal, token.KwConst)
@@ -1072,8 +1045,7 @@ func (p *Parser) parseGenericDecl() ast.Node {
 
 func (p *Parser) parseElse() ast.Node {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	if elseTok := p.consume(token.KwElse); elseTok != nil {
@@ -1102,8 +1074,7 @@ func (p *Parser) parseElse() ast.Node {
 
 func (p *Parser) parseIf() ast.Node {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	tok := p.expect(token.KwIf)
@@ -1145,8 +1116,7 @@ func (p *Parser) parseIf() ast.Node {
 
 func (p *Parser) parseWhile() ast.Node {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	tok := p.expect(token.KwWhile)
@@ -1173,8 +1143,7 @@ func (p *Parser) parseWhile() ast.Node {
 
 func (p *Parser) parseReturn() ast.Node {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	tok := p.expect(token.KwReturn)
@@ -1188,8 +1157,7 @@ func (p *Parser) parseReturn() ast.Node {
 
 func (p *Parser) parseBreakOrContinue() ast.Node {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	tok := p.expect(token.KwBreak, token.KwContinue)
@@ -1219,8 +1187,7 @@ func (p *Parser) parseBreakOrContinue() ast.Node {
 
 func (p *Parser) parseModule() ast.Node {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	if tok := p.consume(token.KwModule); tok != nil {
@@ -1245,8 +1212,7 @@ func (p *Parser) parseModule() ast.Node {
 
 func (p *Parser) parseImport() ast.Node {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	tok := p.consume(token.KwImport)
@@ -1269,8 +1235,7 @@ func (p *Parser) parseImport() ast.Node {
 
 func (p *Parser) parseAlias() ast.Node {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	if tokAlias := p.consume(token.KwAlias); tokAlias != nil {
@@ -1309,8 +1274,7 @@ func (p *Parser) parseAlias() ast.Node {
 
 func (p *Parser) parseBracketList(f func() ast.Node) *ast.BracketList {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	if exprs, openLoc, closeLoc, _ := p.parseBracketedList(
@@ -1331,8 +1295,7 @@ func (p *Parser) parseBracketList(f func() ast.Node) *ast.BracketList {
 
 func (p *Parser) parseParenList(f func() ast.Node) *ast.ParenList {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	if exprs, openLoc, closeLoc, _ := p.parseBracketedList(
@@ -1353,8 +1316,7 @@ func (p *Parser) parseParenList(f func() ast.Node) *ast.ParenList {
 
 func (p *Parser) parseParenExpr(f func() ast.Node) ast.Node {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	if exprs, openLoc, closeLoc, wasSeparator := p.parseBracketedList(
@@ -1379,8 +1341,7 @@ func (p *Parser) parseParenExpr(f func() ast.Node) ast.Node {
 
 func (p *Parser) parseCurlyList(f func() ast.Node) *ast.CurlyList {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	if nodes, openLoc, closeLoc, _ := p.parseBracketedList(
@@ -1402,8 +1363,7 @@ func (p *Parser) parseCurlyList(f func() ast.Node) *ast.CurlyList {
 
 func (p *Parser) parseBlock() ast.Node {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	if list := p.parseCurlyList(p.parseStmt); list != nil {
@@ -1415,8 +1375,7 @@ func (p *Parser) parseBlock() ast.Node {
 
 func (p *Parser) parseStmtList() *ast.List {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	if nodes, _ := p.listWithDelimiter(
@@ -1445,8 +1404,7 @@ func (p *Parser) listWithDelimiter(
 	}
 
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	nodes = []ast.Node{}
@@ -1503,8 +1461,7 @@ func (p *Parser) parseBracketedList(
 	separators ...token.Kind,
 ) (nodes []ast.Node, openLoc, closeLoc token.Loc, wasSeparator bool) {
 	if p.flags&Trace != 0 {
-		p.trace()
-		defer p.untrace()
+		defer un(trace(p))
 	}
 
 	if tok := p.expect(opening); tok != nil {
