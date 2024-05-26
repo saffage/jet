@@ -15,18 +15,6 @@ type Error struct {
 	Notes      []string
 }
 
-func NewError(start, end token.Loc, message string) Error {
-	return Error{
-		Start:   start,
-		End:     end,
-		Message: message,
-	}
-}
-
-func NewErrorf(start, end token.Loc, format string, args ...any) Error {
-	return NewError(start, end, fmt.Sprintf(format, args...))
-}
-
 func (e Error) Error() string { return e.Message }
 
 func (e Error) Report() {
@@ -46,7 +34,11 @@ func (p *Parser) error(start, end token.Loc, message string) {
 		defer un(trace(p))
 	}
 
-	p.addError(NewError(start, end, message))
+	p.errors = append(p.errors, Error{
+		Start:   start,
+		End:     end,
+		Message: message,
+	})
 }
 
 func (p *Parser) errorf(start, end token.Loc, format string, args ...any) {
@@ -54,7 +46,11 @@ func (p *Parser) errorf(start, end token.Loc, format string, args ...any) {
 		defer un(trace(p))
 	}
 
-	p.addError(NewErrorf(start, end, format, args...))
+	p.errors = append(p.errors, Error{
+		Start:   start,
+		End:     end,
+		Message: fmt.Sprintf(format, args...),
+	})
 }
 
 func (p *Parser) errorExpected(start, end token.Loc, message string) {
