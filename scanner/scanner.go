@@ -89,6 +89,15 @@ func (s *Scanner) Next() token.Token {
 				Data: string(s.Advance()),
 			}
 
+		case s.Match('\n', '\r'):
+			tok = token.Token{
+				Kind: token.NewLine,
+				Data: s.TakeWhile(isNewLineChar),
+			}
+
+		case ascii.IsDigit(s.Peek()):
+			tok = s.scanNumber()
+
 		case token.IsIdentifierStartChar(s.Peek()):
 			identifier := s.TakeWhile(token.IsIdentifierChar)
 
@@ -99,16 +108,14 @@ func (s *Scanner) Next() token.Token {
 					Kind: token.Ident,
 					Data: identifier,
 				}
-			}
 
-		case isNewLineChar(s.Peek()):
-			tok = token.Token{
-				Kind: token.NewLine,
-				Data: s.TakeWhile(isNewLineChar),
+				if s.Match('"', '\'') {
+					strTok := s.scanString()
+					strTok.Start = tok.Start
+					strTok.Data = tok.Data + strTok.Data
+					tok = strTok
+				}
 			}
-
-		case ascii.IsDigit(s.Peek()):
-			tok = s.scanNumber()
 
 		case s.Match('"', '\''):
 			tok = s.scanString()
@@ -209,8 +216,11 @@ func (s *Scanner) Next() token.Token {
 			}
 		}
 
-		if tok.Start.Line == 0 {
+		if !tok.Start.IsValid() {
 			tok.Start = startPos
+		}
+
+		if !tok.End.IsValid() {
 			tok.End = s.PrevPos()
 		}
 
@@ -232,8 +242,9 @@ func (s *Scanner) Next() token.Token {
 }
 
 func (s *Scanner) scanString() token.Token {
-	quotePos, quote := s.Pos(), s.Advance()
-	data := s.Take(func() (data []byte, stop bool) {
+	quotePos := s.Pos()
+	quote := s.Advance()
+	data := string(quote) + s.Take(func() (data []byte, stop bool) {
 		if s.Peek() == '\000' || s.Peek() == quote || isNewLineChar(s.Peek()) {
 			return nil, true
 		} else if s.Consume('\\') {
@@ -300,7 +311,7 @@ func (s *Scanner) scanString() token.Token {
 
 	return token.Token{
 		Kind:  token.String,
-		Data:  data,
+		Data:  data + string(quote),
 		Start: quotePos,
 		End:   s.PrevPos(),
 	}
@@ -349,7 +360,8 @@ func (s *Scanner) parseBytes(n int) ([]byte, bool) {
 }
 
 func (s *Scanner) scanNumber() token.Token {
-	numPart, fracPart, expPart := "", "", ""
+	buf := strings.Builder{}
+	tok := token.Token{Kind: token.Int, Data: ""}
 
 	if s.Consume('0') {
 		switch {
@@ -383,11 +395,11 @@ func (s *Scanner) scanNumber() token.Token {
 			}
 
 		default:
-			numPart = "0"
+			buf.WriteByte('0')
 		}
 	} else {
 		if num := s.parseDecNumber(); num.Kind != token.Illegal {
-			numPart = num.Data
+			buf.WriteString(num.Data)
 		} else {
 			return num
 		}
@@ -395,46 +407,44 @@ func (s *Scanner) scanNumber() token.Token {
 
 	if s.Match('.') && ascii.IsDigit(s.LookAhead(1)) {
 		s.Advance()
-		fracPart = "."
+		buf.WriteByte('.')
+		tok.Kind = token.Float
 
 		if num := s.parseNumber(ascii.IsDigit, "number after the point"); num.Kind != token.Illegal {
-			fracPart += num.Data
+			buf.WriteString(num.Data)
 		} else {
 			return num
 		}
 	}
 
 	if s.Consume('e', 'E') {
-		expPart = string(s.Prev())
+		buf.WriteByte(s.Prev())
+		tok.Kind = token.Float
 
 		if s.Consume('+', '-') {
-			expPart += string(s.Prev())
+			buf.WriteByte(s.Prev())
 		}
 
 		if num := s.parseDecNumber(); num.Kind != token.Illegal {
-			expPart += num.Data
+			buf.WriteString(num.Data)
 		} else {
 			return num
 		}
 	}
 
-	if token.IsIdentifierStartChar(s.Peek()) {
-		s.errorUnexpected("character", s.Pos(), "numeric literals have no suffixes")
-		return token.Token{
-			Kind: token.Illegal,
-			Data: string(s.Peek()),
+	if s.Consume('\'') {
+		buf.WriteByte('\'')
+
+		if !token.IsIdentifierStartChar(s.Peek()) {
+			s.errorExpected("identifier for numeric suffix", s.Pos())
+			tok.Kind = token.Illegal
+			return tok
+		} else {
+			buf.WriteString(s.TakeWhile(token.IsIdentifierChar))
 		}
 	}
 
-	tok := token.Token{
-		Kind: token.Int,
-		Data: numPart + fracPart + expPart,
-	}
-
-	if len(fracPart) > 0 || len(expPart) > 0 {
-		tok.Kind = token.Float
-	}
-
+	tok.Data = buf.String()
 	return tok
 }
 

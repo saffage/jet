@@ -3,6 +3,7 @@ package checker
 import (
 	"fmt"
 	"math/big"
+	"strings"
 
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/constant"
@@ -24,15 +25,27 @@ func constantFromNode(node *ast.Literal) constant.Value {
 
 	switch node.Kind {
 	case ast.IntLiteral:
-		if value, ok := big.NewInt(0).SetString(node.Value, 0); ok {
+		value := node.Value
+
+		if suffixIdx := strings.LastIndex(node.Value, "'"); suffixIdx != -1 {
+			value = value[:suffixIdx]
+		}
+
+		if value, ok := big.NewInt(0).SetString(value, 0); ok {
 			return constant.NewBigInt(value)
 		}
 
 		// Unreachable?
-		panic(fmt.Sprintf("invalid integer value for constant: '%s'", node.Value))
+		panic(fmt.Sprintf("invalid integer value for constant: '%s'", value))
 
 	case ast.FloatLiteral:
-		if value, ok := big.NewFloat(0.0).SetString(node.Value); ok {
+		value := node.Value
+
+		if suffixIdx := strings.LastIndex(node.Value, "'"); suffixIdx != -1 {
+			value = value[:suffixIdx]
+		}
+
+		if value, ok := big.NewFloat(0.0).SetString(value); ok {
 			return constant.NewBigFloat(value)
 		}
 
@@ -40,7 +53,11 @@ func constantFromNode(node *ast.Literal) constant.Value {
 		panic(fmt.Sprintf("invalid float value for constant: '%s'", node.Value))
 
 	case ast.StringLiteral:
-		return constant.NewString(node.Value)
+		start := strings.IndexAny(node.Value, "\"'")
+		end := strings.LastIndexAny(node.Value, "\"'")
+		value := node.Value[start+1:end]
+
+		return constant.NewString(value)
 
 	default:
 		panic("unreachable")
