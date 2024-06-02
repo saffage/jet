@@ -174,6 +174,10 @@ func (base *Base) Pos() token.Loc {
 }
 
 func (base *Base) PrevPos() token.Loc {
+	if base.bufPos == 0 {
+		return token.Loc{}
+	}
+
 	pos := token.Loc{
 		FileID: base.fileID,
 		Offset: uint64(base.bufPos - 1),
