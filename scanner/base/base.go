@@ -1,6 +1,7 @@
 package base
 
 import (
+	"math"
 	"slices"
 	"strings"
 
@@ -140,7 +141,7 @@ func (base *Base) HandleNewline() (wasNewline bool) {
 }
 
 func (base Base) GetLine(n int) (line string) {
-	if n <= 0 || n > 4294967295 {
+	if n <= 0 || n > math.MaxUint32 {
 		return
 	}
 
