@@ -67,7 +67,7 @@ func (s *Scanner) Next() token.Token {
 		case s.Match('#'):
 			tok = token.Token{
 				Kind: token.Comment,
-				Data: s.TakeUntil(isNewLineChar),
+				Data: s.TakeUntil(isNewLine),
 			}
 
 			if s.flags&SkipComments != 0 {
@@ -92,7 +92,7 @@ func (s *Scanner) Next() token.Token {
 		case s.Match('\n', '\r'):
 			tok = token.Token{
 				Kind: token.NewLine,
-				Data: s.TakeWhile(isNewLineChar),
+				Data: s.TakeWhile(isNewLine),
 			}
 
 		case ascii.IsDigit(s.Peek()):
@@ -245,7 +245,7 @@ func (s *Scanner) scanString() token.Token {
 	quotePos := s.Pos()
 	quote := s.Advance()
 	data := string(quote) + s.Take(func() (data []byte, stop bool) {
-		if s.Peek() == '\000' || s.Peek() == quote || isNewLineChar(s.Peek()) {
+		if s.Peek() == '\000' || s.Peek() == quote || isNewLine(s.Peek()) {
 			return nil, true
 		} else if s.Consume('\\') {
 			switch s.Advance() {
@@ -492,11 +492,11 @@ func (s *Scanner) parseNumber(predicate func(byte) bool, expected string) token.
 }
 
 func (s *Scanner) parseBinNumber() token.Token {
-	return s.parseNumber(isBinNumChar, "binary number")
+	return s.parseNumber(isBinDigit, "binary number")
 }
 
 func (s *Scanner) parseOctNumber() token.Token {
-	return s.parseNumber(isOctNumChar, "octal number")
+	return s.parseNumber(isOctDigit, "octal number")
 }
 
 func (s *Scanner) parseDecNumber() token.Token {
@@ -507,14 +507,14 @@ func (s *Scanner) parseHexNumber() token.Token {
 	return s.parseNumber(ascii.IsHexDigit, "hexadecimal number")
 }
 
-func isBinNumChar(char byte) bool {
-	return char == '0' || char == '1'
+func isBinDigit(c byte) bool {
+	return c == '0' || c == '1'
 }
 
-func isOctNumChar(char byte) bool {
-	return '0' <= char && char <= '7'
+func isOctDigit(c byte) bool {
+	return '0' <= c && c <= '7'
 }
 
-func isNewLineChar(char byte) bool {
-	return char == '\r' || char == '\n'
+func isNewLine(c byte) bool {
+	return c == '\r' || c == '\n'
 }
