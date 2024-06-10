@@ -1,84 +1,89 @@
 package cgen
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/types"
 )
 
 func (gen *generator) StmtString(stmt ast.Node) string {
-	buf := strings.Builder{}
-
 	switch stmt := stmt.(type) {
-	case *ast.VarDecl:
-		if sym, _ := gen.Defs.Get(stmt.Binding.Name); sym != nil {
-			buf.WriteString(gen.TypeString(sym.Type()))
-			buf.WriteString(" " + gen.name(sym) + ";\n")
+	case *ast.Empty:
+		gen.line("\n")
+		return ""
 
-			if stmt.Value != nil {
-				gen.indent(&buf)
-				buf.WriteString(gen.binary(
-					stmt.Binding.Name,
-					stmt.Value,
-					types.Unit,
-					ast.OperatorAssign,
-				))
-				buf.WriteString(";\n")
-			}
-		} else {
+	case *ast.Decl:
+		if !stmt.IsVar {
+			break
+		}
+		sym, _ := gen.Defs.Get(stmt.Name)
+		if sym == nil {
 			panic("unreachable")
 		}
+		gen.decl(sym)
 
 	case *ast.While:
-		buf.WriteString(fmt.Sprintf("while (%s) {\n", gen.ExprString(stmt.Cond)))
-		gen.numIndent++
+		gen.linef("while (%s) {\n", gen.exprString(stmt.Cond))
+		gen.indent++
 		for _, stmt := range stmt.Body.Nodes {
-			gen.indent(&buf)
-			buf.WriteString(gen.StmtString(stmt))
+			gen.codeSect.WriteString(gen.StmtString(stmt))
 		}
-		gen.numIndent--
-		gen.indent(&buf)
-		buf.WriteString("}\n")
+		gen.indent--
+		gen.linef("}\n")
+
+	case *ast.For:
+		loopVar := gen.SymbolOf(stmt.DeclList.Nodes[0].(*ast.Decl).Name)
+		iterExpr := stmt.IterExpr.(*ast.Op)
+		cmpOp := ast.OperatorLt
+		if iterExpr.Kind == ast.OperatorRangeInclusive {
+			cmpOp = ast.OperatorLe
+		}
+		gen.linef(
+			"for (%[1]s %[2]s=%[3]s; %[4]s; %[2]s+=1) {\n",
+			gen.TypeString(loopVar.Type()),
+			gen.name(loopVar),
+			gen.exprString(iterExpr.X),
+			gen.binary(loopVar.Ident(), iterExpr.Y, types.Bool, cmpOp),
+		)
+		gen.indent++
+		for _, stmt := range stmt.Body.Nodes {
+			gen.codeSect.WriteString(gen.StmtString(stmt))
+		}
+		gen.indent--
+		gen.line("}\n")
 
 	case *ast.If:
-		buf.WriteString(fmt.Sprintf("if (%s) {\n", gen.ExprString(stmt.Cond)))
-		gen.numIndent++
-		for _, stmt := range stmt.Body.Nodes {
-			gen.indent(&buf)
-			buf.WriteString(gen.StmtString(stmt))
-		}
-		gen.numIndent--
-		gen.indent(&buf)
-		buf.WriteString("}")
-		if stmt.Else != nil {
-			buf.WriteString(" else ")
-			buf.WriteString(gen.StmtString(stmt.Else.Body))
-		} else {
-			buf.WriteString("\n")
-		}
+		gen.ifExpr(stmt, nil)
+		// gen.linef("if (%s) {\n", gen.exprString(stmt.Cond))
+		// gen.indent++
+		// for _, stmt := range stmt.Body.Nodes {
+		// 	gen.codeSect.WriteString(gen.StmtString(stmt))
+		// }
+		// gen.indent--
+		// if stmt.Else != nil {
+		// 	gen.linef("} else %s", gen.StmtString(stmt.Else.Body))
+		// } else {
+		// 	gen.line("}\n")
+		// }
 
 	case *ast.CurlyList:
-		buf.WriteString("{\n")
-		gen.numIndent++
-		for _, stmt := range stmt.Nodes {
-			gen.indent(&buf)
-			buf.WriteString(gen.StmtString(stmt))
-		}
-		gen.numIndent--
-		gen.indent(&buf)
-		buf.WriteString("}\n")
+		gen.block(stmt.StmtList, nil)
 
 	case *ast.Break:
-		return "break;\n"
+		gen.line("break;\n")
 
 	case *ast.Continue:
-		return "continue;\n"
+		gen.line("continue;\n")
 
 	default:
-		return gen.ExprString(stmt) + ";\n"
+		expr := gen.exprString(stmt)
+		if expr != "" {
+			if ty := gen.TypeOf(stmt); ty != nil && !ty.Equals(types.Unit) {
+				gen.linef("(void)%s;\n", expr)
+			} else {
+				gen.linef("%s;\n", expr)
+			}
+		}
 	}
 
-	return buf.String()
+	return ""
 }

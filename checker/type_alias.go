@@ -8,27 +8,27 @@ import (
 type TypeAlias struct {
 	owner *Scope
 	t     *types.Alias
-	node  *ast.TypeAliasDecl
-	name  *ast.Ident
+	decl  *ast.Decl
 }
 
-func NewTypeAlias(owner *Scope, t *types.TypeDesc, node *ast.TypeAliasDecl) *TypeAlias {
+func NewTypeAlias(owner *Scope, t *types.TypeDesc, decl *ast.Decl) *TypeAlias {
+	assert(!types.IsUntyped(t))
+
 	return &TypeAlias{
 		owner: owner,
-		t:     types.NewAlias(t.Base(), node.Name.Name),
-		node:  node,
-		name:  node.Name,
+		t:     types.NewAlias(t.Base(), decl.Name.Name),
+		decl:  decl,
 	}
 }
 
 func (sym *TypeAlias) Owner() *Scope     { return sym.owner }
 func (sym *TypeAlias) Type() types.Type  { return types.NewTypeDesc(sym.t) }
-func (sym *TypeAlias) Name() string      { return sym.name.Name }
-func (sym *TypeAlias) Ident() *ast.Ident { return sym.name }
-func (sym *TypeAlias) Node() ast.Node    { return sym.node }
+func (sym *TypeAlias) Name() string      { return sym.decl.Name.Name }
+func (sym *TypeAlias) Ident() *ast.Ident { return sym.decl.Name }
+func (sym *TypeAlias) Node() ast.Node    { return sym.decl }
 
-func (check *Checker) resolveTypeAliasDecl(node *ast.TypeAliasDecl) {
-	t := check.typeOf(node.Expr)
+func (check *Checker) resolveTypeAliasDecl(decl *ast.Decl) {
+	t := check.typeOf(decl.Value)
 	if t == nil {
 		return
 	}
@@ -36,17 +36,17 @@ func (check *Checker) resolveTypeAliasDecl(node *ast.TypeAliasDecl) {
 	typedesc := types.AsTypeDesc(t)
 
 	if typedesc == nil {
-		check.errorf(node.Expr, "expression is not a type")
+		check.errorf(decl.Value, "expression is not a type")
 		return
 	}
 
-	sym := NewTypeAlias(check.scope, typedesc, node)
+	sym := NewTypeAlias(check.scope, typedesc, decl)
 
 	if defined := check.scope.Define(sym); defined != nil {
 		check.addError(errorAlreadyDefined(sym.Ident(), defined.Ident()))
 		return
 	}
 
-	check.newDef(node.Name, sym)
-	check.setType(node, typedesc)
+	check.newDef(decl.Name, sym)
+	check.setType(decl, typedesc)
 }

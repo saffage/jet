@@ -16,14 +16,22 @@ func Scan(buffer []byte, fileid config.FileID, flags Flags) ([]token.Token, []er
 	return s.AllTokens(), s.Errors()
 }
 
+func MustScan(buffer []byte, fileid config.FileID, flags Flags) []token.Token {
+	tokens, errs := Scan(buffer, fileid, flags)
+	if len(errs) != 0 {
+		panic(errs)
+	}
+	return tokens
+}
+
 type Flags int
 
 const (
-	NoFlags        Flags = 0
-	SkipWhitespace Flags = 1 << (iota - 1)
+	SkipWhitespace Flags = 1 << iota
 	SkipIllegal
 	SkipComments
 
+	NoFlags      Flags = 0
 	DefaultFlags Flags = NoFlags
 )
 
@@ -76,6 +84,9 @@ func (s *Scanner) Next() token.Token {
 
 		case s.Consume('@'):
 			tok = token.Token{Kind: token.At}
+
+		case s.Consume('$'):
+			tok = token.Token{Kind: token.Dollar}
 
 		case s.Match(' '):
 			tok = token.Token{

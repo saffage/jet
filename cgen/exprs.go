@@ -12,12 +12,12 @@ import (
 	"github.com/saffage/jet/types"
 )
 
-func (gen *generator) ExprString(expr ast.Node) string {
-	if _, isDecl := expr.(ast.Decl); isDecl {
+func (gen *generator) exprString(expr ast.Node) string {
+	if _, isDecl := expr.(*ast.Decl); isDecl {
 		return "ERROR_CGEN__EXPR_IS_DECL"
 	}
 
-	report.Debugf("expr = %s", expr)
+	report.Debugf("expr = %s", expr.Repr())
 	exprStr := ""
 
 	switch node := expr.(type) {
@@ -37,9 +37,10 @@ func (gen *generator) ExprString(expr ast.Node) string {
 
 		case nil:
 			report.TaggedErrorf("cgen", "expression `%s` have no uses", expr)
+			panic("")
 
 		default:
-			panic("idk")
+			panic(fmt.Sprintf("idk (%T) %s", sym, sym.Node().Repr()))
 		}
 
 	case *ast.Literal:
@@ -53,7 +54,7 @@ func (gen *generator) ExprString(expr ast.Node) string {
 			return gen.constant(typedValue.Value)
 		}
 
-	case *ast.MemberAccess:
+	case *ast.Dot:
 		tv := gen.Types[node.X]
 		if tv == nil {
 			// Defined in another module?
@@ -61,107 +62,148 @@ func (gen *generator) ExprString(expr ast.Node) string {
 		}
 
 		if types.IsTypeDesc(tv.Type) {
-			buf := strings.Builder{}
-			t := types.SkipTypeDesc(tv.Type)
+			ty := types.SkipTypeDesc(tv.Type)
 
-			if _struct := types.AsStruct(t); _struct != nil {
-				buf.WriteString(fmt.Sprintf("(%s){\n", gen.TypeString(_struct)))
-				gen.numIndent++
-				buf.WriteString(gen.structInitFields(_struct, node.Selector))
-				gen.numIndent--
-				gen.indent(&buf)
-				buf.WriteString("}")
-				return buf.String()
-			} else if _enum := types.AsEnum(t); _enum != nil {
-				return gen.TypeString(_enum) + "__" + node.Selector.String()
+			if _enum := types.AsEnum(ty); _enum != nil {
+				// if tyY := gen.TypeOf(node.Y); tyY != nil && tyY.Equals(ty) {
+				// 	// Enum field.
+				// }
+				return gen.TypeString(_enum) + "__" + node.Y.Name
+				// return "ERROR_CGEN__INVALID_ENUM_FIELD"
 			} else {
 				return "ERROR_CGEN__INVALID_MEMBER_ACCESS"
 			}
-		} else {
-			switch y := node.Selector.(type) {
-			case *ast.Ident:
-				return gen.ExprString(node.X) + "." + y.Name
-
-			default:
-				panic("not implemented")
-			}
 		}
 
-	case *ast.SafeMemberAccess:
-		exprStr = gen.ExprString(node.X)
-		gen.codeSect.WriteString(fmt.Sprintf(
-			"assert(%s && \"nil pointer dereference\");\n",
-			exprStr,
-		))
-		gen.indent(&gen.codeSect)
-		return exprStr + "->" + node.Selector.Name
+		return gen.exprString(node.X) + "." + node.Y.Name
 
-	case *ast.PrefixOp:
-		typedValue := gen.Types[node]
+	case *ast.Deref:
+		return gen.unary(node.X, nil, ast.OperatorStar)
 
-		if typedValue == nil {
-			typedValue = gen.Types[expr]
-		}
+	// case *ast.PrefixOp:
+	// 	typedValue := gen.Types[node]
 
-		if typedValue == nil {
+	// 	if typedValue == nil {
+	// 		typedValue = gen.Types[expr]
+	// 	}
+
+	// 	if typedValue == nil {
+	// 		panic("cannot get a type of the expression")
+	// 	}
+
+	// 	return gen.unary(node.X, typedValue.Type, node.Opr.Kind)
+
+	case *ast.Op:
+		tv := gen.Types[expr]
+		if tv == nil {
 			panic("cannot get a type of the expression")
 		}
 
-		return gen.unary(node.X, typedValue.Type, node.Opr.Kind)
+		if node.Y == nil {
+			if node.X == nil {
+				panic("unreachable")
+			}
 
-	case *ast.InfixOp:
-		if t := gen.TypeOf(node); t != nil {
-			return gen.binary(node.X, node.Y, t, node.Opr.Kind)
+			return gen.unary(node.Y, tv.Type, node.Kind)
 		}
 
-		report.Warningf("cannot get a type of the expression: `%s`", node)
+		if node.X == nil {
+			return gen.unary(node.Y, tv.Type, node.Kind)
+		}
+
+		return gen.binary(node.X, node.Y, tv.Type, node.Kind)
 
 	case *ast.Call:
-		buf := strings.Builder{}
-		buf.WriteString(gen.ExprString(node.X))
-		buf.WriteByte('(')
-		for i, arg := range node.Args.Exprs {
-			if i != 0 {
-				buf.WriteString(", ")
-			}
-			buf.WriteString(gen.ExprString(arg))
+		tv := gen.Types[node.X]
+		if tv == nil {
+			// Defined in another module?
+			panic("idk")
 		}
-		buf.WriteByte(')')
-		return buf.String()
+
+		if types.IsTypeDesc(tv.Type) {
+			ty := types.SkipTypeDesc(tv.Type)
+			tmp := gen.tempVar(ty)
+
+			if _struct := types.AsStruct(ty); _struct != nil {
+				gen.structInit(gen.name(tmp), node, _struct)
+				return gen.name(tmp)
+				// buf.WriteString(fmt.Sprintf("(%s){\n", gen.TypeString(_struct)))
+				// gen.indent++
+				// buf.WriteString(gen.structInit(_struct, node.Args.List))
+				// gen.indent--
+				// gen.indent(&buf)
+				// buf.WriteString("}")
+				// return buf.String()
+			} else if _enum := types.AsEnum(ty); _enum != nil {
+				panic("todo")
+				// return gen.TypeString(_enum) + "__" + node.Args.Repr()
+			} else {
+				return "ERROR_CGEN__INVALID_MEMBER_ACCESS"
+			}
+		} else if fn := types.AsFunc(tv.Type); fn != nil {
+			buf := strings.Builder{}
+			buf.WriteString(gen.exprString(node.X))
+			buf.WriteByte('(')
+			for i, arg := range node.Args.Nodes {
+				if i != 0 {
+					buf.WriteString(", ")
+				}
+				buf.WriteString(gen.exprString(arg))
+			}
+			if types.IsArray(fn.Result()) {
+				if len(node.Args.Nodes) > 0 {
+					buf.WriteString(", ")
+				}
+				buf.WriteString("/*RESULT*/")
+			}
+			buf.WriteByte(')')
+			return buf.String()
+		}
 
 	case *ast.Index:
 		buf := strings.Builder{}
-		buf.WriteString(gen.ExprString(node.X))
+		buf.WriteString(gen.exprString(node.X))
 		buf.WriteByte('[')
 
-		if len(node.Args.Exprs) != 1 {
+		if len(node.Args.Nodes) != 1 {
 			panic("idk how to handle it")
 		}
 
-		buf.WriteString(gen.ExprString(node.Args.Exprs[0]))
+		buf.WriteString(gen.exprString(node.Args.Nodes[0]))
 		buf.WriteByte(']')
 		return "(" + buf.String() + ")"
 
 	case *ast.BracketList:
 		// NOTE when array is used not in assignment they
 		// must be prefixes with the type.
-		if tv := gen.Types[expr]; tv != nil {
-			buf := strings.Builder{}
-			buf.WriteString("{")
-			gen.numIndent++
-
-			for i, elem := range node.Exprs {
-				if i != 0 {
-					buf.WriteString(", ")
-				}
-
-				buf.WriteString(gen.ExprString(elem))
-			}
-
-			gen.numIndent--
-			buf.WriteString("}")
-			return buf.String()
+		tv := gen.Types[expr]
+		if tv == nil || !types.IsArray(tv.Type) {
+			// Defined in another module?
+			panic("idk")
 		}
+		ty := types.AsArray(types.SkipUntyped(tv.Type))
+		tmp := gen.tempVar(ty)
+		gen.arrayInit(gen.name(tmp), node, ty)
+		return gen.name(tmp)
+
+	case *ast.If:
+		ty := gen.TypeOf(expr)
+		if ty == nil {
+			panic("if expression have no type")
+		}
+
+		tmpVar := gen.tempVar(types.SkipUntyped(ty))
+		gen.ifExpr(node, tmpVar)
+		return gen.name(tmpVar)
+
+	case *ast.CurlyList:
+		ty := gen.TypeOf(expr)
+		if ty == nil {
+			panic("if expression have no type")
+		}
+		tmpVar := gen.tempVar(types.SkipUntyped(ty))
+		gen.block(node.StmtList, tmpVar)
+		return gen.name(tmpVar)
 
 	default:
 		fmt.Printf("not implemented '%T'\n", node)
@@ -172,47 +214,25 @@ func (gen *generator) ExprString(expr ast.Node) string {
 		return "ERROR_CGEN__EXPR"
 	}
 
-	// typeStr := gen.TypeString(typedValue.Type)
-	// return fmt.Sprintf("((%s)%s)", typeStr, exprStr)
 	return exprStr
-}
-
-func (gen *generator) structInitFields(t *types.Struct, selector ast.Node) string {
-	buf := strings.Builder{}
-
-	if list, _ := selector.(*ast.CurlyList); list != nil {
-		for _, node := range list.Nodes {
-			switch node := node.(type) {
-			case *ast.InfixOp:
-				gen.indent(&buf)
-				buf.WriteString(fmt.Sprintf(
-					".%s = %s,\n",
-					node.X.(*ast.Ident).Name,
-					gen.ExprString(node.Y),
-				))
-
-			default:
-				panic("unreachable")
-			}
-		}
-	}
-
-	return buf.String()
 }
 
 func (gen *generator) unary(x ast.Node, _ types.Type, op ast.OperatorKind) string {
 	switch op {
 	case ast.OperatorAddrOf:
-		return fmt.Sprintf("(&%s)", gen.ExprString(x))
+		return fmt.Sprintf("(&%s)", gen.exprString(x))
 
 	case ast.OperatorStar:
-		return fmt.Sprintf("(*%s)", gen.ExprString(x))
+		return fmt.Sprintf("(*%s)", gen.exprString(x))
 
 	case ast.OperatorNot:
-		return fmt.Sprintf("(!%s)", gen.ExprString(x))
+		return fmt.Sprintf("(!%s)", gen.exprString(x))
+
+	case ast.OperatorNeg:
+		return fmt.Sprintf("(-%s)", gen.exprString(x))
 
 	default:
-		panic(fmt.Sprintf("not a binary operator: '%s'", op))
+		panic(fmt.Sprintf("not a unary operator: '%s'", op))
 	}
 }
 
@@ -226,8 +246,8 @@ func (gen *generator) binary(x, y ast.Node, t types.Type, op ast.OperatorKind) s
 		ast.OperatorBitShl,
 		ast.OperatorBitShr:
 		return fmt.Sprintf("(%[3]s)((%[1]s) %[4]s (%[2]s))",
-			gen.ExprString(x),
-			gen.ExprString(y),
+			gen.exprString(x),
+			gen.exprString(y),
 			gen.TypeString(t),
 			op,
 		)
@@ -238,8 +258,8 @@ func (gen *generator) binary(x, y ast.Node, t types.Type, op ast.OperatorKind) s
 		ast.OperatorDiv,
 		ast.OperatorMod:
 		return fmt.Sprintf("((%[3]s)(%[1]s) %[4]s (%[3]s)(%[2]s))",
-			gen.ExprString(x),
-			gen.ExprString(y),
+			gen.exprString(x),
+			gen.exprString(y),
 			gen.TypeString(t),
 			op,
 		)
@@ -251,73 +271,93 @@ func (gen *generator) binary(x, y ast.Node, t types.Type, op ast.OperatorKind) s
 		ast.OperatorLt,
 		ast.OperatorLe:
 		return fmt.Sprintf("((%[1]s) %[3]s (%[2]s))",
-			gen.ExprString(x),
-			gen.ExprString(y),
+			gen.exprString(x),
+			gen.exprString(y),
 			op,
 		)
 
 	case ast.OperatorAnd:
 		return fmt.Sprintf("((%[3]s)(%[1]s) && (%[3]s)(%[2]s))",
-			gen.ExprString(x),
-			gen.ExprString(y),
+			gen.exprString(x),
+			gen.exprString(y),
 			gen.TypeString(t),
 		)
 
 	case ast.OperatorOr:
 		return fmt.Sprintf("((%[3]s)(%[1]s) || (%[3]s)(%[2]s))",
-			gen.ExprString(x),
-			gen.ExprString(y),
+			gen.exprString(x),
+			gen.exprString(y),
 			gen.TypeString(t),
 		)
 
-	case ast.OperatorAssign:
-		t := gen.Module.TypeOf(y)
+	case ast.OperatorAs:
+		return fmt.Sprintf("((%s)%s)",
+			gen.TypeString(t),
+			gen.exprString(x),
+		)
 
-		if types.IsArray(t) {
-			return fmt.Sprintf("memcpy(&%[1]s, (%[3]s)%[2]s, sizeof(%[1]s))",
-				gen.ExprString(x),
-				gen.ExprString(y),
-				gen.TypeString(t),
-			)
+	case ast.OperatorAssign:
+		ty := gen.Module.TypeOf(y)
+
+		if array := types.AsArray(ty); array != nil {
+			gen.arrayAssign(gen.exprString(x), y, array)
+			return ""
 		}
 
 		return fmt.Sprintf("%s = %s",
-			gen.ExprString(x),
-			gen.ExprString(y),
+			gen.exprString(x),
+			gen.exprString(y),
 		)
 
 	case ast.OperatorAddAndAssign:
 		return fmt.Sprintf("%s += %s",
-			gen.ExprString(x),
-			gen.ExprString(y),
+			gen.exprString(x),
+			gen.exprString(y),
 		)
 
 	case ast.OperatorSubAndAssign:
 		return fmt.Sprintf("%s -= %s",
-			gen.ExprString(x),
-			gen.ExprString(y),
+			gen.exprString(x),
+			gen.exprString(y),
 		)
 
 	case ast.OperatorMultAndAssign:
 		return fmt.Sprintf("%s *= %s",
-			gen.ExprString(x),
-			gen.ExprString(y),
+			gen.exprString(x),
+			gen.exprString(y),
 		)
 
 	case ast.OperatorDivAndAssign:
 		return fmt.Sprintf("%s /= %s",
-			gen.ExprString(x),
-			gen.ExprString(y),
+			gen.exprString(x),
+			gen.exprString(y),
 		)
 
 	case ast.OperatorModAndAssign:
 		return fmt.Sprintf("%s %%= %s",
-			gen.ExprString(x),
-			gen.ExprString(y),
+			gen.exprString(x),
+			gen.exprString(y),
 		)
 
 	default:
 		panic(fmt.Sprintf("not a binary operator: '%s'", op))
+	}
+}
+
+func (gen *generator) assign(dest string, value ast.Node) {
+	tv := gen.Types[value]
+	if tv == nil {
+		panic("cannot get a type of node")
+	}
+	switch ty := tv.Type.(type) {
+	case *types.Array:
+		gen.arrayAssign(dest, value, ty)
+
+	case *types.Struct:
+		gen.structAssign(dest, value, ty)
+
+	default:
+		gen.linef("%s = %s;\n", dest, gen.exprString(value))
 	}
 }
 
@@ -348,4 +388,32 @@ func (gen *generator) constant(value constant.Value) string {
 	}
 
 	return "ERROR_CGEN__CONSTANT"
+}
+
+func (gen *generator) ifExpr(node *ast.If, result *checker.Var) {
+	gen.linef("if (%s)\n", gen.exprString(node.Cond))
+	gen.block(node.Body.StmtList, result)
+
+	if node.Else != nil {
+		gen.elseExpr(node.Else, result)
+	}
+}
+
+func (gen *generator) elseExpr(node *ast.Else, result *checker.Var) {
+	switch body := node.Body.(type) {
+	case *ast.If:
+		gen.linef("else if (%s)\n", gen.exprString(body.Cond))
+		gen.block(body.Body.StmtList, result)
+
+		if body.Else != nil {
+			gen.elseExpr(body.Else, result)
+		}
+
+	case *ast.CurlyList:
+		gen.line("else\n")
+		gen.block(body.StmtList, result)
+
+	default:
+		panic("unreachable")
+	}
 }

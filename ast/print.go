@@ -6,20 +6,56 @@ import (
 	"strings"
 )
 
-func (n *BadNode) String() string {
+func (decl *Decl) Repr() string {
+	// if decl.Type == nil && decl.Value == nil {
+	// 	panic("ill-formed AST: [ast.Decl] must have either Type or Value field ")
+	// }
+
+	buf := strings.Builder{}
+
+	if decl.Attrs != nil {
+		buf.WriteString(decl.Attrs.Repr())
+		buf.WriteByte(' ')
+	}
+
+	if decl.Mut.IsValid() {
+		buf.WriteString("mut ")
+	}
+
+	buf.WriteString(decl.Name.Repr())
+
+	c := ':'
+	if decl.IsVar {
+		c = '='
+	}
+
+	if decl.Type != nil {
+		buf.WriteString(fmt.Sprintf(": %s", decl.Type.Repr()))
+
+		if decl.Value != nil {
+			buf.WriteString(fmt.Sprintf(" %c %s", c, decl.Value.Repr()))
+		}
+	} else if decl.Value != nil {
+		buf.WriteString(fmt.Sprintf(" :%c %s", c, decl.Value.Repr()))
+	}
+
+	return buf.String()
+}
+
+func (n *BadNode) Repr() string {
 	return "@error(\"bad node\")"
 }
 
-func (n *Empty) String() string {
+func (n *Empty) Repr() string {
 	return ";"
 }
 
-func (n *Ident) String() string {
+func (n *Ident) Repr() string {
 	// return fmt.Sprintf("(loc: %s, name: %s)", color.CyanString(n.Start.String()), n.Name)
 	return n.Name
 }
 
-func (n *Literal) String() string {
+func (n *Literal) Repr() string {
 	switch n.Kind {
 	case IntLiteral, FloatLiteral:
 		return n.Value
@@ -33,76 +69,104 @@ func (n *Literal) String() string {
 	}
 }
 
-func (n *Comment) String() string {
+func (n *Comment) Repr() string {
 	return "##" + n.Data
 }
 
-func (n *CommentGroup) String() string {
+func (n *CommentGroup) Repr() string {
 	buf := strings.Builder{}
 
 	for _, comment := range n.Comments {
-		buf.WriteString(comment.String())
+		buf.WriteString(comment.Repr())
 		buf.WriteByte('\n')
 	}
 
 	return buf.String()
 }
 
-func (n *ArrayType) String() string {
-	return n.Args.String() + n.X.String()
+func (n *ArrayType) Repr() string {
+	return n.Args.Repr() + n.X.Repr()
 }
 
-func (n *Signature) String() string {
+func (n *StructType) Repr() string {
 	buf := strings.Builder{}
+	buf.WriteString("struct{")
 
-	if n.Loc.Line > 0 {
-		buf.WriteString("func")
-	}
+	for i, field := range n.Fields {
+		if i != 0 {
+			buf.WriteByte(';')
+		}
 
-	buf.WriteString(n.Params.String())
-
-	if n.Result != nil {
 		buf.WriteByte(' ')
-		buf.WriteString(n.Result.String())
+		buf.WriteString(field.Repr())
 	}
 
+	buf.WriteString(" }")
 	return buf.String()
 }
 
-func (n *AttributeList) String() string {
-	return "@" + n.List.String()
+func (n *EnumType) Repr() string {
+	buf := strings.Builder{}
+	buf.WriteString("enum{")
+
+	for i, field := range n.Fields {
+		if i != 0 {
+			buf.WriteByte(';')
+		}
+
+		buf.WriteByte(' ')
+		buf.WriteString(field.Repr())
+	}
+
+	buf.WriteString(" }")
+	return buf.String()
 }
 
-func (n *BuiltInCall) String() string {
+func (n *PointerType) Repr() string {
+	return "*" + n.X.Repr()
+}
+
+func (n *Signature) Repr() string {
+	if n.Result == nil {
+		return fmt.Sprintf("%s -> ()", n.Params.Repr())
+	}
+	return fmt.Sprintf("%s -> %s", n.Params.Repr(), n.Result.Repr())
+}
+
+func (n *AttributeList) Repr() string {
+	return "@" + n.List.Repr()
+}
+
+func (n *BuiltInCall) Repr() string {
 	buf := strings.Builder{}
-	buf.WriteByte('@')
-	buf.WriteString(n.Name.String())
+	buf.WriteByte('$')
+	buf.WriteString(n.Name.Repr())
 
 	if n.Args != nil {
 		if _, ok := n.Args.(*ParenList); !ok {
 			buf.WriteByte(' ')
 		}
 
-		buf.WriteString(n.Args.String())
+		buf.WriteString(n.Args.Repr())
 	}
 
 	return buf.String()
 }
 
-func (n *MemberAccess) String() string {
-	return n.X.String() + "." + n.Selector.String()
+func (n *Dot) Repr() string {
+	return n.X.Repr() + "." + n.Y.Repr()
 }
 
-func (n *SafeMemberAccess) String() string {
-	return n.X.String() + "?." + n.Selector.String()
+func (n *Deref) Repr() string {
+	return n.X.Repr() + ".*"
 }
 
-func (n *Call) String() string {
-	return n.X.String() + n.Args.String()
+func (n *Call) Repr() string {
+	return n.X.Repr() + n.Args.Repr()
 }
 
-func (n *Index) String() string {
-	return n.X.String() + n.Args.String()
+func (n *Index) Repr() string {
+	return n.X.Repr() + n.Args.Repr()
 }
 
 func printList[T Node](nodes []T, separator rune) string {
@@ -114,211 +178,104 @@ func printList[T Node](nodes []T, separator rune) string {
 			buf.WriteByte(' ')
 		}
 
-		buf.WriteString(n.String())
+		buf.WriteString(n.Repr())
 	}
 
 	return buf.String()
 }
 
-func (n *List) String() string {
+func (n *StmtList) Repr() string {
 	return printList(n.Nodes, ';')
 }
 
-func (n *ExprList) String() string {
-	return printList(n.Exprs, ',')
+func (n *List) Repr() string {
+	return printList(n.Nodes, ',')
 }
 
-func (n *ParenList) String() string {
-	return fmt.Sprintf("(%s)", printList(n.Exprs, ','))
+func (n *ParenList) Repr() string {
+	return fmt.Sprintf("(%s)", printList(n.Nodes, ','))
 }
 
-func (n *CurlyList) String() string {
-	if len(n.List.Nodes) > 0 {
-		return fmt.Sprintf("{ %s }", n.List.String())
+func (n *CurlyList) Repr() string {
+	if len(n.StmtList.Nodes) > 0 {
+		return fmt.Sprintf("{ %s }", n.StmtList.Repr())
 	}
 
 	return "{}"
 }
 
-func (n *BracketList) String() string {
-	return fmt.Sprintf("[%s]", printList(n.Exprs, ','))
+func (n *BracketList) Repr() string {
+	return fmt.Sprintf("[%s]", printList(n.Nodes, ','))
 }
 
-func (n *BindingWithValue) String() string {
-	if n.Operator != nil {
-		return fmt.Sprintf("%s %s %s", n.Binding.String(), n.Operator.String(), n.Value.String())
+func (n *Function) Repr() string {
+	if n.Signature.Result == nil {
+		return fmt.Sprintf("%s %s", n.Signature.Params.Repr(), n.Body.Repr())
 	}
 
-	return n.Binding.String()
+	if n.Body != nil {
+		return fmt.Sprintf("%s %s", n.Signature.Repr(), n.Body.Repr())
+	}
+
+	return n.Signature.Repr()
 }
 
-func (n *Binding) String() string {
+func (n *Op) Repr() string {
 	buf := strings.Builder{}
-	buf.WriteString(n.Name.String())
 
-	if n.Type != nil {
-		buf.WriteByte(' ')
-		buf.WriteString(n.Type.String())
+	if n.X != nil {
+		buf.WriteString(n.X.Repr())
+	}
+
+	buf.WriteString(n.Kind.String())
+
+	if n.Y != nil {
+		buf.WriteString(n.Y.Repr())
 	}
 
 	return buf.String()
 }
 
-func (n *Operator) String() string {
-	return n.Kind.String()
-}
-
-func (n *PrefixOp) String() string {
-	return n.Opr.String() + n.X.String()
-}
-
-func (n *InfixOp) String() string {
-	return fmt.Sprintf("(%s %s %s)", n.X.String(), n.Opr.String(), n.Y.String())
-}
-
-func (n *PostfixOp) String() string {
-	return n.X.String() + n.Opr.String()
-}
-
-func (n *ModuleDecl) String() string {
-	return fmt.Sprintf(
-		"%s%smodule %s %s",
-		optionalComment(n.CommentGroup),
-		optionalAttributeList(n.Attrs),
-		n.Name.String(),
-		n.Body.String(),
-	)
-}
-
-func (n *VarDecl) String() string {
-	if n.Value != nil {
-		return fmt.Sprintf(
-			"%s%svar %s = %s",
-			optionalComment(n.CommentGroup),
-			optionalAttributeList(n.Attrs),
-			n.Binding.String(),
-			n.Value.String(),
-		)
-	}
-
-	return fmt.Sprintf(
-		"%s%svar %s",
-		optionalComment(n.CommentGroup),
-		optionalAttributeList(n.Attrs),
-		n.Binding.String(),
-	)
-}
-
-func (n *ConstDecl) String() string {
-	return fmt.Sprintf(
-		"%s%sconst %s",
-		optionalComment(n.CommentGroup),
-		optionalAttributeList(n.Attrs),
-		n.Binding.String(),
-	)
-}
-
-func (n *FuncDecl) String() string {
-	if n.Body != nil {
-		return fmt.Sprintf(
-			"%s%sfunc %s%s %s",
-			optionalComment(n.CommentGroup),
-			optionalAttributeList(n.Attrs),
-			n.Name.String(),
-			n.Signature.String(),
-			n.Body.String(),
-		)
-	}
-
-	return fmt.Sprintf(
-		"%s%sfunc %s%s",
-		optionalComment(n.CommentGroup),
-		optionalAttributeList(n.Attrs),
-		n.Name.String(),
-		n.Signature.String(),
-	)
-}
-
-func (n *StructDecl) String() string {
-	return fmt.Sprintf(
-		"%sstruct %s %s",
-		optionalAttributeList(n.Attrs),
-		n.Name.String(),
-		n.Body.String(),
-	)
-}
-
-func (n *EnumDecl) String() string {
-	return fmt.Sprintf(
-		"%senum %s %s",
-		optionalAttributeList(n.Attrs),
-		n.Name.String(),
-		n.Body.String(),
-	)
-}
-
-func (n *TypeAliasDecl) String() string {
-	return fmt.Sprintf(
-		"%s%salias %s = %s",
-		optionalComment(n.CommentGroup),
-		optionalAttributeList(n.Attrs),
-		n.Name.String(),
-		n.Expr.String(),
-	)
-}
-
-func (n *If) String() string {
+func (n *If) Repr() string {
 	if n.Else != nil {
-		return fmt.Sprintf("if %s %s %s", n.Cond.String(), n.Body.String(), n.Else.String())
+		return fmt.Sprintf("if %s %s %s", n.Cond.Repr(), n.Body.Repr(), n.Else.Repr())
 	}
 
-	return fmt.Sprintf("if %s %s", n.Cond.String(), n.Body.String())
+	return fmt.Sprintf("if %s %s", n.Cond.Repr(), n.Body.Repr())
 }
 
-func (n *Else) String() string {
-	return fmt.Sprintf("else %s", n.Body.String())
+func (n *Else) Repr() string {
+	return fmt.Sprintf("else %s", n.Body.Repr())
 }
 
-func (n *While) String() string {
-	return fmt.Sprintf("while %s %s", n.Cond.String(), n.Body.String())
+func (n *While) Repr() string {
+	return fmt.Sprintf("while %s %s", n.Cond.Repr(), n.Body.Repr())
 }
 
-func (n *Return) String() string {
-	return fmt.Sprintf("return %s", n.X.String())
+func (n *For) Repr() string {
+	return fmt.Sprintf("for %s in %s %s", n.DeclList.Repr(), n.IterExpr.Repr(), n.Body.Repr())
 }
 
-func (n *Break) String() string {
+func (n *Return) Repr() string {
+	return fmt.Sprintf("return %s", n.X.Repr())
+}
+
+func (n *Break) Repr() string {
 	if n.Label != nil {
-		return fmt.Sprintf("break %s", n.Label.String())
+		return fmt.Sprintf("break %s", n.Label.Repr())
 	}
 
 	return "break"
 }
 
-func (n *Continue) String() string {
+func (n *Continue) Repr() string {
 	if n.Label != nil {
-		return fmt.Sprintf("continue %s", n.Label.String())
+		return fmt.Sprintf("continue %s", n.Label.Repr())
 	}
 
 	return "continue"
 }
 
-func (n *Import) String() string {
+func (n *Import) Repr() string {
 	return fmt.Sprintf("import %s", n.Module)
-}
-
-func optionalComment(commentGroup *CommentGroup) string {
-	if commentGroup == nil {
-		return ""
-	}
-
-	return commentGroup.String()
-}
-
-func optionalAttributeList(attrs *AttributeList) string {
-	if attrs == nil {
-		return ""
-	}
-
-	return attrs.String() + " "
 }

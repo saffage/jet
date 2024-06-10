@@ -3,7 +3,6 @@ package parser
 import (
 	"fmt"
 	"slices"
-	"strings"
 
 	"github.com/saffage/jet/token"
 )
@@ -49,8 +48,20 @@ func (p *Parser) next() {
 	}
 }
 
-func (p *Parser) match(kinds ...token.Kind) bool {
-	return len(kinds) > 0 && slices.Contains(kinds, p.tok.Kind)
+func (p *Parser) match(tokens ...token.Kind) bool {
+	return slices.Contains(tokens, p.tok.Kind)
+}
+
+func (p *Parser) matchSequence(tokens ...token.Kind) bool {
+	if len(tokens)+p.current-1 >= len(p.tokens) {
+		return false
+	}
+	for i, kind := range tokens {
+		if p.tokens[p.current+i].Kind != kind {
+			return false
+		}
+	}
+	return true
 }
 
 // Cunsumes a specified token or returns nil without emitting error.
@@ -70,40 +81,28 @@ func (p *Parser) expect(kinds ...token.Kind) *token.Token {
 		return tok
 	}
 
-	kindStrs := []string{}
-
-	for _, kind := range kinds {
-		kindStrs = append(kindStrs, kind.UserString())
-	}
-
-	p.errorExpected(p.tok.Start, p.tok.End, strings.Join(kindStrs, " or "))
+	p.errorExpectedToken(kinds...)
 	return nil
 }
 
-func (p *Parser) save() (tokenIndex int) {
+// TODO rename it.
+func (p *Parser) save() (index int) {
+	index = len(p.restoreData)
 	p.restoreData = append(p.restoreData, restoreData{
-		index:  p.current,
-		errors: p.errors,
+		tokenIndex: p.current,
+		errors:     p.errors,
 	})
-	return p.current
+	return
 }
 
-func (p *Parser) restore(tokenIndex int) {
-	if tokenIndex < 0 {
-		panic(fmt.Sprintf("invalid restore index '%d'", tokenIndex))
+func (p *Parser) restore(index int) {
+	if index >= len(p.restoreData) {
+		panic(fmt.Sprintf("invalid restore index: %d (length is %d)", index, len(p.restoreData)))
 	}
 
-	for i := len(p.restoreData) - 1; i >= 0; i-- {
-		data := p.restoreData[i]
-
-		if tokenIndex == data.index {
-			p.current = tokenIndex
-			p.errors = data.errors
-			p.tok = p.tokens[p.current]
-			p.restoreData = p.restoreData[i+1:]
-			return
-		}
-	}
-
-	panic(fmt.Sprintf("unsaved restore point '%d', active point is %v", tokenIndex, p.restoreData))
+	data := p.restoreData[index]
+	p.current = data.tokenIndex
+	p.errors = data.errors
+	p.tok = p.tokens[p.current]
+	p.restoreData = p.restoreData[:index]
 }

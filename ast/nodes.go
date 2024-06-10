@@ -15,31 +15,32 @@ type Node interface {
 
 	// String representation of the node. This string must be equal to the
 	// code from which this tree was parsed (ignoring location).
-	String() string
+	Repr() string
 
 	implNode()
 }
 
+func (*Decl) implNode() {}
+
 // Exprs.
 
-func (*BadNode) implNode()  {}
-func (*Empty) implNode()    {}
-func (*Ident) implNode()    {}
-func (*Literal) implNode()  {}
-func (*Operator) implNode() {}
+func (*BadNode) implNode() {}
+func (*Empty) implNode()   {}
+func (*Ident) implNode()   {}
+func (*Literal) implNode() {}
 
-func (*BindingWithValue) implNode() {}
-func (*Binding) implNode()          {}
-func (*BuiltInCall) implNode()      {}
-func (*Call) implNode()             {}
-func (*Index) implNode()            {}
-func (*ArrayType) implNode()        {}
-func (*Signature) implNode()        {}
-func (*MemberAccess) implNode()     {}
-func (*SafeMemberAccess) implNode() {}
-func (*PrefixOp) implNode()         {}
-func (*InfixOp) implNode()          {}
-func (*PostfixOp) implNode()        {}
+func (*BuiltInCall) implNode() {}
+func (*Function) implNode()    {}
+func (*Call) implNode()        {}
+func (*Index) implNode()       {}
+func (*ArrayType) implNode()   {}
+func (*StructType) implNode()  {}
+func (*EnumType) implNode()    {}
+func (*PointerType) implNode() {}
+func (*Signature) implNode()   {}
+func (*Dot) implNode()         {}
+func (*Deref) implNode()       {}
+func (*Op) implNode()          {}
 
 func (*ParenList) implNode()   {}
 func (*CurlyList) implNode()   {}
@@ -48,26 +49,17 @@ func (*BracketList) implNode() {}
 func (*If) implNode()   {}
 func (*Else) implNode() {}
 
-// Decls.
-
-func (*ModuleDecl) implNode()    {}
-func (*VarDecl) implNode()       {}
-func (*ConstDecl) implNode()     {}
-func (*FuncDecl) implNode()      {}
-func (*StructDecl) implNode()    {}
-func (*EnumDecl) implNode()      {}
-func (*TypeAliasDecl) implNode() {}
-
 // Stmts.
 
 func (*Comment) implNode()      {}
 func (*CommentGroup) implNode() {}
 
+func (*StmtList) implNode()      {}
 func (*List) implNode()          {}
-func (*ExprList) implNode()      {}
 func (*AttributeList) implNode() {}
 
 func (*While) implNode()    {}
+func (*For) implNode()      {}
 func (*Return) implNode()   {}
 func (*Break) implNode()    {}
 func (*Continue) implNode() {}
@@ -88,19 +80,19 @@ type (
 	//------------------------------------------------
 
 	// Represents sequence of nodes, separated by semicolon\new line.
-	List struct {
+	StmtList struct {
 		Nodes []Node
 	}
 
 	// Represents sequence of nodes, separated by comma.
-	ExprList struct {
-		Exprs []Node
+	List struct {
+		Nodes []Node
 	}
 
 	// Represents `@()`.
 	AttributeList struct {
-		List *ParenList
-		Loc  token.Loc // `@` token.
+		List   *BracketList
+		TokLoc token.Loc // `@` token.
 	}
 
 	//------------------------------------------------
@@ -108,29 +100,36 @@ type (
 	//------------------------------------------------
 
 	While struct {
-		Cond Node
-		Body *CurlyList
-		Loc  token.Loc // `while` token.
+		Cond   Node
+		Body   *CurlyList
+		TokLoc token.Loc // `while` token.
+	}
+
+	For struct {
+		DeclList *List
+		IterExpr Node
+		Body     *CurlyList
+		TokLoc   token.Loc // `for` token.
 	}
 
 	Return struct {
-		X   Node
-		Loc token.Loc // `return` token.
+		X      Node
+		TokLoc token.Loc // `return` token.
 	}
 
 	Break struct {
-		Label *Ident
-		Loc   token.Loc // `break` token.
+		Label  *Ident
+		TokLoc token.Loc // `break` token.
 	}
 
 	Continue struct {
-		Label *Ident
-		Loc   token.Loc // `continue` token.
+		Label  *Ident
+		TokLoc token.Loc // `continue` token.
 	}
 
 	Import struct {
 		Module *Ident
-		Loc    token.Loc // `import` token.
+		TokLoc token.Loc // `import` token.
 	}
 )
 
@@ -140,46 +139,49 @@ func (n *Comment) LocEnd() token.Loc { return n.End }
 func (n *CommentGroup) Pos() token.Loc    { return n.Comments[0].Pos() }
 func (n *CommentGroup) LocEnd() token.Loc { return n.Comments[len(n.Comments)-1].LocEnd() }
 
+func (n *StmtList) Pos() token.Loc    { return n.Nodes[0].Pos() }
+func (n *StmtList) LocEnd() token.Loc { return n.Nodes[len(n.Nodes)-1].LocEnd() }
+
 func (n *List) Pos() token.Loc    { return n.Nodes[0].Pos() }
 func (n *List) LocEnd() token.Loc { return n.Nodes[len(n.Nodes)-1].LocEnd() }
 
-func (n *ExprList) Pos() token.Loc    { return n.Exprs[0].Pos() }
-func (n *ExprList) LocEnd() token.Loc { return n.Exprs[len(n.Exprs)-1].LocEnd() }
-
-func (n *AttributeList) Pos() token.Loc    { return n.Loc }
+func (n *AttributeList) Pos() token.Loc    { return n.TokLoc }
 func (n *AttributeList) LocEnd() token.Loc { return n.List.LocEnd() }
 
-func (n *While) Pos() token.Loc    { return n.Loc }
+func (n *While) Pos() token.Loc    { return n.TokLoc }
 func (n *While) LocEnd() token.Loc { return n.Body.LocEnd() }
 
-func (n *Return) Pos() token.Loc    { return n.Loc }
+func (n *For) Pos() token.Loc    { return n.TokLoc }
+func (n *For) LocEnd() token.Loc { return n.Body.LocEnd() }
+
+func (n *Return) Pos() token.Loc    { return n.TokLoc }
 func (n *Return) LocEnd() token.Loc { return n.X.LocEnd() }
 
-func (n *Break) Pos() token.Loc { return n.Loc }
+func (n *Break) Pos() token.Loc { return n.TokLoc }
 func (n *Break) LocEnd() token.Loc {
 	if n.Label != nil {
 		return n.Label.LocEnd()
 	}
 	const length = uint32(len("break") - 1)
-	end := n.Loc
+	end := n.TokLoc
 	end.Char += length
 	end.Offset += uint64(length)
 	return end
 }
 
-func (n *Continue) Pos() token.Loc { return n.Loc }
+func (n *Continue) Pos() token.Loc { return n.TokLoc }
 func (n *Continue) LocEnd() token.Loc {
 	if n.Label != nil {
 		return n.Label.LocEnd()
 	}
 	const length = uint32(len("continue") - 1)
-	end := n.Loc
+	end := n.TokLoc
 	end.Char += length
 	end.Offset += uint64(length)
 	return end
 }
 
-func (n *Import) Pos() token.Loc    { return n.Loc }
+func (n *Import) Pos() token.Loc    { return n.TokLoc }
 func (n *Import) LocEnd() token.Loc { return n.Module.LocEnd() }
 
 // Additional methods for nodes.

@@ -1,0 +1,89 @@
+WIDTH  :: 20
+HEIGHT :: 15
+
+field: [HEIGHT][WIDTH]bool
+hidden_field: [HEIGHT][WIDTH]bool
+
+init_field :: () {
+    for row in 0 ..< HEIGHT {
+        for col in 0 ..< WIDTH {
+            field[row][col] = false
+        }
+    }
+    # # # #
+    # 0 1 0
+    # 0 0 1
+    # 1 1 1
+    field[0][1] = true
+    field[1][2] = true
+    field[2][0] = true
+    field[2][1] = true
+    field[2][2] = true
+}
+
+show_field :: () {
+    for row in 0 ..< HEIGHT {
+        for col in 0 ..< WIDTH {
+            if field[row][col] {
+                $print("0")
+            } else {
+                $print(".")
+            }
+        }
+        $print("\n")
+    }
+}
+
+count_neighbors :: (row0: int, col0: int) -> int {
+    neighbors := 0
+    for row in -1 .. 1 {
+        for col in -1 .. 1 {
+            if row != 0 or col != 0 {
+                neighbor_row := row0 + row
+                neighbor_col := col0 + col
+                if 0 <= neighbor_row and neighbor_row < HEIGHT {
+                    if 0 <= neighbor_col and neighbor_col < WIDTH {
+                        if field[neighbor_row][neighbor_col] {
+                            neighbors += 1
+                        }
+                    }
+                }
+            }
+        }
+    }
+    neighbors
+}
+
+next_field :: () {
+    for row in 0 ..< HEIGHT {
+        for col in 0 ..< WIDTH {
+            neighbors := count_neighbors(row, col)
+            if field[row][col] {
+                hidden_field[row][col] = neighbors == 2 or neighbors == 3
+            } else {
+                hidden_field[row][col] = neighbors == 3
+            }
+        }
+    }
+}
+
+flip_field :: () {
+    for row in  0 ..< HEIGHT {
+        for col in 0 ..< WIDTH {
+            field[row][col] = hidden_field[row][col]
+        }
+    }
+}
+
+GENERATIONS :: 60
+
+main :: () {
+    init_field()
+    show_field()
+    for _ in 0 .. GENERATIONS {
+        next_field()
+        flip_field()
+        $print("\x1B[2;1H")
+        show_field()
+    }
+}

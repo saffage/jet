@@ -16,18 +16,6 @@ type Token struct {
 
 type Precedence int
 
-const (
-	LowestPrec Precedence = iota
-	AssignPrec
-	ArrowPrec
-	BooleanOpPrec
-	BitwisePrec
-	CmpPrec
-	ShiftPrec
-	AddPrec
-	MulPrec
-)
-
 func (token Token) String() string {
 	switch token.Kind {
 	case Whitespace, NewLine:
@@ -56,31 +44,37 @@ func (token Token) String() string {
 func (t Token) Precedence() Precedence {
 	switch t.Kind {
 	case Asterisk, Slash, Percent:
-		return MulPrec
+		return 10
 
 	case Plus, Minus:
-		return AddPrec
+		return 9
 
 	case Shl, Shr:
-		return ShiftPrec
+		return 8
 
 	case Amp, Pipe, Caret:
-		return BitwisePrec
+		return 7
 
 	case EqOp, NeOp, LtOp, GtOp, LeOp, GeOp:
-		return CmpPrec
+		return 6
 
-	case KwAnd, KwOr:
-		return BooleanOpPrec
+	case KwAnd:
+		return 5
+
+	case KwOr:
+		return 4
 
 	case Arrow, FatArrow, Dot2, Dot2Less:
-		return ArrowPrec
+		return 3
+
+	case KwAs:
+		return 2
 
 	case Eq, PlusEq, MinusEq, AsteriskEq, SlashEq, PercentEq:
-		return AssignPrec
+		return 1
 
 	default:
-		return LowestPrec
+		return 0
 	}
 }
 

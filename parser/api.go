@@ -3,7 +3,6 @@ package parser
 import (
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/config"
-	"github.com/saffage/jet/scanner"
 	"github.com/saffage/jet/token"
 )
 
@@ -21,9 +20,7 @@ type Parser struct {
 	indent int
 
 	// State
-
-	// commentGroup *ast.CommentGroup
-	restoreData  []restoreData
+	restoreData []restoreData
 }
 
 type Flags int
@@ -37,6 +34,10 @@ const (
 )
 
 func New(cfg *config.Config, tokens []token.Token, flags Flags) *Parser {
+	if len(tokens) < 1 {
+		panic("expected at least 1 token (EOF)")
+	}
+
 	return &Parser{
 		config: cfg,
 		tokens: tokens,
@@ -49,25 +50,19 @@ func (p *Parser) Errors() []error {
 	return p.errors
 }
 
-func Parse(cfg *config.Config, tokens []token.Token, flags Flags) (*ast.List, []error) {
+func Parse(cfg *config.Config, tokens []token.Token, flags Flags) (*ast.StmtList, []error) {
 	p := New(cfg, tokens, flags)
-	stmts := p.parseStmtList()
+	stmts := p.parseDeclList()
 	return stmts, p.Errors()
 }
 
-func ParseExpr(cfg *config.Config, input []byte) (ast.Node, []error) {
-	toks, errors := scanner.Scan(input, 0, scanner.DefaultFlags)
-
-	if len(errors) > 0 {
-		return nil, errors
-	}
-
-	p := New(cfg, toks, DefaultFlags|Trace)
-	expr := p.parseExpr()
-	return expr, p.Errors()
+func ParseExpr(cfg *config.Config, tokens []token.Token, flags Flags) (ast.Node, []error) {
+	p := New(cfg, tokens, flags)
+	node := p.parseExpr()
+	return node, p.Errors()
 }
 
 type restoreData struct {
-	index  int
-	errors []error
+	tokenIndex int
+	errors     []error
 }

@@ -63,6 +63,7 @@ const (
 	Pipe            // operator '|'
 	Caret           // operator '^'
 	At              // operator '@'
+	Dollar          // operator '$'
 	QuestionMark    // operator '?'
 	QuestionMarkDot // operator '?.'
 	Arrow           // operator '->'
@@ -74,23 +75,17 @@ const (
 	Dot2Less        // operator '..<'
 	Ellipsis        // operator '...'
 
-	// NOTE some keywords are unused.
-
 	KwAnd      // keyword 'and'
 	KwOr       // keyword 'or'
-	KwModule   // keyword 'module'
-	KwImport   // keyword 'import'
-	KwAlias    // keyword 'alias'
 	KwStruct   // keyword 'struct'
 	KwEnum     // keyword 'enum'
-	KwFunc     // keyword 'func'
-	KwVal      // keyword 'val'
-	KwVar      // keyword 'var'
-	KwConst    // keyword 'const'
-	KwOf       // keyword 'of'
+	KwMut      // keyword 'mut'
 	KwIf       // keyword 'if'
 	KwElse     // keyword 'else'
 	KwWhile    // keyword 'while'
+	KwFor      // keyword 'for'
+	KwIn       // keyword 'in'
+	KwAs       // keyword 'as'
 	KwReturn   // keyword 'return'
 	KwBreak    // keyword 'break'
 	KwContinue // keyword 'continue'
@@ -224,6 +219,7 @@ var representableKinds = map[Kind]string{
 	Pipe:            "|",
 	Caret:           "^",
 	At:              "@",
+	Dollar:          "$",
 	PlusEq:          "+=",
 	MinusEq:         "-=",
 	AsteriskEq:      "*=",
@@ -232,22 +228,18 @@ var representableKinds = map[Kind]string{
 	Dot2:            "..",
 	Dot2Less:        "..<",
 	Ellipsis:        "...",
-	KwModule:        "module",
-	KwImport:        "import",
-	KwAlias:         "alias",
+	KwAnd:           "and",
+	KwOr:            "or",
 	KwStruct:        "struct",
 	KwEnum:          "enum",
-	KwFunc:          "func",
-	KwVal:           "val",
-	KwVar:           "var",
-	KwConst:         "const",
-	KwOf:            "of",
+	KwMut:           "mut",
 	KwIf:            "if",
 	KwElse:          "else",
 	KwWhile:         "while",
+	KwFor:           "for",
+	KwIn:            "in",
+	KwAs:            "as",
 	KwReturn:        "return",
 	KwBreak:         "break",
 	KwContinue:      "continue",
-	KwAnd:           "and",
-	KwOr:            "or",
 }

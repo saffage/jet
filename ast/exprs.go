@@ -4,11 +4,11 @@ import "github.com/saffage/jet/token"
 
 type (
 	BadNode struct {
-		Loc token.Loc // Desired location.
+		DesiredLoc token.Loc
 	}
 
 	Empty struct {
-		Loc token.Loc // Desired location.
+		DesiredLoc token.Loc
 	}
 
 	Ident struct {
@@ -22,35 +22,20 @@ type (
 		Start, End token.Loc
 	}
 
-	Operator struct {
-		Start token.Loc
-		End   token.Loc
-		Kind  OperatorKind
-	}
-
 	//------------------------------------------------
 	// Composite nodes
 	//------------------------------------------------
 
-	// Represents `name Type`.
-	Binding struct {
-		Attrs *AttributeList
-		Name  *Ident
-		Type  Node
-	}
-
-	// Represents `name Type = value`.
-	BindingWithValue struct {
-		*Binding
-		Operator *Operator // Can be any assignment operator.
-		Value    Node      // maybe nil.
-	}
-
 	// Represents `@foo()` or `@foo {}`.
 	BuiltInCall struct {
-		Name *Ident
-		Args Node      // Either [ParenList] or [CurlyList].
-		Loc  token.Loc // `@` token.
+		Name   *Ident
+		Args   Node      // Either [ParenList] or [CurlyList].
+		TokLoc token.Loc // `@` token.
+	}
+
+	Function struct {
+		Signature *Signature
+		Body      Node
 	}
 
 	// Represents `x(args)`.
@@ -71,43 +56,55 @@ type (
 		Args *BracketList
 	}
 
-	// Represents `func(x T) T` or `(T) T`.
+	// Represents `struct{...}`.
+	StructType struct {
+		Fields []*Decl
+		TokLoc token.Loc
+		Open   token.Loc
+		Close  token.Loc
+	}
+
+	// Represents `enum{...}`.
+	EnumType struct {
+		Fields []*Ident
+		TokLoc token.Loc
+		Open   token.Loc
+		Close  token.Loc
+	}
+
+	// Represents `*X`.
+	PointerType struct {
+		X      Node
+		TokLoc token.Loc
+	}
+
+	// Represents `() -> ()`.
 	Signature struct {
 		Params *ParenList
-		Result Node
-		Loc    token.Loc // `func` token.
+		Result Node // can be nil in some cases
 	}
 
-	// Represents `x.selector` or `x.{...}`.
-	MemberAccess struct {
-		X        Node
-		Selector Node      // Can be [*Ident] or [*CurlyList]
-		Loc      token.Loc // `.` token.
+	// Represents `x.y`.
+	Dot struct {
+		X      Node
+		Y      *Ident
+		DotLoc token.Loc
 	}
 
-	// Represents `x?.selector`.
-	SafeMemberAccess struct {
-		X        Node
-		Selector *Ident
-		Loc      token.Loc // `?.` token.
+	// Represents `x.*`.
+	Deref struct {
+		X       Node
+		DotLoc  token.Loc
+		StarLoc token.Loc
 	}
 
-	// Represents `!x`, where `!` is an prefix operator.
-	PrefixOp struct {
-		X   Node
-		Opr *Operator
-	}
-
-	// Represents `x ! y`, where `!` is a infix operator.
-	InfixOp struct {
-		X, Y Node
-		Opr  *Operator
-	}
-
-	// Represents `x!`, where `!` is a postfix operator.
-	PostfixOp struct {
-		X   Node
-		Opr *Operator
+	// Represents `x ! y`, where `!` is an operator.
+	Op struct {
+		X     Node
+		Y     Node
+		Start token.Loc
+		End   token.Loc
+		Kind  OperatorKind
 	}
 
 	//------------------------------------------------
@@ -116,19 +113,19 @@ type (
 
 	// Represents `[a, b, c]`.
 	BracketList struct {
-		*ExprList
+		*List
 		Open, Close token.Loc // `[` and `]`.
 	}
 
 	// Represents `(a, b, c)`.
 	ParenList struct {
-		*ExprList
+		*List
 		Open, Close token.Loc // `(` and `)`.
 	}
 
 	// Represents `{a; b; c}`.
 	CurlyList struct {
-		*List
+		*StmtList
 		Open, Close token.Loc // `{` and `}`.
 	}
 
@@ -137,23 +134,23 @@ type (
 	//------------------------------------------------
 
 	If struct {
-		Cond Node
-		Body *CurlyList
-		Else *Else
-		Loc  token.Loc // `if` token.
+		Cond   Node
+		Body   *CurlyList
+		Else   *Else
+		TokLoc token.Loc // `if` token.
 	}
 
 	Else struct {
-		Body Node      // Can be either [*If] or [*CurlyList].
-		Loc  token.Loc // `else` token.
+		Body   Node      // Can be either [*If] or [*CurlyList].
+		TokLoc token.Loc // `else` token.
 	}
 )
 
-func (n *BadNode) Pos() token.Loc    { return n.Loc }
-func (n *BadNode) LocEnd() token.Loc { return n.Loc }
+func (n *BadNode) Pos() token.Loc    { return n.DesiredLoc }
+func (n *BadNode) LocEnd() token.Loc { return n.DesiredLoc }
 
-func (n *Empty) Pos() token.Loc    { return n.Loc }
-func (n *Empty) LocEnd() token.Loc { return n.Loc }
+func (n *Empty) Pos() token.Loc    { return n.DesiredLoc }
+func (n *Empty) LocEnd() token.Loc { return n.DesiredLoc }
 
 func (n *Ident) Pos() token.Loc    { return n.Start }
 func (n *Ident) LocEnd() token.Loc { return n.End }
@@ -161,27 +158,11 @@ func (n *Ident) LocEnd() token.Loc { return n.End }
 func (n *Literal) Pos() token.Loc    { return n.Start }
 func (n *Literal) LocEnd() token.Loc { return n.End }
 
-func (n *Operator) Pos() token.Loc    { return n.Start }
-func (n *Operator) LocEnd() token.Loc { return n.End }
-
-func (n *BindingWithValue) Pos() token.Loc { return n.Binding.Pos() }
-func (n *BindingWithValue) LocEnd() token.Loc {
-	if n.Value != nil {
-		return n.Value.LocEnd()
-	}
-	return n.Binding.LocEnd()
-}
-
-func (n *Binding) Pos() token.Loc { return n.Name.Pos() }
-func (n *Binding) LocEnd() token.Loc {
-	if n.Type != nil {
-		return n.Type.LocEnd()
-	}
-	return n.Name.LocEnd()
-}
-
-func (n *BuiltInCall) Pos() token.Loc    { return n.Loc }
+func (n *BuiltInCall) Pos() token.Loc    { return n.TokLoc }
 func (n *BuiltInCall) LocEnd() token.Loc { return n.Args.LocEnd() }
+
+func (n *Function) Pos() token.Loc    { return n.Signature.Pos() }
+func (n *Function) LocEnd() token.Loc { return n.Body.LocEnd() }
 
 func (n *Call) Pos() token.Loc    { return n.X.Pos() }
 func (n *Call) LocEnd() token.Loc { return n.Args.LocEnd() }
@@ -192,28 +173,34 @@ func (n *Index) LocEnd() token.Loc { return n.Args.LocEnd() }
 func (n *ArrayType) Pos() token.Loc    { return n.Args.Pos() }
 func (n *ArrayType) LocEnd() token.Loc { return n.X.LocEnd() }
 
-func (n *Signature) Pos() token.Loc {
-	if n.Loc.Line == 0 {
-		return n.Params.Pos()
-	}
-	return n.Loc
-}
+func (n *StructType) Pos() token.Loc    { return n.TokLoc }
+func (n *StructType) LocEnd() token.Loc { return n.Close }
+
+func (n *EnumType) Pos() token.Loc    { return n.TokLoc }
+func (n *EnumType) LocEnd() token.Loc { return n.Close }
+
+func (n *Signature) Pos() token.Loc    { return n.Params.Pos() }
 func (n *Signature) LocEnd() token.Loc { return n.Result.LocEnd() }
 
-func (n *MemberAccess) Pos() token.Loc    { return n.X.Pos() }
-func (n *MemberAccess) LocEnd() token.Loc { return n.Selector.LocEnd() }
+func (n *Dot) Pos() token.Loc    { return n.X.Pos() }
+func (n *Dot) LocEnd() token.Loc { return n.Y.LocEnd() }
 
-func (n *SafeMemberAccess) Pos() token.Loc    { return n.X.Pos() }
-func (n *SafeMemberAccess) LocEnd() token.Loc { return n.Selector.LocEnd() }
+func (n *Deref) Pos() token.Loc    { return n.X.Pos() }
+func (n *Deref) LocEnd() token.Loc { return n.StarLoc }
 
-func (n *PrefixOp) Pos() token.Loc    { return n.Opr.Pos() }
-func (n *PrefixOp) LocEnd() token.Loc { return n.X.LocEnd() }
+func (n *Op) Pos() token.Loc {
+	if n.X != nil {
+		return n.X.Pos()
+	}
+	return n.Start
+}
 
-func (n *InfixOp) Pos() token.Loc    { return n.X.Pos() }
-func (n *InfixOp) LocEnd() token.Loc { return n.Y.LocEnd() }
-
-func (n *PostfixOp) Pos() token.Loc    { return n.X.Pos() }
-func (n *PostfixOp) LocEnd() token.Loc { return n.Opr.LocEnd() }
+func (n *Op) LocEnd() token.Loc {
+	if n.Y != nil {
+		return n.Y.LocEnd()
+	}
+	return n.End
+}
 
 func (n *ParenList) Pos() token.Loc    { return n.Open }
 func (n *ParenList) LocEnd() token.Loc { return n.Close }
@@ -224,7 +211,7 @@ func (n *CurlyList) LocEnd() token.Loc { return n.Close }
 func (n *BracketList) Pos() token.Loc    { return n.Open }
 func (n *BracketList) LocEnd() token.Loc { return n.Close }
 
-func (n *If) Pos() token.Loc { return n.Loc }
+func (n *If) Pos() token.Loc { return n.TokLoc }
 func (n *If) LocEnd() token.Loc {
 	if n.Else != nil {
 		return n.Else.LocEnd()
@@ -232,5 +219,5 @@ func (n *If) LocEnd() token.Loc {
 	return n.Body.LocEnd()
 }
 
-func (n *Else) Pos() token.Loc    { return n.Loc }
+func (n *Else) Pos() token.Loc    { return n.TokLoc }
 func (n *Else) LocEnd() token.Loc { return n.Body.LocEnd() }

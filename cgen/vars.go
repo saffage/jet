@@ -2,39 +2,48 @@ package cgen
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/checker"
 	"github.com/saffage/jet/types"
 )
 
-func (gen *generator) varDecl(sym *checker.Var) {
+func (gen *generator) globalVarDecl(sym *checker.Var) {
 	t := gen.TypeString(sym.Type())
 	gen.declVarsSect.WriteString(fmt.Sprintf("%s %s;\n", t, gen.name(sym)))
 }
 
-func (gen *generator) initFunc() string {
-	buf := strings.Builder{}
-	buf.WriteString(fmt.Sprintf("void init%s(void) {\n", gen.Module.Name()))
-	gen.numIndent++
+func (gen *generator) varDecl(sym *checker.Var) string {
+	return fmt.Sprintf("%s %s;\n", gen.TypeString(sym.Type()), gen.name(sym))
+}
+
+func (gen *generator) tempVar(ty types.Type) *checker.Var {
+	id := fmt.Sprintf("tmp__%d", gen.funcTempVarId)
+	decl := &ast.Decl{Name: &ast.Ident{Name: id}}
+	sym := checker.NewVar(gen.Scope, ty, decl)
+	gen.line(gen.varDecl(sym))
+	_ = gen.Scope.Define(sym)
+	gen.funcTempVarId++
+	return sym
+}
+
+func (gen *generator) initFunc() {
+	gen.linef("void init%s(void) {\n", gen.Module.Name())
+	gen.indent++
 
 	for def := gen.Defs.Front(); def != nil; def = def.Next() {
 		def := def.Value
 
 		if _var, _ := def.(*checker.Var); _var != nil && _var.IsGlobal() && _var.Value() != nil {
-			gen.indent(&buf)
-			buf.WriteString(gen.binary(
-				_var.Node().(*ast.Binding).Name,
+			gen.linef("%s;\n", gen.binary(
+				_var.Node().(*ast.Decl).Name,
 				_var.Value(),
 				types.Unit,
 				ast.OperatorAssign,
 			))
-			buf.WriteString(";\n")
 		}
 	}
 
-	gen.numIndent--
-	buf.WriteString("}\n")
-	return buf.String()
+	gen.indent--
+	gen.linef("}\n")
 }

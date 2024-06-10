@@ -4,21 +4,23 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/saffage/jet/constant"
 )
 
 type Func struct {
 	params   *Tuple
 	result   *Tuple
-	variadic bool
+	variadic Type
 }
 
-func NewFunc(result *Tuple, params *Tuple, variadic bool) *Func {
-	if result == nil {
-		result = Unit
-	}
+func NewFunc(params, result *Tuple, variadic Type) *Func {
 	if params == nil {
 		params = Unit
 	}
+	// if result == nil {
+	// 	result = Unit
+	// }
 	return &Func{
 		params:   params,
 		result:   result,
@@ -31,7 +33,9 @@ func (t *Func) Equals(other Type) bool {
 		return t2.kind == KindAny
 	}
 	if t2 := AsFunc(other); t2 != nil {
-		return t.variadic == t2.variadic && t.result.Equals(t2.result) && t.params.Equals(t2.params)
+		return (t.variadic != nil && t.variadic.Equals(t2.variadic) ||
+			t.variadic == nil && t2.variadic == nil) &&
+			t.result.Equals(t2.result) && t.params.Equals(t2.params)
 	}
 	return false
 }
@@ -60,7 +64,15 @@ func (t *Func) Result() *Tuple { return t.result }
 
 func (t *Func) Params() *Tuple { return t.params }
 
-func (t *Func) Variadic() bool { return t.variadic }
+func (t *Func) Variadic() Type { return t.variadic }
+
+func (t *Func) CheckArgValues(args []constant.Value) (idx int, err error) {
+	tyArgs := &Tuple{types: make([]Type, len(args))}
+	for _, arg := range args {
+		tyArgs.types = append(tyArgs.types, FromConstant(arg))
+	}
+	return t.CheckArgs(tyArgs)
+}
 
 func (t *Func) CheckArgs(args *Tuple) (idx int, err error) {
 	{
@@ -72,7 +84,7 @@ func (t *Func) CheckArgs(args *Tuple) (idx int, err error) {
 		//      0      3      -3      0
 		//      3      0       3      0
 
-		if diff < 0 {
+		if diff < 0 && t.variadic == nil {
 			return min(t.params.Len(), args.Len()),
 				fmt.Errorf("too many arguments (expected %d, got %d)", t.params.Len(), args.Len())
 		}
@@ -83,7 +95,7 @@ func (t *Func) CheckArgs(args *Tuple) (idx int, err error) {
 		}
 	}
 
-	for i := 0; i < args.Len(); i++ {
+	for i := 0; i < t.params.Len(); i++ {
 		expected, actual := t.params.types[i], args.types[i]
 
 		if !actual.Equals(expected) {
@@ -92,6 +104,17 @@ func (t *Func) CheckArgs(args *Tuple) (idx int, err error) {
 				expected,
 				ordinalize(i+1),
 				actual,
+			)
+		}
+	}
+
+	// Check varargs.
+	for i, arg := range args.types[t.params.Len():] {
+		if !arg.Equals(t.variadic) {
+			return i + t.params.Len(), fmt.Errorf(
+				"expected '%s', got '%s' instead",
+				t.variadic,
+				arg,
 			)
 		}
 	}

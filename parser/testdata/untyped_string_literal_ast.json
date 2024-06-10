@@ -1,7 +1,7 @@
 {
     "Nodes": [
         {
-            "Value": "hi",
+            "Value": "'hi'",
             "Kind": "string",
             "Start": {
                 "FileID": 1,

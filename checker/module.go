@@ -19,16 +19,18 @@ type Module struct {
 	Scope   *Scope
 	Imports []*Module
 
-	node      *ast.ModuleDecl
+	name      string
+	stmts     *ast.StmtList
 	kind      ModuleKind
 	completed bool
 }
 
-func NewModule(scope *Scope, node *ast.ModuleDecl) *Module {
+func NewModule(scope *Scope, name string, stmts *ast.StmtList) *Module {
 	return &Module{
 		TypeInfo:  NewTypeInfo(),
 		Scope:     scope,
-		node:      node,
+		name:      name,
+		stmts:     stmts,
 		kind:      ModuleKindRegular,
 		completed: false,
 	}
@@ -36,9 +38,9 @@ func NewModule(scope *Scope, node *ast.ModuleDecl) *Module {
 
 func (m *Module) Owner() *Scope     { return m.Scope.parent }
 func (m *Module) Type() types.Type  { return nil }
-func (m *Module) Name() string      { return m.node.Name.Name }
-func (m *Module) Ident() *ast.Ident { return m.node.Name }
-func (m *Module) Node() ast.Node    { return m.node }
+func (m *Module) Name() string      { return m.name }
+func (m *Module) Ident() *ast.Ident { panic("module have no identifier") }
+func (m *Module) Node() ast.Node    { return m.stmts }
 
 func (m *Module) TypeOf(expr ast.Node) types.Type {
 	if expr != nil {
@@ -82,40 +84,40 @@ func (m *Module) SymbolOf(ident *ast.Ident) Symbol {
 
 func (check *Checker) visit(node ast.Node) ast.Visitor {
 	switch node := node.(type) {
-	case ast.Decl:
-		switch decl := node.(type) {
-		case *ast.ModuleDecl:
-			panic("not implemented")
+	case *ast.Decl:
+		check.resolveDecl(node)
 
-		case *ast.VarDecl:
-			check.resolveVarDecl(decl)
+		// switch decl := node.(type) {
+		// case *ast.ModuleDecl:
+		// 	panic("not implemented")
 
-		case *ast.ConstDecl:
-			check.resolveConstDecl(decl)
+		// case *ast.VarDecl:
+		// 	check.resolveVarDecl(decl)
 
-		case *ast.FuncDecl:
-			check.resolveFuncDecl(decl)
+		// case *ast.ConstDecl:
+		// 	check.resolveConstDecl(decl)
 
-		case *ast.StructDecl:
-			check.resolveStructDecl(decl)
+		// case *ast.FuncDecl:
+		// 	check.resolveFuncDecl(decl)
 
-		case *ast.EnumDecl:
-			check.resolveEnumDecl(decl)
+		// case *ast.StructDecl:
+		// 	check.resolveStructDecl(decl)
 
-		case *ast.TypeAliasDecl:
-			check.resolveTypeAliasDecl(decl)
+		// case *ast.EnumDecl:
+		// 	check.resolveEnumDecl(decl)
 
-		default:
-			panic("unreachable")
-		}
+		// case *ast.TypeAliasDecl:
+		// 	check.resolveTypeAliasDecl(decl)
+
+		// default:
+		// 	panic("unreachable")
+		// }
 
 	case *ast.Import:
 		check.resolveImport(node)
 
 	default:
-		// NOTE parser should prevent this in future.
-		check.errorf(node, "expected declaration")
-		return nil
+		panic("ill-formed AST")
 	}
 
 	return nil

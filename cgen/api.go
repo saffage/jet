@@ -34,22 +34,20 @@ func Generate(w io.Writer, m *checker.Module) []error {
 	// }
 
 	mainFn := gen.defs(gen.Defs, gen.Scope, false)
-	gen.codeSect.WriteString(gen.initFunc())
+	gen.initFunc()
 
 	if mainFn != nil {
-		gen.funcDecl(mainFn)
+		gen.fn(mainFn)
 	}
 
-	gen.out.WriteString("\n/* TYPES */\n")
-	gen.out.WriteString(gen.typeSect.String())
-	// gen.out.WriteString("\n/* DATA */\n")
-	// gen.out.WriteString(gen.dataSect.String())
-	gen.out.WriteString("\n/* DECL */\n")
-	gen.out.WriteString(gen.declVarsSect.String())
-	gen.out.WriteString("\n")
-	gen.out.WriteString(gen.declFnsSect.String())
-	gen.out.WriteString("\n/* CODE */\n")
-	gen.out.WriteString(gen.codeSect.String())
+	_, _ = gen.out.WriteString("\n/* TYPES */\n")
+	_, _ = gen.out.WriteString(gen.typeSect.String())
+	_, _ = gen.out.WriteString("\n/* DECL */\n")
+	_, _ = gen.out.WriteString(gen.declVarsSect.String())
+	_, _ = gen.out.WriteString("\n")
+	_, _ = gen.out.WriteString(gen.declFnsSect.String())
+	_, _ = gen.out.WriteString("\n/* CODE */\n")
+	_, _ = gen.out.WriteString(gen.codeSect.String())
 
 	if err := gen.out.Flush(); err != nil {
 		panic(err)

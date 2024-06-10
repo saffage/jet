@@ -48,7 +48,7 @@ func reportAtInternal(kind Kind, tag string, start, end token.Loc, message strin
 	}
 
 	if start.FileID != end.FileID {
-		panic("start & end position have different file IDs")
+		panic(fmt.Sprintf("start & end position have different file IDs (%d and %d)", start.FileID, end.FileID))
 	}
 
 	// We do it here because the message will not be empty

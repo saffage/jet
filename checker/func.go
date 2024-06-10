@@ -9,154 +9,233 @@ import (
 )
 
 type Func struct {
-	owner    *Scope
-	local    *Scope
-	params   []*Var
-	t        *types.Func
-	node     *ast.FuncDecl
-	isExtern bool
+	owner      *Scope
+	local      *Scope
+	params     []*Var
+	ty         *types.Func
+	decl       *ast.Decl
+	body       ast.Node
+	isExtern   bool
+	externName string
 }
 
-func NewFunc(owner *Scope, local *Scope, t *types.Func, node *ast.FuncDecl) *Func {
-	return &Func{owner, local, nil, t, node, false}
+func NewFunc(owner *Scope, local *Scope, t *types.Func, decl *ast.Decl) *Func {
+	return &Func{owner, local, nil, t, decl, nil, false, ""}
 }
 
-func (sym *Func) Owner() *Scope     { return sym.owner }
-func (sym *Func) Type() types.Type  { return sym.t }
-func (sym *Func) Name() string      { return sym.node.Name.Name }
-func (sym *Func) Ident() *ast.Ident { return sym.node.Name }
-func (sym *Func) Node() ast.Node    { return sym.node }
-func (sym *Func) Local() *Scope     { return sym.local }
-func (sym *Func) Params() []*Var    { return sym.params }
-func (sym *Func) IsExtern() bool    { return sym.isExtern }
-func (sym *Func) Variadic() bool    { return sym.t.Variadic() }
+func (sym *Func) Owner() *Scope        { return sym.owner }
+func (sym *Func) Type() types.Type     { return sym.ty }
+func (sym *Func) Name() string         { return sym.decl.Name.Name }
+func (sym *Func) Ident() *ast.Ident    { return sym.decl.Name }
+func (sym *Func) Node() ast.Node       { return sym.decl }
+func (sym *Func) Local() *Scope        { return sym.local }
+func (sym *Func) Params() []*Var       { return sym.params }
+func (sym *Func) IsExtern() bool       { return sym.isExtern }
+func (sym *Func) ExternName() string   { return sym.externName }
+func (sym *Func) Variadic() types.Type { return sym.ty.Variadic() }
 
-func (check *Checker) resolveFuncDecl(node *ast.FuncDecl) {
-	sig := node.Signature
-	tParams := []types.Type{}
-	params := []*Var{}
-	local := NewScope(check.scope, "func "+node.Name.Name)
-	isVariadic := false
+func (check *Checker) resolveFuncDecl(decl *ast.Decl, value *ast.Function) {
+	var (
+		isDefined     = false
+		local         = NewScope(check.scope, "func "+decl.Name.Name)
+		ty, params, _ = check.resolveFuncParams(value.Signature, local)
+		sym           = NewFunc(check.scope, local, ty, decl)
+	)
+	sym.params = params
+	sym.body = value.Body
+	report.TaggedDebugf("checker", "func: set type: %s", ty)
 
-	for i, param := range sig.Params.Exprs {
-		switch param := param.(type) {
-		case *ast.Binding:
-			var t types.Type
-
-			if opr, _ := param.Type.(*ast.Operator); opr != nil && opr.Kind == ast.OperatorElipsis {
-				t = types.Any
-				isVariadic = true
-			} else if t = check.typeOf(param.Type); t == nil {
-				return
-			}
-
-			if isVariadic && i != len(sig.Params.Exprs)-1 {
-				check.errorf(param.Name, "parameter with ... can only be the last in the list")
-			}
-
-			t = types.SkipTypeDesc(t)
-			tParams = append(tParams, t)
-
-			paramSym := NewVar(local, t, param, param.Name)
-			paramSym.isParam = true
-
-			if defined := local.Define(paramSym); defined != nil {
-				check.errorf(param, "paramter with the same name was already defined")
-				return
-			}
-
-			params = append(params, paramSym)
-			check.newDef(param.Name, paramSym)
-			report.TaggedDebugf("checker", "func: def param: %s", paramSym.Name())
-			report.TaggedDebugf("checker", "func: set param type: %s", t)
-
-		case *ast.BindingWithValue:
-			check.errorf(param, "parameters can't have a default value")
-			return
-
-		default:
-			panic(fmt.Sprintf("ill-formed AST: unexpected node type '%T'", param))
+	if ty.Result() != nil {
+		isDefined = true
+		if defined := check.scope.Define(sym); defined != nil {
+			err := errorAlreadyDefined(sym.Ident(), defined.Ident())
+			check.errors = append(check.errors, err)
 		}
 	}
 
-	// Result.
+	sym.ty = check.resolveFuncBody(decl, value.Body, ty, local)
+	if sym.ty == nil {
+		sym.ty = types.NewFunc(ty.Params(), types.Unit, ty.Variadic())
+	}
+	report.TaggedDebugf("checker", "func: set type: %s", sym.ty)
 
-	tResult := types.Unit
+	assert(sym.ty != nil)
+	assert(sym.ty.Result() != nil)
+
+	if !isDefined {
+		if defined := check.scope.Define(sym); defined != nil {
+			err := errorAlreadyDefined(sym.Ident(), defined.Ident())
+			check.errors = append(check.errors, err)
+		}
+	}
+
+	check.resolveFuncAttrs(sym)
+	check.newDef(decl.Name, sym)
+}
+
+func (check *Checker) resolveFuncParams(
+	sig *ast.Signature,
+	scope *Scope,
+) (ty *types.Func, params []*Var, wasError bool) {
+	params = make([]*Var, 0, len(sig.Params.Nodes))
+
+	tyParams := make([]types.Type, 0, len(sig.Params.Nodes))
+	tyResult := (*types.Tuple)(nil)
+	variadic := types.Type(nil)
+
+	for i, node := range sig.Params.Nodes {
+		param, _ := node.(*ast.Decl)
+		if param == nil {
+			panic(
+				fmt.Sprintf("ill-formed AST: unexpected node type '%T'", node),
+			)
+		}
+		if param.Value != nil {
+			check.errorf(
+				param,
+				"parameters with a default value is not supported",
+			)
+			wasError = true
+			continue
+		}
+
+		var tyParam types.Type
+
+		if paramType, _ := param.Type.(*ast.Op); paramType != nil &&
+			paramType.Kind == ast.OperatorEllipsis {
+			if paramType.Y == nil {
+				variadic = types.Any
+			} else if variadic = check.typeOf(paramType.Y); variadic == nil {
+				wasError = true
+				continue
+			}
+			variadic = types.SkipTypeDesc(variadic)
+		} else if tyParam = check.typeOf(param.Type); tyParam == nil {
+			wasError = true
+			continue
+		}
+
+		if variadic != nil {
+			if i != len(sig.Params.Nodes)-1 {
+				check.errorf(
+					param.Name,
+					"parameter with ... can only be the last in the list",
+				)
+				wasError = true
+				variadic = nil
+				// Handle as non-variadic
+			} else {
+				// TODO create a symbol for the variadic parameter.
+				break
+			}
+		}
+
+		tyParam = types.SkipTypeDesc(tyParam)
+		tyParams = append(tyParams, tyParam)
+
+		paramSym := NewVar(scope, tyParam, param)
+		paramSym.isParam = true
+
+		if defined := scope.Define(paramSym); defined != nil {
+			check.errorf(
+				param,
+				"parameter with the same name was already defined",
+			)
+			wasError = true
+			return
+		}
+
+		params = append(params, paramSym)
+		check.newDef(param.Name, paramSym)
+		report.TaggedDebugf("checker", "func: def param: %s", paramSym.Name())
+		report.TaggedDebugf("checker", "func: set param type: %s", tyParam)
+	}
 
 	if sig.Result != nil {
-		t := check.typeOf(sig.Result)
-		if t == nil {
-			return
+		if tyResultActual := check.typeOf(sig.Result); tyResultActual != nil {
+			tyResult = types.AsTuple(tyResultActual)
+
+			if tyResult == nil {
+				assert(!types.IsUntyped(tyResultActual))
+				tyResult = types.NewTuple(types.SkipTypeDesc(tyResultActual))
+			}
 		}
-
-		tResult = types.NewTuple(types.SkipTypeDesc(t))
 	}
 
-	// Produce function type.
+	ty = types.NewFunc(types.NewTuple(tyParams...), tyResult, variadic)
+	return
+}
 
-	t := types.NewFunc(tResult, types.NewTuple(tParams...), isVariadic)
-	sym := NewFunc(check.scope, local, t, node)
-	sym.params = params
-	report.TaggedDebugf("checker", "func: set type: %s", t)
-
-	if defined := check.scope.Define(sym); defined != nil {
-		err := errorAlreadyDefined(sym.Ident(), defined.Ident())
-		check.errors = append(check.errors, err)
-		return
-	}
-
-	// Define function symbol inside their scope for recursion.
-	local.Define(sym)
-	check.newDef(node.Name, sym)
-
-	// Body.
-
-	attrExternC := GetAttribute(sym, "ExternC")
-
-	if isVariadic && attrExternC == nil {
-		check.errorf(sym.Ident(), "only a function with attribute @(ExternC) can be variadic")
-		return
-	}
-
-	if sym.node.Body == nil {
-		if attrExternC == nil {
-			check.errorf(sym.Ident(), "functions without body is not allowed")
-			return
+func (check *Checker) resolveFuncBody(
+	decl *ast.Decl,
+	body ast.Node,
+	tyFunc *types.Func,
+	scope *Scope,
+) *types.Func {
+	if body == nil {
+		if tyFunc.Result() == nil {
+			return types.NewFunc(tyFunc.Params(), types.Unit, tyFunc.Variadic())
 		}
-
-		sym.isExtern = true
-		return
+		return nil
 	}
 
-	if attrExternC != nil {
-		check.errorf(sym.Ident(), "functions with 'ExternC' attribute must have no body")
-		return
-	}
+	var tyBody *types.Tuple
 
+	// Check the body.
 	defer check.setScope(check.scope)
-	check.scope = local
+	check.scope = scope
 
-	tBody := check.typeOf(sym.node.Body)
-	if tBody == nil {
-		return
-	}
+	// For a note about recursion
+	errorsLenBefore := len(check.errors)
 
-	if !tBody.Equals(tResult) {
-		if len(sym.node.Body.Nodes) == 0 {
-			check.errorf(
-				sym.node.Body,
-				"expected expression of type '%s' for function result, got '%s' instead",
-				tResult,
-				tBody,
-			)
-		} else {
-			check.errorf(
-				sym.node.Body.Nodes[len(sym.node.Body.Nodes)-1],
-				"expected expression of type '%s' for function result, got '%s' instead",
-				tResult,
-				tBody,
-			)
+	if tyBodyActual := check.typeOf(body); tyBodyActual != nil {
+		tyBody = types.AsTuple(tyBodyActual)
+
+		if tyBody == nil {
+			tyBody = types.NewTuple(types.SkipUntyped(tyBodyActual))
 		}
-		return
+	} else {
+		if len(check.errors) > errorsLenBefore {
+			for i := range len(check.errors) - errorsLenBefore {
+				err, _ := check.errors[i+errorsLenBefore].(*Error)
+				if err != nil {
+					ident, _ := err.Node.(*ast.Ident)
+					if ident != nil && ident.Name == decl.Name.Name {
+						err.Notes = append(err.Notes, &Error{
+							Message: "cannot infer a type of the recursive definition",
+							Node:    decl.Name,
+						})
+					}
+				}
+			}
+		}
+		return nil
 	}
+
+	if tyFunc.Result() == nil {
+		return types.NewFunc(tyFunc.Params(), tyBody, tyFunc.Variadic())
+	}
+
+	if !tyBody.Equals(tyFunc.Result()) {
+		var resultNode ast.Node
+
+		if list, _ := body.(*ast.CurlyList); list != nil {
+			if len(list.Nodes) == 0 {
+				resultNode = list
+			} else {
+				resultNode = list.Nodes[len(list.Nodes)-1]
+			}
+		} else {
+			resultNode = body
+		}
+
+		check.errorf(
+			resultNode,
+			"expected expression of type '%s' for function result, got '%s' instead",
+			tyFunc.Result(),
+			tyBody,
+		)
+	}
+
+	return tyFunc
 }

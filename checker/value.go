@@ -3,11 +3,11 @@ package checker
 import (
 	"fmt"
 	"math/big"
+	"slices"
 	"strings"
 
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/constant"
-	"github.com/saffage/jet/internal/assert"
 	"github.com/saffage/jet/types"
 )
 
@@ -55,7 +55,7 @@ func constantFromNode(node *ast.Literal) constant.Value {
 	case ast.StringLiteral:
 		start := strings.IndexAny(node.Value, "\"'")
 		end := strings.LastIndexAny(node.Value, "\"'")
-		value := node.Value[start+1:end]
+		value := node.Value[start+1 : end]
 
 		return constant.NewString(value)
 
@@ -66,6 +66,9 @@ func constantFromNode(node *ast.Literal) constant.Value {
 
 func (check *Checker) valueOfInternal(expr ast.Node) *TypedValue {
 	switch node := expr.(type) {
+	case *ast.BuiltInCall:
+		return check.resolveBuiltInCall(node)
+
 	case *ast.Literal:
 		value := constantFromNode(node)
 		type_ := types.FromConstant(value)
@@ -87,7 +90,24 @@ func (check *Checker) valueOfInternal(expr ast.Node) *TypedValue {
 
 		check.errorf(node, "identifier is undefined")
 
-	case *ast.InfixOp:
+	case *ast.Op:
+		if node.X == nil {
+			y := check.valueOf(node.Y)
+			if y == nil {
+				return nil
+			}
+
+			ty := check.prefix(node, y.Type)
+			if ty == nil {
+				return nil
+			}
+
+			return &TypedValue{
+				Type:  ty,
+				Value: compileUnaryOp(y.Value, node.Kind),
+			}
+		}
+
 		x := check.valueOf(node.X)
 		y := check.valueOf(node.Y)
 
@@ -100,10 +120,14 @@ func (check *Checker) valueOfInternal(expr ast.Node) *TypedValue {
 			return nil
 		}
 
+		if x.Value == nil || y.Value == nil {
+			return nil
+		}
+
 		if x.Value.Kind() == y.Value.Kind() {
 			return &TypedValue{
 				Type:  t,
-				Value: comptimeBinaryOp(x.Value, y.Value, node.Opr.Kind),
+				Value: comptimeBinaryOp(x.Value, y.Value, node.Kind),
 			}
 		} else {
 			panic("not implemented")
@@ -113,8 +137,68 @@ func (check *Checker) valueOfInternal(expr ast.Node) *TypedValue {
 	return nil
 }
 
+func (check *Checker) resolveBuiltInCall(node *ast.BuiltInCall) *TypedValue {
+	var builtIn *BuiltIn
+	idx := slices.IndexFunc(builtIns, func(b *BuiltIn) bool {
+		return b.name == node.Name.Name
+	})
+
+	if idx != -1 {
+		builtIn = builtIns[idx]
+	}
+
+	if builtIn == nil {
+		check.errorf(node.Name, "unknown built-in function '$%s'", node.Name.Name)
+		return nil
+	}
+
+	args, _ := node.Args.(*ast.ParenList)
+	if args == nil {
+		check.errorf(node.Args, "block as built-in function argument is not yet supported")
+		return nil
+	}
+
+	tArgList := check.typeOfParenList(args)
+	if tArgList == nil {
+		return nil
+	}
+
+	tArgs, _ := tArgList.(*types.Tuple)
+	if tArgs == nil {
+		return nil
+	}
+
+	if idx, err := builtIn.t.CheckArgs(tArgs); err != nil {
+		n := ast.Node(args)
+
+		if idx < len(args.Nodes) {
+			n = args.Nodes[idx]
+		}
+
+		check.errorf(n, err.Error())
+		return nil
+	}
+
+	vArgs := make([]*TypedValue, tArgs.Len())
+
+	for i := range len(vArgs) {
+		vArgs[i] = check.module.Types[args.Nodes[i]]
+	}
+
+	value, err := builtIn.f(args, vArgs)
+	if err != nil {
+		check.addError(err)
+		return nil
+	}
+	if value == nil {
+		return nil
+	}
+
+	return value
+}
+
 func comptimeBinaryOp(x, y constant.Value, opKind ast.OperatorKind) constant.Value {
-	assert.Ok(x.Kind() == y.Kind())
+	assert(x.Kind() == y.Kind())
 
 	switch opKind {
 	case ast.OperatorAdd:

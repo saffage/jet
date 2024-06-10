@@ -16,10 +16,11 @@ import (
 
 var ErrorEmptyFileBuf = errors.New("empty file buffer or invalid file ID")
 
-func Check(cfg *config.Config, fileID config.FileID, node *ast.ModuleDecl) (*Module, []error) {
-	report.Hintf("checking module '%s'", cfg.Files[fileID].Name)
+func Check(cfg *config.Config, fileID config.FileID, stmts *ast.StmtList) (*Module, []error) {
+	moduleName := cfg.Files[fileID].Name
+	report.Hintf("checking module '%s'", moduleName)
 
-	module := NewModule(NewScope(Global, "module "+node.Name.Name), node)
+	module := NewModule(NewScope(Global, "module "+moduleName), moduleName, stmts)
 	check := &Checker{
 		module:         module,
 		scope:          module.Scope,
@@ -29,21 +30,10 @@ func Check(cfg *config.Config, fileID config.FileID, node *ast.ModuleDecl) (*Mod
 		fileID:         fileID,
 	}
 
-	nodes := []ast.Node(nil)
+	visitor := ast.Visitor(check.visit)
 
-	switch body := node.Body.(type) {
-	case *ast.List:
-		nodes = body.Nodes
-
-	case *ast.CurlyList:
-		nodes = body.List.Nodes
-
-	default:
-		panic("ill-formed AST")
-	}
-
-	for _, node := range nodes {
-		ast.WalkTopDown(check.visit, node)
+	for _, node := range stmts.Nodes {
+		visitor.WalkTopDown(node)
 	}
 
 	module.completed = true
@@ -68,42 +58,46 @@ func Check(cfg *config.Config, fileID config.FileID, node *ast.ModuleDecl) (*Mod
 }
 
 func CheckFile(cfg *config.Config, fileID config.FileID) (*Module, []error) {
-	const ScannerFlags = scanner.SkipWhitespace | scanner.SkipComments
-	const ParserFlags = parser.DefaultFlags
+	scannerFlags := scanner.SkipWhitespace | scanner.SkipComments
+	parserFlags := parser.DefaultFlags
+
+	if config.FlagTraceParser {
+		parserFlags |= parser.Trace
+	}
 
 	fi := cfg.Files[fileID]
 	if fi.Buf == nil {
 		return nil, []error{ErrorEmptyFileBuf}
 	}
 
-	tokens, errs := scanner.Scan(fi.Buf.Bytes(), fileID, ScannerFlags)
+	tokens, errs := scanner.Scan(fi.Buf.Bytes(), fileID, scannerFlags)
 	if len(errs) > 0 {
 		return nil, errs
 	}
 
-	nodeList, errs := parser.Parse(cfg, tokens, ParserFlags)
+	stmts, errs := parser.Parse(cfg, tokens, parserFlags)
 	if len(errs) > 0 {
 		return nil, errs
 	}
-	if nodeList == nil {
+	if stmts == nil {
 		// Empty file, nothing to check.
-		return NewModule(NewScope(nil, "module "+fi.Name), nil), nil
+		return NewModule(NewScope(nil, "module "+fi.Name), fi.Name, nil), nil
 	}
 
-	// printRecreatedAST(nodeList)
+	if config.FlagParseAst {
+		printRecreatedAST(stmts)
+		return nil, nil
+	}
 
-	return Check(cfg, fileID, &ast.ModuleDecl{
-		Name: &ast.Ident{Name: fi.Name},
-		Body: nodeList,
-	})
+	return Check(cfg, fileID, stmts)
 }
 
-func printRecreatedAST(nodeList *ast.List) {
+func printRecreatedAST(nodeList *ast.StmtList) {
 	fmt.Println("recreated AST:")
 
 	for i, node := range nodeList.Nodes {
 		if _, isEmpty := node.(*ast.Empty); i < len(nodeList.Nodes)-1 || !isEmpty {
-			fmt.Println(color.HiGreenString(node.String()))
+			fmt.Println(color.HiGreenString(node.Repr()))
 		}
 	}
 }

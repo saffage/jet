@@ -44,7 +44,7 @@ func (ti *TypeInfo) TypeOf(expr ast.Node) types.Type {
 
 func (ti *TypeInfo) ValueOf(expr ast.Node) *TypedValue {
 	if expr != nil {
-		if tv, ok := ti.Types[expr]; ok && tv != nil {
+		if tv, ok := ti.Types[expr]; ok && tv != nil && tv.Value != nil {
 			return tv
 		}
 	}
