@@ -27,11 +27,16 @@ type Reporter interface {
 //
 // If the error implements the [Reporter] interface, it will be used instead
 // of the usual Error() function.
-func Errors(errors ...error) {
-	for _, err := range errors {
-		if reporter, ok := err.(Reporter); ok {
-			reporter.Report()
-		} else {
+func Errors(errs ...error) {
+	for _, err := range errs {
+		switch err := err.(type) {
+		case Reporter:
+			err.Report()
+
+		case interface{ Unwrap() []error }:
+			Errors(err.Unwrap()...)
+
+		default:
 			Error(err.Error())
 		}
 	}

@@ -1,13 +1,15 @@
 package parser
 
 import (
+	"errors"
+
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/config"
 	"github.com/saffage/jet/token"
 )
 
 type Parser struct {
-	config  *config.Config
+	cfg     *config.Config
 	errors  []error
 	tokens  []token.Token
 	current int // index of the current token in `tokens` stream
@@ -39,30 +41,37 @@ func New(cfg *config.Config, tokens []token.Token, flags Flags) *Parser {
 	}
 
 	return &Parser{
-		config: cfg,
+		cfg:    cfg,
 		tokens: tokens,
 		flags:  flags,
 		tok:    tokens[0],
 	}
 }
 
-func (p *Parser) Errors() []error {
-	return p.errors
-}
-
-func Parse(cfg *config.Config, tokens []token.Token, flags Flags) (*ast.StmtList, []error) {
+func Parse(cfg *config.Config, tokens []token.Token, flags Flags) (*ast.StmtList, error) {
 	p := New(cfg, tokens, flags)
 	stmts := p.parseDeclList()
-	return stmts, p.Errors()
+	return stmts, errors.Join(p.errors...)
 }
 
-func ParseExpr(cfg *config.Config, tokens []token.Token, flags Flags) (ast.Node, []error) {
+func MustParse(cfg *config.Config, tokens []token.Token, flags Flags) *ast.StmtList {
+	stmts, err := Parse(cfg, tokens, flags)
+	if err != nil {
+		panic(err)
+	}
+	return stmts
+}
+
+func ParseExpr(cfg *config.Config, tokens []token.Token, flags Flags) (ast.Node, error) {
 	p := New(cfg, tokens, flags)
 	node := p.parseExpr()
-	return node, p.Errors()
+	return node, errors.Join(p.errors...)
 }
 
-type restoreData struct {
-	tokenIndex int
-	errors     []error
+func MustParseExpr(cfg *config.Config, tokens []token.Token, flags Flags) ast.Node {
+	expr, err := ParseExpr(cfg, tokens, flags)
+	if err != nil {
+		panic(err)
+	}
+	return expr
 }

@@ -73,13 +73,11 @@ func (check *Checker) valueOfInternal(expr ast.Node) *TypedValue {
 
 	case *ast.Literal:
 		value := constantFromNode(node)
-		type_ := types.FromConstant(value)
 
-		if type_ == types.UntypedString {
-			check.module.Data.Set(node, &TypedValue{type_, value})
+		return &TypedValue{
+			Type:  types.FromConstant(value),
+			Value: value,
 		}
-
-		return &TypedValue{type_, value}
 
 	case *ast.Ident:
 		if sym := check.symbolOf(node); sym != nil {

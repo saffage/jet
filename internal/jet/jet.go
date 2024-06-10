@@ -29,17 +29,17 @@ func CheckFile(cfg *config.Config, fileID config.FileID) {
 		return
 	}
 
-	tokens, errs := scanner.Scan(fi.Buf.Bytes(), fileID, scannerFlags)
-	if len(errs) > 0 {
-		report.Errors(errs...)
+	tokens, err := scanner.Scan(fi.Buf.Bytes(), fileID, scannerFlags)
+	if err != nil {
+		report.Errors(err)
 		return
 	}
 
 	spew.Dump(tokens)
 
-	stmts, errs := parser.Parse(cfg, tokens, parserFlags)
-	if len(errs) > 0 {
-		report.Errors(errs...)
+	stmts, err := parser.Parse(cfg, tokens, parserFlags)
+	if err != nil {
+		report.Errors(err)
 		return
 	}
 	if stmts == nil {
@@ -56,9 +56,9 @@ func CheckFile(cfg *config.Config, fileID config.FileID) {
 		return
 	}
 
-	_, errs = checker.Check(cfg, fileID, stmts)
-	if len(errs) > 0 {
-		report.Errors(errs...)
+	_, err = checker.Check(cfg, fileID, stmts)
+	if err != nil {
+		report.Errors(err)
 		return
 	}
 }
@@ -74,13 +74,11 @@ func printRecreatedAST(nodeList *ast.StmtList) {
 }
 
 func process(cfg *config.Config, fileID config.FileID) bool {
-	// CheckFile(cfg, fileID)
 	checker.CheckBuiltInPkgs()
 
-	m, errs := checker.CheckFile(cfg, fileID)
-	// tree, errs := parser.Parse(cfg, fileID)
-	if len(errs) != 0 {
-		report.Errors(errs...)
+	m, err := checker.CheckFile(cfg, fileID)
+	if err != nil {
+		report.Errors(err)
 		return false
 	}
 
@@ -90,7 +88,8 @@ func process(cfg *config.Config, fileID config.FileID) bool {
 
 		err := os.Mkdir(filepath.Join(dir, ".jet"), os.ModePerm)
 		if err != nil && !os.IsExist(err) {
-			panic(err)
+			report.Errors(err)
+			return false
 		}
 
 		dir = filepath.Join(dir, ".jet")
@@ -116,8 +115,8 @@ func genCFile(m *checker.Module, dir string) bool {
 	report.Hintf("generating module '%s'", m.Name())
 	report.TaggedDebugf("gen", "module file is '%s'", filename)
 
-	if errs := cgen.Generate(f, m); len(errs) != 0 {
-		report.Errors(errs...)
+	if err := cgen.Generate(f, m); err != nil {
+		report.Errors(err)
 		return false
 	}
 

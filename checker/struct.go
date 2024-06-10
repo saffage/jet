@@ -58,8 +58,11 @@ func (check *Checker) resolveStructDecl(decl *ast.Decl, value *ast.StructType) {
 		fields[i] = types.StructField{fieldDecl.Ident.Name, t}
 
 		if defined := local.Define(fieldSym); defined != nil {
-			err := NewErrorf(fieldSym.Ident(), "duplicate field '%s'", fieldSym.Name())
-			err.Notes = []*Error{NewError(defined.Ident(), "field was defined here")}
+			err := newErrorf(fieldSym.Ident(), "duplicate field '%s'", fieldSym.Name())
+			err.Notes = append(err.Notes, &Error{
+				Message: "field was defined here",
+				Node:    defined.Ident(),
+			})
 			check.addError(err)
 			continue
 		}
@@ -118,7 +121,7 @@ func (check *Checker) structInit(initList *ast.ParenList, ty *types.Struct) {
 
 			if _, hasField := initFields[fieldNameNode.Name]; hasField {
 				// TODO point to the previous field assignment.
-				err := NewErrorf(fieldNameNode, "field '%s' is already specified", fieldNameNode.Name)
+				err := newErrorf(fieldNameNode, "field '%s' is already specified", fieldNameNode.Name)
 				check.addError(err)
 			} else {
 				initFields[fieldNameNode.Name] = tFieldValue

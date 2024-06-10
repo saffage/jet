@@ -15,7 +15,6 @@ var (
 	ErrorBracketIsNeverClosed   = errors.New("bracket is never closed")
 	ErrorUnterminatedExpr       = errors.New("unterminated expression")
 	ErrorUnexpectedToken        = errors.New("unexpected token")
-	ErrorRequiresArgsForBuiltIn = errors.New("built-in function call requires an argument list")
 	ErrorExpectedExpr           = errors.New("expected expression")
 	ErrorExpectedOperand        = errors.New("expected operand")
 	ErrorExpectedBlock          = errors.New("expected block")

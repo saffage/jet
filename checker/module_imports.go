@@ -30,9 +30,9 @@ func (check *Checker) resolveImport(node *ast.Import) {
 		Buf:  bytes.NewBuffer(fileContent),
 	}
 
-	m, errors := CheckFile(check.cfg, fileID)
-	if len(errors) != 0 {
-		report.Errors(errors...)
+	m, err := CheckFile(check.cfg, fileID)
+	if err != nil {
+		report.Errors(err)
 		check.errorf(node.Module, "the module check was finished with errors")
 	}
 

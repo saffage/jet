@@ -16,18 +16,17 @@ import (
 
 var ErrorEmptyFileBuf = errors.New("empty file buffer or invalid file ID")
 
-func Check(cfg *config.Config, fileID config.FileID, stmts *ast.StmtList) (*Module, []error) {
+func Check(cfg *config.Config, fileID config.FileID, stmts *ast.StmtList) (*Module, error) {
 	moduleName := cfg.Files[fileID].Name
 	report.Hintf("checking module '%s'", moduleName)
 
 	module := NewModule(NewScope(Global, "module "+moduleName), moduleName, stmts)
 	check := &Checker{
-		module:         module,
-		scope:          module.Scope,
-		errors:         make([]error, 0),
-		isErrorHandled: true,
-		cfg:            cfg,
-		fileID:         fileID,
+		module: module,
+		scope:  module.Scope,
+		errors: make([]error, 0),
+		cfg:    cfg,
+		fileID: fileID,
 	}
 
 	visitor := ast.Visitor(check.visit)
@@ -54,10 +53,10 @@ func Check(cfg *config.Config, fileID config.FileID, stmts *ast.StmtList) (*Modu
 		spew.Fdump(f, check)
 	}
 
-	return check.module, check.errors
+	return check.module, errors.Join(check.errors...)
 }
 
-func CheckFile(cfg *config.Config, fileID config.FileID) (*Module, []error) {
+func CheckFile(cfg *config.Config, fileID config.FileID) (*Module, error) {
 	scannerFlags := scanner.SkipWhitespace | scanner.SkipComments
 	parserFlags := parser.DefaultFlags
 
@@ -67,17 +66,17 @@ func CheckFile(cfg *config.Config, fileID config.FileID) (*Module, []error) {
 
 	fi := cfg.Files[fileID]
 	if fi.Buf == nil {
-		return nil, []error{ErrorEmptyFileBuf}
+		return nil, ErrorEmptyFileBuf
 	}
 
-	tokens, errs := scanner.Scan(fi.Buf.Bytes(), fileID, scannerFlags)
-	if len(errs) > 0 {
-		return nil, errs
+	tokens, err := scanner.Scan(fi.Buf.Bytes(), fileID, scannerFlags)
+	if err != nil {
+		return nil, err
 	}
 
-	stmts, errs := parser.Parse(cfg, tokens, parserFlags)
-	if len(errs) > 0 {
-		return nil, errs
+	stmts, err := parser.Parse(cfg, tokens, parserFlags)
+	if err != nil {
+		return nil, err
 	}
 	if stmts == nil {
 		// Empty file, nothing to check.

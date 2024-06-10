@@ -8,7 +8,6 @@ import (
 
 func builtInBuiltin(node *ast.ParenList, args []*TypedValue) (*TypedValue, error) {
 	strval := constant.AsString(args[0].Value)
-
 	if strval == nil {
 		panic("unreachable")
 	}
@@ -57,7 +56,7 @@ func builtInBuiltin(node *ast.ParenList, args []*TypedValue) (*TypedValue, error
 		return &TypedValue{types.NewTypeDesc(types.String), nil}, nil
 
 	default:
-		return nil, NewErrorf(node.Nodes[0], "unknown builtin '%s'", *strval)
+		return nil, newErrorf(node.Nodes[0], "unknown built-in '%s'", *strval)
 	}
 }
 

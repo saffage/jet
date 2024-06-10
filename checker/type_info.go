@@ -7,9 +7,6 @@ import (
 )
 
 type TypeInfo struct {
-	// Constant data.
-	Data *orderedmap.OrderedMap[ast.Node, *TypedValue]
-
 	// Every definition in the entire module.
 	Defs *orderedmap.OrderedMap[*ast.Ident, Symbol]
 
@@ -21,16 +18,6 @@ type TypeInfo struct {
 
 	// Every usage in the entire module.
 	Uses map[*ast.Ident]Symbol
-}
-
-func NewTypeInfo() *TypeInfo {
-	return &TypeInfo{
-		Data:     orderedmap.NewOrderedMap[ast.Node, *TypedValue](),
-		Defs:     orderedmap.NewOrderedMap[*ast.Ident, Symbol](),
-		TypeSyms: make(map[types.Type]Symbol),
-		Types:    make(map[ast.Node]*TypedValue),
-		Uses:     make(map[*ast.Ident]Symbol),
-	}
 }
 
 func (ti *TypeInfo) TypeOf(expr ast.Node) types.Type {
@@ -53,10 +40,10 @@ func (ti *TypeInfo) ValueOf(expr ast.Node) *TypedValue {
 
 func (ti *TypeInfo) SymbolOf(ident *ast.Ident) Symbol {
 	if ident != nil {
-		if sym, _ := ti.Defs.Get(ident); sym != nil {
+		if sym, ok := ti.Defs.Get(ident); ok && sym != nil {
 			return sym
 		}
-		if sym := ti.Uses[ident]; sym != nil {
+		if sym, ok := ti.Uses[ident]; ok && sym != nil {
 			return sym
 		}
 	}

@@ -732,15 +732,11 @@ func (p *Parser) parseType() ast.Node {
 		return p.parseEnumType()
 
 	case token.Dollar:
-		if node := p.parseBuiltIn(); node != nil {
-			return node
-		}
-		return nil
-
-	default:
-		p.error(ErrorExpectedType)
-		return nil
+		return p.parseBuiltIn()
 	}
+
+	p.error(ErrorExpectedType)
+	return nil
 }
 
 func (p *Parser) parseStructType() ast.Node {

@@ -96,23 +96,21 @@ var CheckBuiltInPkgs = sync.OnceFunc(func() {
 		Buf:  bytes.NewBuffer(cModuleContent),
 	}
 
-	var errs []error
+	ModuleBuiltin, err = CheckFile(config.Global, builtinFileID)
+	if err != nil {
+		report.TaggedErrorf("internal", "while checking package 'builtin'")
+		report.Errors(err)
+		os.Exit(1)
+	}
 
-	ModuleBuiltin, errs = CheckFile(config.Global, builtinFileID)
-	checkErrors(errs)
-
-	// ModuleC, errs = CheckFile(config.Global, cFileID)
-	// checkErrors(errs)
+	// ModuleC, err = CheckFile(config.Global, cFileID)
+	// if err != nil {
+	// 	report.TaggedErrorf("internal", "while checking package 'builtin'")
+	// 	report.Errors(err)
+	// 	os.Exit(1)
+	// }
 
 	for _, sym := range ModuleBuiltin.Scope.symbols {
 		_ = Global.Define(sym)
 	}
 })
-
-func checkErrors(errs []error) {
-	if len(errs) != 0 {
-		report.TaggedErrorf("internal", "while checking package 'builtin'")
-		report.Errors(errs...)
-		os.Exit(1)
-	}
-}

@@ -2,12 +2,13 @@ package cgen
 
 import (
 	"bufio"
+	"errors"
 	"io"
 
 	"github.com/saffage/jet/checker"
 )
 
-func Generate(w io.Writer, m *checker.Module) []error {
+func Generate(w io.Writer, m *checker.Module) error {
 	gen := &generator{
 		Module: m,
 		out:    bufio.NewWriter(w),
@@ -18,20 +19,6 @@ func Generate(w io.Writer, m *checker.Module) []error {
 	if err := gen.out.Flush(); err != nil {
 		panic(err)
 	}
-
-	// for node, data := range gen.Data {
-	// 	switch data.Type {
-	// 	case types.UntypedString:
-	// 		if s := constant.AsString(data.Value); s != nil {
-	// 			gen.dataSect.WriteString(fmt.Sprintf(
-	// 				"static const char str_lit_%d[%d] = %s;\n",
-	// 				reflect.ValueOf(node).Pointer(),
-	// 				len(*s),
-	// 				strconv.Quote(*s),
-	// 			))
-	// 		}
-	// 	}
-	// }
 
 	mainFn := gen.defs(gen.Defs, gen.Scope, false)
 	gen.initFunc()
@@ -53,5 +40,5 @@ func Generate(w io.Writer, m *checker.Module) []error {
 		panic(err)
 	}
 
-	return gen.errors
+	return errors.Join(gen.errors...)
 }

@@ -7,6 +7,11 @@ import (
 	"github.com/saffage/jet/token"
 )
 
+type restoreData struct {
+	tokenIndex int
+	errors     []error
+}
+
 func (p *Parser) next() {
 	if p.current >= len(p.tokens) {
 		panic("EOF token was skipped or missing in the token stream")

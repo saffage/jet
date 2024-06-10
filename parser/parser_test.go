@@ -83,7 +83,7 @@ type testCase struct {
 	input        string
 	name         string
 	expectedJSON string
-	errors       []error
+	error        error
 	isExpr       bool
 	scannerFlags scanner.Flags
 	parserFlags  Flags
@@ -139,24 +139,20 @@ func TestExprs(t *testing.T) {
 }
 
 func test(t *testing.T, c testCase) {
-	tokens, errs := scanner.Scan(([]byte)(c.input), 1, c.scannerFlags)
-
-	if len(errs) != 0 {
-		t.Fatalf("unexpected scanner errors: %v", errs)
-	}
-
 	t.Run(c.name, func(t *testing.T) {
+		tokens := scanner.MustScan(([]byte)(c.input), 1, c.scannerFlags)
+
 		var stmts *ast.StmtList
-		var errs []error
+		var err error
 
 		if c.isExpr {
 			var node ast.Node
-			node, errs = ParseExpr(cfg, tokens, c.parserFlags)
+			node, err = ParseExpr(cfg, tokens, c.parserFlags)
 			stmts = &ast.StmtList{Nodes: []ast.Node{node}}
 		} else {
-			stmts, errs = Parse(cfg, tokens, c.parserFlags)
+			stmts, err = Parse(cfg, tokens, c.parserFlags)
 		}
-		if !checkErrors(t, errs, c.errors) {
+		if !checkError(t, err, c.error) {
 			return
 		}
 
@@ -190,40 +186,28 @@ func test(t *testing.T, c testCase) {
 	})
 }
 
-func checkErrors(t *testing.T, gotErrors, wantErrors []error) bool {
-	maxIndex := max(len(gotErrors), len(wantErrors))
+func checkError(t *testing.T, got, want error) bool {
+	if want == nil && got == nil {
+		return true
+	}
 
-	for i := 0; i < maxIndex; i++ {
-		var got, want error
-
-		if i < len(gotErrors) {
-			got = gotErrors[i]
-		}
-
-		if i < len(wantErrors) {
-			want = wantErrors[i]
-		}
-
-		if got == nil && want == nil {
-			panic("unreachable")
-		}
-
-		if want == nil {
+	if want == nil {
+		if got != nil {
 			t.Errorf("parsing failed with unexpected error: '%s'", got.Error())
 			return false
-		} else if got == nil {
-			t.Errorf("expected an error: '%s', got nothing", want.Error())
-			return false
 		}
+	} else if got == nil {
+		t.Errorf("expected an error: '%s', got nothing", want.Error())
+		return false
+	}
 
-		if got.Error() != want.Error() {
-			t.Errorf(
-				"unexpected error:\nexpect: '%s'\nactual: '%s'",
-				got.Error(),
-				want.Error(),
-			)
-			return false
-		}
+	if got.Error() != want.Error() {
+		t.Errorf(
+			"unexpected error:\nexpect: '%s'\nactual: '%s'",
+			got.Error(),
+			want.Error(),
+		)
+		return false
 	}
 
 	return true

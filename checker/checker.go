@@ -9,10 +9,9 @@ import (
 )
 
 type Checker struct {
-	module         *Module
-	scope          *Scope
-	errors         []error
-	isErrorHandled bool
+	module *Module
+	scope  *Scope
+	errors []error
 
 	cfg    *config.Config
 	fileID config.FileID
@@ -78,7 +77,7 @@ func (check *Checker) newDef(ident *ast.Ident, sym Symbol) {
 	assert(sym != nil)
 
 	symStr := ""
-	if debugPrinter, _ := sym.(debugSymbolPrinter); debugPrinter != nil {
+	if debugPrinter, _ := sym.(debugPrinter); debugPrinter != nil {
 		symStr = debugPrinter.debug()
 	} else {
 		symStr = symbolTypeNoQualifier(sym)
@@ -107,7 +106,7 @@ func (check *Checker) newUse(ident *ast.Ident, sym Symbol) {
 	assert(!isDef)
 
 	symStr := ""
-	if debugPrinter, _ := sym.(debugSymbolPrinter); debugPrinter != nil {
+	if debugPrinter, _ := sym.(debugPrinter); debugPrinter != nil {
 		symStr = debugPrinter.debug()
 	} else {
 		symStr = symbolTypeNoQualifier(sym)

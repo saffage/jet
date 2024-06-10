@@ -2,6 +2,7 @@ package scanner
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -11,15 +12,15 @@ import (
 	"github.com/saffage/jet/token"
 )
 
-func Scan(buffer []byte, fileid config.FileID, flags Flags) ([]token.Token, []error) {
+func Scan(buffer []byte, fileid config.FileID, flags Flags) ([]token.Token, error) {
 	s := New(buffer, fileid, flags)
-	return s.AllTokens(), s.Errors()
+	return s.AllTokens(), errors.Join(s.errors...)
 }
 
 func MustScan(buffer []byte, fileid config.FileID, flags Flags) []token.Token {
-	tokens, errs := Scan(buffer, fileid, flags)
-	if len(errs) != 0 {
-		panic(errs)
+	tokens, err := Scan(buffer, fileid, flags)
+	if err != nil {
+		panic(err)
 	}
 	return tokens
 }
@@ -48,13 +49,7 @@ func New(buffer []byte, fileid config.FileID, flags Flags) *Scanner {
 	}
 }
 
-func (s *Scanner) Errors() []error {
-	return s.errors
-}
-
-func (s *Scanner) AllTokens() []token.Token {
-	toks := []token.Token{}
-
+func (s *Scanner) AllTokens() (toks []token.Token) {
 	for {
 		tok := s.Next()
 		toks = append(toks, tok)
@@ -63,8 +58,7 @@ func (s *Scanner) AllTokens() []token.Token {
 			break
 		}
 	}
-
-	return toks
+	return
 }
 
 func (s *Scanner) Next() token.Token {

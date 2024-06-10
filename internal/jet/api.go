@@ -126,11 +126,12 @@ func processFile(path string) {
 
 func compileToC(cc, module, dir string) error {
 	file := filepath.Join(dir, ".jet", module+"__jet.c")
-
 	args := []string{"-o", module, file}
+
 	if len(config.CLDflags) > 0 {
 		args = append(args, strings.Split(config.CLDflags, " ")...)
 	}
+
 	cmd := exec.Command(cc, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
