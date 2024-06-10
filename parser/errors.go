@@ -29,51 +29,50 @@ var (
 )
 
 type Error struct {
-	err error
-
 	Start   token.Pos
 	End     token.Pos
 	Message string
 
 	isWarn     bool
 	isInternal bool
+
+	err error
 }
 
 func (e Error) Error() string {
 	if e.Message != "" {
 		return e.err.Error() + ": " + e.Message
 	}
-
 	return e.err.Error()
 }
 
-func (e Error) Unwrap() error { return e.err }
+func (e Error) Unwrap() error {
+	return e.err
+}
 
-func (e Error) Is(err error) bool { return e.err == err }
+func (e Error) Is(err error) bool {
+	return e.err == err
+}
 
 func (e Error) Report() {
-	if r, _ := e.err.(report.Reporter); r != nil {
-		r.Report()
+	err, ok := e.err.(report.Reporter)
+	if ok && err != nil {
+		err.Report()
 	}
-
-	if e.err == nil {
-		return
-	}
-
-	tag := "parser"
-	if e.isInternal {
-		tag = "internal: " + tag
-	}
-
-	message := e.err.Error()
-	if e.Message != "" {
-		message += ": " + e.Message
-	}
-
-	if e.isWarn {
-		report.TaggedWarningAt(tag, e.Start, e.End, message)
-	} else {
-		report.TaggedErrorAt(tag, e.Start, e.End, message)
+	if !ok || e.Message != "" {
+		tag := "parser"
+		if e.isInternal {
+			tag = "internal: " + tag
+		}
+		message := e.err.Error()
+		if e.Message != "" {
+			message += ": " + e.Message
+		}
+		if e.isWarn {
+			report.TaggedWarningAt(tag, e.Start, e.End, message)
+		} else {
+			report.TaggedErrorAt(tag, e.Start, e.End, message)
+		}
 	}
 }
 

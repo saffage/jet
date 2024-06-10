@@ -213,7 +213,7 @@ func (s *Scanner) Next() token.Token {
 			tok = token.Token{Kind: kind}
 
 		default:
-			s.error("illegal character", s.Pos())
+			s.error(ErrorIllegalCharacter, s.Pos())
 
 			tok = token.Token{
 				Kind: token.Illegal,
@@ -294,7 +294,11 @@ func (s *Scanner) scanString() token.Token {
 				}
 
 			default:
-				s.errorUnexpected(fmt.Sprintf("character escape `\\%c`", s.Prev()), s.PrevPos())
+				s.error(
+					ErrorInvalidEscape,
+					s.PrevPos(),
+					fmt.Sprintf("'\\%c'", s.Prev()),
+				)
 				data = []byte{'\\', s.Prev()}
 			}
 		} else {
@@ -305,7 +309,7 @@ func (s *Scanner) scanString() token.Token {
 	})
 
 	if !s.Consume(quote) {
-		s.error("unterminated string literal", quotePos)
+		s.error(ErrorUnterminatedStringLit, quotePos)
 		return token.Token{
 			Kind:  token.Illegal,
 			Data:  data,
@@ -331,7 +335,7 @@ func (s *Scanner) parseBytes(n int) ([]byte, bool) {
 			realBytes = append(realBytes, '_')
 
 			if !ascii.IsHexDigit(s.Peek()) {
-				s.error("invalid byte", s.Pos())
+				s.error(ErrorInvalidByte, s.Pos())
 				return realBytes, false
 			}
 		}
@@ -347,17 +351,17 @@ func (s *Scanner) parseBytes(n int) ([]byte, bool) {
 	}
 
 	if i == 0 {
-		s.error("invalid byte", startPos)
+		s.error(ErrorInvalidByte, startPos)
 		return realBytes, false
 	} else if i < n {
-		s.error(fmt.Sprintf("invalid byte (expected %d bytes)", n), s.Pos())
+		s.error(ErrorInvalidByte, s.Pos(), fmt.Sprintf("expected %d bytes", n))
 		return realBytes, false
 	}
 
 	result := make([]byte, n/2)
 
 	if _, err := hex.Decode(result, bytes); err != nil {
-		s.error(err.Error(), s.Pos())
+		s.error(err, s.Pos())
 		return nil, false
 	}
 
@@ -386,14 +390,14 @@ func (s *Scanner) scanNumber() token.Token {
 			return num
 
 		case s.Match('X', 'B', 'O'):
-			s.error("uppercase letters is not allowed, use lowercase instead", s.Pos())
+			s.error(ErrorIllegalNumericBase, s.Pos())
 			return token.Token{
 				Kind: token.Illegal,
 				Data: string(s.Peek()),
 			}
 
 		case ascii.IsDigit(s.Peek()):
-			s.error("`0` as the first character of a number literal is not allowed", s.Pos())
+			s.error(ErrorFirstDigitIsZero, s.Pos())
 			return token.Token{
 				Kind: token.Illegal,
 				Data: string(s.Prev()),
@@ -415,7 +419,8 @@ func (s *Scanner) scanNumber() token.Token {
 		buf.WriteByte('.')
 		tok.Kind = token.Float
 
-		if num := s.parseNumber(ascii.IsDigit, "number after the point"); num.Kind != token.Illegal {
+		num := s.parseNumber(ascii.IsDigit, ErrorExpectedDigitAfterPoint)
+		if num.Kind != token.Illegal {
 			buf.WriteString(num.Data)
 		} else {
 			return num
@@ -441,7 +446,7 @@ func (s *Scanner) scanNumber() token.Token {
 		buf.WriteByte('\'')
 
 		if !token.IsIdentifierStartChar(s.Peek()) {
-			s.errorExpected("identifier for numeric suffix", s.Pos())
+			s.error(ErrorExpectedIdentForSuffix, s.Pos())
 			tok.Kind = token.Illegal
 			return tok
 		} else {
@@ -459,9 +464,9 @@ func (s *Scanner) scanNumber() token.Token {
 //   - if character after '_' is not a <number>
 //
 // Pattern is: `<number> ('_' <number>)*`
-func (s *Scanner) parseNumber(predicate func(byte) bool, expected string) token.Token {
+func (s *Scanner) parseNumber(predicate func(byte) bool, err error) token.Token {
 	if !predicate(s.Peek()) {
-		s.errorExpected(expected, s.Pos())
+		s.error(err, s.Pos())
 		return token.Token{
 			Kind: token.Illegal,
 			Data: string(s.Peek()),
@@ -477,7 +482,7 @@ func (s *Scanner) parseNumber(predicate func(byte) bool, expected string) token.
 
 			if !predicate(s.Peek()) {
 				num.WriteByte(s.Peek())
-				s.errorExpected(expected+" after `_`", s.Pos())
+				s.error(err, s.Pos())
 				return token.Token{
 					Kind: token.Illegal,
 					Data: num.String(),
@@ -497,19 +502,19 @@ func (s *Scanner) parseNumber(predicate func(byte) bool, expected string) token.
 }
 
 func (s *Scanner) parseBinNumber() token.Token {
-	return s.parseNumber(isBinDigit, "binary number")
+	return s.parseNumber(isBinDigit, ErrorExpectedBinNumber)
 }
 
 func (s *Scanner) parseOctNumber() token.Token {
-	return s.parseNumber(isOctDigit, "octal number")
+	return s.parseNumber(isOctDigit, ErrorExpectedOctNumber)
 }
 
 func (s *Scanner) parseDecNumber() token.Token {
-	return s.parseNumber(ascii.IsDigit, "number")
+	return s.parseNumber(ascii.IsDigit, ErrorExpectedDecNumber)
 }
 
 func (s *Scanner) parseHexNumber() token.Token {
-	return s.parseNumber(ascii.IsHexDigit, "hexadecimal number")
+	return s.parseNumber(ascii.IsHexDigit, ErrorExpectedHexNumber)
 }
 
 func isBinDigit(c byte) bool {
