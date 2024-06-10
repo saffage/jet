@@ -6,11 +6,41 @@ import (
 	"strings"
 )
 
-func (decl *Decl) Repr() string {
-	// if decl.Type == nil && decl.Value == nil {
-	// 	panic("ill-formed AST: [ast.Decl] must have either Type or Value field ")
-	// }
+//------------------------------------------------
+// Atoms
+//------------------------------------------------
 
+func (n *BadNode) Repr() string {
+	return "$bad_node"
+}
+
+func (n *Empty) Repr() string {
+	return ";"
+}
+
+func (n *Ident) Repr() string {
+	return n.Name
+}
+
+func (n *Literal) Repr() string {
+	switch n.Kind {
+	case IntLiteral, FloatLiteral:
+		return n.Value
+
+	case StringLiteral:
+		// TODO replace [strconv.Quote].
+		return strconv.Quote(n.Value)
+
+	default:
+		panic("unreachable")
+	}
+}
+
+//------------------------------------------------
+// Declaration
+//------------------------------------------------
+
+func (decl *Decl) Repr() string {
 	buf := strings.Builder{}
 
 	if decl.Attrs != nil {
@@ -22,7 +52,7 @@ func (decl *Decl) Repr() string {
 		buf.WriteString("mut ")
 	}
 
-	buf.WriteString(decl.Name.Repr())
+	buf.WriteString(decl.Ident.Repr())
 
 	c := ':'
 	if decl.IsVar {
@@ -42,35 +72,12 @@ func (decl *Decl) Repr() string {
 	return buf.String()
 }
 
-func (n *BadNode) Repr() string {
-	return "@error(\"bad node\")"
-}
-
-func (n *Empty) Repr() string {
-	return ";"
-}
-
-func (n *Ident) Repr() string {
-	// return fmt.Sprintf("(loc: %s, name: %s)", color.CyanString(n.Start.String()), n.Name)
-	return n.Name
-}
-
-func (n *Literal) Repr() string {
-	switch n.Kind {
-	case IntLiteral, FloatLiteral:
-		return n.Value
-
-	case StringLiteral:
-		// TODO replace [strconv.Quote].
-		return strconv.Quote(n.Value)
-
-	default:
-		panic("unreachable")
-	}
+func (n *AttributeList) Repr() string {
+	return "@" + n.List.Repr()
 }
 
 func (n *Comment) Repr() string {
-	return "##" + n.Data
+	return "##" + n.Value
 }
 
 func (n *CommentGroup) Repr() string {
@@ -83,6 +90,10 @@ func (n *CommentGroup) Repr() string {
 
 	return buf.String()
 }
+
+//------------------------------------------------
+// Composite nodes
+//------------------------------------------------
 
 func (n *ArrayType) Repr() string {
 	return n.Args.Repr() + n.X.Repr()
@@ -122,43 +133,16 @@ func (n *EnumType) Repr() string {
 	return buf.String()
 }
 
-func (n *PointerType) Repr() string {
-	return "*" + n.X.Repr()
-}
-
 func (n *Signature) Repr() string {
 	if n.Result == nil {
 		return fmt.Sprintf("%s -> ()", n.Params.Repr())
 	}
+
 	return fmt.Sprintf("%s -> %s", n.Params.Repr(), n.Result.Repr())
 }
 
-func (n *AttributeList) Repr() string {
-	return "@" + n.List.Repr()
-}
-
-func (n *BuiltInCall) Repr() string {
-	buf := strings.Builder{}
-	buf.WriteByte('$')
-	buf.WriteString(n.Name.Repr())
-
-	if n.Args != nil {
-		if _, ok := n.Args.(*ParenList); !ok {
-			buf.WriteByte(' ')
-		}
-
-		buf.WriteString(n.Args.Repr())
-	}
-
-	return buf.String()
-}
-
-func (n *Dot) Repr() string {
-	return n.X.Repr() + "." + n.Y.Repr()
-}
-
-func (n *Deref) Repr() string {
-	return n.X.Repr() + ".*"
+func (n *BuiltIn) Repr() string {
+	return "$" + n.Ident.Repr()
 }
 
 func (n *Call) Repr() string {
@@ -169,55 +153,20 @@ func (n *Index) Repr() string {
 	return n.X.Repr() + n.Args.Repr()
 }
 
-func printList[T Node](nodes []T, separator rune) string {
-	buf := strings.Builder{}
-
-	for i, n := range nodes {
-		if i > 0 {
-			buf.WriteRune(separator)
-			buf.WriteByte(' ')
-		}
-
-		buf.WriteString(n.Repr())
-	}
-
-	return buf.String()
-}
-
-func (n *StmtList) Repr() string {
-	return printList(n.Nodes, ';')
-}
-
-func (n *List) Repr() string {
-	return printList(n.Nodes, ',')
-}
-
-func (n *ParenList) Repr() string {
-	return fmt.Sprintf("(%s)", printList(n.Nodes, ','))
-}
-
-func (n *CurlyList) Repr() string {
-	if len(n.StmtList.Nodes) > 0 {
-		return fmt.Sprintf("{ %s }", n.StmtList.Repr())
-	}
-
-	return "{}"
-}
-
-func (n *BracketList) Repr() string {
-	return fmt.Sprintf("[%s]", printList(n.Nodes, ','))
-}
-
 func (n *Function) Repr() string {
 	if n.Signature.Result == nil {
 		return fmt.Sprintf("%s %s", n.Signature.Params.Repr(), n.Body.Repr())
 	}
 
-	if n.Body != nil {
-		return fmt.Sprintf("%s %s", n.Signature.Repr(), n.Body.Repr())
-	}
+	return fmt.Sprintf("%s %s", n.Signature.Repr(), n.Body.Repr())
+}
 
-	return n.Signature.Repr()
+func (n *Dot) Repr() string {
+	return n.X.Repr() + "." + n.Y.Repr()
+}
+
+func (n *Deref) Repr() string {
+	return n.X.Repr() + ".*"
 }
 
 func (n *Op) Repr() string {
@@ -235,6 +184,53 @@ func (n *Op) Repr() string {
 
 	return buf.String()
 }
+
+//------------------------------------------------
+// Lists
+//------------------------------------------------
+
+func (n *List) Repr() string {
+	return printList(n.Nodes, ',')
+}
+
+func (n *StmtList) Repr() string {
+	return printList(n.Nodes, ';')
+}
+
+func (n *BracketList) Repr() string {
+	return fmt.Sprintf("[%s]", printList(n.Nodes, ','))
+}
+
+func (n *ParenList) Repr() string {
+	return fmt.Sprintf("(%s)", printList(n.Nodes, ','))
+}
+
+func (n *CurlyList) Repr() string {
+	if len(n.StmtList.Nodes) > 0 {
+		return fmt.Sprintf("{ %s }", n.StmtList.Repr())
+	}
+
+	return "{}"
+}
+
+func printList[T Node](nodes []T, separator rune) string {
+	buf := strings.Builder{}
+
+	for i, n := range nodes {
+		if i > 0 {
+			buf.WriteRune(separator)
+			buf.WriteByte(' ')
+		}
+
+		buf.WriteString(n.Repr())
+	}
+
+	return buf.String()
+}
+
+//------------------------------------------------
+// Language constructions
+//------------------------------------------------
 
 func (n *If) Repr() string {
 	if n.Else != nil {

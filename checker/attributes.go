@@ -77,20 +77,20 @@ func (check *Checker) resolveFuncAttrs(sym *Func) {
 	if sym.isExtern {
 		if sym.body != nil {
 			check.errorf(
-				sym.decl.Name,
+				sym.decl.Ident,
 				"functions with @[extern_c] attribute must have no definition",
 			)
 		}
 	} else {
 		if sym.body == nil {
 			check.errorf(
-				sym.decl.Name,
+				sym.decl.Ident,
 				"functions without body is not allowed",
 			)
 		}
 		if sym.ty.Variadic() != nil {
 			check.errorf(
-				sym.decl.Name,
+				sym.decl.Ident,
 				"only a function with the attribute @[extern_c] can be variadic",
 			)
 		}

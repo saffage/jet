@@ -8,7 +8,7 @@ import (
 )
 
 // Zero value is invalid location.
-type Loc struct {
+type Pos struct {
 	FileID config.FileID
 	Offset uint64
 	Line   uint32
@@ -24,7 +24,7 @@ type Loc struct {
 //   - "line"
 //   - "line:column"
 //   - "???"
-func (l Loc) String() string {
+func (l Pos) String() string {
 	s := strings.Builder{}
 
 	if fileinfo, present := config.Global.Files[l.FileID]; present && fileinfo.Path != "" {
@@ -46,6 +46,6 @@ func (l Loc) String() string {
 	return s.String()
 }
 
-func (l Loc) IsValid() bool {
+func (l Pos) IsValid() bool {
 	return l.FileID != 0 && l.Line > 0
 }

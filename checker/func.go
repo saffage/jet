@@ -25,8 +25,8 @@ func NewFunc(owner *Scope, local *Scope, t *types.Func, decl *ast.Decl) *Func {
 
 func (sym *Func) Owner() *Scope        { return sym.owner }
 func (sym *Func) Type() types.Type     { return sym.ty }
-func (sym *Func) Name() string         { return sym.decl.Name.Name }
-func (sym *Func) Ident() *ast.Ident    { return sym.decl.Name }
+func (sym *Func) Name() string         { return sym.decl.Ident.Name }
+func (sym *Func) Ident() *ast.Ident    { return sym.decl.Ident }
 func (sym *Func) Node() ast.Node       { return sym.decl }
 func (sym *Func) Local() *Scope        { return sym.local }
 func (sym *Func) Params() []*Var       { return sym.params }
@@ -37,7 +37,7 @@ func (sym *Func) Variadic() types.Type { return sym.ty.Variadic() }
 func (check *Checker) resolveFuncDecl(decl *ast.Decl, value *ast.Function) {
 	var (
 		isDefined     = false
-		local         = NewScope(check.scope, "func "+decl.Name.Name)
+		local         = NewScope(check.scope, "func "+decl.Ident.Name)
 		ty, params, _ = check.resolveFuncParams(value.Signature, local)
 		sym           = NewFunc(check.scope, local, ty, decl)
 	)
@@ -70,7 +70,7 @@ func (check *Checker) resolveFuncDecl(decl *ast.Decl, value *ast.Function) {
 	}
 
 	check.resolveFuncAttrs(sym)
-	check.newDef(decl.Name, sym)
+	check.newDef(decl.Ident, sym)
 }
 
 func (check *Checker) resolveFuncParams(
@@ -118,7 +118,7 @@ func (check *Checker) resolveFuncParams(
 		if variadic != nil {
 			if i != len(sig.Params.Nodes)-1 {
 				check.errorf(
-					param.Name,
+					param.Ident,
 					"parameter with ... can only be the last in the list",
 				)
 				wasError = true
@@ -146,7 +146,7 @@ func (check *Checker) resolveFuncParams(
 		}
 
 		params = append(params, paramSym)
-		check.newDef(param.Name, paramSym)
+		check.newDef(param.Ident, paramSym)
 		report.TaggedDebugf("checker", "func: def param: %s", paramSym.Name())
 		report.TaggedDebugf("checker", "func: set param type: %s", tyParam)
 	}
@@ -200,10 +200,10 @@ func (check *Checker) resolveFuncBody(
 				err, _ := check.errors[i+errorsLenBefore].(*Error)
 				if err != nil {
 					ident, _ := err.Node.(*ast.Ident)
-					if ident != nil && ident.Name == decl.Name.Name {
+					if ident != nil && ident.Name == decl.Ident.Name {
 						err.Notes = append(err.Notes, &Error{
 							Message: "cannot infer a type of the recursive definition",
-							Node:    decl.Name,
+							Node:    decl.Ident,
 						})
 					}
 				}

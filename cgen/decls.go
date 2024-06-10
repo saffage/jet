@@ -20,7 +20,7 @@ func (gen *generator) decl(sym checker.Symbol) {
 		} else {
 			gen.linef("%s;\n",
 				gen.binary(
-					node.Name,
+					node.Ident,
 					node.Value,
 					types.Unit,
 					ast.OperatorAssign,

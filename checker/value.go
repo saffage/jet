@@ -66,8 +66,10 @@ func constantFromNode(node *ast.Literal) constant.Value {
 
 func (check *Checker) valueOfInternal(expr ast.Node) *TypedValue {
 	switch node := expr.(type) {
-	case *ast.BuiltInCall:
-		return check.resolveBuiltInCall(node)
+	case *ast.Call:
+		if builtIn, _ := node.X.(*ast.BuiltIn); builtIn != nil {
+			return check.resolveBuiltInCall(builtIn, node)
+		}
 
 	case *ast.Literal:
 		value := constantFromNode(node)
@@ -137,55 +139,45 @@ func (check *Checker) valueOfInternal(expr ast.Node) *TypedValue {
 	return nil
 }
 
-func (check *Checker) resolveBuiltInCall(node *ast.BuiltInCall) *TypedValue {
-	var builtIn *BuiltIn
+func (check *Checker) resolveBuiltInCall(node *ast.BuiltIn, call *ast.Call) *TypedValue {
 	idx := slices.IndexFunc(builtIns, func(b *BuiltIn) bool {
-		return b.name == node.Name.Name
+		return b.name == node.Name
 	})
-
-	if idx != -1 {
-		builtIn = builtIns[idx]
-	}
-
-	if builtIn == nil {
-		check.errorf(node.Name, "unknown built-in function '$%s'", node.Name.Name)
+	if idx == -1 {
+		check.errorf(node, "unknown built-in function '%s'", node.Repr())
 		return nil
 	}
 
-	args, _ := node.Args.(*ast.ParenList)
-	if args == nil {
-		check.errorf(node.Args, "block as built-in function argument is not yet supported")
+	builtIn := builtIns[idx]
+
+	tyArgList := check.typeOfParenList(call.Args)
+	if tyArgList == nil {
 		return nil
 	}
 
-	tArgList := check.typeOfParenList(args)
-	if tArgList == nil {
+	tyArgs, _ := tyArgList.(*types.Tuple)
+	if tyArgs == nil {
 		return nil
 	}
 
-	tArgs, _ := tArgList.(*types.Tuple)
-	if tArgs == nil {
-		return nil
-	}
+	if idx, err := builtIn.t.CheckArgs(tyArgs); err != nil {
+		n := ast.Node(call.Args)
 
-	if idx, err := builtIn.t.CheckArgs(tArgs); err != nil {
-		n := ast.Node(args)
-
-		if idx < len(args.Nodes) {
-			n = args.Nodes[idx]
+		if idx < len(call.Args.Nodes) {
+			n = call.Args.Nodes[idx]
 		}
 
 		check.errorf(n, err.Error())
 		return nil
 	}
 
-	vArgs := make([]*TypedValue, tArgs.Len())
+	vArgs := make([]*TypedValue, tyArgs.Len())
 
 	for i := range len(vArgs) {
-		vArgs[i] = check.module.Types[args.Nodes[i]]
+		vArgs[i] = check.module.Types[call.Args.Nodes[i]]
 	}
 
-	value, err := builtIn.f(args, vArgs)
+	value, err := builtIn.f(call.Args, vArgs)
 	if err != nil {
 		check.addError(err)
 		return nil

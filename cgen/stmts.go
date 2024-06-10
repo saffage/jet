@@ -15,7 +15,7 @@ func (gen *generator) StmtString(stmt ast.Node) string {
 		if !stmt.IsVar {
 			break
 		}
-		sym, _ := gen.Defs.Get(stmt.Name)
+		sym, _ := gen.Defs.Get(stmt.Ident)
 		if sym == nil {
 			panic("unreachable")
 		}
@@ -31,7 +31,7 @@ func (gen *generator) StmtString(stmt ast.Node) string {
 		gen.linef("}\n")
 
 	case *ast.For:
-		loopVar := gen.SymbolOf(stmt.DeclList.Nodes[0].(*ast.Decl).Name)
+		loopVar := gen.SymbolOf(stmt.DeclList.Nodes[0].(*ast.Decl).Ident)
 		iterExpr := stmt.IterExpr.(*ast.Op)
 		cmpOp := ast.OperatorLt
 		if iterExpr.Kind == ast.OperatorRangeInclusive {

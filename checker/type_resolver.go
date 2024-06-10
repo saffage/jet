@@ -40,9 +40,6 @@ func (check *Checker) typeOfInternal(expr ast.Node) types.Type {
 	case *ast.Literal:
 		return check.typeOfLiteral(node)
 
-	case *ast.BuiltInCall:
-		return check.typeOfBuiltInCall(node)
-
 	case *ast.Call:
 		return check.typeOfCall(node)
 
@@ -140,22 +137,21 @@ func (check *Checker) typeOfLiteral(node *ast.Literal) types.Type {
 	}
 }
 
-func (check *Checker) typeOfBuiltInCall(node *ast.BuiltInCall) types.Type {
-	tv := check.resolveBuiltInCall(node)
-	if tv == nil {
-		return nil
-	}
-
-	return tv.Type
-}
-
 func (check *Checker) typeOfCall(node *ast.Call) types.Type {
-	tOperand := check.typeOf(node.X)
-	if tOperand == nil {
+	if builtIn, _ := node.X.(*ast.BuiltIn); builtIn != nil {
+		if tv := check.resolveBuiltInCall(builtIn, node); tv != nil {
+			return tv.Type
+		}
+
 		return nil
 	}
 
-	if fn := types.AsFunc(tOperand); fn != nil {
+	tyOperand := check.typeOf(node.X)
+	if tyOperand == nil {
+		return nil
+	}
+
+	if fn := types.AsFunc(tyOperand); fn != nil {
 		tArgs := types.SkipUntyped(check.typeOfParenList(node.Args))
 		if tArgs == nil {
 			return nil
@@ -173,12 +169,12 @@ func (check *Checker) typeOfCall(node *ast.Call) types.Type {
 		}
 
 		return fn.Result().Underlying()
-	} else if tyStruct := types.AsStruct(types.SkipTypeDesc(tOperand)); tyStruct != nil {
+	} else if tyStruct := types.AsStruct(types.SkipTypeDesc(tyOperand)); tyStruct != nil {
 		check.structInit(node.Args, tyStruct)
 		return tyStruct
 	}
 
-	check.errorf(node.X, "expression is not a function or struct type (%s)", tOperand)
+	check.errorf(node.X, "expression is not a function or struct type (%s)", tyOperand)
 	return nil
 }
 
@@ -650,7 +646,7 @@ func (check *Checker) typeOfFor(node *ast.For) (ty types.Type) {
 	bodyScope := NewScope(check.scope, "loop body")
 	loopVar := NewVar(bodyScope, tyLoopVar, loopVarDecl)
 	bodyScope.Define(loopVar)
-	check.newDef(loopVarDecl.Name, loopVar)
+	check.newDef(loopVarDecl.Ident, loopVar)
 
 	var tyBody types.Type
 	{

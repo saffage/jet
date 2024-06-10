@@ -32,8 +32,8 @@ var (
 type Error struct {
 	err error
 
-	Start   token.Loc
-	End     token.Loc
+	Start   token.Pos
+	End     token.Pos
 	Message string
 
 	isWarn     bool
@@ -106,7 +106,7 @@ func (p *Parser) errorExpectedToken(tokens ...token.Kind) {
 	p.errorExpectedTokenAt(p.tok.Start, p.tok.End, tokens...)
 }
 
-func (p *Parser) errorAt(err error, start, end token.Loc) {
+func (p *Parser) errorAt(err error, start, end token.Pos) {
 	p.appendError(Error{
 		err:   err,
 		Start: start,
@@ -114,7 +114,7 @@ func (p *Parser) errorAt(err error, start, end token.Loc) {
 	})
 }
 
-func (p *Parser) errorfAt(err error, start, end token.Loc, format string, args ...any) {
+func (p *Parser) errorfAt(err error, start, end token.Pos, format string, args ...any) {
 	p.appendError(Error{
 		err:     err,
 		Start:   start,
@@ -123,7 +123,7 @@ func (p *Parser) errorfAt(err error, start, end token.Loc, format string, args .
 	})
 }
 
-func (p *Parser) errorExpectedTokenAt(start, end token.Loc, tokens ...token.Kind) {
+func (p *Parser) errorExpectedTokenAt(start, end token.Pos, tokens ...token.Kind) {
 	if len(tokens) < 1 {
 		panic("required at least 1 token")
 	}
@@ -142,7 +142,7 @@ func (p *Parser) errorExpectedTokenAt(start, end token.Loc, tokens ...token.Kind
 	})
 }
 
-func (p *Parser) skip(to ...token.Kind) (start, end token.Loc) {
+func (p *Parser) skip(to ...token.Kind) (start, end token.Pos) {
 	if len(to) == 0 {
 		to = endOfExprKinds
 	}

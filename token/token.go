@@ -11,7 +11,7 @@ import (
 type Token struct {
 	Kind       Kind
 	Data       string
-	Start, End Loc
+	Start, End Pos
 }
 
 type Precedence int

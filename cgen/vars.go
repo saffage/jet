@@ -19,7 +19,7 @@ func (gen *generator) varDecl(sym *checker.Var) string {
 
 func (gen *generator) tempVar(ty types.Type) *checker.Var {
 	id := fmt.Sprintf("tmp__%d", gen.funcTempVarId)
-	decl := &ast.Decl{Name: &ast.Ident{Name: id}}
+	decl := &ast.Decl{Ident: &ast.Ident{Name: id}}
 	sym := checker.NewVar(gen.Scope, ty, decl)
 	gen.line(gen.varDecl(sym))
 	_ = gen.Scope.Define(sym)
@@ -36,7 +36,7 @@ func (gen *generator) initFunc() {
 
 		if _var, _ := def.(*checker.Var); _var != nil && _var.IsGlobal() && _var.Value() != nil {
 			gen.linef("%s;\n", gen.binary(
-				_var.Node().(*ast.Decl).Name,
+				_var.Node().(*ast.Decl).Ident,
 				_var.Value(),
 				types.Unit,
 				ast.OperatorAssign,

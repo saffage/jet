@@ -26,12 +26,12 @@ func NewEnum(owner *Scope, body *Scope, t *types.TypeDesc, decl *ast.Decl) *Enum
 
 func (sym *Enum) Owner() *Scope     { return sym.owner }
 func (sym *Enum) Type() types.Type  { return sym.t }
-func (sym *Enum) Name() string      { return sym.decl.Name.Name }
-func (sym *Enum) Ident() *ast.Ident { return sym.decl.Name }
+func (sym *Enum) Name() string      { return sym.decl.Ident.Name }
+func (sym *Enum) Ident() *ast.Ident { return sym.decl.Ident }
 func (sym *Enum) Node() ast.Node    { return sym.decl }
 
 func (check *Checker) resolveEnumDecl(decl *ast.Decl, value *ast.EnumType) {
-	bodyScope := NewScope(check.scope, "enum "+decl.Name.Name)
+	bodyScope := NewScope(check.scope, "enum "+decl.Ident.Name)
 	fields := make([]string, 0, len(value.Fields))
 
 	for _, ident := range value.Fields {
@@ -45,7 +45,7 @@ func (check *Checker) resolveEnumDecl(decl *ast.Decl, value *ast.EnumType) {
 		check.addError(errorAlreadyDefined(sym.Ident(), defined.Ident()))
 		return
 	}
-	check.newDef(decl.Name, sym)
+	check.newDef(decl.Ident, sym)
 }
 
 func (check *Checker) enumMember(node *ast.Dot, t *types.Enum) types.Type {

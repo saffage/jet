@@ -16,15 +16,15 @@ func NewTypeAlias(owner *Scope, t *types.TypeDesc, decl *ast.Decl) *TypeAlias {
 
 	return &TypeAlias{
 		owner: owner,
-		t:     types.NewAlias(t.Base(), decl.Name.Name),
+		t:     types.NewAlias(t.Base(), decl.Ident.Name),
 		decl:  decl,
 	}
 }
 
 func (sym *TypeAlias) Owner() *Scope     { return sym.owner }
 func (sym *TypeAlias) Type() types.Type  { return types.NewTypeDesc(sym.t) }
-func (sym *TypeAlias) Name() string      { return sym.decl.Name.Name }
-func (sym *TypeAlias) Ident() *ast.Ident { return sym.decl.Name }
+func (sym *TypeAlias) Name() string      { return sym.decl.Ident.Name }
+func (sym *TypeAlias) Ident() *ast.Ident { return sym.decl.Ident }
 func (sym *TypeAlias) Node() ast.Node    { return sym.decl }
 
 func (check *Checker) resolveTypeAliasDecl(decl *ast.Decl) {
@@ -47,6 +47,6 @@ func (check *Checker) resolveTypeAliasDecl(decl *ast.Decl) {
 		return
 	}
 
-	check.newDef(decl.Name, sym)
+	check.newDef(decl.Ident, sym)
 	check.setType(decl, typedesc)
 }

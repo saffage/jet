@@ -18,14 +18,10 @@ func (gen *generator) exprString(expr ast.Node) string {
 	}
 
 	report.Debugf("expr = %s", expr.Repr())
-	exprStr := ""
 
 	switch node := expr.(type) {
 	case *ast.Empty:
 		return ""
-
-	case *ast.BuiltInCall:
-		exprStr = gen.BuiltInCall(node)
 
 	case *ast.Ident:
 		switch sym := gen.SymbolOf(node).(type) {
@@ -114,6 +110,10 @@ func (gen *generator) exprString(expr ast.Node) string {
 		return gen.binary(node.X, node.Y, tv.Type, node.Kind)
 
 	case *ast.Call:
+		if builtIn, _ := node.X.(*ast.BuiltIn); builtIn != nil {
+			return gen.BuiltInCall(builtIn, node)
+		}
+
 		tv := gen.Types[node.X]
 		if tv == nil {
 			// Defined in another module?
@@ -209,12 +209,8 @@ func (gen *generator) exprString(expr ast.Node) string {
 		fmt.Printf("not implemented '%T'\n", node)
 	}
 
-	if exprStr == "" {
-		report.Warningf("empty expr at node '%T'", expr)
-		return "ERROR_CGEN__EXPR"
-	}
-
-	return exprStr
+	report.Warningf("empty expr at node '%T'", expr)
+	return "ERROR_CGEN__EXPR"
 }
 
 func (gen *generator) unary(x ast.Node, _ types.Type, op ast.OperatorKind) string {

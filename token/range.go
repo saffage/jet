@@ -11,8 +11,8 @@ type Range struct {
 	}
 }
 
-func (rng Range) StartLoc() Loc {
-	return Loc{
+func (rng Range) StartLoc() Pos {
+	return Pos{
 		FileID: rng.FileID,
 		Offset: rng.Start.Offset,
 		Line:   rng.Start.Line,
@@ -20,8 +20,8 @@ func (rng Range) StartLoc() Loc {
 	}
 }
 
-func (rng Range) EndLoc() Loc {
-	return Loc{
+func (rng Range) EndLoc() Pos {
+	return Pos{
 		FileID: rng.FileID,
 		Offset: rng.End.Offset,
 		Line:   rng.End.Line,

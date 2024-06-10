@@ -48,7 +48,7 @@ func (check *Checker) resolveConstDecl(decl *ast.Decl) {
 
 	if value.Type != nil && !value.Type.Equals(tType) {
 		check.errorf(
-			decl.Name,
+			decl.Ident,
 			"type mismatch, expected '%s', got '%s'",
 			tType,
 			value.Type,
@@ -59,12 +59,12 @@ func (check *Checker) resolveConstDecl(decl *ast.Decl) {
 	value.Type = tType
 
 	report.TaggedDebugf("checker", "const type: %s", tType)
-	sym := NewConst(check.scope, value, decl.Name)
+	sym := NewConst(check.scope, value, decl.Ident)
 
 	if defined := check.scope.Define(sym); defined != nil {
 		check.addError(errorAlreadyDefined(sym.Ident(), defined.Ident()))
 		return
 	}
 
-	check.newDef(decl.Name, sym)
+	check.newDef(decl.Ident, sym)
 }

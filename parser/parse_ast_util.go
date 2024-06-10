@@ -54,7 +54,7 @@ func (p *Parser) parseLiteralNode() *ast.Literal {
 	return nil
 }
 
-func (p *Parser) parseDeclName() (mut token.Loc, name *ast.Ident) {
+func (p *Parser) parseDeclName() (mut token.Pos, name *ast.Ident) {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
@@ -73,7 +73,7 @@ func (p *Parser) parseDeclName() (mut token.Loc, name *ast.Ident) {
 		p.errorExpectedToken(token.Ident)
 	}
 
-	return token.Loc{}, nil
+	return token.Pos{}, nil
 }
 
 func (p *Parser) parseTypeName() ast.Node {

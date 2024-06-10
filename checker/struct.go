@@ -29,13 +29,13 @@ func NewStruct(owner *Scope, body *Scope, t *types.TypeDesc, decl *ast.Decl) *St
 
 func (sym *Struct) Owner() *Scope     { return sym.owner }
 func (sym *Struct) Type() types.Type  { return sym.t }
-func (sym *Struct) Name() string      { return sym.decl.Name.Name }
-func (sym *Struct) Ident() *ast.Ident { return sym.decl.Name }
+func (sym *Struct) Name() string      { return sym.decl.Ident.Name }
+func (sym *Struct) Ident() *ast.Ident { return sym.decl.Ident }
 func (sym *Struct) Node() ast.Node    { return sym.decl }
 
 func (check *Checker) resolveStructDecl(decl *ast.Decl, value *ast.StructType) {
 	fields := make([]types.StructField, len(value.Fields))
-	local := NewScope(check.scope, "struct "+decl.Name.Name)
+	local := NewScope(check.scope, "struct "+decl.Ident.Name)
 
 	for i, fieldDecl := range value.Fields {
 		tField := check.typeOf(fieldDecl.Type)
@@ -55,7 +55,7 @@ func (check *Checker) resolveStructDecl(decl *ast.Decl, value *ast.StructType) {
 		t := types.AsTypeDesc(tField).Base()
 		fieldSym := NewVar(local, t, fieldDecl)
 		fieldSym.isField = true
-		fields[i] = types.StructField{fieldDecl.Name.Name, t}
+		fields[i] = types.StructField{fieldDecl.Ident.Name, t}
 
 		if defined := local.Define(fieldSym); defined != nil {
 			err := NewErrorf(fieldSym.Ident(), "duplicate field '%s'", fieldSym.Name())
@@ -64,7 +64,7 @@ func (check *Checker) resolveStructDecl(decl *ast.Decl, value *ast.StructType) {
 			continue
 		}
 
-		check.newDef(fieldDecl.Name, fieldSym)
+		check.newDef(fieldDecl.Ident, fieldSym)
 	}
 
 	t := types.NewTypeDesc(types.NewStruct(fields...))
@@ -75,7 +75,7 @@ func (check *Checker) resolveStructDecl(decl *ast.Decl, value *ast.StructType) {
 		return
 	}
 
-	check.newDef(decl.Name, sym)
+	check.newDef(decl.Ident, sym)
 }
 
 func (check *Checker) structInit(initList *ast.ParenList, ty *types.Struct) {

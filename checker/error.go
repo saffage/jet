@@ -31,16 +31,16 @@ func NewErrorf(node ast.Node, format string, args ...any) *Error {
 func (err *Error) Error() string { return err.Message }
 
 func (err *Error) Report() {
-	var start, end token.Loc
+	var start, end token.Pos
 	if err.Node != nil {
-		start, end = err.Node.Pos(), err.Node.LocEnd()
+		start, end = err.Node.Pos(), err.Node.PosEnd()
 	}
 	report.TaggedErrorAt("checker", start, end, err.Message)
 
 	for _, note := range err.Notes {
-		var start, end token.Loc
+		var start, end token.Pos
 		if note.Node != nil {
-			start, end = note.Node.Pos(), note.Node.LocEnd()
+			start, end = note.Node.Pos(), note.Node.PosEnd()
 		}
 		report.TaggedNoteAt("checker", start, end, note.Message)
 	}

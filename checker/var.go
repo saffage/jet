@@ -28,8 +28,8 @@ func NewVar(owner *Scope, t types.Type, decl *ast.Decl) *Var {
 
 func (v *Var) Owner() *Scope     { return v.owner }
 func (v *Var) Type() types.Type  { return v.t }
-func (v *Var) Name() string      { return v.decl.Name.Name }
-func (v *Var) Ident() *ast.Ident { return v.decl.Name }
+func (v *Var) Name() string      { return v.decl.Ident.Name }
+func (v *Var) Ident() *ast.Ident { return v.decl.Ident }
 func (v *Var) Node() ast.Node    { return v.decl }
 func (v *Var) Value() ast.Node   { return v.value }
 func (v *Var) IsLocal() bool     { return !v.isParam && !v.isField && !v.isGlobal }
@@ -85,7 +85,7 @@ func (check *Checker) resolveVarDecl(node *ast.Decl) {
 		return
 	}
 
-	check.newDef(node.Name, sym)
+	check.newDef(node.Ident, sym)
 }
 
 func (check *Checker) resolveVarValue(value ast.Node) (types.Type, bool) {

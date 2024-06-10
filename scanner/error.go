@@ -10,7 +10,7 @@ import (
 type Error struct {
 	Message    string
 	Details    string
-	Start, End token.Loc
+	Start, End token.Pos
 }
 
 func (e Error) Error() string {
@@ -26,7 +26,7 @@ func (e Error) Report() {
 }
 
 // Emits an error. Error end is a current scanner position.
-func (s *Scanner) error(message string, start token.Loc, details ...any) {
+func (s *Scanner) error(message string, start token.Pos, details ...any) {
 	s.errors = append(s.errors, Error{
 		Message: message,
 		Details: fmt.Sprint(details...),
@@ -35,12 +35,12 @@ func (s *Scanner) error(message string, start token.Loc, details ...any) {
 	})
 }
 
-func (s *Scanner) errorExpected(message string, pos token.Loc, details ...any) {
+func (s *Scanner) errorExpected(message string, pos token.Pos, details ...any) {
 	message = "expected " + message
 	s.error(message, pos, details...)
 }
 
-func (s *Scanner) errorUnexpected(message string, pos token.Loc, details ...any) {
+func (s *Scanner) errorUnexpected(message string, pos token.Pos, details ...any) {
 	message = "unexpected " + message
 	s.error(message, pos, details...)
 }

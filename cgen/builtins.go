@@ -9,8 +9,8 @@ import (
 	"github.com/saffage/jet/types"
 )
 
-func (gen *generator) BuiltInCall(call *ast.BuiltInCall) string {
-	switch call.Name.Name {
+func (gen *generator) BuiltInCall(node *ast.BuiltIn, call *ast.Call) string {
+	switch node.Name {
 	case "print":
 		return gen.builtInPrint(call)
 
@@ -33,14 +33,13 @@ func (gen *generator) BuiltInCall(call *ast.BuiltInCall) string {
 		return gen.builtInEmit(call)
 
 	default:
-		report.Warningf("unknown built-in: '@%s'", call.Name.Name)
+		report.Warningf("unknown built-in function '%s'", node.Repr())
 		return "ERROR_CGEN"
 	}
 }
 
-func (gen *generator) builtInPrint(call *ast.BuiltInCall) string {
-	argList, _ := call.Args.(*ast.ParenList)
-	value := gen.Types[argList.Nodes[0]]
+func (gen *generator) builtInPrint(call *ast.Call) string {
+	value := gen.Types[call.Args.Nodes[0]]
 
 	switch t := types.SkipAlias(value.Type).(type) {
 	case *types.Primitive:
@@ -54,7 +53,7 @@ func (gen *generator) builtInPrint(call *ast.BuiltInCall) string {
 			} else {
 				return fmt.Sprintf(
 					"fwrite(%[1]s, 1, sizeof(%[1]s), stdout)",
-					gen.exprString(argList.Nodes[0]),
+					gen.exprString(call.Args.Nodes[0]),
 				)
 			}
 
@@ -69,7 +68,7 @@ func (gen *generator) builtInPrint(call *ast.BuiltInCall) string {
 			types.KindUntypedInt:
 			return fmt.Sprintf(
 				`fprintf(stdout, "%%d", %s)`,
-				gen.exprString(argList.Nodes[0]),
+				gen.exprString(call.Args.Nodes[0]),
 			)
 
 		default:
@@ -79,7 +78,7 @@ func (gen *generator) builtInPrint(call *ast.BuiltInCall) string {
 	case *types.Enum:
 		return fmt.Sprintf(
 			`fprintf(stdout, "%%d", %s)`,
-			gen.exprString(argList.Nodes[0]),
+			gen.exprString(call.Args.Nodes[0]),
 		)
 
 	default:
@@ -87,9 +86,8 @@ func (gen *generator) builtInPrint(call *ast.BuiltInCall) string {
 	}
 }
 
-func (gen *generator) builtInPrintln(call *ast.BuiltInCall) string {
-	argList, _ := call.Args.(*ast.ParenList)
-	value := gen.Types[argList.Nodes[0]]
+func (gen *generator) builtInPrintln(call *ast.Call) string {
+	value := gen.Types[call.Args.Nodes[0]]
 
 	switch t := types.SkipAlias(value.Type).(type) {
 	case *types.Primitive:
@@ -103,7 +101,7 @@ func (gen *generator) builtInPrintln(call *ast.BuiltInCall) string {
 			} else {
 				return fmt.Sprintf(
 					`fwrite(%[1]s"\n", 1, sizeof(%[1]s"\n"), stdout)`,
-					gen.exprString(argList.Nodes[0]),
+					gen.exprString(call.Args.Nodes[0]),
 				)
 			}
 
@@ -118,7 +116,7 @@ func (gen *generator) builtInPrintln(call *ast.BuiltInCall) string {
 			types.KindUntypedInt:
 			return fmt.Sprintf(
 				`fprintf(stdout, "%%d\n", %s)`,
-				gen.exprString(argList.Nodes[0]),
+				gen.exprString(call.Args.Nodes[0]),
 			)
 
 		default:
@@ -128,7 +126,7 @@ func (gen *generator) builtInPrintln(call *ast.BuiltInCall) string {
 	case *types.Enum:
 		return fmt.Sprintf(
 			`fprintf(stdout, "%%d\n", %s)`,
-			gen.exprString(argList.Nodes[0]),
+			gen.exprString(call.Args.Nodes[0]),
 		)
 
 	default:
@@ -136,31 +134,31 @@ func (gen *generator) builtInPrintln(call *ast.BuiltInCall) string {
 	}
 }
 
-func (gen *generator) builtInAssert(call *ast.BuiltInCall) string {
-	expr := gen.exprString(call.Args.(*ast.ParenList).Nodes[0])
+func (gen *generator) builtInAssert(call *ast.Call) string {
+	expr := gen.exprString(call.Args.Nodes[0])
 	return fmt.Sprintf("assert(%s)", expr)
 }
 
-func (gen *generator) builtInAsPtr(call *ast.BuiltInCall) string {
-	return gen.exprString(call.Args.(*ast.ParenList).Nodes[0])
+func (gen *generator) builtInAsPtr(call *ast.Call) string {
+	return gen.exprString(call.Args.Nodes[0])
 }
 
-func (gen *generator) builtInCast(call *ast.BuiltInCall) string {
-	t := gen.TypeOf(call.Args.(*ast.ParenList).Nodes[0])
+func (gen *generator) builtInCast(call *ast.Call) string {
+	t := gen.TypeOf(call.Args.Nodes[0])
 	if t == nil {
 		panic("unreachable")
 	}
 
-	val := call.Args.(*ast.ParenList).Nodes[1]
+	val := call.Args.Nodes[1]
 	return fmt.Sprintf("(%s)%s", gen.TypeString(types.SkipTypeDesc(t)), gen.exprString(val))
 }
 
-func (gen *generator) builtInSizeOf(call *ast.BuiltInCall) string {
-	val := gen.TypeOf(call.Args.(*ast.ParenList).Nodes[0])
+func (gen *generator) builtInSizeOf(call *ast.Call) string {
+	val := gen.TypeOf(call.Args.Nodes[0])
 	return fmt.Sprintf("sizeof(%s)", gen.TypeString(types.SkipTypeDesc(val)))
 }
 
-func (gen *generator) builtInEmit(call *ast.BuiltInCall) string {
-	val := gen.ValueOf(call.Args.(*ast.ParenList).Nodes[0])
+func (gen *generator) builtInEmit(call *ast.Call) string {
+	val := gen.ValueOf(call.Args.Nodes[0])
 	return *constant.AsString(val.Value)
 }

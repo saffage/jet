@@ -42,7 +42,7 @@ func reportInternal(kind Kind, tag, message string) {
 	display(kind, fmt.Sprintf("%s %s", kind.TaggedLabel(tag), message))
 }
 
-func reportAtInternal(kind Kind, tag string, start, end token.Loc, message string) {
+func reportAtInternal(kind Kind, tag string, start, end token.Pos, message string) {
 	if kind == KindDebug && !IsDebug {
 		return
 	}
@@ -72,7 +72,7 @@ func reportAtInternal(kind Kind, tag string, start, end token.Loc, message strin
 	}
 }
 
-func generateLine(kind Kind, start, end token.Loc, buffer []byte) string {
+func generateLine(kind Kind, start, end token.Pos, buffer []byte) string {
 	if !ShowLine || start.FileID == 0 || start.Line == 0 {
 		return ""
 	}
@@ -168,7 +168,7 @@ func underlineChar(kind Kind) rune {
 	}
 }
 
-func formatLoc(loc token.Loc) string {
+func formatLoc(loc token.Pos) string {
 	if UseColors {
 		return fmt.Sprintf("%s%s %s",
 			strings.Repeat(" ", numLen(int(loc.Line))),
