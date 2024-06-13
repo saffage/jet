@@ -14,22 +14,16 @@ func NewBlock(scope *Scope) *Block {
 	return &Block{scope, types.Unit}
 }
 
-func (check *Checker) blockVisitor(expr *Block) ast.Visitor {
+func (check *Checker) visitBlock(expr *Block) ast.Visitor {
 	return func(node ast.Node) ast.Visitor {
-		if decl, _ := node.(ast.Decl); decl != nil {
-			switch decl := decl.(type) {
-			case *ast.VarDecl:
-				check.resolveVarDecl(decl)
-				expr.t = types.Unit
-
-			case *ast.TypeAliasDecl, *ast.FuncDecl, *ast.ModuleDecl, *ast.ConstDecl:
-				check.errorf(decl, "a local scope can contain only variable declarations")
+		if decl, _ := node.(*ast.Decl); decl != nil {
+			if !decl.IsVar {
+				check.errorf(decl, "local constants are not supported")
 				return nil
-
-			default:
-				panic("unreachable")
 			}
 
+			check.resolveVarDecl(decl)
+			expr.t = types.Unit
 			return nil
 		}
 

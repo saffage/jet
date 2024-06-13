@@ -2,6 +2,7 @@ package cgen
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"strings"
 
@@ -13,14 +14,14 @@ import (
 type generator struct {
 	*checker.Module
 
-	dataSect     strings.Builder
-	typeSect     strings.Builder
-	declVarsSect strings.Builder
-	declFnsSect  strings.Builder
-	codeSect     strings.Builder
-	out          *bufio.Writer
-	errors       []error
-	numIndent    int
+	funcTempVarId int
+	typeSect      strings.Builder
+	declVarsSect  strings.Builder
+	declFnsSect   strings.Builder
+	codeSect      strings.Builder
+	out           *bufio.Writer
+	errors        []error
+	indent        int
 }
 
 func (gen *generator) defs(
@@ -38,7 +39,7 @@ func (gen *generator) defs(
 
 		switch sym := def.(type) {
 		case *checker.Var:
-			gen.varDecl(sym)
+			gen.globalVarDecl(sym)
 
 		case *checker.Const:
 			gen.constDecl(sym)
@@ -53,26 +54,47 @@ func (gen *generator) defs(
 			if sym.Name() == "main" && mainFunc == nil {
 				mainFunc = sym
 			} else {
-				gen.funcDecl(sym)
+				gen.fn(sym)
 			}
 
 		case *checker.Module:
 			gen.defs(sym.Defs, sym.Scope, true)
 
 		default:
-			panic("not implemented")
+			panic(fmt.Sprintf("not implemented (%T)", sym))
 		}
 	}
 
 	return mainFunc
 }
 
-func (gen *generator) indent(w io.StringWriter) {
-	if gen.numIndent > 0 {
-		_, err := w.WriteString(strings.Repeat("\t", gen.numIndent))
-		if err != nil {
-			panic(err)
-		}
+func (gen *generator) line(s string) {
+	gen.fline(&gen.codeSect, s)
+}
+
+func (gen *generator) linef(format string, args ...any) {
+	gen.flinef(&gen.codeSect, format, args...)
+}
+
+func (gen *generator) fline(w io.StringWriter, s string) {
+	_, err := w.WriteString(strings.Repeat("\t", gen.indent))
+	if err != nil {
+		panic(err)
+	}
+	_, err = w.WriteString(s)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (gen *generator) flinef(w io.StringWriter, format string, args ...any) {
+	_, err := w.WriteString(strings.Repeat("\t", gen.indent))
+	if err != nil {
+		panic(err)
+	}
+	_, err = w.WriteString(fmt.Sprintf(format, args...))
+	if err != nil {
+		panic(err)
 	}
 }
 

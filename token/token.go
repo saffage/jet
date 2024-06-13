@@ -1,6 +1,7 @@
 package token
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"unicode/utf8"
@@ -8,25 +9,19 @@ import (
 	"github.com/galsondor/go-ascii"
 )
 
+var (
+	ErrorFirstIsNotLetter = errors.New("the first character must be an ASCII letter")
+	ErrorContainSpace     = errors.New("identifier cannot contain spaces")
+	ErrorContainPunct     = errors.New("identifier cannot contain a punctuation character")
+	ErrorUnsupportedUTF8  = errors.New("UTF-8 is not supported")
+	ErrorIllegalCharacter = errors.New("illegal character in the identifier")
+)
+
 type Token struct {
 	Kind       Kind
 	Data       string
-	Start, End Loc
+	Start, End Pos
 }
-
-type Precedence int
-
-const (
-	LowestPrec Precedence = iota
-	AssignPrec
-	ArrowPrec
-	BooleanOpPrec
-	BitwisePrec
-	CmpPrec
-	ShiftPrec
-	AddPrec
-	MulPrec
-)
 
 func (token Token) String() string {
 	switch token.Kind {
@@ -53,34 +48,40 @@ func (token Token) String() string {
 	}
 }
 
-func (t Token) Precedence() Precedence {
+func (t Token) Precedence() int {
 	switch t.Kind {
 	case Asterisk, Slash, Percent:
-		return MulPrec
+		return 10
 
 	case Plus, Minus:
-		return AddPrec
+		return 9
 
 	case Shl, Shr:
-		return ShiftPrec
+		return 8
 
 	case Amp, Pipe, Caret:
-		return BitwisePrec
+		return 7
 
 	case EqOp, NeOp, LtOp, GtOp, LeOp, GeOp:
-		return CmpPrec
+		return 6
 
-	case KwAnd, KwOr:
-		return BooleanOpPrec
+	case KwAnd:
+		return 5
+
+	case KwOr:
+		return 4
 
 	case Arrow, FatArrow, Dot2, Dot2Less:
-		return ArrowPrec
+		return 3
+
+	case KwAs:
+		return 2
 
 	case Eq, PlusEq, MinusEq, AsteriskEq, SlashEq, PercentEq:
-		return AssignPrec
+		return 1
 
 	default:
-		return LowestPrec
+		return 0
 	}
 }
 
@@ -94,27 +95,25 @@ func IsIdentifierChar(char byte) bool {
 
 func IsValidIdent(s string) (int, error) {
 	if !ascii.IsLetter(s[0]) {
-		return 0, fmt.Errorf("the first character must be an ASCII letter")
+		return 0, ErrorFirstIsNotLetter
 	}
 
 	for i := 1; i < len(s); i++ {
 		switch {
-		case ascii.IsLetter(s[i]):
-		case ascii.IsDigit(s[i]):
-
-		case s[i] == '_':
+		case ascii.IsLetter(s[i]), ascii.IsDigit(s[i]), s[i] == '_':
+			// OK
 
 		case ascii.IsSpace(s[i]):
-			return i, fmt.Errorf("identifier cannot contain spaces")
+			return i, ErrorContainSpace
 
 		case ascii.IsPunct(s[i]):
-			return i, fmt.Errorf("identifier cannot contain a punctuation character")
+			return i, ErrorContainPunct
 
 		case utf8.RuneStart(s[i]):
-			return i, fmt.Errorf("UTF-8 is not supported")
+			return i, ErrorUnsupportedUTF8
 
 		default:
-			return i, fmt.Errorf("invalid character for identifier")
+			return i, ErrorIllegalCharacter
 		}
 	}
 

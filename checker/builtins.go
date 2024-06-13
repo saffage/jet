@@ -21,75 +21,84 @@ func (b *BuiltIn) Node() ast.Node    { return nil }
 
 var builtIns = []*BuiltIn{
 	{
-		name: "magic",
-		f:    builtInMagic,
+		name: "builtin",
+		f:    builtInBuiltin,
 		t: types.NewFunc(
-			types.NewTuple(types.AnyTypeDesc),
 			types.NewTuple(types.UntypedString),
-			false,
+			types.NewTuple(types.AnyTypeDesc),
+			nil,
 		),
 	},
 	{
 		name: "type_of",
 		f:    builtInTypeOf,
 		t: types.NewFunc(
-			types.NewTuple(types.AnyTypeDesc),
 			types.NewTuple(types.Any),
-			false,
+			types.NewTuple(types.AnyTypeDesc),
+			nil,
 		),
 	},
 	{
 		name: "print",
 		f:    builtInPrint,
 		t: types.NewFunc(
-			types.Unit,
 			types.NewTuple(types.Any),
-			false,
+			types.Unit,
+			nil,
+		),
+	},
+	{
+		name: "println",
+		f:    builtInPrint, // why not
+		t: types.NewFunc(
+			types.NewTuple(types.Any),
+			types.Unit,
+			nil,
 		),
 	},
 	{
 		name: "assert",
 		f:    builtInAssert,
 		t: types.NewFunc(
-			types.Unit,
 			types.NewTuple(types.Bool),
-			false,
+			types.Unit,
+			nil,
 		),
 	},
 	{
-		name: "asPtr",
+		name: "as_ptr",
 		f:    builtInAsPtr,
 		t: types.NewFunc(
-			types.NewTuple(types.NewRef(types.U8)),
 			types.NewTuple(types.String),
-			false,
+			types.NewTuple(types.NewRef(types.U8)),
+			nil,
 		),
 	},
 	{
-		name: "as",
-		f:    builtInAs,
+		name: "cast",
+		f:    builtInCast,
 		t: types.NewFunc(
-			types.NewTuple(types.Any),
 			types.NewTuple(types.AnyTypeDesc, types.Any),
-			false,
+			types.NewTuple(types.Any),
+			nil,
 		),
 	},
 	{
-		name: "sizeOf",
+		name: "size_of",
 		f:    builtInSizeOf,
 		t: types.NewFunc(
-			types.NewTuple(types.U64),
 			types.NewTuple(types.AnyTypeDesc),
-			false,
+			types.NewTuple(types.U64),
+			nil,
 		),
 	},
 	{
 		name: "emit",
 		f:    builtInEmit,
 		t: types.NewFunc(
-			types.NewTuple(types.Unit),
 			types.NewTuple(types.UntypedString),
-			false,
+			types.NewTuple(types.Unit),
+			nil,
 		),
 	},
 }

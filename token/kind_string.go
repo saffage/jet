@@ -49,8 +49,8 @@ func _() {
 	_ = x[Pipe-38]
 	_ = x[Caret-39]
 	_ = x[At-40]
-	_ = x[QuestionMark-41]
-	_ = x[QuestionMarkDot-42]
+	_ = x[Dollar-41]
+	_ = x[QuestionMark-42]
 	_ = x[Arrow-43]
 	_ = x[FatArrow-44]
 	_ = x[Shl-45]
@@ -61,27 +61,23 @@ func _() {
 	_ = x[Ellipsis-50]
 	_ = x[KwAnd-51]
 	_ = x[KwOr-52]
-	_ = x[KwModule-53]
-	_ = x[KwImport-54]
-	_ = x[KwAlias-55]
-	_ = x[KwStruct-56]
-	_ = x[KwEnum-57]
-	_ = x[KwFunc-58]
-	_ = x[KwVal-59]
-	_ = x[KwVar-60]
-	_ = x[KwConst-61]
-	_ = x[KwOf-62]
-	_ = x[KwIf-63]
-	_ = x[KwElse-64]
-	_ = x[KwWhile-65]
-	_ = x[KwReturn-66]
-	_ = x[KwBreak-67]
-	_ = x[KwContinue-68]
+	_ = x[KwStruct-53]
+	_ = x[KwEnum-54]
+	_ = x[KwMut-55]
+	_ = x[KwIf-56]
+	_ = x[KwElse-57]
+	_ = x[KwWhile-58]
+	_ = x[KwFor-59]
+	_ = x[KwIn-60]
+	_ = x[KwAs-61]
+	_ = x[KwReturn-62]
+	_ = x[KwBreak-63]
+	_ = x[KwContinue-64]
 }
 
-const _Kind_name = "IllegalEOFCommentWhitespaceTabNewLineIdentIntFloatStringLParenRParenLCurlyRCurlyLBracketRBracketCommaColonSemicolonEqEqOpBangNeOpLtOpLeOpGtOpGeOpPlusPlusEqMinusMinusEqAsteriskAsteriskEqSlashSlashEqPercentPercentEqAmpPipeCaretAtQuestionMarkQuestionMarkDotArrowFatArrowShlShrDotDot2Dot2LessEllipsisKwAndKwOrKwModuleKwImportKwAliasKwStructKwEnumKwFuncKwValKwVarKwConstKwOfKwIfKwElseKwWhileKwReturnKwBreakKwContinue"
+const _Kind_name = "IllegalEOFCommentWhitespaceTabNewLineIdentIntFloatStringLParenRParenLCurlyRCurlyLBracketRBracketCommaColonSemicolonEqEqOpBangNeOpLtOpLeOpGtOpGeOpPlusPlusEqMinusMinusEqAsteriskAsteriskEqSlashSlashEqPercentPercentEqAmpPipeCaretAtDollarQuestionMarkArrowFatArrowShlShrDotDot2Dot2LessEllipsisKwAndKwOrKwStructKwEnumKwMutKwIfKwElseKwWhileKwForKwInKwAsKwReturnKwBreakKwContinue"
 
-var _Kind_index = [...]uint16{0, 7, 10, 17, 27, 30, 37, 42, 45, 50, 56, 62, 68, 74, 80, 88, 96, 101, 106, 115, 117, 121, 125, 129, 133, 137, 141, 145, 149, 155, 160, 167, 175, 185, 190, 197, 204, 213, 216, 220, 225, 227, 239, 254, 259, 267, 270, 273, 276, 280, 288, 296, 301, 305, 313, 321, 328, 336, 342, 348, 353, 358, 365, 369, 373, 379, 386, 394, 401, 411}
+var _Kind_index = [...]uint16{0, 7, 10, 17, 27, 30, 37, 42, 45, 50, 56, 62, 68, 74, 80, 88, 96, 101, 106, 115, 117, 121, 125, 129, 133, 137, 141, 145, 149, 155, 160, 167, 175, 185, 190, 197, 204, 213, 216, 220, 225, 227, 233, 245, 250, 258, 261, 264, 267, 271, 279, 287, 292, 296, 304, 310, 315, 319, 325, 332, 337, 341, 345, 353, 360, 370}
 
 func (i Kind) String() string {
 	if i >= Kind(len(_Kind_index)-1) {

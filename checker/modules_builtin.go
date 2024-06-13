@@ -13,14 +13,18 @@ import (
 )
 
 // This module contains the declaration of the Jet built-in types.
-var ModuleTypes *Module = NewModule(NewScope(nil, "module Types"), nil)
+var ModuleBuiltin *Module = NewModule(NewScope(nil, "module builtin"), "builtin", nil)
 
 // This module contains C type declarations and other tools for
 // interacting with the C backend.
-var ModuleC *Module = NewModule(NewScope(nil, "module C"), nil)
+var ModuleC *Module = NewModule(NewScope(nil, "module c"), "c", nil)
 
 var CheckBuiltInPkgs = sync.OnceFunc(func() {
-	report.Hintf("checking package 'builtin'")
+	if config.FlagNoCoreLib {
+		return
+	}
+
+	report.Hintf("checking package 'core'")
 
 	var libDir string
 
@@ -32,29 +36,29 @@ var CheckBuiltInPkgs = sync.OnceFunc(func() {
 	}
 
 	if dir, err := os.Stat(libDir); os.IsNotExist(err) || (dir != nil && !dir.IsDir()) {
-		panic(fmt.Errorf("invalid path to the core library: '%s'", libDir))
+		panic(fmt.Errorf("invalid path to the core package: '%s'", libDir))
 	}
 
-	builtinPkgDir := filepath.Join(libDir, "builtin")
+	corePkgDir := filepath.Join(libDir, "core")
 
-	if _, err := os.Stat(builtinPkgDir); os.IsNotExist(err) {
-		panic("package 'builtin' was not found")
+	if _, err := os.Stat(corePkgDir); os.IsNotExist(err) {
+		panic("package 'core' was not found")
 	}
 
-	builtInFiles, err := os.ReadDir(builtinPkgDir)
+	corePkgFiles, err := os.ReadDir(corePkgDir)
 	if err != nil {
-		panic(errors.Join(errors.New("while reading package 'builtin'"), err))
+		panic(errors.Join(errors.New("while reading package 'core'"), err))
 	}
 
-	var ModuleTypesFilepath, ModuleCFilepath string
+	var builtinModuleFilepath, cModuleFilepath string
 
-	for _, entry := range builtInFiles {
+	for _, entry := range corePkgFiles {
 		switch entry.Name() {
-		case "Types.jet":
-			ModuleTypesFilepath = filepath.Join(builtinPkgDir, entry.Name())
+		case "builtin.jetx":
+			builtinModuleFilepath = filepath.Join(corePkgDir, entry.Name())
 
-		case "C.jet":
-			ModuleCFilepath = filepath.Join(builtinPkgDir, entry.Name())
+		case "c.jetx":
+			cModuleFilepath = filepath.Join(corePkgDir, entry.Name())
 
 		default:
 			panic(fmt.Sprintf("unexpected file in package 'builtin': '%s'", entry.Name()))
@@ -62,53 +66,51 @@ var CheckBuiltInPkgs = sync.OnceFunc(func() {
 	}
 
 	switch {
-	case ModuleTypesFilepath == "":
-		panic("module 'Types' was not found")
+	case builtinModuleFilepath == "":
+		panic("module 'builtin' was not found")
 
-	case ModuleCFilepath == "":
-		panic("module 'C' was not found")
+	case cModuleFilepath == "":
+		panic("module 'c' was not found")
 	}
 
-	moduleTypesContent, err := os.ReadFile(ModuleTypesFilepath)
+	builtinModuleContent, err := os.ReadFile(builtinModuleFilepath)
 	if err != nil {
 		panic(err)
 	}
 
-	moduleCContent, err := os.ReadFile(ModuleCFilepath)
+	cModuleContent, err := os.ReadFile(cModuleFilepath)
 	if err != nil {
 		panic(err)
 	}
 
-	moduleTypesFileID := config.NextFileID()
-	moduleCFileID := config.NextFileID()
-	config.Global.Files[moduleTypesFileID] = config.FileInfo{
+	builtinFileID := config.NextFileID()
+	cFileID := config.NextFileID()
+	config.Global.Files[builtinFileID] = config.FileInfo{
 		Name: "Types",
-		Path: ModuleTypesFilepath,
-		Buf:  bytes.NewBuffer(moduleTypesContent),
+		Path: builtinModuleFilepath,
+		Buf:  bytes.NewBuffer(builtinModuleContent),
 	}
-	config.Global.Files[moduleCFileID] = config.FileInfo{
+	config.Global.Files[cFileID] = config.FileInfo{
 		Name: "C",
-		Path: ModuleCFilepath,
-		Buf:  bytes.NewBuffer(moduleCContent),
+		Path: cModuleFilepath,
+		Buf:  bytes.NewBuffer(cModuleContent),
 	}
 
-	var errs []error
+	ModuleBuiltin, err = CheckFile(config.Global, builtinFileID)
+	if err != nil {
+		report.TaggedErrorf("internal", "while checking package 'builtin'")
+		report.Errors(err)
+		os.Exit(1)
+	}
 
-	ModuleTypes, errs = CheckFile(config.Global, moduleTypesFileID)
-	checkErrors(errs)
+	// ModuleC, err = CheckFile(config.Global, cFileID)
+	// if err != nil {
+	// 	report.TaggedErrorf("internal", "while checking package 'builtin'")
+	// 	report.Errors(err)
+	// 	os.Exit(1)
+	// }
 
-	// ModuleC, errs = CheckFile(config.Global, moduleCFileID)
-	// checkErrors(errs)
-
-	for _, sym := range ModuleTypes.Scope.symbols {
+	for _, sym := range ModuleBuiltin.Scope.symbols {
 		_ = Global.Define(sym)
 	}
 })
-
-func checkErrors(errs []error) {
-	if len(errs) != 0 {
-		report.TaggedErrorf("internal", "while checking package 'builtin'")
-		report.Errors(errs...)
-		os.Exit(1)
-	}
-}

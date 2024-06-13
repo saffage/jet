@@ -1,6 +1,7 @@
 package base
 
 import (
+	"math"
 	"slices"
 	"strings"
 
@@ -140,7 +141,7 @@ func (base *Base) HandleNewline() (wasNewline bool) {
 }
 
 func (base Base) GetLine(n int) (line string) {
-	if n <= 0 || n > 4294967295 {
+	if n <= 0 || n > math.MaxUint32 {
 		return
 	}
 
@@ -164,8 +165,8 @@ func (base Base) GetLine(n int) (line string) {
 	return
 }
 
-func (base *Base) Pos() token.Loc {
-	return token.Loc{
+func (base *Base) Pos() token.Pos {
+	return token.Pos{
 		FileID: base.fileID,
 		Offset: uint64(base.bufPos),
 		Line:   uint32(base.lineNum),
@@ -173,8 +174,12 @@ func (base *Base) Pos() token.Loc {
 	}
 }
 
-func (base *Base) PrevPos() token.Loc {
-	pos := token.Loc{
+func (base *Base) PrevPos() token.Pos {
+	if base.bufPos == 0 {
+		return token.Pos{}
+	}
+
+	pos := token.Pos{
 		FileID: base.fileID,
 		Offset: uint64(base.bufPos - 1),
 		Line:   uint32(base.lineNum),

@@ -26,12 +26,7 @@ func (t *Array) Equals(other Type) bool {
 
 func (t *Array) Underlying() Type { return t }
 
-func (t *Array) String() string {
-	if t.size == -1 {
-		return "[_]" + t.elem.String()
-	}
-	return fmt.Sprintf("[%d]%s", t.size, t.elem)
-}
+func (t *Array) String() string { return fmt.Sprintf("[%d]%s", t.size, t.elem) }
 
 func (t *Array) Size() int { return t.size }
 

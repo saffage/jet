@@ -6,10 +6,10 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
-	"github.com/saffage/jet/internal/report" // for report.NoColors
+	"github.com/saffage/jet/internal/report"
 )
 
-func (p *Parser) printTrace(args ...any) {
+func printTrace(p *Parser, args ...any) {
 	pos := p.tok.Start
 
 	if report.UseColors {
@@ -30,12 +30,12 @@ func (p *Parser) printTrace(args ...any) {
 	}
 }
 
-func (p *Parser) trace() {
+func trace(p *Parser) *Parser {
 	caller := "unknown caller"
 
 	if pc, _, _, ok := runtime.Caller(1); ok {
 		if details := runtime.FuncForPC(pc); details != nil {
-			// Remove type argments.
+			// Remove type arguments.
 			caller = strings.TrimSuffix(details.Name(), "[...]")
 
 			i := strings.LastIndex(caller, "parse")
@@ -47,16 +47,18 @@ func (p *Parser) trace() {
 				caller = caller[dot+1:]
 			}
 
-			if caller == "error" {
-				caller = color.RedString(caller)
+			if strings.HasPrefix(strings.ToLower(caller), "error") ||
+				strings.HasSuffix(strings.ToLower(caller), "error") {
+				caller = color.RedString("error")
 			}
 		}
 	}
 
-	p.printTrace(caller)
+	printTrace(p, caller)
 	p.indent++
+	return p
 }
 
-func (p *Parser) untrace() {
+func un(p *Parser) {
 	p.indent--
 }

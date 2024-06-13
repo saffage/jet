@@ -1,0 +1,16 @@
+T :: struct { field: int }
+
+main :: () {
+    {
+        t     := T(field = 2)
+        t_ptr := &t
+        t_ptr.*.field = 12 # `.*` for dereference
+        $assert(t.field == 12)
+    }
+    {
+        x := 1
+        y := &x
+        i := $size_of(int)
+        { { y as u64 + i as u64 } as *u8 }.* = 1
+    }
+}

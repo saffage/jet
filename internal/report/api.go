@@ -27,11 +27,16 @@ type Reporter interface {
 //
 // If the error implements the [Reporter] interface, it will be used instead
 // of the usual Error() function.
-func Errors(errors ...error) {
-	for _, err := range errors {
-		if reporter, ok := err.(Reporter); ok {
-			reporter.Report()
-		} else {
+func Errors(errs ...error) {
+	for _, err := range errs {
+		switch err := err.(type) {
+		case Reporter:
+			err.Report()
+
+		case interface{ Unwrap() []error }:
+			Errors(err.Unwrap()...)
+
+		default:
 			Error(err.Error())
 		}
 	}
@@ -222,7 +227,7 @@ func TaggedErrorf(tag, format string, args ...any) {
 //
 // NOTE: this function uses [config.global] to get information about the file
 // and also its buffer.
-func ReportAt(kind Kind, start, end token.Loc, args ...any) {
+func ReportAt(kind Kind, start, end token.Pos, args ...any) {
 	reportAtInternal(kind, "", start, end, fmt.Sprint(args...))
 }
 
@@ -231,7 +236,7 @@ func ReportAt(kind Kind, start, end token.Loc, args ...any) {
 // with an underscore.
 //
 // Same as `ReportAt(KindDebug, message, start, end)`.
-func DebugAt(start, end token.Loc, args ...any) {
+func DebugAt(start, end token.Pos, args ...any) {
 	ReportAt(KindDebug, start, end, args...)
 }
 
@@ -240,7 +245,7 @@ func DebugAt(start, end token.Loc, args ...any) {
 // with an underscore.
 //
 // Same as `ReportAt(KindNote, message, start, end)`.
-func NoteAt(start, end token.Loc, args ...any) {
+func NoteAt(start, end token.Pos, args ...any) {
 	ReportAt(KindNote, start, end, args...)
 }
 
@@ -249,7 +254,7 @@ func NoteAt(start, end token.Loc, args ...any) {
 // with an underscore.
 //
 // Same as `ReportAt(KindHint, message, start, end)`.
-func HintAt(start, end token.Loc, args ...any) {
+func HintAt(start, end token.Pos, args ...any) {
 	ReportAt(KindHint, start, end, args...)
 }
 
@@ -258,7 +263,7 @@ func HintAt(start, end token.Loc, args ...any) {
 // with an underscore.
 //
 // Same as `ReportAt(KindWarning, message, start, end)`.
-func WarningAt(start, end token.Loc, args ...any) {
+func WarningAt(start, end token.Pos, args ...any) {
 	ReportAt(KindWarning, start, end, args...)
 }
 
@@ -267,7 +272,7 @@ func WarningAt(start, end token.Loc, args ...any) {
 // with an underscore.
 //
 // Same as `ReportAt(KindError, message, start, end)`.
-func ErrorAt(start, end token.Loc, args ...any) {
+func ErrorAt(start, end token.Pos, args ...any) {
 	ReportAt(KindError, start, end, args...)
 }
 
@@ -276,7 +281,7 @@ func ErrorAt(start, end token.Loc, args ...any) {
 //
 // NOTE: this function uses [config.global] to get information about the file
 // and also its buffer.
-func TaggedReportAt(kind Kind, tag string, start, end token.Loc, args ...any) {
+func TaggedReportAt(kind Kind, tag string, start, end token.Pos, args ...any) {
 	reportAtInternal(kind, tag, start, end, fmt.Sprint(args...))
 }
 
@@ -285,7 +290,7 @@ func TaggedReportAt(kind Kind, tag string, start, end token.Loc, args ...any) {
 // with an underscore.
 //
 // Same as `TaggedReportAt(KindDebug, tag, message, start, end)`.
-func TaggedDebugAt(tag string, start, end token.Loc, args ...any) {
+func TaggedDebugAt(tag string, start, end token.Pos, args ...any) {
 	TaggedReportAt(KindDebug, tag, start, end, args...)
 }
 
@@ -294,7 +299,7 @@ func TaggedDebugAt(tag string, start, end token.Loc, args ...any) {
 // with an underscore.
 //
 // Same as `TaggedReportAt(KindNote, tag, message, start, end)`.
-func TaggedNoteAt(tag string, start, end token.Loc, args ...any) {
+func TaggedNoteAt(tag string, start, end token.Pos, args ...any) {
 	TaggedReportAt(KindNote, tag, start, end, args...)
 }
 
@@ -303,7 +308,7 @@ func TaggedNoteAt(tag string, start, end token.Loc, args ...any) {
 // with an underscore.
 //
 // Same as `TaggedReportAt(KindHint, tag, message, start, end)`.
-func TaggedHintAt(tag string, start, end token.Loc, args ...any) {
+func TaggedHintAt(tag string, start, end token.Pos, args ...any) {
 	TaggedReportAt(KindHint, tag, start, end, args...)
 }
 
@@ -312,7 +317,7 @@ func TaggedHintAt(tag string, start, end token.Loc, args ...any) {
 // with an underscore.
 //
 // Same as `TaggedReportAt(KindWarning, tag, message, start, end)`.
-func TaggedWarningAt(tag string, start, end token.Loc, args ...any) {
+func TaggedWarningAt(tag string, start, end token.Pos, args ...any) {
 	TaggedReportAt(KindWarning, tag, start, end, args...)
 }
 
@@ -321,6 +326,6 @@ func TaggedWarningAt(tag string, start, end token.Loc, args ...any) {
 // with an underscore.
 //
 // Same as `TaggedReportAt(KindError, tag, message, start, end)`.
-func TaggedErrorAt(tag string, start, end token.Loc, args ...any) {
+func TaggedErrorAt(tag string, start, end token.Pos, args ...any) {
 	TaggedReportAt(KindError, tag, start, end, args...)
 }

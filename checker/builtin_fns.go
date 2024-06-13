@@ -6,9 +6,8 @@ import (
 	"github.com/saffage/jet/types"
 )
 
-func builtInMagic(node *ast.ParenList, args []*TypedValue) (*TypedValue, error) {
+func builtInBuiltin(node *ast.ParenList, args []*TypedValue) (*TypedValue, error) {
 	strval := constant.AsString(args[0].Value)
-
 	if strval == nil {
 		panic("unreachable")
 	}
@@ -57,7 +56,7 @@ func builtInMagic(node *ast.ParenList, args []*TypedValue) (*TypedValue, error) 
 		return &TypedValue{types.NewTypeDesc(types.String), nil}, nil
 
 	default:
-		return nil, NewErrorf(node.Exprs[0], "unknown magic '%s'", *strval)
+		return nil, newErrorf(node.Nodes[0], "unknown built-in '%s'", *strval)
 	}
 }
 
@@ -80,7 +79,7 @@ func builtInAsPtr(node *ast.ParenList, args []*TypedValue) (*TypedValue, error) 
 	return &TypedValue{types.NewRef(types.U8), nil}, nil
 }
 
-func builtInAs(node *ast.ParenList, args []*TypedValue) (*TypedValue, error) {
+func builtInCast(node *ast.ParenList, args []*TypedValue) (*TypedValue, error) {
 	// TODO some additional checks
 	return &TypedValue{types.SkipTypeDesc(args[0].Type), nil}, nil
 }

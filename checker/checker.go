@@ -4,16 +4,14 @@ import (
 	"github.com/fatih/color"
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/config"
-	"github.com/saffage/jet/internal/assert"
 	"github.com/saffage/jet/internal/report"
 	"github.com/saffage/jet/types"
 )
 
 type Checker struct {
-	module         *Module
-	scope          *Scope
-	errors         []error
-	isErrorHandled bool
+	module *Module
+	scope  *Scope
+	errors []error
 
 	cfg    *config.Config
 	fileID config.FileID
@@ -50,14 +48,14 @@ func (check *Checker) valueOf(expr ast.Node) *TypedValue {
 }
 
 func (check *Checker) setScope(scope *Scope) {
-	assert.Ok(scope != nil)
+	assert(scope != nil)
 
 	check.scope = scope
 }
 
 func (check *Checker) setType(expr ast.Node, t types.Type) {
-	assert.Ok(expr != nil)
-	assert.Ok(t != nil)
+	assert(expr != nil)
+	assert(t != nil)
 
 	if prev := check.module.Types[expr]; prev != nil {
 		check.module.Types[expr] = &TypedValue{t, prev.Value}
@@ -67,19 +65,19 @@ func (check *Checker) setType(expr ast.Node, t types.Type) {
 }
 
 func (check *Checker) setValue(expr ast.Node, value *TypedValue) {
-	assert.Ok(expr != nil)
-	assert.Ok(value != nil)
-	assert.Ok(value.Type != nil)
+	assert(expr != nil)
+	assert(value != nil)
+	assert(value.Type != nil)
 
 	check.module.Types[expr] = value
 }
 
 func (check *Checker) newDef(ident *ast.Ident, sym Symbol) {
-	assert.Ok(ident != nil)
-	assert.Ok(sym != nil)
+	assert(ident != nil)
+	assert(sym != nil)
 
 	symStr := ""
-	if debugPrinter, _ := sym.(debugSymbolPrinter); debugPrinter != nil {
+	if debugPrinter, _ := sym.(debugPrinter); debugPrinter != nil {
 		symStr = debugPrinter.debug()
 	} else {
 		symStr = symbolTypeNoQualifier(sym)
@@ -101,14 +99,14 @@ func (check *Checker) newDef(ident *ast.Ident, sym Symbol) {
 }
 
 func (check *Checker) newUse(ident *ast.Ident, sym Symbol) {
-	assert.Ok(ident != nil)
-	assert.Ok(sym != nil)
+	assert(ident != nil)
+	assert(sym != nil)
 
 	_, isDef := check.module.Defs.Get(ident)
-	assert.Ok(!isDef)
+	assert(!isDef)
 
 	symStr := ""
-	if debugPrinter, _ := sym.(debugSymbolPrinter); debugPrinter != nil {
+	if debugPrinter, _ := sym.(debugPrinter); debugPrinter != nil {
 		symStr = debugPrinter.debug()
 	} else {
 		symStr = symbolTypeNoQualifier(sym)

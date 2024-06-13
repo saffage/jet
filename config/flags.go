@@ -1,74 +1,169 @@
 package config
 
-import "flag"
+import (
+	"errors"
+	"flag"
+	"strings"
+)
 
-// Enable debug information.
-var FlagDebug = false
+var (
+	// Enable debug information.
+	FlagDebug bool
 
-var FlagDumpCheckerState = false
+	FlagDumpCheckerState bool
 
-// Display a program AST of the specified Jet module and exit.
-var FlagParseAst = false
+	// Display a program AST of the specified Jet module and exit.
+	FlagParseAst bool
 
-// Trace parser calls (for debugging).
-var FlagTraceParser = false
+	// Trace parser calls (for debugging).
+	FlagTraceParser bool
 
-// Generate C source file from the specified Jet module.
-var FlagGenC = false
+	// Generate C source file from the specified Jet module.
+	FlagGenC bool
 
-// Specifies the path to the core library.
-var FlagCoreLibPath = ""
+	// Specifies the path to the core library.
+	FlagCoreLibPath string
 
-// Non-flag command line arguments.
-var Args []string
+	// Disable core library.
+	FlagNoCoreLib bool
+)
 
 var Exe string
 
-func ParseArgs(args []string) {
-	flagSet := flag.NewFlagSet("jet", flag.ExitOnError)
+type Action byte
 
-	flagSet.BoolVar(
+const (
+	ActionShowHelp Action = iota
+	ActionError
+	ActionCompileToC
+	ActionGenerate // TODO remove
+
+	ActionDefault = ActionGenerate
+)
+
+func ParseArgs(args []string) ([]string, Action) {
+	if len(args) == 0 {
+		panic("unreachable")
+	}
+
+	Exe = args[0]
+	args = args[1:]
+
+	if len(args) == 0 {
+		cmdJet.PrintDefaults()
+		return nil, ActionShowHelp
+	}
+
+	switch strings.ToLower(args[0]) {
+	case "c":
+		FlagGenC = true
+		args = args[1:]
+		err := cmdC.Parse(args)
+		if len(args) == 0 || errors.Is(err, flag.ErrHelp) {
+			cmdC.PrintDefaults()
+			return nil, ActionShowHelp
+		}
+		return cmdC.Args(), ActionCompileToC
+
+	default:
+		err := cmdJet.Parse(args)
+		if errors.Is(err, flag.ErrHelp) {
+			return nil, ActionShowHelp
+		}
+		return cmdJet.Args(), ActionDefault
+	}
+}
+
+var cmdJet, cmdC *flag.FlagSet
+
+func init() {
+	cmdJet = flag.NewFlagSet("Jet Compiler", flag.ExitOnError)
+	cmdJet.BoolVar(
 		&FlagDebug,
 		"debug",
 		false,
 		"Enable debug information",
 	)
-	flagSet.BoolVar(
+	cmdJet.BoolVar(
 		&FlagDumpCheckerState,
-		"dump_checker_state",
+		"dump-checker-state",
 		false,
 		"",
 	)
-	flagSet.BoolVar(
+	cmdJet.BoolVar(
 		&FlagParseAst,
-		"parse_ast",
+		"parse-ast",
 		false,
 		"Display a module AST and exit",
 	)
-	flagSet.BoolVar(
+	cmdJet.BoolVar(
 		&FlagTraceParser,
-		"trace_parser",
+		"trace-parser",
 		false,
 		"Trace parser calls (for debugging)",
 	)
-	flagSet.BoolVar(
+	cmdJet.BoolVar(
 		&FlagGenC,
-		"gen_c",
+		"gen-c",
 		false,
 		"Generate C source file from the specified Jet module",
 	)
-	flagSet.StringVar(
+	cmdJet.StringVar(
 		&FlagCoreLibPath,
-		"lib_path",
+		"lib-path",
 		"",
 		"Specifies the path to the core library",
 	)
+	cmdJet.BoolVar(
+		&FlagNoCoreLib,
+		"no-core-lib",
+		false,
+		"",
+	)
 
-	if err := flagSet.Parse(args[1:]); err != nil {
-		// Must be unreachable due to specified error handling.
-		panic(err)
-	}
-
-	Args = flagSet.Args()
-	Exe = args[0]
+	cmdC = flag.NewFlagSet("c", flag.ExitOnError)
+	cmdC.BoolVar(
+		&FlagDebug,
+		"debug",
+		false,
+		"Enable compiler's debug output",
+	)
+	cmdC.BoolVar(
+		&CFlagBuild,
+		"build",
+		false,
+		"build the generated C source file using the specified compiler executable (gcc by default)",
+	)
+	cmdC.BoolVar(
+		&CFlagRun,
+		"run",
+		false,
+		"run the generated C source file (implies the --build command)",
+	)
+	cmdC.StringVar(
+		&CFlagCC,
+		"cc",
+		"gcc",
+		"specify C Compiler (gcc by default)",
+	)
+	cmdC.StringVar(
+		&CLDflags,
+		"ldflags",
+		"",
+		"specify linker flags",
+	)
+	cmdC.StringVar(
+		&FlagCoreLibPath,
+		"lib-path",
+		"",
+		"Specifies the path to the core library",
+	)
 }
+
+// Experimental flags
+var (
+	CFlagBuild bool
+	CFlagRun   bool
+	CFlagCC    string
+	CLDflags   string
+)

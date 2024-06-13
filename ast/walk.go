@@ -1,16 +1,12 @@
 package ast
 
-import (
-	"fmt"
-
-	"github.com/saffage/jet/internal/assert"
-)
+import "fmt"
 
 // Applies some action to a node.
 //
 // The result must be the next action to be performed on each
-// of the child nodes. If no action is required and this branch
-// should be dropped, nil should be returned.
+// of the child nodes. If no action is required for nodes of
+// this branch, the result must be nil.
 type Visitor func(Node) Visitor
 
 // Preorder\top-down traversal.
@@ -18,311 +14,229 @@ type Visitor func(Node) Visitor
 // Each node is terminated by a call with `nil` argument.
 //
 // Example:
-//   - List (length = 3)
+//   - List(len: 3)
 //   - - Ident
-//   - - nil (Ident)
+//   - - Ident(nil)
 //   - - Ident
-//   - - nil (Ident)
-//   - - List (length = 0)
-//   - - nil (List)
-//   - nil (List)
-func WalkTopDown(visit Visitor, tree Node) {
+//   - - Ident(nil)
+//   - - List(len: 0)
+//   - - List(nil)
+//   - List(nil)
+func (v Visitor) WalkTopDown(tree Node) {
 	if tree == nil {
 		panic("can't walk a nil node")
 	}
 
-	if v := visit(tree); v != nil {
-		visit = v
+	if visitor := v(tree); visitor != nil {
+		v = visitor
 	} else {
 		return
 	}
 
 	switch n := tree.(type) {
-	case *BadNode, *Empty, *Ident, *Literal, *Operator, *Comment, *CommentGroup:
+	case *BadNode, *Empty, *Ident, *Literal, *Comment, *CommentGroup:
 		// Nothing to walk
 
-	case *Binding:
-		assert.Ok(n.Name != nil)
-		assert.Ok(n.Type != nil)
+	case *AttributeList:
+		assert(n.List != nil)
 
-		WalkTopDown(visit, n.Name)
+		v.walkList(n.List.List)
 
-		if n.Type != nil {
-			WalkTopDown(visit, n.Type)
+	case *Decl:
+		assert(n.Ident != nil)
+		assert(n.Type != nil || n.Value != nil)
+
+		if n.Attrs != nil {
+			v.WalkTopDown(n.Attrs)
 		}
 
-	case *BindingWithValue:
-		assert.Ok(n.Binding.Name != nil)
-		assert.Ok(n.Binding.Type != nil || (n.Value != nil && n.Operator != nil))
-
-		WalkTopDown(visit, n.Binding.Name)
+		v.WalkTopDown(n.Ident)
 
 		if n.Type != nil {
-			WalkTopDown(visit, n.Binding.Type)
+			v.WalkTopDown(n.Type)
 		}
 
 		if n.Value != nil {
-			WalkTopDown(visit, n.Operator)
-			WalkTopDown(visit, n.Value)
+			v.WalkTopDown(n.Value)
 		}
-
-	case *BuiltInCall:
-		assert.Ok(n.Name != nil)
-		assert.Ok(n.Args != nil)
-
-		WalkTopDown(visit, n.Name)
-		WalkTopDown(visit, n.Args)
-
-	case *Call:
-		assert.Ok(n.X != nil)
-		assert.Ok(n.Args != nil)
-
-		WalkTopDown(visit, n.X)
-		walkExprList(visit, n.Args.ExprList)
-
-	case *Index:
-		assert.Ok(n.X != nil)
-		assert.Ok(n.Args != nil)
-
-		WalkTopDown(visit, n.X)
-		walkExprList(visit, n.Args.ExprList)
 
 	case *ArrayType:
-		assert.Ok(n.X != nil)
-		assert.Ok(n.Args != nil)
+		assert(n.X != nil)
+		assert(n.Args != nil)
 
-		WalkTopDown(visit, n.X)
-		walkExprList(visit, n.Args.ExprList)
+		v.WalkTopDown(n.X)
+		v.walkList(n.Args.List)
 
-	case *Signature:
-		assert.Ok(n.Params != nil)
+	case *StructType:
+		for _, field := range n.Fields {
+			assert(field != nil)
 
-		walkExprList(visit, n.Params.ExprList)
-
-		if n.Result != nil {
-			WalkTopDown(visit, n.Result)
+			v.WalkTopDown(field)
 		}
 
-	case *MemberAccess:
-		assert.Ok(n.X != nil)
-		assert.Ok(n.Selector != nil)
+	case *EnumType:
+		for _, field := range n.Fields {
+			assert(field != nil)
 
-		WalkTopDown(visit, n.X)
-		WalkTopDown(visit, n.Selector)
+			v.WalkTopDown(field)
+		}
 
-	case *SafeMemberAccess:
-		assert.Ok(n.X != nil)
-		assert.Ok(n.Selector != nil)
+	case *Signature:
+		assert(n.Params != nil)
 
-		WalkTopDown(visit, n.X)
-		WalkTopDown(visit, n.Selector)
+		v.walkList(n.Params.List)
 
-	case *PrefixOp:
-		assert.Ok(n.X != nil)
+		if n.Result != nil {
+			v.WalkTopDown(n.Result)
+		}
 
-		WalkTopDown(visit, n.X)
+	case *BuiltIn:
+		assert(n.Ident != nil)
 
-	case *InfixOp:
-		assert.Ok(n.X != nil)
-		assert.Ok(n.Y != nil)
+		v.WalkTopDown(n.Ident)
 
-		WalkTopDown(visit, n.X)
-		WalkTopDown(visit, n.Y)
+	case *Call:
+		assert(n.X != nil)
+		assert(n.Args != nil)
 
-	case *PostfixOp:
-		assert.Ok(n.X != nil)
+		v.WalkTopDown(n.X)
+		v.walkList(n.Args.List)
 
-		WalkTopDown(visit, n.X)
+	case *Index:
+		assert(n.X != nil)
+		assert(n.Args != nil)
+
+		v.WalkTopDown(n.X)
+		v.walkList(n.Args.List)
+
+	case *Function:
+		assert(n.Signature != nil)
+		assert(n.Body != nil)
+
+		v.WalkTopDown(n.Signature)
+		v.WalkTopDown(n.Body)
+
+	case *Dot:
+		assert(n.X != nil)
+		assert(n.Y != nil)
+
+		v.WalkTopDown(n.X)
+		v.WalkTopDown(n.Y)
+
+	case *Deref:
+		assert(n.X != nil)
+
+		v.WalkTopDown(n.X)
+
+	case *Op:
+		assert(n.X != nil)
+		assert(n.Y != nil)
+
+		if n.X != nil {
+			v.WalkTopDown(n.X)
+		}
+
+		if n.Y != nil {
+			v.WalkTopDown(n.Y)
+		}
+
+	case *List:
+		v.walkList(n)
+
+	case *StmtList:
+		v.walkStmtList(n)
 
 	case *BracketList:
-		walkExprList(visit, n.ExprList)
+		v.walkList(n.List)
 
 	case *ParenList:
-		walkExprList(visit, n.ExprList)
+		v.walkList(n.List)
 
 	case *CurlyList:
-		walkList(visit, n.List)
+		v.walkStmtList(n.StmtList)
 
 	case *If:
-		assert.Ok(n.Cond != nil)
-		assert.Ok(n.Body != nil)
+		assert(n.Cond != nil)
+		assert(n.Body != nil)
 
-		WalkTopDown(visit, n.Cond)
-		WalkTopDown(visit, n.Body)
+		v.WalkTopDown(n.Cond)
+		v.WalkTopDown(n.Body)
 
 		if n.Else != nil {
-			WalkTopDown(visit, n.Else)
+			v.WalkTopDown(n.Else)
 		}
 
 	case *Else:
-		assert.Ok(n.Body != nil)
+		assert(n.Body != nil)
 
-		WalkTopDown(visit, n.Body)
-
-	case *ModuleDecl:
-		assert.Ok(n.Name != nil)
-		assert.Ok(n.Body != nil)
-
-		if n.Attrs != nil {
-			WalkTopDown(visit, n.Attrs)
-		}
-
-		WalkTopDown(visit, n.Name)
-
-		switch b := n.Body.(type) {
-		case *List:
-			walkList(visit, b)
-
-		case *ExprList:
-			walkExprList(visit, b)
-
-		case *CurlyList:
-			walkList(visit, b.List)
-
-		default:
-			panic(fmt.Sprintf("unexpected node type '%T' for module body", n.Body))
-		}
-
-	case *VarDecl:
-		assert.Ok(n.Binding.Name != nil)
-		assert.Ok(n.Binding.Type != nil || n.Value != nil)
-
-		if n.Attrs != nil {
-			WalkTopDown(visit, n.Attrs)
-		}
-
-		WalkTopDown(visit, n.Binding.Name)
-
-		if n.Binding.Type != nil {
-			WalkTopDown(visit, n.Binding.Type)
-		}
-
-		if n.Value != nil {
-			WalkTopDown(visit, n.Binding.Type)
-		}
-
-	case *ConstDecl:
-		assert.Ok(n.Binding.Name != nil)
-		assert.Ok(n.Binding.Value != nil)
-
-		if n.Attrs != nil {
-			WalkTopDown(visit, n.Attrs)
-		}
-
-		WalkTopDown(visit, n.Binding.Name)
-
-		if n.Binding.Type != nil {
-			WalkTopDown(visit, n.Binding.Type)
-		}
-
-		WalkTopDown(visit, n.Binding.Type)
-
-	case *FuncDecl:
-		assert.Ok(n.Name != nil)
-		assert.Ok(n.Signature != nil)
-
-		if n.Attrs != nil {
-			WalkTopDown(visit, n.Attrs)
-		}
-
-		WalkTopDown(visit, n.Name)
-		WalkTopDown(visit, n.Signature)
-
-		if n.Body != nil {
-			WalkTopDown(visit, n.Body)
-		}
-
-	case *StructDecl:
-		assert.Ok(n.Name != nil)
-		assert.Ok(n.Body != nil)
-
-		if n.Attrs != nil {
-			WalkTopDown(visit, n.Attrs)
-		}
-
-		WalkTopDown(visit, n.Name)
-		WalkTopDown(visit, n.Body)
-
-	case *EnumDecl:
-		assert.Ok(n.Name != nil)
-		assert.Ok(n.Body != nil)
-
-		if n.Attrs != nil {
-			WalkTopDown(visit, n.Attrs)
-		}
-
-		WalkTopDown(visit, n.Name)
-		WalkTopDown(visit, n.Body)
-
-	case *TypeAliasDecl:
-		assert.Ok(n.Name != nil)
-		assert.Ok(n.Expr != nil)
-
-		if n.Attrs != nil {
-			WalkTopDown(visit, n.Attrs)
-		}
-
-		WalkTopDown(visit, n.Name)
-		WalkTopDown(visit, n.Expr)
-
-	case *List:
-		walkList(visit, n)
-
-	case *ExprList:
-		walkExprList(visit, n)
-
-	case *AttributeList:
-		assert.Ok(n.List != nil)
-
-		walkExprList(visit, n.List.ExprList)
+		v.WalkTopDown(n.Body)
 
 	case *While:
-		assert.Ok(n.Cond != nil)
-		assert.Ok(n.Body != nil)
+		assert(n.Cond != nil)
+		assert(n.Body != nil)
 
-		WalkTopDown(visit, n.Cond)
-		WalkTopDown(visit, n.Body)
+		v.WalkTopDown(n.Cond)
+		v.WalkTopDown(n.Body)
+
+	case *For:
+		assert(n.DeclList != nil)
+		assert(len(n.DeclList.Nodes) > 0)
+		assert(n.IterExpr != nil)
+		assert(n.Body != nil)
+
+		v.walkList(n.DeclList)
+		v.WalkTopDown(n.IterExpr)
+		v.WalkTopDown(n.Body)
 
 	case *Return:
 		if n.X != nil {
-			WalkTopDown(visit, n.X)
+			v.WalkTopDown(n.X)
 		}
 
 	case *Break:
 		if n.Label != nil {
-			WalkTopDown(visit, n.Label)
+			v.WalkTopDown(n.Label)
 		}
 
 	case *Continue:
 		if n.Label != nil {
-			WalkTopDown(visit, n.Label)
+			v.WalkTopDown(n.Label)
 		}
 
 	case *Import:
-		assert.Ok(n.Module != nil)
+		assert(n.Module != nil)
 
-		WalkTopDown(visit, n.Module)
+		v.WalkTopDown(n.Module)
 
 	default:
 		// Should not happen.
 		panic(fmt.Sprintf("unknown node type '%T'", n))
 	}
 
-	visit(nil)
+	v(nil)
 }
 
-func walkList(visit Visitor, list *List) {
+func (v Visitor) walkList(list *List) {
 	if list != nil {
 		for _, node := range list.Nodes {
-			WalkTopDown(visit, node)
+			v.WalkTopDown(node)
 		}
 	}
 }
 
-func walkExprList(visit Visitor, list *ExprList) {
+func (v Visitor) walkStmtList(list *StmtList) {
 	if list != nil {
-		for _, node := range list.Exprs {
-			WalkTopDown(visit, node)
+		for _, node := range list.Nodes {
+			v.WalkTopDown(node)
 		}
+	}
+}
+
+func assert(ok bool, message ...any) {
+	if !ok {
+		if len(message) > 0 {
+			panic("assertion failed: " + fmt.Sprint(message...))
+		}
+		panic("assertion failed")
 	}
 }

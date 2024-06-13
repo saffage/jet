@@ -17,10 +17,10 @@ const (
 
 var arrayTypes = map[types.Type]string{}
 
-func (gen *generator) TypeString(t types.Type) string {
-	assert.Ok(!types.IsTypeDesc(t))
+func (gen *generator) TypeString(ty types.Type) string {
+	assert.Ok(!types.IsTypeDesc(ty))
 
-	switch t := t.Underlying().(type) {
+	switch ty := ty.Underlying().(type) {
 	case nil:
 		return _ErrorNilType
 
@@ -31,7 +31,7 @@ func (gen *generator) TypeString(t types.Type) string {
 		panic("unreachable")
 
 	case *types.Primitive:
-		switch t.Kind() {
+		switch ty.Kind() {
 		case types.KindUntypedInt, types.KindUntypedFloat, types.KindUntypedString, types.KindAny, types.KindAnyTypeDesc:
 			return _ErrorMetaType
 
@@ -82,39 +82,52 @@ func (gen *generator) TypeString(t types.Type) string {
 		panic("not implemented")
 
 	case *types.Tuple:
-		if t.Equals(types.Unit) {
+		if ty.Equals(types.Unit) {
 			return "void"
 		}
 
 		panic("not implemented")
 
 	case *types.Array:
-		if s, ok := arrayTypes[t]; ok {
-			return s
-		}
-		elemTypeStr := gen.TypeString(t.ElemType())
-		typeStr := fmt.Sprintf("%s_array%d", elemTypeStr, t.Size())
-		gen.typeSect.WriteString(
-			fmt.Sprintf("typedef %s %s[%d];\n\n", elemTypeStr, typeStr, t.Size()),
-		)
-		arrayTypes[t] = typeStr
-		return typeStr
+		return gen.arrayType(ty)
 
 	case *types.Ref:
-		return gen.TypeString(t.Base()) + "*"
+		return gen.TypeString(ty.Base()) + "*"
 
 	case *types.Struct:
-		if t == types.String {
+		if ty == types.String {
 			return "char*"
 		}
-		return gen.findTypeSym(gen.Defs, t)
+		return gen.findTypeSym(gen.Defs, ty)
 
 	case *types.Enum:
-		return gen.findTypeSym(gen.Defs, t)
+		return gen.findTypeSym(gen.Defs, ty)
 
 	default:
-		panic(fmt.Sprintf("unknown type '%T'", t))
+		panic(fmt.Sprintf("unknown type '%T'", ty))
 	}
+}
+
+func (gen *generator) arrayType(ty *types.Array) string {
+	if s, ok := arrayTypes[ty]; ok {
+		return s
+	}
+	elemTypeName := gen.TypeString(ty.ElemType())
+	typeName := fmt.Sprintf("%s_array%d", elemTypeName, ty.Size())
+	alreadyDefined := false
+	for _, typeName0 := range arrayTypes {
+		if typeName0 == typeName {
+			// Prevent similar typedefs.
+			alreadyDefined = true
+		}
+	}
+	if !alreadyDefined {
+		gen.typeSect.WriteString(
+			fmt.Sprintf("typedef %s %s[%d];\n", elemTypeName, typeName, ty.Size()),
+		)
+	}
+	arrayTypes[ty] = typeName
+	return typeName
 }
 
 func (gen *generator) findTypeSym(

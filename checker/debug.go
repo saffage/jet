@@ -5,8 +5,7 @@ import (
 	"strings"
 )
 
-type debugSymbolPrinter interface {
-	Symbol
+type debugPrinter interface {
 	debug() string
 }
 

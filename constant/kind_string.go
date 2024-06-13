@@ -12,11 +12,12 @@ func _() {
 	_ = x[Float-1]
 	_ = x[String-2]
 	_ = x[Bool-3]
+	_ = x[Array-4]
 }
 
-const _Kind_name = "IntFloatStringBool"
+const _Kind_name = "IntFloatStringBoolArray"
 
-var _Kind_index = [...]uint8{0, 3, 8, 14, 18}
+var _Kind_index = [...]uint8{0, 3, 8, 14, 18, 23}
 
 func (i Kind) String() string {
 	if i >= Kind(len(_Kind_index)-1) {

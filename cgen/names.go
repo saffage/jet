@@ -26,17 +26,20 @@ func (gen *generator) name(sym checker.Symbol) string {
 
 	case *checker.Func:
 		if sym.IsExtern() {
+			if sym.ExternName() != "" {
+				return sym.ExternName()
+			}
 			return sym.Name()
 		}
 	}
 
-	gen.nameInternal(&buf, sym.Owner())
+	gen.namefInternal(&buf, sym.Owner())
 	buf.WriteString(sym.Name())
 	names[sym] = buf.String()
 	return buf.String()
 }
 
-func (gen *generator) nameInternal(w io.StringWriter, scope *checker.Scope) {
+func (gen *generator) namefInternal(w io.StringWriter, scope *checker.Scope) {
 	for scope != nil && scope != checker.Global {
 		scopeName := scope.Name()
 		spaceIndex := strings.Index(scopeName, " ")

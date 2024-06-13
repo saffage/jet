@@ -1,44 +1,41 @@
 package checker
 
 import (
+	"github.com/elliotchance/orderedmap/v2"
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/types"
 )
 
-type ModuleKind byte
-
-const (
-	ModuleKindRegular ModuleKind = iota
-	ModuleKindTypes
-	ModuleKindC
-)
-
-// Module is a file.
 type Module struct {
 	*TypeInfo
 	Scope   *Scope
 	Imports []*Module
 
-	node      *ast.ModuleDecl
-	kind      ModuleKind
+	name      string
+	stmts     *ast.StmtList
 	completed bool
 }
 
-func NewModule(scope *Scope, node *ast.ModuleDecl) *Module {
+func NewModule(scope *Scope, name string, stmts *ast.StmtList) *Module {
 	return &Module{
-		TypeInfo:  NewTypeInfo(),
+		TypeInfo: &TypeInfo{
+			Defs:     orderedmap.NewOrderedMap[*ast.Ident, Symbol](),
+			TypeSyms: make(map[types.Type]Symbol),
+			Types:    make(map[ast.Node]*TypedValue),
+			Uses:     make(map[*ast.Ident]Symbol),
+		},
 		Scope:     scope,
-		node:      node,
-		kind:      ModuleKindRegular,
+		name:      name,
+		stmts:     stmts,
 		completed: false,
 	}
 }
 
 func (m *Module) Owner() *Scope     { return m.Scope.parent }
 func (m *Module) Type() types.Type  { return nil }
-func (m *Module) Name() string      { return m.node.Name.Name }
-func (m *Module) Ident() *ast.Ident { return m.node.Name }
-func (m *Module) Node() ast.Node    { return m.node }
+func (m *Module) Name() string      { return m.name }
+func (m *Module) Ident() *ast.Ident { return nil }
+func (m *Module) Node() ast.Node    { return m.stmts }
 
 func (m *Module) TypeOf(expr ast.Node) types.Type {
 	if expr != nil {
@@ -81,42 +78,10 @@ func (m *Module) SymbolOf(ident *ast.Ident) Symbol {
 }
 
 func (check *Checker) visit(node ast.Node) ast.Visitor {
-	switch node := node.(type) {
-	case ast.Decl:
-		switch decl := node.(type) {
-		case *ast.ModuleDecl:
-			panic("not implemented")
-
-		case *ast.VarDecl:
-			check.resolveVarDecl(decl)
-
-		case *ast.ConstDecl:
-			check.resolveConstDecl(decl)
-
-		case *ast.FuncDecl:
-			check.resolveFuncDecl(decl)
-
-		case *ast.StructDecl:
-			check.resolveStructDecl(decl)
-
-		case *ast.EnumDecl:
-			check.resolveEnumDecl(decl)
-
-		case *ast.TypeAliasDecl:
-			check.resolveTypeAliasDecl(decl)
-
-		default:
-			panic("unreachable")
-		}
-
-	case *ast.Import:
-		check.resolveImport(node)
-
-	default:
-		// NOTE parser should prevent this in future.
-		check.errorf(node, "expected declaration")
+	if decl, _ := node.(*ast.Decl); decl != nil {
+		check.resolveDecl(decl)
 		return nil
 	}
 
-	return nil
+	panic("ill-formed AST")
 }

@@ -10,38 +10,41 @@ const (
 
 	// Prefix.
 
-	OperatorNot     // !
-	OperatorNeg     // -
-	OperatorAddrOf  // &
-	OperatorStar    // *
-	OperatorElipsis // ...
+	OperatorNot      // !
+	OperatorNeg      // -
+	OperatorAddrOf   // &
+	OperatorStar     // *
+	OperatorEllipsis // ...
 
 	// Infix.
 
-	OperatorAssign        // =
-	OperatorAddAndAssign  // +=
-	OperatorSubAndAssign  // -=
-	OperatorMultAndAssign // *=
-	OperatorDivAndAssign  // /=
-	OperatorModAndAssign  // %=
-	OperatorAdd           // +
-	OperatorSub           // -
-	OperatorMul           // *
-	OperatorDiv           // /
-	OperatorMod           // %
-	OperatorEq            // ==
-	OperatorNe            // !=
-	OperatorLt            // <
-	OperatorLe            // <=
-	OperatorGt            // >
-	OperatorGe            // >=
-	OperatorBitAnd        // &
-	OperatorBitOr         // |
-	OperatorBitXor        // ^
-	OperatorBitShl        // <<
-	OperatorBitShr        // >>
-	OperatorAnd           // and
-	OperatorOr            // or
+	OperatorAssign         // =
+	OperatorAddAndAssign   // +=
+	OperatorSubAndAssign   // -=
+	OperatorMultAndAssign  // *=
+	OperatorDivAndAssign   // /=
+	OperatorModAndAssign   // %=
+	OperatorAdd            // +
+	OperatorSub            // -
+	OperatorMul            // *
+	OperatorDiv            // /
+	OperatorMod            // %
+	OperatorEq             // ==
+	OperatorNe             // !=
+	OperatorLt             // <
+	OperatorLe             // <=
+	OperatorGt             // >
+	OperatorGe             // >=
+	OperatorBitAnd         // &
+	OperatorBitOr          // |
+	OperatorBitXor         // ^
+	OperatorBitShl         // <<
+	OperatorBitShr         // >>
+	OperatorAnd            // and
+	OperatorOr             // or
+	OperatorAs             // as
+	OperatorRangeInclusive // ..
+	OperatorRangeExclusive // ..<
 
 	// Postfix.
 

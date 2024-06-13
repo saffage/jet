@@ -1,7 +1,6 @@
 package cgen
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/saffage/jet/checker"
@@ -10,21 +9,13 @@ import (
 
 func (gen *generator) enumDecl(sym *checker.Enum) {
 	buf := strings.Builder{}
-	buf.WriteString("typedef enum ")
-	buf.WriteString(sym.Name())
-	buf.WriteString(" {\n")
-	gen.numIndent++
-
+	gen.flinef(&buf, "typedef enum %s {\n", sym.Name())
+	gen.indent++
 	enumName := gen.name(sym)
-
 	for i, field := range types.SkipTypeDesc(sym.Type()).(*types.Enum).Fields() {
-		gen.indent(&buf)
-		buf.WriteString(fmt.Sprintf("%s = %d,\n", enumName+"__"+field, i))
+		gen.flinef(&buf, "%s = %d,\n", enumName+"__"+field, i)
 	}
-
-	gen.numIndent--
-	buf.WriteString("} ")
-	buf.WriteString(enumName)
-	buf.WriteString(";\n\n")
+	gen.indent--
+	gen.flinef(&buf, "} %s;\n", enumName)
 	gen.typeSect.WriteString(buf.String())
 }

@@ -49,8 +49,8 @@ func _() {
 	_ = x[Pipe-38]
 	_ = x[Caret-39]
 	_ = x[At-40]
-	_ = x[QuestionMark-41]
-	_ = x[QuestionMarkDot-42]
+	_ = x[Dollar-41]
+	_ = x[QuestionMark-42]
 	_ = x[Arrow-43]
 	_ = x[FatArrow-44]
 	_ = x[Shl-45]
@@ -61,27 +61,23 @@ func _() {
 	_ = x[Ellipsis-50]
 	_ = x[KwAnd-51]
 	_ = x[KwOr-52]
-	_ = x[KwModule-53]
-	_ = x[KwImport-54]
-	_ = x[KwAlias-55]
-	_ = x[KwStruct-56]
-	_ = x[KwEnum-57]
-	_ = x[KwFunc-58]
-	_ = x[KwVal-59]
-	_ = x[KwVar-60]
-	_ = x[KwConst-61]
-	_ = x[KwOf-62]
-	_ = x[KwIf-63]
-	_ = x[KwElse-64]
-	_ = x[KwWhile-65]
-	_ = x[KwReturn-66]
-	_ = x[KwBreak-67]
-	_ = x[KwContinue-68]
+	_ = x[KwStruct-53]
+	_ = x[KwEnum-54]
+	_ = x[KwMut-55]
+	_ = x[KwIf-56]
+	_ = x[KwElse-57]
+	_ = x[KwWhile-58]
+	_ = x[KwFor-59]
+	_ = x[KwIn-60]
+	_ = x[KwAs-61]
+	_ = x[KwReturn-62]
+	_ = x[KwBreak-63]
+	_ = x[KwContinue-64]
 }
 
-const _Kind_user_name = "illegal characterend of filecommentwhitespacehorizontal tabulationnew lineidentifieruntyped intuntyped floatuntyped string'('')''{''}''['']'','':'';'operator '='operator '=='operator '!'operator '!='operator '<'operator '<='operator '>'operator '>='operator '+'operator '+='operator '-'operator '-='operator '*'operator '*='operator '/'operator '/='operator '%'operator '%='operator '&'operator '|'operator '^'operator '@'operator '?'operator '?.'operator '->'operator '=>'operator '<<'operator '>>'operator '.'operator '..'operator '..<'operator '...'keyword 'and'keyword 'or'keyword 'module'keyword 'import'keyword 'alias'keyword 'struct'keyword 'enum'keyword 'func'keyword 'val'keyword 'var'keyword 'const'keyword 'of'keyword 'if'keyword 'else'keyword 'while'keyword 'return'keyword 'break'keyword 'continue'"
+const _Kind_user_name = "illegal characterend of filecommentwhitespacehorizontal tabulationnew lineidentifieruntyped intuntyped floatuntyped string'('')''{''}''['']'','':'';'operator '='operator '=='operator '!'operator '!='operator '<'operator '<='operator '>'operator '>='operator '+'operator '+='operator '-'operator '-='operator '*'operator '*='operator '/'operator '/='operator '%'operator '%='operator '&'operator '|'operator '^'operator '@'operator '$'operator '?'operator '->'operator '=>'operator '<<'operator '>>'operator '.'operator '..'operator '..<'operator '...'keyword 'and'keyword 'or'keyword 'struct'keyword 'enum'keyword 'mut'keyword 'if'keyword 'else'keyword 'while'keyword 'for'keyword 'in'keyword 'as'keyword 'return'keyword 'break'keyword 'continue'"
 
-var _Kind_user_index = [...]uint16{0, 17, 28, 35, 45, 66, 74, 84, 95, 108, 122, 125, 128, 131, 134, 137, 140, 143, 146, 149, 161, 174, 186, 199, 211, 224, 236, 249, 261, 274, 286, 299, 311, 324, 336, 349, 361, 374, 386, 398, 410, 422, 434, 447, 460, 473, 486, 499, 511, 524, 538, 552, 565, 577, 593, 609, 624, 640, 654, 668, 681, 694, 709, 721, 733, 747, 762, 778, 793, 811}
+var _Kind_user_index = [...]uint16{0, 17, 28, 35, 45, 66, 74, 84, 95, 108, 122, 125, 128, 131, 134, 137, 140, 143, 146, 149, 161, 174, 186, 199, 211, 224, 236, 249, 261, 274, 286, 299, 311, 324, 336, 349, 361, 374, 386, 398, 410, 422, 434, 446, 459, 472, 485, 498, 510, 523, 537, 551, 564, 576, 592, 606, 619, 631, 645, 660, 673, 685, 697, 713, 728, 746}
 
 func (i Kind) UserString() string {
 	if i >= Kind(len(_Kind_user_index)-1) {
