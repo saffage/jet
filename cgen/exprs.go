@@ -382,8 +382,6 @@ func (gen *generator) constant(value constant.Value) string {
 	default:
 		panic("unreachable")
 	}
-
-	return "ERROR_CGEN__CONSTANT"
 }
 
 func (gen *generator) ifExpr(node *ast.If, result *checker.Var) {
