@@ -1,6 +1,10 @@
 package token
 
-import "github.com/saffage/jet/config"
+import (
+	"fmt"
+
+	"github.com/saffage/jet/config"
+)
 
 type Range struct {
 	FileID     config.FileID
@@ -11,7 +15,7 @@ type Range struct {
 	}
 }
 
-func (rng Range) StartLoc() Pos {
+func (rng Range) StartPos() Pos {
 	return Pos{
 		FileID: rng.FileID,
 		Offset: rng.Start.Offset,
@@ -20,7 +24,7 @@ func (rng Range) StartLoc() Pos {
 	}
 }
 
-func (rng Range) EndLoc() Pos {
+func (rng Range) EndPos() Pos {
 	return Pos{
 		FileID: rng.FileID,
 		Offset: rng.End.Offset,
@@ -30,7 +34,34 @@ func (rng Range) EndLoc() Pos {
 }
 
 func (rng Range) String() string {
-	return rng.StartLoc().String()
+	filepath, start, end := "", "", ""
+
+	if fileinfo, ok := config.Global.Files[rng.FileID]; ok &&
+		fileinfo.Path != "" {
+		filepath = fileinfo.Path
+	}
+
+	if rng.Start.Line > 0 {
+		if rng.Start.Char > 0 {
+			start = fmt.Sprintf("%d:%d", rng.Start.Line, rng.Start.Char)
+		} else {
+			start = fmt.Sprintf("%d", rng.Start.Line)
+		}
+	}
+
+	if rng.End.Line > 0 {
+		if rng.End.Char > 0 {
+			end = fmt.Sprintf("%d:%d", rng.End.Line, rng.End.Char)
+		} else {
+			end = fmt.Sprintf("%d", rng.End.Line)
+		}
+	}
+
+	if filepath == "" && start == "" && end == "" {
+		return "???"
+	}
+
+	return fmt.Sprintf("%s:%s..%s", filepath, start, end)
 }
 
 func (rng Range) IsValid() bool {
