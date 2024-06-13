@@ -252,8 +252,8 @@ init_timer :: (duration: f64) -> Timer {
 }
 
 init_playfield :: () {
-    for i in 0..<PLAYFIELD_HIDDEN_ROWS {
-        for j in 0..<PLAYFIELD_COLS {
+    for i in 0 ..< PLAYFIELD_HIDDEN_ROWS {
+        for j in 0 ..< PLAYFIELD_COLS {
             playfield[i][j] = Cell_State.Empty
         }
     }
