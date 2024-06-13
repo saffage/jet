@@ -123,7 +123,7 @@ func (p *Parser) parseSimpleExpr() ast.Node {
 	return p.parseBinaryExpr(nil, 1)
 }
 
-func (p *Parser) parseBinaryExpr(lhs ast.Node, precedence token.Precedence) ast.Node {
+func (p *Parser) parseBinaryExpr(lhs ast.Node, precedence int) ast.Node {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}

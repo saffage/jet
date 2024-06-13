@@ -14,8 +14,6 @@ type Token struct {
 	Start, End Pos
 }
 
-type Precedence int
-
 func (token Token) String() string {
 	switch token.Kind {
 	case Whitespace, NewLine:
@@ -41,7 +39,7 @@ func (token Token) String() string {
 	}
 }
 
-func (t Token) Precedence() Precedence {
+func (t Token) Precedence() int {
 	switch t.Kind {
 	case Asterisk, Slash, Percent:
 		return 10
