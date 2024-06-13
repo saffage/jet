@@ -51,34 +51,33 @@ func _() {
 	_ = x[At-40]
 	_ = x[Dollar-41]
 	_ = x[QuestionMark-42]
-	_ = x[QuestionMarkDot-43]
-	_ = x[Arrow-44]
-	_ = x[FatArrow-45]
-	_ = x[Shl-46]
-	_ = x[Shr-47]
-	_ = x[Dot-48]
-	_ = x[Dot2-49]
-	_ = x[Dot2Less-50]
-	_ = x[Ellipsis-51]
-	_ = x[KwAnd-52]
-	_ = x[KwOr-53]
-	_ = x[KwStruct-54]
-	_ = x[KwEnum-55]
-	_ = x[KwMut-56]
-	_ = x[KwIf-57]
-	_ = x[KwElse-58]
-	_ = x[KwWhile-59]
-	_ = x[KwFor-60]
-	_ = x[KwIn-61]
-	_ = x[KwAs-62]
-	_ = x[KwReturn-63]
-	_ = x[KwBreak-64]
-	_ = x[KwContinue-65]
+	_ = x[Arrow-43]
+	_ = x[FatArrow-44]
+	_ = x[Shl-45]
+	_ = x[Shr-46]
+	_ = x[Dot-47]
+	_ = x[Dot2-48]
+	_ = x[Dot2Less-49]
+	_ = x[Ellipsis-50]
+	_ = x[KwAnd-51]
+	_ = x[KwOr-52]
+	_ = x[KwStruct-53]
+	_ = x[KwEnum-54]
+	_ = x[KwMut-55]
+	_ = x[KwIf-56]
+	_ = x[KwElse-57]
+	_ = x[KwWhile-58]
+	_ = x[KwFor-59]
+	_ = x[KwIn-60]
+	_ = x[KwAs-61]
+	_ = x[KwReturn-62]
+	_ = x[KwBreak-63]
+	_ = x[KwContinue-64]
 }
 
-const _Kind_name = "IllegalEOFCommentWhitespaceTabNewLineIdentIntFloatStringLParenRParenLCurlyRCurlyLBracketRBracketCommaColonSemicolonEqEqOpBangNeOpLtOpLeOpGtOpGeOpPlusPlusEqMinusMinusEqAsteriskAsteriskEqSlashSlashEqPercentPercentEqAmpPipeCaretAtDollarQuestionMarkQuestionMarkDotArrowFatArrowShlShrDotDot2Dot2LessEllipsisKwAndKwOrKwStructKwEnumKwMutKwIfKwElseKwWhileKwForKwInKwAsKwReturnKwBreakKwContinue"
+const _Kind_name = "IllegalEOFCommentWhitespaceTabNewLineIdentIntFloatStringLParenRParenLCurlyRCurlyLBracketRBracketCommaColonSemicolonEqEqOpBangNeOpLtOpLeOpGtOpGeOpPlusPlusEqMinusMinusEqAsteriskAsteriskEqSlashSlashEqPercentPercentEqAmpPipeCaretAtDollarQuestionMarkArrowFatArrowShlShrDotDot2Dot2LessEllipsisKwAndKwOrKwStructKwEnumKwMutKwIfKwElseKwWhileKwForKwInKwAsKwReturnKwBreakKwContinue"
 
-var _Kind_index = [...]uint16{0, 7, 10, 17, 27, 30, 37, 42, 45, 50, 56, 62, 68, 74, 80, 88, 96, 101, 106, 115, 117, 121, 125, 129, 133, 137, 141, 145, 149, 155, 160, 167, 175, 185, 190, 197, 204, 213, 216, 220, 225, 227, 233, 245, 260, 265, 273, 276, 279, 282, 286, 294, 302, 307, 311, 319, 325, 330, 334, 340, 347, 352, 356, 360, 368, 375, 385}
+var _Kind_index = [...]uint16{0, 7, 10, 17, 27, 30, 37, 42, 45, 50, 56, 62, 68, 74, 80, 88, 96, 101, 106, 115, 117, 121, 125, 129, 133, 137, 141, 145, 149, 155, 160, 167, 175, 185, 190, 197, 204, 213, 216, 220, 225, 227, 233, 245, 250, 258, 261, 264, 267, 271, 279, 287, 292, 296, 304, 310, 315, 319, 325, 332, 337, 341, 345, 353, 360, 370}
 
 func (i Kind) String() string {
 	if i >= Kind(len(_Kind_index)-1) {

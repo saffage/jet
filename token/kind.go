@@ -59,21 +59,20 @@ const (
 
 	// End of position dependent tokens.
 
-	Amp             // operator '&'
-	Pipe            // operator '|'
-	Caret           // operator '^'
-	At              // operator '@'
-	Dollar          // operator '$'
-	QuestionMark    // operator '?'
-	QuestionMarkDot // operator '?.'
-	Arrow           // operator '->'
-	FatArrow        // operator '=>'
-	Shl             // operator '<<'
-	Shr             // operator '>>'
-	Dot             // operator '.'
-	Dot2            // operator '..'
-	Dot2Less        // operator '..<'
-	Ellipsis        // operator '...'
+	Amp          // operator '&'
+	Pipe         // operator '|'
+	Caret        // operator '^'
+	At           // operator '@'
+	Dollar       // operator '$'
+	QuestionMark // operator '?'
+	Arrow        // operator '->'
+	FatArrow     // operator '=>'
+	Shl          // operator '<<'
+	Shr          // operator '>>'
+	Dot          // operator '.'
+	Dot2         // operator '..'
+	Dot2Less     // operator '..<'
+	Ellipsis     // operator '...'
 
 	KwAnd      // keyword 'and'
 	KwOr       // keyword 'or'
@@ -186,60 +185,59 @@ func AllKinds() []Kind {
 }
 
 var representableKinds = map[Kind]string{
-	LParen:          "(",
-	RParen:          ")",
-	LCurly:          "{",
-	RCurly:          "}",
-	LBracket:        "[",
-	RBracket:        "]",
-	Dot:             ".",
-	Comma:           ",",
-	Colon:           ":",
-	Semicolon:       ";",
-	Eq:              "=",
-	Bang:            "!",
-	QuestionMark:    "?",
-	QuestionMarkDot: "?.",
-	EqOp:            "==",
-	NeOp:            "!=",
-	LtOp:            "<",
-	GtOp:            ">",
-	LeOp:            "<=",
-	GeOp:            ">=",
-	Arrow:           "->",
-	FatArrow:        "=>",
-	Shl:             "<<",
-	Shr:             ">>",
-	Plus:            "+",
-	Minus:           "-",
-	Asterisk:        "*",
-	Slash:           "/",
-	Percent:         "%",
-	Amp:             "&",
-	Pipe:            "|",
-	Caret:           "^",
-	At:              "@",
-	Dollar:          "$",
-	PlusEq:          "+=",
-	MinusEq:         "-=",
-	AsteriskEq:      "*=",
-	SlashEq:         "/=",
-	PercentEq:       "%=",
-	Dot2:            "..",
-	Dot2Less:        "..<",
-	Ellipsis:        "...",
-	KwAnd:           "and",
-	KwOr:            "or",
-	KwStruct:        "struct",
-	KwEnum:          "enum",
-	KwMut:           "mut",
-	KwIf:            "if",
-	KwElse:          "else",
-	KwWhile:         "while",
-	KwFor:           "for",
-	KwIn:            "in",
-	KwAs:            "as",
-	KwReturn:        "return",
-	KwBreak:         "break",
-	KwContinue:      "continue",
+	LParen:       "(",
+	RParen:       ")",
+	LCurly:       "{",
+	RCurly:       "}",
+	LBracket:     "[",
+	RBracket:     "]",
+	Dot:          ".",
+	Comma:        ",",
+	Colon:        ":",
+	Semicolon:    ";",
+	Eq:           "=",
+	Bang:         "!",
+	QuestionMark: "?",
+	EqOp:         "==",
+	NeOp:         "!=",
+	LtOp:         "<",
+	GtOp:         ">",
+	LeOp:         "<=",
+	GeOp:         ">=",
+	Arrow:        "->",
+	FatArrow:     "=>",
+	Shl:          "<<",
+	Shr:          ">>",
+	Plus:         "+",
+	Minus:        "-",
+	Asterisk:     "*",
+	Slash:        "/",
+	Percent:      "%",
+	Amp:          "&",
+	Pipe:         "|",
+	Caret:        "^",
+	At:           "@",
+	Dollar:       "$",
+	PlusEq:       "+=",
+	MinusEq:      "-=",
+	AsteriskEq:   "*=",
+	SlashEq:      "/=",
+	PercentEq:    "%=",
+	Dot2:         "..",
+	Dot2Less:     "..<",
+	Ellipsis:     "...",
+	KwAnd:        "and",
+	KwOr:         "or",
+	KwStruct:     "struct",
+	KwEnum:       "enum",
+	KwMut:        "mut",
+	KwIf:         "if",
+	KwElse:       "else",
+	KwWhile:      "while",
+	KwFor:        "for",
+	KwIn:         "in",
+	KwAs:         "as",
+	KwReturn:     "return",
+	KwBreak:      "break",
+	KwContinue:   "continue",
 }
