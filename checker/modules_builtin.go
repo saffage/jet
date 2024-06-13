@@ -54,10 +54,10 @@ var CheckBuiltInPkgs = sync.OnceFunc(func() {
 
 	for _, entry := range corePkgFiles {
 		switch entry.Name() {
-		case "builtin.jetx":
+		case "builtin.jet":
 			builtinModuleFilepath = filepath.Join(corePkgDir, entry.Name())
 
-		case "c.jetx":
+		case "c.jet":
 			cModuleFilepath = filepath.Join(corePkgDir, entry.Name())
 
 		default:

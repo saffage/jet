@@ -88,8 +88,8 @@ func readFile(path string) (name string, data []byte, err error) {
 
 	fileExt := filepath.Ext(path)
 
-	if fileExt != ".jet" && fileExt != ".jetx" {
-		err = fmt.Errorf("expected file extension '.jet' or '.jetx', got '%s'", fileExt)
+	if fileExt != ".jet" {
+		err = fmt.Errorf("expected file extension '.jet', got '%s'", fileExt)
 		return
 	}
 

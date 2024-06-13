@@ -1,5 +1,5 @@
 # Compilation for Windows utilizing MinGW64:
-#   $ jet c -run -lib "lib" -ldflags "-lraylib -lgdi32 -lwinmm" "./examples/tetris.jetx"
+#   $ jet c -run -lib "lib" -ldflags "-lraylib -lgdi32 -lwinmm" "./examples/tetris.jet"
 
 Color :: struct {
     r: u8
