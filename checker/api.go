@@ -74,7 +74,7 @@ func CheckFile(cfg *config.Config, fileID config.FileID) (*Module, error) {
 		return nil, err
 	}
 
-	stmts, err := parser.Parse(cfg, tokens, parserFlags)
+	stmts, err := parser.Parse(tokens, parserFlags)
 	if err != nil {
 		return nil, err
 	}
