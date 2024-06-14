@@ -1,77 +1,20 @@
 package jet
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 
-	"github.com/davecgh/go-spew/spew"
-	"github.com/fatih/color"
-	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/cgen"
 	"github.com/saffage/jet/checker"
 	"github.com/saffage/jet/config"
 	"github.com/saffage/jet/internal/report"
-	"github.com/saffage/jet/parser"
-	"github.com/saffage/jet/scanner"
+	"github.com/saffage/jet/token"
 )
-
-func CheckFile(cfg *config.Config, fileID config.FileID) {
-	scannerFlags := scanner.SkipWhitespace | scanner.SkipComments
-	parserFlags := parser.DefaultFlags
-
-	if config.FlagTraceParser {
-		parserFlags |= parser.Trace
-	}
-
-	fi := cfg.Files[fileID]
-	if fi.Buf == nil {
-		return
-	}
-
-	tokens, err := scanner.Scan(fi.Buf.Bytes(), fileID, scannerFlags)
-	if err != nil {
-		report.Errors(err)
-		return
-	}
-
-	spew.Dump(tokens)
-
-	stmts, err := parser.Parse(cfg, tokens, parserFlags)
-	if err != nil {
-		report.Errors(err)
-		return
-	}
-	if stmts == nil {
-		// Empty file, nothing to check.
-		return
-	}
-
-	printRecreatedAST(stmts)
-	fmt.Println("memory dump:")
-	spew.Dump(stmts)
-
-	if config.FlagParseAst {
-		printRecreatedAST(stmts)
-		return
-	}
-
-	_, err = checker.Check(cfg, fileID, stmts)
-	if err != nil {
-		report.Errors(err)
-		return
-	}
-}
-
-func printRecreatedAST(nodeList *ast.StmtList) {
-	fmt.Println("recreated AST:")
-
-	for i, node := range nodeList.Nodes {
-		if _, isEmpty := node.(*ast.Empty); i < len(nodeList.Nodes)-1 || !isEmpty {
-			fmt.Println(color.HiGreenString(node.Repr()))
-		}
-	}
-}
 
 func process(cfg *config.Config, fileID config.FileID) bool {
 	checker.CheckBuiltInPkgs()
@@ -121,4 +64,73 @@ func genCFile(m *checker.Module, dir string) bool {
 	}
 
 	return true
+}
+
+func readFile(path string) (name string, data []byte, err error) {
+	stat, err := os.Stat(path)
+	if err != nil {
+		return
+	}
+
+	if !stat.Mode().IsRegular() {
+		err = fmt.Errorf("'%s' is not a file", path)
+		return
+	}
+
+	fileExt := filepath.Ext(path)
+
+	if fileExt != ".jet" {
+		err = fmt.Errorf("expected file extension '.jet', got '%s'", fileExt)
+		return
+	}
+
+	name = filepath.Base(path[:len(path)-len(fileExt)])
+	if _, err = token.IsValidIdent(name); err != nil {
+		err = errors.Join(fmt.Errorf("invalid module name (file name must be a valid Jet identifier)"), err)
+		return
+	}
+
+	data, err = os.ReadFile(path)
+	if err != nil {
+		err = errors.Join(fmt.Errorf("while reading file '%s'", path), err)
+		return
+	}
+
+	return
+}
+
+func processFile(path string) {
+	name, data, err := readFile(path)
+	if err != nil {
+		report.Errors(err)
+	}
+
+	config.Global.Files[config.MainFileID] = config.FileInfo{
+		Name: name,
+		Path: path,
+		Buf:  bytes.NewBuffer(data),
+	}
+
+	report.Debugf("set file '%s' as main module", path)
+	process(config.Global, config.MainFileID)
+}
+
+func compileToC(cc, module, dir string) error {
+	file := filepath.Join(dir, ".jet", module+"__jet.c")
+	args := []string{"-o", module, file}
+
+	if len(config.CLDflags) > 0 {
+		args = append(args, strings.Split(config.CLDflags, " ")...)
+	}
+
+	cmd := exec.Command(cc, args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	report.TaggedHint("cc", cmd.String())
+
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+
+	return nil
 }
