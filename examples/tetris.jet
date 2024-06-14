@@ -76,14 +76,13 @@ alloc: (size: u64) -> pointer
 @[extern_c("free")]
 free: (p: pointer) -> ()
 
-
 @[extern_c("rand")]
-rand_int :: () -> int
+rand_int: () -> int
 
 @[extern_c]
-sprintf :: (stream: *char, @[const_c] format: *char, args: ...) -> int
+sprintf: (stream: *char, @[const_c] format: *char, args: ...) -> int
 
-CELL_SIZE             :: 40
+CELL_SIZE             :: 30
 PLAYFIELD_HIDDEN_ROWS :: 40
 PLAYFIELD_ROWS        :: 20
 PLAYFIELD_COLS        :: 10
@@ -447,12 +446,12 @@ handle_input :: (game: *Game) -> Action {
 handle_action :: (action: Action, game: *Game) {
     if game.*.state == Game_State.Paused {
         if action == Action.Restart {
-            *game = init_game()
+            game.* = init_game()
             game.*.state = Game_State.Playing
         }
     } else {
         current_coords := get_coords(game.*.current_tetramino)
-        request := *game.*.current_tetramino
+        request := game.*.current_tetramino.*
 
         if action == Action.Rotate {
             request.rotation = { request.rotation + 1 } % 4
@@ -512,7 +511,7 @@ render_tetromino_instance :: (instance: *Tetramino_Instance) -> bool {
 
 render_ghost_tetromino_instance :: (instance: *Tetramino_Instance) {
     if can_render_tetromino_instance(instance) {
-        ghost := *instance
+        ghost := instance.*
         ghost.tetramino.color.a = 120
         while can_render_tetromino_instance(&ghost) {
             ghost.y -= 1

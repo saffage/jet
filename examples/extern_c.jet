@@ -1,8 +1,12 @@
-@[extern_c] malloc: (size: u64) -> pointer
-@[extern_c] free: (p: pointer) -> ()
+@[extern_c]
+malloc: (size: u64) -> pointer
+
+@[extern_c]
+free: (p: pointer) -> ()
+
 
 main :: () {
-    x := malloc($size_of(int) as u64) as *int
+    x := malloc($size_of(int)) as *int
     $println(x as u64)
     free(x)
 }

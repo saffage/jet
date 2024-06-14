@@ -10,10 +10,11 @@ init_field :: () {
             field[row][col] = false
         }
     }
-    # # # #
-    # 0 1 0
-    # 0 0 1
-    # 1 1 1
+    # Pattern: 'glider'
+    #
+    # . 0 .
+    # . . 0
+    # 0 0 0
     field[0][1] = true
     field[1][2] = true
     field[2][0] = true
@@ -24,14 +25,11 @@ init_field :: () {
 show_field :: () {
     for row in 0 ..< HEIGHT {
         for col in 0 ..< WIDTH {
-            if field[row][col] {
-                $print("0")
-            } else {
-                $print(".")
-            }
+            $print(if field[row][col] { "0" } else { "." })
         }
         $print("\n")
     }
+    $print("\n")
 }
 
 count_neighbors :: (row0: int, col0: int) -> int {
@@ -58,10 +56,13 @@ next_field :: () {
     for row in 0 ..< HEIGHT {
         for col in 0 ..< WIDTH {
             neighbors := count_neighbors(row, col)
-            if field[row][col] {
-                hidden_field[row][col] = neighbors == 2 or neighbors == 3
-            } else {
-                hidden_field[row][col] = neighbors == 3
+            # NOTE current parser fails here
+            hidden_field[row][col] = {
+                if field[row][col] {
+                    neighbors == 2 or neighbors == 3
+                } else {
+                    neighbors == 3
+                }
             }
         }
     }
