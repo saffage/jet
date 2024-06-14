@@ -45,6 +45,7 @@ func (t *Func) Underlying() Type { return t }
 func (t *Func) String() string {
 	buf := strings.Builder{}
 	buf.WriteString(t.params.String())
+	buf.WriteString(" -> ")
 
 	if t.result != nil {
 		if t.result.Len() == 1 {
