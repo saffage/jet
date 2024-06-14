@@ -1,0 +1,77 @@
+(* Top-level *)
+grammar = decl_list ;
+
+stmt_sep  = ';' | '\n', {'\n'} ;
+stmt_list = stmt, {stmt_sep, stmt}, [stmt_sep] ;
+decl_list = decl, {stmt_sep, decl}, [stmt_sep] ;
+expr_list = expr, {',', expr}, [','] ;
+
+type = expr ;
+stmt = {'\n'}, (';' | decl | expr) ;
+decl = [attribute_list, {'\n'}], ['mut'], ident, ':', (type | [type], '=', expr) ;
+
+(* this is so weird *)
+short_decl      = [attribute_list, {'\n'}], ['mut'], ident, [':', (type | [type], '=', expr)] ;
+short_decl_list = short_decl, {stmt_sep, short_decl}, [stmt_sep] ;
+attribute_list  = '@', '[', [ident, {'.', ident}, paren_list], ']' ;
+
+expr           = function | struct | enum | return | break | continue | while | assign_expr ;
+assign_expr    = bool_or_expr, {assign_op, bool_or_expr} ;
+bool_or_expr   = bool_and_expr, {'or', bool_and_expr} ;
+bool_and_expr  = compare_expr, {'and', compare_expr} ;
+compare_expr   = bitwise_expr, {compare_op, bitwise_expr} ;
+bitwise_expr   = bit_shift_expr, {bitwise_op, bit_shift_expr} ;
+bit_shift_expr = addition_expr, {bit_shift_op, addition_expr} ;
+addition_expr  = multiply_expr, {addition_op, multiply_expr} ;
+multiply_expr  = primary_expr, {multiply_op, primary_expr} ;
+
+primary_expr        = {prefix_op}, operand, {primary_expr_suffix} | if;
+primary_expr_suffix = '.', ident | '.*' | bracket_list | paren_list ;
+
+assign_op    = '=' | '+=' | '-=' | '*=' | '/=' | '%=' | '&=' | '|=' | '<<=' | '>>=' ;
+compare_op   = '>=' | '>' | '<=' | '<' | '==' | '!=' ;
+bitwise_op   = '&' | '|', '^' ;
+bit_shift_op = '<<' | '>>' ;
+addition_op  = '+' | '-' ;
+multiply_op  = '*' | '/' | '%' ;
+prefix_op    = '!' | '-' | '*', ['mut'] | bracket_list ;
+
+paren_list   = '(', [expr_list], ')' ;
+bracket_list = '[', [expr_list], ']' ;
+block        = '{', [stmt_list], '}' ;
+
+function     = paren_list, (expr | '->', type, block) ;
+builtin_call = '$', ident, [paren_list] ;
+if           = 'if', expr, block, [else] ;
+else         = 'else', (if | block) ;
+while        = 'while', expr, block ;
+return       = 'return', [expr] ;
+break        = 'break' ;
+continue     = 'continue' ;
+struct       = 'struct', '{', [decl_list], '}' ;
+enum         = 'enum', '{', [short_decl_list], '}' ;
+
+operand = ident | literal | block | paren_list | builtin_call ;
+literal = int_literal | float_literal | string_literal ;
+
+ident             = ident_start_char, {ident_char} ;
+ident_start_char  = letter | '_' ;
+ident_char        = letter | digit | '_' ;
+letter            = 'a'..'z' | 'A'..'Z' ;
+digit             = '0'..'9' ;
+bin_digit         = '0'..'1' ;
+oct_digit         = '0'..'7' ;
+hex_digit         = '0'..'9' | 'a'..'f' | 'A'..'F' ;
+
+int_literal    = (bin_int | oct_int | hex_int | number), [number_suffix] ;
+float_literal  = number, '.', number, [exponent], [number_suffix] ;
+string_literal = [string_prefix], '"', string_char, '"' ;
+
+string_char   = ? any byte that is not `"`, or `"` prefixed with a `\` ? ;
+string_prefix = ident ;
+number        = '0' | '1'..'9', {['_'], digit} ;
+number_suffix = "'", ident ;
+exponent      = ('e' | 'E'), ['+' | '-'], number ;
+bin_int       = '0b', ['_'], bin_digit, {['_'], bin_digit} ;
+oct_int       = '0o', ['_'], oct_digit, {['_'], oct_digit} ;
+hex_int       = '0x', ['_'], hex_digit, {['_'], hex_digit} ;
