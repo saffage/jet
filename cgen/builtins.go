@@ -47,12 +47,13 @@ func (gen *generator) builtInPrint(call *ast.Call) string {
 		case types.KindUntypedString:
 			if value.Value != nil {
 				return fmt.Sprintf(
-					"fwrite(%[1]s, 1, sizeof(%[1]s), stdout)",
+					`fwrite(%s, 1, %d, stdout)`,
 					value.Value,
+					len(*constant.AsString(value.Value)),
 				)
 			} else {
 				return fmt.Sprintf(
-					"fwrite(%[1]s, 1, sizeof(%[1]s), stdout)",
+					`fwrite(%[1]s, 1, strlen(%[1]s), stdout)`,
 					gen.exprString(call.Args.Nodes[0]),
 				)
 			}
@@ -61,13 +62,18 @@ func (gen *generator) builtInPrint(call *ast.Call) string {
 			types.KindI16,
 			types.KindI32,
 			types.KindI64,
-			types.KindU8,
-			types.KindU16,
-			types.KindU32,
-			types.KindU64,
 			types.KindUntypedInt:
 			return fmt.Sprintf(
 				`fprintf(stdout, "%%d", %s)`,
+				gen.exprString(call.Args.Nodes[0]),
+			)
+
+		case types.KindU8,
+			types.KindU16,
+			types.KindU32,
+			types.KindU64:
+			return fmt.Sprintf(
+				`fprintf(stdout, "%%u", %s)`,
 				gen.exprString(call.Args.Nodes[0]),
 			)
 
@@ -109,13 +115,18 @@ func (gen *generator) builtInPrintln(call *ast.Call) string {
 			types.KindI16,
 			types.KindI32,
 			types.KindI64,
-			types.KindU8,
-			types.KindU16,
-			types.KindU32,
-			types.KindU64,
 			types.KindUntypedInt:
 			return fmt.Sprintf(
 				`fprintf(stdout, "%%d\n", %s)`,
+				gen.exprString(call.Args.Nodes[0]),
+			)
+
+		case types.KindU8,
+			types.KindU16,
+			types.KindU32,
+			types.KindU64:
+			return fmt.Sprintf(
+				`fprintf(stdout, "%%u\n", %s)`,
 				gen.exprString(call.Args.Nodes[0]),
 			)
 
