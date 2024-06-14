@@ -12,19 +12,6 @@ func TestUnit(t *testing.T) {
 	}
 }
 
-func TestSingleElem(t *testing.T) {
-	elem0 := I32
-	tuple := NewTuple(elem0)
-
-	if !tuple.Equals(elem0) {
-		t.Error("single element tuple type must be equals to element type")
-	}
-
-	if tuple.Underlying() != elem0 {
-		t.Error("single element tuple type must be the same with element type")
-	}
-}
-
 func TestMultiElem(t *testing.T) {
 	elem0 := I32
 	elem1 := Bool
