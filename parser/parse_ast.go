@@ -288,7 +288,7 @@ func (p *parser) parseUnaryExpr() ast.Node {
 			Y:     p.parseUnaryExpr(),
 			Start: asterisk.Start,
 			End:   asterisk.End,
-			Kind:  ast.OperatorStar,
+			Kind:  ast.OperatorPtr,
 		}
 
 	case token.Amp:
