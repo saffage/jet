@@ -11,28 +11,41 @@ func NewArray(size int, t Type) *Array {
 	if size < 0 {
 		panic(fmt.Sprintf("invalid array size (%d)", size))
 	}
+
 	return &Array{size, t}
 }
 
-func (t *Array) Equals(other Type) bool {
-	if t2 := AsPrimitive(other); t2 != nil {
-		return t2.kind == KindAny
+func (t *Array) Equals(expected Type) bool {
+	if expected := AsPrimitive(expected); expected != nil {
+		return expected.kind == KindAny
 	}
-	if t2 := AsArray(other); t2 != nil {
-		return t.size == t2.size && t.elem.Equals(t2.elem)
+
+	if expected := AsArray(expected); expected != nil {
+		return t.size == expected.size && t.elem.Equals(expected.elem)
 	}
+
 	return false
 }
 
-func (t *Array) Underlying() Type { return t }
+func (t *Array) Underlying() Type {
+	return t
+}
 
-func (t *Array) String() string { return fmt.Sprintf("[%d]%s", t.size, t.elem) }
+func (t *Array) String() string {
+	return fmt.Sprintf("[%d]%s", t.size, t.elem)
+}
 
-func (t *Array) Size() int { return t.size }
+func (t *Array) Size() int {
+	return t.size
+}
 
-func (t *Array) ElemType() Type { return t.elem }
+func (t *Array) ElemType() Type {
+	return t.elem
+}
 
-func IsArray(t Type) bool { return AsArray(t) != nil }
+func IsArray(t Type) bool {
+	return AsArray(t) != nil
+}
 
 func AsArray(t Type) *Array {
 	if t != nil {

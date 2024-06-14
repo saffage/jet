@@ -8,7 +8,6 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
-	_ = x[UnknownPrimitiveKind-0]
 	_ = x[KindUntypedBool-1]
 	_ = x[KindUntypedInt-2]
 	_ = x[KindUntypedFloat-3]
@@ -30,13 +29,14 @@ func _() {
 	_ = x[KindAnyTypeDesc-19]
 }
 
-const _PrimitiveKind_name = "UnknownPrimitiveKinduntyped booluntyped intuntyped floatuntyped stringbooli8i16i32i64u8u16u32u64f32f64charpointeranytypedesc"
+const _PrimitiveKind_name = "untyped booluntyped intuntyped floatuntyped stringbooli8i16i32i64u8u16u32u64f32f64charpointeranytypedesc"
 
-var _PrimitiveKind_index = [...]uint8{0, 20, 32, 43, 56, 70, 74, 76, 79, 82, 85, 87, 90, 93, 96, 99, 102, 106, 113, 116, 124}
+var _PrimitiveKind_index = [...]uint8{0, 12, 23, 36, 50, 54, 56, 59, 62, 65, 67, 70, 73, 76, 79, 82, 86, 93, 96, 104}
 
 func (i PrimitiveKind) String() string {
+	i -= 1
 	if i >= PrimitiveKind(len(_PrimitiveKind_index)-1) {
-		return "PrimitiveKind(" + strconv.FormatInt(int64(i), 10) + ")"
+		return "PrimitiveKind(" + strconv.FormatInt(int64(i+1), 10) + ")"
 	}
 	return _PrimitiveKind_name[_PrimitiveKind_index[i]:_PrimitiveKind_index[i+1]]
 }

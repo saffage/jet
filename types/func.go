@@ -3,74 +3,82 @@ package types
 import (
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/saffage/jet/constant"
 )
 
 type Func struct {
+	receiver *Named // For future use
 	params   *Tuple
 	result   *Tuple
 	variadic Type
 }
 
 func NewFunc(params, result *Tuple, variadic Type) *Func {
-	if params == nil {
-		params = Unit
+	if params == nil || result == nil {
+		panic("unreachable")
 	}
-	// if result == nil {
-	// 	result = Unit
-	// }
-	return &Func{
-		params:   params,
-		result:   result,
-		variadic: variadic,
-	}
+
+	return &Func{nil, params, result, variadic}
 }
 
-func (t *Func) Equals(other Type) bool {
-	if t2 := AsPrimitive(other); t2 != nil {
-		return t2.kind == KindAny
+func NewMethod(receiver *Named, params, result *Tuple, variadic Type) *Func {
+	if params == nil || result == nil || receiver == nil {
+		panic("unreachable")
 	}
-	if t2 := AsFunc(other); t2 != nil {
-		return (t.variadic != nil && t.variadic.Equals(t2.variadic) ||
-			t.variadic == nil && t2.variadic == nil) &&
-			t.result.Equals(t2.result) && t.params.Equals(t2.params)
+
+	return &Func{receiver, params, result, variadic}
+}
+
+func (t *Func) Equals(expected Type) bool {
+	if expected := AsPrimitive(expected); expected != nil {
+		return expected.kind == KindAny
 	}
+
+	if expected := AsFunc(expected); expected != nil {
+		return (t.variadic != nil && t.variadic.Equals(expected.variadic) ||
+			t.variadic == nil && expected.variadic == nil) &&
+			t.result.Equals(expected.result) && t.params.Equals(expected.params)
+	}
+
 	return false
 }
 
-func (t *Func) Underlying() Type { return t }
-
-func (t *Func) String() string {
-	buf := strings.Builder{}
-	buf.WriteString(t.params.String())
-	buf.WriteString(" -> ")
-
-	if t.result != nil {
-		if t.result.Len() == 1 {
-			buf.WriteString(t.result.types[0].String())
-		} else {
-			buf.WriteString(t.result.String())
-		}
-	} else {
-		buf.WriteString(Unit.String())
-	}
-
-	return buf.String()
+func (t *Func) Underlying() Type {
+	return t
 }
 
-func (t *Func) Result() *Tuple { return t.result }
+func (t *Func) String() string {
+	var result string
 
-func (t *Func) Params() *Tuple { return t.params }
+	if t.result.Len() == 1 {
+		result = t.result.types[0].String()
+	} else {
+		result = t.result.String()
+	}
 
-func (t *Func) Variadic() Type { return t.variadic }
+	return fmt.Sprintf("%s -> %s", t.params.String(), result)
+}
+
+func (t *Func) Result() *Tuple {
+	return t.result
+}
+
+func (t *Func) Params() *Tuple {
+	return t.params
+}
+
+func (t *Func) Variadic() Type {
+	return t.variadic
+}
 
 func (t *Func) CheckArgValues(args []constant.Value) (idx int, err error) {
 	tyArgs := &Tuple{types: make([]Type, len(args))}
+
 	for _, arg := range args {
 		tyArgs.types = append(tyArgs.types, FromConstant(arg))
 	}
+
 	return t.CheckArgs(tyArgs)
 }
 
@@ -122,7 +130,9 @@ func (t *Func) CheckArgs(args *Tuple) (idx int, err error) {
 	return -1, nil
 }
 
-func IsFunc(t Type) bool { return AsFunc(t) != nil }
+func IsFunc(t Type) bool {
+	return AsFunc(t) != nil
+}
 
 func AsFunc(t Type) *Func {
 	if t != nil {

@@ -2,6 +2,36 @@ package types
 
 import "github.com/saffage/jet/constant"
 
+var (
+	UntypedBool   = &Primitive{KindUntypedBool}
+	UntypedInt    = &Primitive{KindUntypedInt}
+	UntypedFloat  = &Primitive{KindUntypedFloat}
+	UntypedString = &Primitive{KindUntypedString}
+
+	Bool = &Primitive{KindBool}
+	I8   = &Primitive{KindI8}
+	I16  = &Primitive{KindI16}
+	I32  = &Primitive{KindI32}
+	I64  = &Primitive{KindI64}
+	U8   = &Primitive{KindU8}
+	U16  = &Primitive{KindU16}
+	U32  = &Primitive{KindU32}
+	U64  = &Primitive{KindU64}
+	F32  = &Primitive{KindF32}
+	F64  = &Primitive{KindF64}
+
+	Char    = &Primitive{KindChar}
+	Pointer = &Primitive{KindPointer}
+
+	Any         = &Primitive{KindAny}
+	AnyTypeDesc = &Primitive{KindAnyTypeDesc}
+
+	String = &Struct{fields: []StructField{
+		{"len", I32},
+		{"ptr", &Ref{base: U8}},
+	}}
+)
+
 type Primitive struct {
 	kind PrimitiveKind
 }
@@ -95,6 +125,9 @@ func (t *Primitive) IsImplicitlyConvertibleTo(target Type) bool {
 				return t.kind == KindChar ||
 					t.kind == KindU8
 
+			case KindPointer:
+				return t.kind == KindPointer
+
 			case KindAnyTypeDesc:
 				return false
 
@@ -102,7 +135,7 @@ func (t *Primitive) IsImplicitlyConvertibleTo(target Type) bool {
 				return true
 
 			default:
-				panic("unreachable")
+				panic("unreachable: " + target.kind.String())
 			}
 
 		case *Struct:
@@ -209,7 +242,7 @@ func FromConstant(value constant.Value) Type {
 type PrimitiveKind byte
 
 const (
-	UnknownPrimitiveKind PrimitiveKind = iota
+	_ PrimitiveKind = iota
 
 	KindUntypedBool   // untyped bool
 	KindUntypedInt    // untyped int
@@ -237,34 +270,4 @@ const (
 
 	KindAny         // any
 	KindAnyTypeDesc // typedesc
-)
-
-var (
-	UntypedBool   = &Primitive{KindUntypedBool}
-	UntypedInt    = &Primitive{KindUntypedInt}
-	UntypedFloat  = &Primitive{KindUntypedFloat}
-	UntypedString = &Primitive{KindUntypedString}
-
-	Bool = &Primitive{KindBool}
-	I8   = &Primitive{KindI8}
-	I16  = &Primitive{KindI16}
-	I32  = &Primitive{KindI32}
-	I64  = &Primitive{KindI64}
-	U8   = &Primitive{KindU8}
-	U16  = &Primitive{KindU16}
-	U32  = &Primitive{KindU32}
-	U64  = &Primitive{KindU64}
-	F32  = &Primitive{KindF32}
-	F64  = &Primitive{KindF64}
-
-	Char    = &Primitive{KindChar}
-	Pointer = &Primitive{KindPointer}
-
-	Any         = &Primitive{KindAny}
-	AnyTypeDesc = &Primitive{KindAnyTypeDesc}
-
-	String = &Struct{fields: []StructField{
-		{"len", I32},
-		{"ptr", &Ref{base: U8}},
-	}}
 )
