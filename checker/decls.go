@@ -1,6 +1,9 @@
 package checker
 
-import "github.com/saffage/jet/ast"
+import (
+	"github.com/saffage/jet/ast"
+	"github.com/saffage/jet/types"
+)
 
 func (check *Checker) resolveDecl(decl *ast.Decl) {
 	switch {
@@ -36,12 +39,13 @@ func (check *Checker) resolveDecl(decl *ast.Decl) {
 			default:
 				value := check.valueOf(expr)
 				if value == nil {
-					check.errorf(expr, "value is not a constant expression")
-					return
-				}
-
-				if value.Value == nil {
-					// Its a typedesc
+					if ty := check.typeOf(expr); ty != nil &&
+						(types.IsTypeDesc(ty) || ty.Equals(types.Unit)) {
+						check.resolveTypeAliasDecl(decl)
+					} else {
+						check.errorf(expr, "value is not a constant expression")
+					}
+				} else if value.Value == nil {
 					check.resolveTypeAliasDecl(decl)
 				} else {
 					check.resolveConstDecl(decl)
