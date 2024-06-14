@@ -44,17 +44,16 @@ func (t *Func) Underlying() Type { return t }
 
 func (t *Func) String() string {
 	buf := strings.Builder{}
-	buf.WriteString("func")
 	buf.WriteString(t.params.String())
 
-	if !t.result.Equals(Unit) {
+	if t.result != nil {
 		if t.result.Len() == 1 {
-			buf.WriteByte(' ')
 			buf.WriteString(t.result.types[0].String())
 		} else {
-			buf.WriteByte(' ')
 			buf.WriteString(t.result.String())
 		}
+	} else {
+		buf.WriteString(Unit.String())
 	}
 
 	return buf.String()
