@@ -36,10 +36,10 @@ func (sym *Func) Variadic() types.Type { return sym.ty.Variadic() }
 
 func (check *Checker) resolveFuncDecl(decl *ast.Decl, value *ast.Function) {
 	var (
-		isDefined     = false
-		local         = NewScope(check.scope, "func "+decl.Ident.Name)
-		ty, params, _ = check.resolveFuncParams(value.Signature, local)
-		sym           = NewFunc(check.scope, local, ty, decl)
+		isDefined                = false
+		local                    = NewScope(check.scope, "func "+decl.Ident.Name)
+		ty, params, hasResult, _ = check.resolveFuncSignature(value.Signature, local)
+		sym                      = NewFunc(check.scope, local, ty, decl)
 	)
 	sym.params = params
 	sym.body = value.Body
@@ -53,11 +53,12 @@ func (check *Checker) resolveFuncDecl(decl *ast.Decl, value *ast.Function) {
 		}
 	}
 
-	sym.ty = check.resolveFuncBody(decl, value.Body, ty, local)
+	sym.ty = check.resolveFuncBody(decl, value.Body, ty, local, hasResult)
 	if sym.ty == nil {
-		sym.ty = types.NewFunc(ty.Params(), types.Unit, ty.Variadic())
+		// TODO error message?
+		sym.ty = ty
+		report.TaggedDebugf("checker", "func: set type: %s", sym.ty)
 	}
-	report.TaggedDebugf("checker", "func: set type: %s", sym.ty)
 
 	assert(sym.ty != nil)
 	assert(sym.ty.Result() != nil)
@@ -73,14 +74,14 @@ func (check *Checker) resolveFuncDecl(decl *ast.Decl, value *ast.Function) {
 	check.newDef(decl.Ident, sym)
 }
 
-func (check *Checker) resolveFuncParams(
+func (check *Checker) resolveFuncSignature(
 	sig *ast.Signature,
 	scope *Scope,
-) (ty *types.Func, params []*Var, wasError bool) {
+) (ty *types.Func, params []*Var, hasResult, wasError bool) {
 	params = make([]*Var, 0, len(sig.Params.Nodes))
 
 	tyParams := make([]types.Type, 0, len(sig.Params.Nodes))
-	tyResult := (*types.Tuple)(nil)
+	tyResult := types.Unit
 	variadic := types.Type(nil)
 
 	for i, node := range sig.Params.Nodes {
@@ -153,12 +154,11 @@ func (check *Checker) resolveFuncParams(
 
 	if sig.Result != nil {
 		if tyResultActual := check.typeOf(sig.Result); tyResultActual != nil {
-			tyResult = types.AsTuple(tyResultActual)
-
-			if tyResult == nil {
-				assert(!types.IsUntyped(tyResultActual))
-				tyResult = types.NewTuple(types.SkipTypeDesc(tyResultActual))
-			}
+			assert(!types.IsUntyped(types.SkipTypeDesc(tyResultActual)))
+			tyResult = types.WrapInTuple(types.SkipTypeDesc(tyResultActual))
+			hasResult = true
+		} else {
+			wasError = true
 		}
 	}
 
@@ -171,10 +171,11 @@ func (check *Checker) resolveFuncBody(
 	body ast.Node,
 	tyFunc *types.Func,
 	scope *Scope,
+	hasResult bool,
 ) *types.Func {
 	if body == nil {
-		if tyFunc.Result() == nil {
-			return types.NewFunc(tyFunc.Params(), types.Unit, tyFunc.Variadic())
+		if !hasResult {
+			check.errorf(decl.Ident, "cannot infer a type of the function result")
 		}
 		return nil
 	}

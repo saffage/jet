@@ -5,23 +5,22 @@ import (
 	"strings"
 )
 
+var Unit = &Tuple{}
+
 type Tuple struct {
 	types []Type
 }
-
-var Unit = NewTuple()
 
 func NewTuple(types ...Type) *Tuple {
 	return &Tuple{types}
 }
 
 // 2 tuples have the same type only when all their elements have equal types.
-//
-// NOTE: name of the elements are not required to be the same.
 func (t *Tuple) Equals(other Type) bool {
 	if t2 := AsPrimitive(other); t2 != nil && t2.kind == KindAny {
 		return true
 	}
+
 	if t2 := AsTuple(other); t2 != nil {
 		return slices.EqualFunc(
 			t.types,
@@ -29,20 +28,11 @@ func (t *Tuple) Equals(other Type) bool {
 			func(a, b Type) bool { return a.Equals(b) },
 		)
 	}
-	if underlying := t.Underlying(); underlying != t {
-		// The tuple has 1 element and can be equals to the element type.
-		return underlying.Equals(other.Underlying())
-	}
+
 	return false
 }
 
-// Unnamed tuple with 1 element is equals to the type of this element.
-// Otherwise a tuple have the unique type.
 func (t *Tuple) Underlying() Type {
-	if len(t.types) == 1 {
-		return t.types[0].Underlying()
-	}
-
 	return t
 }
 
@@ -62,19 +52,20 @@ func (t *Tuple) String() string {
 	return buf.String()
 }
 
-func (t *Tuple) Types() []Type { return t.types }
+func (t *Tuple) Types() []Type {
+	return t.types
+}
 
-func (t *Tuple) Len() int { return len(t.types) }
+func (t *Tuple) Len() int {
+	return len(t.types)
+}
 
-func IsTuple(t Type) bool { return AsTuple(t) != nil }
+func IsTuple(t Type) bool {
+	return AsTuple(t) != nil
+}
 
 func AsTuple(t Type) *Tuple {
 	if t != nil {
-		// Tuple with 1 element.
-		if tuple, _ := t.(*Tuple); tuple != nil {
-			return tuple
-		}
-
 		if tuple, _ := t.Underlying().(*Tuple); tuple != nil {
 			return tuple
 		}

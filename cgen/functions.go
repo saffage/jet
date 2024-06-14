@@ -53,7 +53,7 @@ func (gen *generator) fnDecl(sym *checker.Func) (decl string, tyResult types.Typ
 		}
 		tyResult = ty.Underlying()
 	} else {
-		gen.errorf(sym, "tuple are not supported")
+		gen.errorf(sym, "tuples are not supported")
 		buf.WriteString("ERROR_CGEN__FUNC_TUPLE_RESULT")
 	}
 
@@ -69,7 +69,7 @@ func (gen *generator) fnDecl(sym *checker.Func) (decl string, tyResult types.Typ
 
 	// Gen params.
 	if len(sym.Params()) == 0 {
-		if array := types.AsArray(tyResult); array != nil {
+		if isArrayResult {
 			buf.WriteString(fmt.Sprintf(
 				"%s result",
 				gen.TypeString(tyResult),

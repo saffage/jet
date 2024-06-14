@@ -19,7 +19,7 @@ func (check *Checker) typeOfInternal(expr ast.Node) types.Type {
 		panic("got nil node for expr")
 
 	case *ast.Decl:
-		panic("unhandled declaration")
+		panic("unhandled declaration at " + expr.Pos().String())
 
 	case *ast.BadNode,
 		*ast.Comment,
@@ -168,7 +168,11 @@ func (check *Checker) typeOfCall(node *ast.Call) types.Type {
 			return nil
 		}
 
-		return fn.Result().Underlying()
+		if fn.Result().Len() == 1 {
+			return fn.Result().Types()[0]
+		}
+
+		return fn.Result()
 	} else if tyStruct := types.AsStruct(types.SkipTypeDesc(tyOperand)); tyStruct != nil {
 		check.structInit(node.Args, tyStruct)
 		return tyStruct
@@ -265,7 +269,7 @@ func (check *Checker) typeOfArrayType(node *ast.ArrayType) types.Type {
 	}
 
 	if !types.IsTypeDesc(elemType) {
-		check.errorf(node.X, "expected type, got (%s)", elemType)
+		check.errorf(node.X, "expected type, got '%s'", elemType)
 		return nil
 	}
 
@@ -275,29 +279,38 @@ func (check *Checker) typeOfArrayType(node *ast.ArrayType) types.Type {
 }
 
 func (check *Checker) typeOfSignature(node *ast.Signature) types.Type {
-	tParams := check.typeOfParenList(node.Params)
-	if tParams == nil {
+	tyParams := check.typeOfParenList(node.Params)
+	if tyParams == nil {
 		return nil
 	}
 
-	tResult := types.Unit
+	tyResult := types.Unit
 
 	if node.Result != nil {
-		tActualResult := check.typeOf(node.Result)
-		if tActualResult == nil {
+		tyResultActual := check.typeOf(node.Result)
+		if tyResultActual == nil {
 			return nil
 		}
 
-		if !types.IsTypeDesc(tActualResult) {
-			check.errorf(node.Result, "expected type, got (%s) instead", tActualResult)
+		if !types.IsTypeDesc(tyResultActual) &&
+			!tyResultActual.Equals(types.Unit) {
+			check.errorf(
+				node.Result,
+				"expected type, got value of type '%s' instead",
+				tyResultActual,
+			)
 			return nil
 		}
 
-		tResult = types.WrapInTuple(types.SkipTypeDesc(tActualResult))
+		tyResult = types.WrapInTuple(types.SkipTypeDesc(tyResultActual))
 	}
 
-	t := types.NewFunc(tParams.(*types.Tuple), tResult, nil)
-	return types.NewTypeDesc(t)
+	ty := types.NewFunc(
+		types.AsTuple(types.SkipTypeDesc(tyParams)),
+		tyResult,
+		nil,
+	)
+	return types.NewTypeDesc(ty)
 }
 
 func (check *Checker) typeOfFunction(node *ast.Function) types.Type {
@@ -419,59 +432,53 @@ func (check *Checker) typeOfBracketList(node *ast.BracketList) types.Type {
 	return types.NewArray(size, tyElem)
 }
 
-// The result is always [*types.Tuple] or its typedesc.
+// The result is always [*types.Tuple].
 func (check *Checker) typeOfParenList(node *ast.ParenList) types.Type {
 	if len(node.Nodes) == 0 {
 		return types.Unit
 	}
 
-	elemTypes := []types.Type{}
-	// isTypeDescTuple := false
-
-	t := check.typeOf(node.Nodes[0])
-	if t == nil {
+	ty := check.typeOf(node.Nodes[0])
+	if ty == nil {
 		return nil
 	}
 
-	// if types.IsTypeDesc(t) {
-	// 	isTypeDescTuple = true
-	// 	elemTypes = append(elemTypes, types.SkipTypeDesc(t))
-	// } else {
-	// 	elemTypes = append(elemTypes, t)
-	// }
+	var (
+		tyElems    = make([]types.Type, 0, len(node.Nodes))
+		isTypeDesc = types.IsTypeDesc(ty)
+		wasError   = false
+	)
 
-	elemTypes = append(elemTypes, t)
+	tyElems = append(tyElems, ty)
 
 	for _, expr := range node.Nodes[1:] {
-		t := check.typeOf(expr)
-		if t == nil {
-			return nil
+		if ty = check.typeOf(expr); ty == nil {
+			wasError = true
+			continue
 		}
 
-		// if isTypeDescTuple {
-		// 	if !types.IsTypeDesc(t) {
-		// 		check.errorf(expr, "expected type, got (%s) instead", t)
-		// 		return nil
-		// 	}
+		if isTypeDesc {
+			if !types.IsTypeDesc(ty) {
+				wasError = true
+				check.errorf(expr, "expected type, got value of type '%s' instead", ty)
+				continue
+			}
+		} else {
+			if types.IsTypeDesc(ty) {
+				wasError = true
+				check.errorf(expr, "expected expression, got type '%s' instead", ty)
+				continue
+			}
+		}
 
-		// 	elemTypes = append(elemTypes, types.SkipTypeDesc(t))
-		// } else {
-		// 	if types.IsTypeDesc(t) {
-		// 		check.errorf(expr, "expected expression, got type '%s' instead", t)
-		// 		return nil
-		// 	}
-
-		// 	elemTypes = append(elemTypes, t)
-		// }
-
-		elemTypes = append(elemTypes, t)
+		tyElems = append(tyElems, ty)
 	}
 
-	// if isTypeDescTuple {
-	// 	return types.NewTypeDesc(types.NewTuple(elemTypes...))
-	// }
+	if wasError {
+		return nil
+	}
 
-	return types.NewTuple(elemTypes...)
+	return types.NewTuple(tyElems...)
 }
 
 func (check *Checker) typeOfCurlyList(node *ast.CurlyList) types.Type {

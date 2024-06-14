@@ -150,7 +150,7 @@ func (gen *generator) exprString(expr ast.Node) string {
 				}
 				buf.WriteString(gen.exprString(arg))
 			}
-			if types.IsArray(fn.Result()) {
+			if fn.Result().Len() == 1 && types.IsArray(fn.Result().Types()[0]) {
 				if len(node.Args.Nodes) > 0 {
 					buf.WriteString(", ")
 				}
