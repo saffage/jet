@@ -12,7 +12,7 @@ type restoreData struct {
 	errors     []error
 }
 
-func (p *Parser) next() {
+func (p *parser) next() {
 	if p.current >= len(p.tokens) {
 		panic("EOF token was skipped or missing in the token stream")
 	}
@@ -53,11 +53,11 @@ func (p *Parser) next() {
 	}
 }
 
-func (p *Parser) match(tokens ...token.Kind) bool {
+func (p *parser) match(tokens ...token.Kind) bool {
 	return slices.Contains(tokens, p.tok.Kind)
 }
 
-func (p *Parser) matchSequence(tokens ...token.Kind) bool {
+func (p *parser) matchSequence(tokens ...token.Kind) bool {
 	if len(tokens)+p.current-1 >= len(p.tokens) {
 		return false
 	}
@@ -70,7 +70,7 @@ func (p *Parser) matchSequence(tokens ...token.Kind) bool {
 }
 
 // Cunsumes a specified token or returns nil without emitting error.
-func (p *Parser) consume(kinds ...token.Kind) *token.Token {
+func (p *parser) consume(kinds ...token.Kind) *token.Token {
 	if len(kinds) == 0 || p.match(kinds...) {
 		tok := p.tok
 		p.next()
@@ -81,7 +81,7 @@ func (p *Parser) consume(kinds ...token.Kind) *token.Token {
 }
 
 // Cunsumes a specified token or returns nil and emits error.
-func (p *Parser) expect(kinds ...token.Kind) *token.Token {
+func (p *parser) expect(kinds ...token.Kind) *token.Token {
 	if tok := p.consume(kinds...); tok != nil {
 		return tok
 	}
@@ -91,7 +91,7 @@ func (p *Parser) expect(kinds ...token.Kind) *token.Token {
 }
 
 // TODO rename it.
-func (p *Parser) save() (index int) {
+func (p *parser) save() (index int) {
 	index = len(p.restoreData)
 	p.restoreData = append(p.restoreData, restoreData{
 		tokenIndex: p.current,
@@ -100,7 +100,7 @@ func (p *Parser) save() (index int) {
 	return
 }
 
-func (p *Parser) restore(index int) {
+func (p *parser) restore(index int) {
 	if index >= len(p.restoreData) {
 		panic(fmt.Sprintf("invalid restore index: %d (length is %d)", index, len(p.restoreData)))
 	}

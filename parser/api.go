@@ -4,12 +4,26 @@ import (
 	"errors"
 
 	"github.com/saffage/jet/ast"
-	"github.com/saffage/jet/config"
 	"github.com/saffage/jet/token"
 )
 
-type Parser struct {
-	cfg     *config.Config
+func Parse(tokens []token.Token, flags Flags) (*ast.StmtList, error) {
+	return New(tokens, flags).Parse()
+}
+
+func MustParse(tokens []token.Token, flags Flags) *ast.StmtList {
+	return New(tokens, flags).MustParse()
+}
+
+func ParseExpr(tokens []token.Token, flags Flags) (ast.Node, error) {
+	return New(tokens, flags).ParseExpr()
+}
+
+func MustParseExpr(tokens []token.Token, flags Flags) ast.Node {
+	return New(tokens, flags).MustParseExpr()
+}
+
+type parser struct {
 	errors  []error
 	tokens  []token.Token
 	current int // index of the current token in `tokens` stream
@@ -25,53 +39,51 @@ type Parser struct {
 	restoreData []restoreData
 }
 
-type Flags int
-
-const (
-	DefaultFlags Flags = SkipWhitespace | SkipIllegal
-	NoFlags      Flags = 0
-	Trace        Flags = 1 << iota
-	SkipWhitespace
-	SkipIllegal
-)
-
-func New(cfg *config.Config, tokens []token.Token, flags Flags) *Parser {
+func New(tokens []token.Token, flags Flags) *parser {
 	if len(tokens) < 1 {
 		panic("expected at least 1 token (EOF)")
 	}
 
-	return &Parser{
-		cfg:    cfg,
+	return &parser{
 		tokens: tokens,
 		flags:  flags,
 		tok:    tokens[0],
 	}
 }
 
-func Parse(cfg *config.Config, tokens []token.Token, flags Flags) (*ast.StmtList, error) {
-	p := New(cfg, tokens, flags)
-	stmts := p.parseDeclList()
-	return stmts, errors.Join(p.errors...)
+func (p *parser) Parse() (*ast.StmtList, error) {
+	decls := p.parseDeclList()
+	return decls, errors.Join(p.errors...)
 }
 
-func MustParse(cfg *config.Config, tokens []token.Token, flags Flags) *ast.StmtList {
-	stmts, err := Parse(cfg, tokens, flags)
+func (p *parser) ParseExpr() (ast.Node, error) {
+	expr := p.parseExpr()
+	return expr, errors.Join(p.errors...)
+}
+
+func (p *parser) MustParse() *ast.StmtList {
+	decls, err := p.Parse()
 	if err != nil {
 		panic(err)
 	}
-	return stmts
+	return decls
 }
 
-func ParseExpr(cfg *config.Config, tokens []token.Token, flags Flags) (ast.Node, error) {
-	p := New(cfg, tokens, flags)
-	node := p.parseExpr()
-	return node, errors.Join(p.errors...)
-}
-
-func MustParseExpr(cfg *config.Config, tokens []token.Token, flags Flags) ast.Node {
-	expr, err := ParseExpr(cfg, tokens, flags)
+func (p *parser) MustParseExpr() ast.Node {
+	expr, err := p.ParseExpr()
 	if err != nil {
 		panic(err)
 	}
 	return expr
 }
+
+type Flags int
+
+const (
+	Trace Flags = 1 << iota
+	SkipWhitespace
+	SkipIllegal
+
+	NoFlags      = Flags(0)
+	DefaultFlags = SkipWhitespace | SkipIllegal
+)

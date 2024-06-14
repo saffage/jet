@@ -76,7 +76,7 @@ func (e Error) Report() {
 	}
 }
 
-func (p *Parser) lastErrorIs(err error) bool {
+func (p *parser) lastErrorIs(err error) bool {
 	if len(p.errors) > 0 {
 		return errors.Is(p.errors[len(p.errors)-1], err)
 	}
@@ -84,7 +84,7 @@ func (p *Parser) lastErrorIs(err error) bool {
 	return false
 }
 
-func (p *Parser) appendError(err error) {
+func (p *parser) appendError(err error) {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
@@ -92,19 +92,19 @@ func (p *Parser) appendError(err error) {
 	p.errors = append(p.errors, err)
 }
 
-func (p *Parser) error(err error) {
+func (p *parser) error(err error) {
 	p.errorAt(err, p.tok.Start, p.tok.End)
 }
 
-func (p *Parser) errorf(err error, format string, args ...any) {
+func (p *parser) errorf(err error, format string, args ...any) {
 	p.errorfAt(err, p.tok.Start, p.tok.End, format, args...)
 }
 
-func (p *Parser) errorExpectedToken(tokens ...token.Kind) {
+func (p *parser) errorExpectedToken(tokens ...token.Kind) {
 	p.errorExpectedTokenAt(p.tok.Start, p.tok.End, tokens...)
 }
 
-func (p *Parser) errorAt(err error, start, end token.Pos) {
+func (p *parser) errorAt(err error, start, end token.Pos) {
 	p.appendError(Error{
 		err:   err,
 		Start: start,
@@ -112,7 +112,7 @@ func (p *Parser) errorAt(err error, start, end token.Pos) {
 	})
 }
 
-func (p *Parser) errorfAt(err error, start, end token.Pos, format string, args ...any) {
+func (p *parser) errorfAt(err error, start, end token.Pos, format string, args ...any) {
 	p.appendError(Error{
 		err:     err,
 		Start:   start,
@@ -121,7 +121,7 @@ func (p *Parser) errorfAt(err error, start, end token.Pos, format string, args .
 	})
 }
 
-func (p *Parser) errorExpectedTokenAt(start, end token.Pos, tokens ...token.Kind) {
+func (p *parser) errorExpectedTokenAt(start, end token.Pos, tokens ...token.Kind) {
 	if len(tokens) < 1 {
 		panic("required at least 1 token")
 	}
@@ -140,7 +140,7 @@ func (p *Parser) errorExpectedTokenAt(start, end token.Pos, tokens ...token.Kind
 	})
 }
 
-func (p *Parser) skip(to ...token.Kind) (start, end token.Pos) {
+func (p *parser) skip(to ...token.Kind) (start, end token.Pos) {
 	if len(to) == 0 {
 		to = endOfExprKinds
 	}

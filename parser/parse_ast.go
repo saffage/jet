@@ -7,13 +7,13 @@ import (
 	"github.com/saffage/jet/token"
 )
 
-type ParseFunc func() ast.Node
+type parseFunc func() ast.Node
 
 //------------------------------------------------
 // Primitives
 //------------------------------------------------
 
-func (p *Parser) parseIdent() ast.Node {
+func (p *parser) parseIdent() ast.Node {
 	if node := p.parseIdentNode(); node != nil {
 		return node
 	}
@@ -22,7 +22,7 @@ func (p *Parser) parseIdent() ast.Node {
 	return nil
 }
 
-func (p *Parser) parseLiteral() ast.Node {
+func (p *parser) parseLiteral() ast.Node {
 	if node := p.parseLiteralNode(); node != nil {
 		return node
 	}
@@ -35,7 +35,7 @@ func (p *Parser) parseLiteral() ast.Node {
 // Statements
 //------------------------------------------------
 
-func (p *Parser) declOr(f ParseFunc) ParseFunc {
+func (p *parser) declOr(f parseFunc) parseFunc {
 	first := true
 	isDecl := false
 
@@ -69,7 +69,7 @@ func (p *Parser) declOr(f ParseFunc) ParseFunc {
 	}
 }
 
-func (p *Parser) parseStmt() ast.Node {
+func (p *parser) parseStmt() ast.Node {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
@@ -89,7 +89,7 @@ func (p *Parser) parseStmt() ast.Node {
 // Expressions
 //------------------------------------------------
 
-func (p *Parser) parseExpr() ast.Node {
+func (p *parser) parseExpr() ast.Node {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
@@ -115,7 +115,7 @@ func (p *Parser) parseExpr() ast.Node {
 	}
 }
 
-func (p *Parser) parseSimpleExpr() ast.Node {
+func (p *parser) parseSimpleExpr() ast.Node {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
@@ -123,7 +123,7 @@ func (p *Parser) parseSimpleExpr() ast.Node {
 	return p.parseBinaryExpr(nil, 1)
 }
 
-func (p *Parser) parseBinaryExpr(lhs ast.Node, precedence int) ast.Node {
+func (p *parser) parseBinaryExpr(lhs ast.Node, precedence int) ast.Node {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
@@ -252,7 +252,7 @@ func (p *Parser) parseBinaryExpr(lhs ast.Node, precedence int) ast.Node {
 	return lhs
 }
 
-func (p *Parser) parseUnaryExpr() ast.Node {
+func (p *parser) parseUnaryExpr() ast.Node {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
@@ -318,7 +318,7 @@ func (p *Parser) parseUnaryExpr() ast.Node {
 	}
 }
 
-func (p *Parser) parsePrimaryExpr(x ast.Node) ast.Node {
+func (p *parser) parsePrimaryExpr(x ast.Node) ast.Node {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
@@ -334,7 +334,7 @@ func (p *Parser) parsePrimaryExpr(x ast.Node) ast.Node {
 	return p.parseSuffixExpr(x)
 }
 
-func (p *Parser) parseSuffixExpr(x ast.Node) ast.Node {
+func (p *parser) parseSuffixExpr(x ast.Node) ast.Node {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
@@ -409,7 +409,7 @@ func (p *Parser) parseSuffixExpr(x ast.Node) ast.Node {
 	}
 }
 
-func (p *Parser) parseOperand() ast.Node {
+func (p *parser) parseOperand() ast.Node {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
@@ -458,7 +458,7 @@ func (p *Parser) parseOperand() ast.Node {
 // Complex expressions
 //------------------------------------------------
 
-func (p *Parser) parseFunction(params *ast.ParenList) ast.Node {
+func (p *parser) parseFunction(params *ast.ParenList) ast.Node {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
@@ -497,7 +497,7 @@ func (p *Parser) parseFunction(params *ast.ParenList) ast.Node {
 	}
 }
 
-func (p *Parser) parseDot(x ast.Node) ast.Node {
+func (p *parser) parseDot(x ast.Node) ast.Node {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
@@ -532,7 +532,7 @@ func (p *Parser) parseDot(x ast.Node) ast.Node {
 	}
 }
 
-func (p *Parser) parseBuiltIn() ast.Node {
+func (p *parser) parseBuiltIn() ast.Node {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
@@ -558,7 +558,7 @@ func (p *Parser) parseBuiltIn() ast.Node {
 // Declarations
 //------------------------------------------------
 
-func (p *Parser) parseDecl() ast.Node {
+func (p *parser) parseDecl() ast.Node {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
@@ -596,7 +596,7 @@ func (p *Parser) parseDecl() ast.Node {
 	return nil
 }
 
-func (p *Parser) parseDeclNode(mut token.Pos, name *ast.Ident) *ast.Decl {
+func (p *parser) parseDeclNode(mut token.Pos, name *ast.Ident) *ast.Decl {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
@@ -643,7 +643,7 @@ func (p *Parser) parseDeclNode(mut token.Pos, name *ast.Ident) *ast.Decl {
 // IDK
 //------------------------------------------------
 
-func (p *Parser) parseAttributeListNode() *ast.AttributeList {
+func (p *parser) parseAttributeListNode() *ast.AttributeList {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
@@ -662,7 +662,7 @@ func (p *Parser) parseAttributeListNode() *ast.AttributeList {
 	return nil
 }
 
-func (p *Parser) parseType() ast.Node {
+func (p *parser) parseType() ast.Node {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
@@ -701,7 +701,7 @@ func (p *Parser) parseType() ast.Node {
 			Y:     p.parseType(),
 			Start: star.Start,
 			End:   star.End,
-			Kind:  ast.OperatorStar,
+			Kind:  ast.OperatorPtr,
 		}
 
 	case token.LBracket:
@@ -739,7 +739,7 @@ func (p *Parser) parseType() ast.Node {
 	return nil
 }
 
-func (p *Parser) parseStructType() ast.Node {
+func (p *parser) parseStructType() ast.Node {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
@@ -769,7 +769,7 @@ func (p *Parser) parseStructType() ast.Node {
 	}
 }
 
-func (p *Parser) parseEnumType() ast.Node {
+func (p *parser) parseEnumType() ast.Node {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
@@ -799,7 +799,7 @@ func (p *Parser) parseEnumType() ast.Node {
 	}
 }
 
-func (p *Parser) parseElse() ast.Node {
+func (p *parser) parseElse() ast.Node {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
@@ -826,7 +826,7 @@ func (p *Parser) parseElse() ast.Node {
 	return (*ast.Else)(nil)
 }
 
-func (p *Parser) parseIf() ast.Node {
+func (p *parser) parseIf() ast.Node {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
@@ -865,7 +865,7 @@ func (p *Parser) parseIf() ast.Node {
 	}
 }
 
-func (p *Parser) parseWhile() ast.Node {
+func (p *parser) parseWhile() ast.Node {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
@@ -892,7 +892,7 @@ func (p *Parser) parseWhile() ast.Node {
 	}
 }
 
-func (p *Parser) parseFor() ast.Node {
+func (p *parser) parseFor() ast.Node {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
@@ -929,7 +929,7 @@ func (p *Parser) parseFor() ast.Node {
 	}
 }
 
-func (p *Parser) parseForLoopDeclList() *ast.List {
+func (p *parser) parseForLoopDeclList() *ast.List {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
@@ -950,7 +950,7 @@ func (p *Parser) parseForLoopDeclList() *ast.List {
 	return &ast.List{Nodes: decls}
 }
 
-func (p *Parser) parseForLoopDecl() ast.Node {
+func (p *parser) parseForLoopDecl() ast.Node {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
@@ -998,7 +998,7 @@ func (p *Parser) parseForLoopDecl() ast.Node {
 	}
 }
 
-func (p *Parser) parseReturn() ast.Node {
+func (p *parser) parseReturn() ast.Node {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
@@ -1012,7 +1012,7 @@ func (p *Parser) parseReturn() ast.Node {
 	}
 }
 
-func (p *Parser) parseBreakOrContinue() ast.Node {
+func (p *parser) parseBreakOrContinue() ast.Node {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
@@ -1048,7 +1048,7 @@ func (p *Parser) parseBreakOrContinue() ast.Node {
 // Lists
 //------------------------------------------------
 
-func (p *Parser) parseBracketList(f ParseFunc) *ast.BracketList {
+func (p *parser) parseBracketList(f parseFunc) *ast.BracketList {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
@@ -1069,7 +1069,7 @@ func (p *Parser) parseBracketList(f ParseFunc) *ast.BracketList {
 	return nil
 }
 
-func (p *Parser) parseParenList(f ParseFunc) *ast.ParenList {
+func (p *parser) parseParenList(f parseFunc) *ast.ParenList {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
@@ -1090,7 +1090,7 @@ func (p *Parser) parseParenList(f ParseFunc) *ast.ParenList {
 	return nil
 }
 
-func (p *Parser) parseCurlyList(f ParseFunc) *ast.CurlyList {
+func (p *parser) parseCurlyList(f parseFunc) *ast.CurlyList {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
@@ -1112,11 +1112,11 @@ func (p *Parser) parseCurlyList(f ParseFunc) *ast.CurlyList {
 	return nil
 }
 
-func (p *Parser) parseBlock() *ast.CurlyList {
+func (p *parser) parseBlock() *ast.CurlyList {
 	return p.parseBlockFunc(p.parseStmt)
 }
 
-func (p *Parser) parseBlockFunc(f ParseFunc) *ast.CurlyList {
+func (p *parser) parseBlockFunc(f parseFunc) *ast.CurlyList {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
@@ -1133,7 +1133,7 @@ func (p *Parser) parseBlockFunc(f ParseFunc) *ast.CurlyList {
 	return nil
 }
 
-func (p *Parser) parseDeclList() *ast.StmtList {
+func (p *parser) parseDeclList() *ast.StmtList {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
@@ -1154,8 +1154,8 @@ func (p *Parser) parseDeclList() *ast.StmtList {
 // Helper functions
 //------------------------------------------------
 
-func (p *Parser) listWithDelimiter(
-	f ParseFunc,
+func (p *parser) listWithDelimiter(
+	f parseFunc,
 	delimiter token.Kind,
 	separators ...token.Kind,
 ) (nodes []ast.Node, wasSeparator bool) {
@@ -1215,8 +1215,8 @@ func (p *Parser) listWithDelimiter(
 	return nodes, wasSeparator
 }
 
-func (p *Parser) parseBracketedList(
-	f ParseFunc,
+func (p *parser) parseBracketedList(
+	f parseFunc,
 	opening, closing token.Kind,
 	separators ...token.Kind,
 ) (nodes []ast.Node, openLoc, closeLoc token.Pos, wasSeparator bool) {

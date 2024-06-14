@@ -1,19 +1,19 @@
 {
-    "Nodes": [
-        {
-            "Exprs": [],
-            "Open": {
-                "FileID": 1,
-                "Offset": 0,
-                "Line": 1,
-                "Char": 1
-            },
-            "Close": {
-                "FileID": 1,
-                "Offset": 1,
-                "Line": 1,
-                "Char": 2
-            }
-        }
-    ]
+	"Nodes": [
+		{
+			"Nodes": [],
+			"Open": {
+				"FileID": 1,
+				"Offset": 0,
+				"Line": 1,
+				"Char": 1
+			},
+			"Close": {
+				"FileID": 1,
+				"Offset": 1,
+				"Line": 1,
+				"Char": 2
+			}
+		}
+	]
 }

@@ -5,7 +5,7 @@ import (
 	"github.com/saffage/jet/token"
 )
 
-func (p *Parser) parseIdentNode() *ast.Ident {
+func (p *parser) parseIdentNode() *ast.Ident {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
@@ -21,7 +21,7 @@ func (p *Parser) parseIdentNode() *ast.Ident {
 	return nil
 }
 
-func (p *Parser) parseLiteralNode() *ast.Literal {
+func (p *parser) parseLiteralNode() *ast.Literal {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
@@ -54,7 +54,7 @@ func (p *Parser) parseLiteralNode() *ast.Literal {
 	return nil
 }
 
-func (p *Parser) parseDeclName() (mut token.Pos, name *ast.Ident) {
+func (p *parser) parseDeclName() (mut token.Pos, name *ast.Ident) {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
@@ -76,7 +76,7 @@ func (p *Parser) parseDeclName() (mut token.Pos, name *ast.Ident) {
 	return token.Pos{}, nil
 }
 
-func (p *Parser) parseTypeName() ast.Node {
+func (p *parser) parseTypeName() ast.Node {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
@@ -107,7 +107,7 @@ func (p *Parser) parseTypeName() ast.Node {
 	return path
 }
 
-func (p *Parser) isExprStart(kind token.Kind) bool {
+func (p *parser) isExprStart(kind token.Kind) bool {
 	switch kind {
 	case token.Ident,
 		token.Dollar,
