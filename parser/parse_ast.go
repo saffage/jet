@@ -426,7 +426,7 @@ func (p *parser) parseOperand() ast.Node {
 
 	case token.LParen:
 		operand := p.parseParenList(p.declOr(p.parseExpr))
-		if p.match(token.Arrow) || !p.match(endOfExprKinds...) {
+		if p.match(token.Arrow) || !p.match(append(endOfExprKinds, token.EOF)...) {
 			return p.parseFunction(operand)
 		}
 		return operand
@@ -485,6 +485,13 @@ func (p *parser) parseFunction(params *ast.ParenList) ast.Node {
 			if expr := p.parseExpr(); expr != nil {
 				body = expr
 			}
+		}
+	}
+
+	if body == nil {
+		return &ast.Signature{
+			Params: params,
+			Result: result,
 		}
 	}
 
