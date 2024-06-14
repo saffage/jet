@@ -434,7 +434,7 @@ func compileUnaryOp(x constant.Value, opKind ast.OperatorKind) constant.Value {
 			panic("unreachable")
 		}
 
-	case ast.OperatorAddrOf, ast.OperatorStar:
+	case ast.OperatorAddrOf:
 		panic("pointer operation cannot be evaluated at compile-time")
 
 	default:

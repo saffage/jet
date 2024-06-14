@@ -12,7 +12,7 @@ func _() {
 	_ = x[OperatorNot-1]
 	_ = x[OperatorNeg-2]
 	_ = x[OperatorAddrOf-3]
-	_ = x[OperatorStar-4]
+	_ = x[OperatorPtr-4]
 	_ = x[OperatorEllipsis-5]
 	_ = x[OperatorAssign-6]
 	_ = x[OperatorAddAndAssign-7]

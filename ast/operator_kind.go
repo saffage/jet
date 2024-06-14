@@ -13,7 +13,7 @@ const (
 	OperatorNot      // !
 	OperatorNeg      // -
 	OperatorAddrOf   // &
-	OperatorStar     // *
+	OperatorPtr      // *
 	OperatorEllipsis // ...
 
 	// Infix.

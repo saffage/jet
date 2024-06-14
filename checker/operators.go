@@ -43,27 +43,20 @@ func (check *Checker) prefix(node *ast.Op, tyOperand types.Type) types.Type {
 				return types.NewRef(tArray.ElemType())
 			}
 
-		case *ast.Op:
-			if operand.X == nil && operand.Kind == ast.OperatorStar {
-				return types.NewRef(tyOperand)
-			}
+		case *ast.Deref:
+			return types.NewRef(tyOperand)
 		}
 
 		check.errorf(node.Y, "expression is not an addressable location")
 		return nil
 
-	case ast.OperatorStar:
-		if types.IsTypeDesc(tyOperand) {
-			t := types.NewRef(types.SkipTypeDesc(tyOperand))
-			return types.NewTypeDesc(t)
+	case ast.OperatorPtr:
+		if !types.IsTypeDesc(tyOperand) {
+			check.errorf(node.Y, "expression is not a type")
+			return nil
 		}
 
-		if ref := types.AsRef(tyOperand); ref != nil {
-			return ref.Base()
-		}
-
-		check.errorf(node.Y, "expression is not a reference type")
-		return nil
+		return types.NewTypeDesc(types.NewRef(types.SkipTypeDesc(tyOperand)))
 
 	default:
 		panic(fmt.Sprintf("unknown prefix operator: '%s'", node.Kind))
@@ -359,15 +352,9 @@ func (check *Checker) assignable(node ast.Node) bool {
 		}
 
 	case *ast.Deref:
-		return true
-
-	case *ast.Op:
 		// TODO allow only if the pointer points to a mutable location.
-		if ty := check.typeOf(operand.Y); ty != nil && !types.IsTypeDesc(ty) {
-			if operand.Kind == ast.OperatorStar {
-				return true
-			}
-		}
+		return true
 	}
+
 	return false
 }

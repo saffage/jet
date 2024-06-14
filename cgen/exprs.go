@@ -74,7 +74,7 @@ func (gen *generator) exprString(expr ast.Node) string {
 		return gen.exprString(node.X) + "." + node.Y.Name
 
 	case *ast.Deref:
-		return gen.unary(node.X, nil, ast.OperatorStar)
+		return fmt.Sprintf("(*%s)", gen.exprString(node.X))
 
 	// case *ast.PrefixOp:
 	// 	typedValue := gen.Types[node]
@@ -217,9 +217,6 @@ func (gen *generator) unary(x ast.Node, _ types.Type, op ast.OperatorKind) strin
 	switch op {
 	case ast.OperatorAddrOf:
 		return fmt.Sprintf("(&%s)", gen.exprString(x))
-
-	case ast.OperatorStar:
-		return fmt.Sprintf("(*%s)", gen.exprString(x))
 
 	case ast.OperatorNot:
 		return fmt.Sprintf("(!%s)", gen.exprString(x))
