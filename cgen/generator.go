@@ -9,6 +9,7 @@ import (
 	"github.com/elliotchance/orderedmap/v2"
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/checker"
+	"github.com/saffage/jet/internal/report"
 )
 
 type generator struct {
@@ -61,7 +62,7 @@ func (gen *generator) defs(
 			gen.defs(sym.Defs, sym.Scope, true)
 
 		default:
-			panic(fmt.Sprintf("not implemented (%T)", sym))
+			report.Warningf("not implemented (%T)", sym)
 		}
 	}
 
