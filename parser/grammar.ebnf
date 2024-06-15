@@ -6,7 +6,7 @@ stmt_list = stmt, {stmt_sep, stmt}, [stmt_sep] ;
 decl_list = decl, {stmt_sep, decl}, [stmt_sep] ;
 expr_list = expr, {',', expr}, [','] ;
 
-type = expr ;
+type = '...' | ['...'], simple_expr ;
 stmt = {'\n'}, (';' | decl | expr) ;
 decl = [attribute_list, {'\n'}], ['mut'], ident, ':', (type | [type], '=', expr) ;
 
@@ -15,45 +15,56 @@ short_decl      = [attribute_list, {'\n'}], ['mut'], ident, [':', (type | [type]
 short_decl_list = short_decl, {stmt_sep, short_decl}, [stmt_sep] ;
 attribute_list  = '@', '[', [ident, {'.', ident}, paren_list], ']' ;
 
-expr           = function | struct | enum | return | break | continue | while | assign_expr ;
-assign_expr    = bool_or_expr, {assign_op, bool_or_expr} ;
-bool_or_expr   = bool_and_expr, {'or', bool_and_expr} ;
-bool_and_expr  = compare_expr, {'and', compare_expr} ;
+expr           = defer | return | break | continue | assign_op | simple_expr ;
+simple_expr    = function | as_expr ;
+assign_expr    = ident, {assign_op, as_expr} ;
+as_expr        = range_expr, {as_op, range_expr} ;
+range_expr     = bool_or_expr, {range_op, bool_or_expr} ;
+bool_or_expr   = bool_and_expr, {bool_or_op, bool_and_expr} ;
+bool_and_expr  = compare_expr, {bool_and_op, compare_expr} ;
 compare_expr   = bitwise_expr, {compare_op, bitwise_expr} ;
 bitwise_expr   = bit_shift_expr, {bitwise_op, bit_shift_expr} ;
 bit_shift_expr = addition_expr, {bit_shift_op, addition_expr} ;
 addition_expr  = multiply_expr, {addition_op, multiply_expr} ;
 multiply_expr  = primary_expr, {multiply_op, primary_expr} ;
+primary_expr   = {prefix_op}, operand, {dot_op | bracket_list | paren_list};
 
-primary_expr        = {prefix_op}, operand, {primary_expr_suffix} | if;
-primary_expr_suffix = '.', ident | '.*' | bracket_list | paren_list ;
+operand = ident | literal | builtin_call | if | while | for | struct | enum | block | bracket_list | paren_list;
+literal = int_literal | float_literal | string_literal ;
 
 assign_op    = '=' | '+=' | '-=' | '*=' | '/=' | '%=' | '&=' | '|=' | '<<=' | '>>=' ;
+as_op        = 'as' ;
+range_op     = '..' | '..<' ;
+bool_or_op   = 'or' ;
+bool_and_op  = 'and' ;
 compare_op   = '>=' | '>' | '<=' | '<' | '==' | '!=' ;
 bitwise_op   = '&' | '|', '^' ;
 bit_shift_op = '<<' | '>>' ;
 addition_op  = '+' | '-' ;
 multiply_op  = '*' | '/' | '%' ;
-prefix_op    = '!' | '-' | '*', ['mut'] | bracket_list ;
+
+dot_op     = '.', ('*' | ident) ;
+prefix_op  = '!' | '-' | ref_or_ptr | bracket_list ;
+ref_or_ptr = ('&' | '*'), ['mut'] ;
 
 paren_list   = '(', [expr_list], ')' ;
 bracket_list = '[', [expr_list], ']' ;
 block        = '{', [stmt_list], '}' ;
 
-function     = paren_list, (expr | '->', type, block) ;
+function     = paren_list, (expr | '->', type, [block]) ;
 builtin_call = '$', ident, [paren_list] ;
-if           = 'if', expr, block, [else] ;
+if           = 'if', simple_expr, block, [else] ;
 else         = 'else', (if | block) ;
-while        = 'while', expr, block ;
-return       = 'return', [expr] ;
-break        = 'break' ;
-continue     = 'continue' ;
+while        = 'while', simple_expr, block ;
+for          = 'for', decl, 'in', simple_expr, block ;
+defer        = 'defer', simple_expr ;
+return       = 'return', [simple_expr] ;
+break        = 'break', [label] ;
+continue     = 'continue', [label] ;
 struct       = 'struct', '{', [decl_list], '}' ;
 enum         = 'enum', '{', [short_decl_list], '}' ;
 
-operand = ident | literal | block | paren_list | builtin_call ;
-literal = int_literal | float_literal | string_literal ;
-
+label             = ident ;
 ident             = ident_start_char, {ident_char} ;
 ident_start_char  = letter | '_' ;
 ident_char        = letter | digit | '_' ;

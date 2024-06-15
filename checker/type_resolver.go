@@ -82,6 +82,13 @@ func (check *Checker) typeOfInternal(expr ast.Node) types.Type {
 	case *ast.For:
 		return check.typeOfFor(node)
 
+	case *ast.Defer:
+		return check.typeOfDefer(node)
+
+	case *ast.Return:
+		check.errorf(node, "'return' statement are not implemented")
+		return types.Unit
+
 	// NOTE implementation of break & continue are not finished.
 	case *ast.Break:
 		if node.Label != nil {
@@ -677,6 +684,18 @@ func (check *Checker) typeOfFor(node *ast.For) (ty types.Type) {
 	}
 	if !tyBody.Equals(types.Unit) {
 		check.errorf(node.Body, "body must have no type, but got '%s'", tyBody)
+	}
+
+	return
+}
+
+func (check *Checker) typeOfDefer(node *ast.Defer) (ty types.Type) {
+	ty = types.Unit
+	check.scope.defers = append(check.scope.defers, node)
+
+	tyX := check.typeOf(node.X)
+	if tyX == nil {
+		return
 	}
 
 	return

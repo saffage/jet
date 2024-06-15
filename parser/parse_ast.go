@@ -1,8 +1,6 @@
 package parser
 
 import (
-	"slices"
-
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/token"
 )
@@ -95,45 +93,59 @@ func (p *parser) parseExpr() ast.Node {
 	}
 
 	switch p.tok.Kind {
-	case token.KwIf:
-		return p.parseIf()
-
-	case token.KwWhile:
-		return p.parseWhile()
-
-	case token.KwFor:
-		return p.parseFor()
+	case token.KwDefer:
+		return p.parseDefer()
 
 	case token.KwReturn:
 		return p.parseReturn()
 
-	case token.KwBreak, token.KwContinue:
-		return p.parseBreakOrContinue()
+	case token.KwBreak:
+		return p.parseBreak()
+
+	case token.KwContinue:
+		return p.parseContinue()
 
 	default:
-		return p.parseSimpleExpr()
+		return p.parseSimpleExpr(true)
 	}
 }
 
-func (p *parser) parseSimpleExpr() ast.Node {
+func (p *parser) parseSimpleExpr(allowAssign bool) ast.Node {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
 
-	return p.parseBinaryExpr(nil, 1)
+	var x ast.Node
+
+	if p.tok.Kind == token.LParen {
+		params := p.parseParenList(p.declOr(p.parseExpr))
+		if params == nil {
+			return nil
+		}
+
+		if p.match(token.Arrow) || p.match(exprStartKinds...) {
+			return p.parseFunction(params)
+		}
+
+		x = params
+	}
+
+	if allowAssign {
+		return p.parseBinaryExpr(x, 1)
+	}
+
+	return p.parseBinaryExpr(x, 2)
 }
 
-func (p *parser) parseBinaryExpr(lhs ast.Node, precedence int) ast.Node {
+func (p *parser) parseBinaryExpr(x ast.Node, precedence int) ast.Node {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
 
-	if lhs == nil {
-		lhs = p.parseUnaryExpr()
-	}
-
-	if lhs == nil {
-		return nil
+	if x == nil {
+		if x = p.parsePrimaryExpr(); x == nil {
+			return nil
+		}
 	}
 
 	for p.tok.Precedence() >= precedence {
@@ -143,94 +155,13 @@ func (p *parser) parseBinaryExpr(lhs ast.Node, precedence int) ast.Node {
 			p.next()
 		}
 
-		rhs := p.parseBinaryExpr(nil, tok.Precedence()+1)
-
-		if rhs == nil {
+		y := p.parseBinaryExpr(nil, tok.Precedence()+1)
+		if y == nil {
 			return nil
 		}
 
-		binaryOpKind := ast.UnknownOperator
-
-		switch tok.Kind {
-		case token.Plus:
-			binaryOpKind = ast.OperatorAdd
-
-		case token.Minus:
-			binaryOpKind = ast.OperatorSub
-
-		case token.Asterisk:
-			binaryOpKind = ast.OperatorMul
-
-		case token.Slash:
-			binaryOpKind = ast.OperatorDiv
-
-		case token.Percent:
-			binaryOpKind = ast.OperatorMod
-
-		case token.Eq:
-			binaryOpKind = ast.OperatorAssign
-
-		case token.PlusEq:
-			binaryOpKind = ast.OperatorAddAndAssign
-
-		case token.MinusEq:
-			binaryOpKind = ast.OperatorSubAndAssign
-
-		case token.AsteriskEq:
-			binaryOpKind = ast.OperatorMultAndAssign
-
-		case token.SlashEq:
-			binaryOpKind = ast.OperatorDivAndAssign
-
-		case token.PercentEq:
-			binaryOpKind = ast.OperatorModAndAssign
-
-		case token.EqOp:
-			binaryOpKind = ast.OperatorEq
-
-		case token.NeOp:
-			binaryOpKind = ast.OperatorNe
-
-		case token.LtOp:
-			binaryOpKind = ast.OperatorLt
-
-		case token.LeOp:
-			binaryOpKind = ast.OperatorLe
-
-		case token.GtOp:
-			binaryOpKind = ast.OperatorGt
-
-		case token.GeOp:
-			binaryOpKind = ast.OperatorGe
-
-		case token.Amp:
-			binaryOpKind = ast.OperatorBitAnd
-
-		case token.Pipe:
-			binaryOpKind = ast.OperatorBitOr
-
-		case token.Caret:
-			binaryOpKind = ast.OperatorBitXor
-
-		case token.Shl:
-			binaryOpKind = ast.OperatorBitShl
-
-		case token.Shr:
-			binaryOpKind = ast.OperatorBitShr
-
-		case token.KwAnd:
-			binaryOpKind = ast.OperatorAnd
-
-		case token.KwOr:
-			binaryOpKind = ast.OperatorOr
-
-		case token.Dot2:
-			binaryOpKind = ast.OperatorRangeInclusive
-
-		case token.Dot2Less:
-			binaryOpKind = ast.OperatorRangeExclusive
-
-		default:
+		binaryOpKind, ok := operators[tok.Kind]
+		if !ok {
 			p.errorfAt(
 				ErrorInvalidBinaryOperator,
 				tok.Start,
@@ -240,19 +171,27 @@ func (p *parser) parseBinaryExpr(lhs ast.Node, precedence int) ast.Node {
 			)
 		}
 
-		lhs = &ast.Op{
-			X:     lhs,
-			Y:     rhs,
+		x = &ast.Op{
+			X:     x,
+			Y:     y,
 			Start: tok.Start,
 			End:   tok.End,
 			Kind:  binaryOpKind,
 		}
 	}
 
-	return lhs
+	return x
 }
 
-func (p *parser) parseUnaryExpr() ast.Node {
+func (p *parser) parsePrimaryExpr() ast.Node {
+	if p.flags&Trace != 0 {
+		defer un(trace(p))
+	}
+
+	return p.parsePrefixExpr()
+}
+
+func (p *parser) parsePrefixExpr() ast.Node {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
@@ -263,7 +202,7 @@ func (p *parser) parseUnaryExpr() ast.Node {
 
 		return &ast.Op{
 			X:     nil,
-			Y:     p.parseUnaryExpr(),
+			Y:     p.parsePrefixExpr(),
 			Start: minus.Start,
 			End:   minus.End,
 			Kind:  ast.OperatorNeg,
@@ -274,7 +213,7 @@ func (p *parser) parseUnaryExpr() ast.Node {
 
 		return &ast.Op{
 			X:     nil,
-			Y:     p.parseUnaryExpr(),
+			Y:     p.parsePrefixExpr(),
 			Start: bang.Start,
 			End:   bang.End,
 			Kind:  ast.OperatorNot,
@@ -283,9 +222,19 @@ func (p *parser) parseUnaryExpr() ast.Node {
 	case token.Asterisk:
 		asterisk := p.consume()
 
+		if tokMut := p.consume(token.KwMut); tokMut != nil {
+			return &ast.Op{
+				X:     nil,
+				Y:     p.parsePrefixExpr(),
+				Start: asterisk.Start,
+				End:   tokMut.End,
+				Kind:  ast.OperatorMutPtr,
+			}
+		}
+
 		return &ast.Op{
 			X:     nil,
-			Y:     p.parseUnaryExpr(),
+			Y:     p.parsePrefixExpr(),
 			Start: asterisk.Start,
 			End:   asterisk.End,
 			Kind:  ast.OperatorPtr,
@@ -294,44 +243,42 @@ func (p *parser) parseUnaryExpr() ast.Node {
 	case token.Amp:
 		amp := p.consume()
 
-		// if varTok := p.consume(token.KwVar); varTok != nil {
-		// 	return &ast.PrefixOp{
-		// 		X: p.parseUnaryExpr(),
-		// 		Opr: &ast.Operator{
-		// 			Start: loc,
-		// 			End:   varTok.End,
-		// 			Kind:  ast.OperatorMutAddr,
-		// 		},
-		// 	}
-		// }
+		if tokMut := p.consume(token.KwMut); tokMut != nil {
+			return &ast.Op{
+				X:     nil,
+				Y:     p.parsePrefixExpr(),
+				Start: amp.Start,
+				End:   tokMut.End,
+				Kind:  ast.OperatorMutAddrOf,
+			}
+		}
 
 		return &ast.Op{
 			X:     nil,
-			Y:     p.parseUnaryExpr(),
+			Y:     p.parsePrefixExpr(),
 			Start: amp.Start,
 			End:   amp.End,
 			Kind:  ast.OperatorAddrOf,
 		}
 
+	case token.LBracket:
+		list := p.parseBracketList(p.parseExpr)
+		if list == nil {
+			return nil
+		}
+
+		if p.match(simpleExprStartKinds...) {
+			return &ast.ArrayType{
+				X:    p.parsePrefixExpr(),
+				Args: list,
+			}
+		}
+
+		return list
+
 	default:
-		return p.parsePrimaryExpr(nil)
+		return p.parseSuffixExpr(nil)
 	}
-}
-
-func (p *parser) parsePrimaryExpr(x ast.Node) ast.Node {
-	if p.flags&Trace != 0 {
-		defer un(trace(p))
-	}
-
-	if x == nil {
-		x = p.parseOperand()
-	}
-
-	if x == nil {
-		return nil
-	}
-
-	return p.parseSuffixExpr(x)
 }
 
 func (p *parser) parseSuffixExpr(x ast.Node) ast.Node {
@@ -340,7 +287,9 @@ func (p *parser) parseSuffixExpr(x ast.Node) ast.Node {
 	}
 
 	if x == nil {
-		x = p.parseOperand()
+		if x = p.parseOperand(); x == nil {
+			return nil
+		}
 	}
 
 	for {
@@ -352,34 +301,6 @@ func (p *parser) parseSuffixExpr(x ast.Node) ast.Node {
 		case token.Dot:
 			x = p.parseDot(x)
 
-		// case token.Amp, token.Asterisk:
-		// 	before := p.save()
-		// 	tok := p.consume()
-
-		// 	if !p.isExprStart(p.tok.Kind) {
-		// 		oprKind := ast.UnknownOperator
-
-		// 		switch tok.Kind {
-		// 		case token.Asterisk:
-		// 			oprKind = ast.OperatorDeref
-
-		// 		case token.Amp:
-		// 			oprKind = ast.OperatorAddrOf
-		// 		}
-
-		// 		x = &ast.PostfixOp{
-		// 			X: x,
-		// 			Opr: &ast.Operator{
-		// 				Start: tok.Start,
-		// 				End:   tok.End,
-		// 				Kind:  oprKind,
-		// 			},
-		// 		}
-		// 	} else {
-		// 		p.restore(before)
-		// 		return x
-		// 	}
-
 		case token.LBracket:
 			x = &ast.Index{
 				X:    x,
@@ -390,17 +311,6 @@ func (p *parser) parseSuffixExpr(x ast.Node) ast.Node {
 			x = &ast.Call{
 				X:    x,
 				Args: p.parseParenList(p.declOr(p.parseExpr)),
-			}
-
-		case token.KwAs:
-			asTok := p.consume()
-
-			x = &ast.Op{
-				X:     x,
-				Y:     p.parseType(),
-				Start: asTok.Start,
-				End:   asTok.End,
-				Kind:  ast.OperatorAs,
 			}
 
 		default:
@@ -418,77 +328,109 @@ func (p *parser) parseOperand() ast.Node {
 	case token.Ident:
 		return p.parseIdent()
 
-	case token.Dollar:
-		return p.parseBuiltIn()
-
 	case token.Int, token.Float, token.String:
 		return p.parseLiteral()
 
-	case token.LParen:
-		operand := p.parseParenList(p.declOr(p.parseExpr))
-		if p.match(token.Arrow) || !p.match(append(endOfExprKinds, token.EOF)...) {
-			return p.parseFunction(operand)
-		}
-		return operand
+	case token.Dollar:
+		return p.parseBuiltIn()
+
+	case token.KwIf:
+		return p.parseIf()
+
+	case token.KwWhile:
+		return p.parseWhile()
+
+	case token.KwFor:
+		return p.parseFor()
+
+	case token.KwStruct:
+		return p.parseStructType()
+
+	case token.KwEnum:
+		return p.parseEnumType()
 
 	case token.LCurly:
-		return p.parseBlock()
+		if block := p.parseBlock(); block != nil {
+			return block
+		}
 
 	case token.LBracket:
 		if list := p.parseBracketList(p.parseExpr); list != nil {
 			return list
 		}
-		return nil
 
-	case token.KwStruct:
-		// NOTE needed for expressions like `struct{}()`
-		return p.parseStructType()
-
-	case token.KwEnum:
-		// NOTE needed for expressions like `enum{}.Foo`
-		return p.parseEnumType()
-
-	default:
-		p.error(ErrorExpectedOperand)
-		return nil
+	case token.LParen:
+		if list := p.parseParenList(p.declOr(p.parseExpr)); list != nil {
+			return list
+		}
 	}
+
+	p.error(ErrorExpectedOperand)
+	return nil
 }
 
 //------------------------------------------------
 // Complex expressions
 //------------------------------------------------
 
+func (p *parser) parseEllipsisExpr() ast.Node {
+	if p.flags&Trace != 0 {
+		defer un(trace(p))
+	}
+
+	if tok := p.consume(token.Ellipsis); tok != nil {
+		var y ast.Node
+
+		if p.match(simpleExprStartKinds...) {
+			if y = p.parseSimpleExpr(false); y == nil {
+				return nil
+			}
+		}
+
+		return &ast.Op{
+			X:     nil,
+			Y:     y,
+			Start: tok.Start,
+			End:   tok.End,
+			Kind:  ast.OperatorEllipsis,
+		}
+	}
+
+	return p.parseSimpleExpr(false)
+}
+
 func (p *parser) parseFunction(params *ast.ParenList) ast.Node {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
 
-	// NOTE can be a type
-
 	var result, body ast.Node
 
 	if p.consume(token.Arrow) != nil {
-		// (...) -> T {}
-		result = p.parseType()
+		// (...) -> T
+		// (...) -> T {...}
+		result = p.parseSimpleExpr(false)
 		if result == nil {
 			return nil
 		}
 
-		if !slices.Contains(endOfExprKinds, p.tok.Kind) {
+		if p.match(token.LCurly) {
 			if block := p.parseBlock(); block != nil {
 				body = block
 			}
 		}
-	} else {
+	} else if p.match(exprStartKinds...) {
 		// (...) expr
-		if !slices.Contains(endOfExprKinds, p.tok.Kind) {
-			if expr := p.parseExpr(); expr != nil {
-				body = expr
-			}
+		if expr := p.parseExpr(); expr != nil {
+			body = expr
 		}
 	}
 
 	if body == nil {
+		if result == nil {
+			return nil
+		}
+
 		return &ast.Signature{
 			Params: params,
 			Result: result,
@@ -617,7 +559,7 @@ func (p *parser) parseDeclNode(mut token.Pos, name *ast.Ident) *ast.Decl {
 
 	switch {
 	case p.tok.Kind != token.Colon && p.tok.Kind != token.Eq:
-		ty = p.parseType()
+		ty = p.parseEllipsisExpr()
 		if ty == nil {
 			return nil
 		}
@@ -647,7 +589,7 @@ func (p *parser) parseDeclNode(mut token.Pos, name *ast.Ident) *ast.Decl {
 }
 
 //------------------------------------------------
-// IDK
+// Language constructions
 //------------------------------------------------
 
 func (p *parser) parseAttributeListNode() *ast.AttributeList {
@@ -666,83 +608,6 @@ func (p *parser) parseAttributeListNode() *ast.AttributeList {
 		}
 	}
 
-	return nil
-}
-
-func (p *parser) parseType() ast.Node {
-	if p.flags&Trace != 0 {
-		defer un(trace(p))
-	}
-
-	switch p.tok.Kind {
-	case token.Ellipsis:
-		// TODO allow only 1 variadic
-
-		elipsis := p.consume()
-		op := &ast.Op{
-			X:     nil,
-			Y:     nil,
-			Start: elipsis.Start,
-			End:   elipsis.End,
-			Kind:  ast.OperatorEllipsis,
-		}
-
-		typeStart := p.save()
-
-		if x := p.parseType(); x != nil {
-			op.X = x
-			return op
-		}
-
-		if p.lastErrorIs(ErrorExpectedType) {
-			p.restore(typeStart)
-		}
-
-		return op
-
-	case token.Asterisk:
-		star := p.consume()
-
-		return &ast.Op{
-			X:     nil,
-			Y:     p.parseType(),
-			Start: star.Start,
-			End:   star.End,
-			Kind:  ast.OperatorPtr,
-		}
-
-	case token.LBracket:
-		brackets := p.parseBracketList(p.parseExpr)
-
-		return &ast.ArrayType{
-			X:    p.parseType(),
-			Args: brackets,
-		}
-
-	case token.LParen:
-		params := p.parseParenList(p.declOr(p.parseType))
-		if p.consume(token.Arrow) != nil {
-			return &ast.Signature{
-				Params: params,
-				Result: p.parseType(),
-			}
-		}
-		return params
-
-	case token.Ident:
-		return p.parseTypeName()
-
-	case token.KwStruct:
-		return p.parseStructType()
-
-	case token.KwEnum:
-		return p.parseEnumType()
-
-	case token.Dollar:
-		return p.parseBuiltIn()
-	}
-
-	p.error(ErrorExpectedType)
 	return nil
 }
 
@@ -806,33 +671,6 @@ func (p *parser) parseEnumType() ast.Node {
 	}
 }
 
-func (p *parser) parseElse() ast.Node {
-	if p.flags&Trace != 0 {
-		defer un(trace(p))
-	}
-
-	if elseTok := p.consume(token.KwElse); elseTok != nil {
-		body := ast.Node(nil)
-
-		if p.tok.Kind == token.KwIf {
-			body = p.parseIf()
-		} else if block := p.parseBlock(); block != nil {
-			body = block
-		} else {
-			start, end := p.skip()
-			p.errorAt(ErrorExpectedBlockOrIf, start, end)
-			return nil
-		}
-
-		return &ast.Else{
-			TokPos: elseTok.Start,
-			Body:   body,
-		}
-	}
-
-	return (*ast.Else)(nil)
-}
-
 func (p *parser) parseIf() ast.Node {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
@@ -844,7 +682,7 @@ func (p *parser) parseIf() ast.Node {
 		return nil
 	}
 
-	cond := p.parseSimpleExpr()
+	cond := p.parseSimpleExpr(false)
 
 	if cond == nil {
 		start, end := p.skip()
@@ -872,6 +710,33 @@ func (p *parser) parseIf() ast.Node {
 	}
 }
 
+func (p *parser) parseElse() ast.Node {
+	if p.flags&Trace != 0 {
+		defer un(trace(p))
+	}
+
+	if elseTok := p.consume(token.KwElse); elseTok != nil {
+		body := ast.Node(nil)
+
+		if p.tok.Kind == token.KwIf {
+			body = p.parseIf()
+		} else if block := p.parseBlock(); block != nil {
+			body = block
+		} else {
+			start, end := p.skip()
+			p.errorAt(ErrorExpectedBlockOrIf, start, end)
+			return nil
+		}
+
+		return &ast.Else{
+			TokPos: elseTok.Start,
+			Body:   body,
+		}
+	}
+
+	return (*ast.Else)(nil)
+}
+
 func (p *parser) parseWhile() ast.Node {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
@@ -882,7 +747,7 @@ func (p *parser) parseWhile() ast.Node {
 		return nil
 	}
 
-	cond := p.parseExpr()
+	cond := p.parseSimpleExpr(false)
 	if cond == nil {
 		return nil
 	}
@@ -918,7 +783,7 @@ func (p *parser) parseFor() ast.Node {
 		return nil
 	}
 
-	iterExpr := p.parseExpr()
+	iterExpr := p.parseSimpleExpr(false)
 	if iterExpr == nil {
 		return nil
 	}
@@ -991,7 +856,7 @@ func (p *parser) parseForLoopDecl() ast.Node {
 	var ty ast.Node
 
 	if p.consume(token.Colon) != nil {
-		ty = p.parseType()
+		ty = p.parseExpr()
 		if ty == nil {
 			return nil
 		}
@@ -1005,49 +870,75 @@ func (p *parser) parseForLoopDecl() ast.Node {
 	}
 }
 
+func (p *parser) parseDefer() ast.Node {
+	if p.flags&Trace != 0 {
+		defer un(trace(p))
+	}
+
+	tok := p.expect(token.KwDefer)
+	if tok == nil {
+		return nil
+	}
+
+	x := p.parseExpr()
+	if x == nil {
+		return nil
+	}
+
+	return &ast.Defer{X: x, TokPos: tok.Start}
+}
+
 func (p *parser) parseReturn() ast.Node {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
 
 	tok := p.expect(token.KwReturn)
-	x := p.parseExpr()
-
-	return &ast.Return{
-		X:      x,
-		TokPos: tok.Start,
+	if tok == nil {
+		return nil
 	}
+
+	var x ast.Node
+
+	if !p.match(append(endOfStmtKinds, token.EOF)...) {
+		x = p.parseExpr()
+		if x == nil {
+			return nil
+		}
+	}
+
+	return &ast.Return{X: x, TokPos: tok.Start}
 }
 
-func (p *parser) parseBreakOrContinue() ast.Node {
+func (p *parser) parseBreak() ast.Node {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
 
-	// TODO implement new label syntax `break@label`
-
-	tok := p.expect(token.KwBreak, token.KwContinue)
-	label := (*ast.Ident)(nil)
-
-	if p.tok.Kind == token.Ident {
-		label = p.parseIdentNode()
+	tok := p.expect(token.KwBreak)
+	if tok == nil {
+		return nil
 	}
 
-	switch tok.Kind {
-	case token.KwBreak:
-		return &ast.Break{
-			Label:  label,
-			TokPos: tok.Start,
-		}
+	return &ast.Break{
+		Label:  p.parseIdentNode(),
+		TokPos: tok.Start,
+	}
+}
 
-	case token.KwContinue:
-		return &ast.Continue{
-			Label:  label,
-			TokPos: tok.Start,
-		}
+func (p *parser) parseContinue() ast.Node {
+	if p.flags&Trace != 0 {
+		defer un(trace(p))
+	}
 
-	default:
-		panic("unreachable")
+	tok := p.expect(token.KwContinue)
+	if tok == nil {
+		return nil
+	}
+
+	return &ast.Continue{
+		Label:  p.parseIdentNode(),
+		TokPos: tok.Start,
 	}
 }
 

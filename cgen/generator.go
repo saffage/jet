@@ -15,7 +15,9 @@ import (
 type generator struct {
 	*checker.Module
 
+	scope         *checker.Scope
 	funcTempVarId int
+	funcLabelID   int
 	typeSect      strings.Builder
 	declVarsSect  strings.Builder
 	declFnsSect   strings.Builder
@@ -28,7 +30,6 @@ type generator struct {
 func (gen *generator) defs(
 	defs *orderedmap.OrderedMap[*ast.Ident, checker.Symbol],
 	owner *checker.Scope,
-	declOnly bool,
 ) (mainFunc *checker.Func) {
 	for def := defs.Front(); def != nil; def = def.Next() {
 		def := def.Value
@@ -59,7 +60,7 @@ func (gen *generator) defs(
 			}
 
 		case *checker.Module:
-			gen.defs(sym.Defs, sym.Scope, true)
+			gen.defs(sym.Defs, sym.Scope)
 
 		default:
 			report.Warningf("not implemented (%T)", sym)
@@ -67,6 +68,11 @@ func (gen *generator) defs(
 	}
 
 	return mainFunc
+}
+
+func (gen *generator) setScope(scope *checker.Scope) {
+	report.TaggedDebugf("cgen", "set scope: %s", scopePath(scope))
+	gen.scope = scope
 }
 
 func (gen *generator) line(s string) {

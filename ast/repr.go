@@ -252,8 +252,16 @@ func (n *For) Repr() string {
 	return fmt.Sprintf("for %s in %s %s", n.DeclList.Repr(), n.IterExpr.Repr(), n.Body.Repr())
 }
 
+func (n *Defer) Repr() string {
+	return fmt.Sprintf("defer %s", n.X.Repr())
+}
+
 func (n *Return) Repr() string {
-	return fmt.Sprintf("return %s", n.X.Repr())
+	if n.X != nil {
+		return fmt.Sprintf("return %s", n.X.Repr())
+	}
+
+	return "return"
 }
 
 func (n *Break) Repr() string {

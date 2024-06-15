@@ -56,13 +56,10 @@ next_field :: () {
     for row in 0 ..< HEIGHT {
         for col in 0 ..< WIDTH {
             neighbors := count_neighbors(row, col)
-            # NOTE current parser fails here
-            hidden_field[row][col] = {
-                if field[row][col] {
-                    neighbors == 2 or neighbors == 3
-                } else {
-                    neighbors == 3
-                }
+            hidden_field[row][col] = if field[row][col] {
+                neighbors == 2 or neighbors == 3
+            } else {
+                neighbors == 3
             }
         }
     }

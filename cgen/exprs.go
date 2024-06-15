@@ -205,6 +205,9 @@ func (gen *generator) exprString(expr ast.Node) string {
 		gen.block(node.StmtList, tmpVar)
 		return gen.name(tmpVar)
 
+	case *ast.Defer:
+		return ""
+
 	default:
 		fmt.Printf("not implemented '%T'\n", node)
 	}
@@ -215,7 +218,7 @@ func (gen *generator) exprString(expr ast.Node) string {
 
 func (gen *generator) unary(x ast.Node, _ types.Type, op ast.OperatorKind) string {
 	switch op {
-	case ast.OperatorAddrOf:
+	case ast.OperatorAddrOf, ast.OperatorMutAddrOf:
 		return fmt.Sprintf("(&%s)", gen.exprString(x))
 
 	case ast.OperatorNot:
@@ -302,32 +305,62 @@ func (gen *generator) binary(x, y ast.Node, t types.Type, op ast.OperatorKind) s
 			gen.exprString(y),
 		)
 
-	case ast.OperatorAddAndAssign:
+	case ast.OperatorAddAssign:
 		return fmt.Sprintf("%s += %s",
 			gen.exprString(x),
 			gen.exprString(y),
 		)
 
-	case ast.OperatorSubAndAssign:
+	case ast.OperatorSubAssign:
 		return fmt.Sprintf("%s -= %s",
 			gen.exprString(x),
 			gen.exprString(y),
 		)
 
-	case ast.OperatorMultAndAssign:
+	case ast.OperatorMultAssign:
 		return fmt.Sprintf("%s *= %s",
 			gen.exprString(x),
 			gen.exprString(y),
 		)
 
-	case ast.OperatorDivAndAssign:
+	case ast.OperatorDivAssign:
 		return fmt.Sprintf("%s /= %s",
 			gen.exprString(x),
 			gen.exprString(y),
 		)
 
-	case ast.OperatorModAndAssign:
+	case ast.OperatorModAssign:
 		return fmt.Sprintf("%s %%= %s",
+			gen.exprString(x),
+			gen.exprString(y),
+		)
+
+	case ast.OperatorBitAndAssign:
+		return fmt.Sprintf("%s &= %s",
+			gen.exprString(x),
+			gen.exprString(y),
+		)
+
+	case ast.OperatorBitOrAssign:
+		return fmt.Sprintf("%s |= %s",
+			gen.exprString(x),
+			gen.exprString(y),
+		)
+
+	case ast.OperatorBitXorAssign:
+		return fmt.Sprintf("%s ^= %s",
+			gen.exprString(x),
+			gen.exprString(y),
+		)
+
+	case ast.OperatorBitShlAssign:
+		return fmt.Sprintf("%s <<= %s",
+			gen.exprString(x),
+			gen.exprString(y),
+		)
+
+	case ast.OperatorBitShrAssign:
+		return fmt.Sprintf("%s >>= %s",
 			gen.exprString(x),
 			gen.exprString(y),
 		)

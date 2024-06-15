@@ -2,6 +2,7 @@ package checker
 
 import (
 	"github.com/saffage/jet/ast"
+	"github.com/saffage/jet/internal/report"
 	"github.com/saffage/jet/types"
 )
 
@@ -49,4 +50,5 @@ func (check *Checker) resolveTypeAliasDecl(decl *ast.Decl) {
 
 	check.newDef(decl.Ident, sym)
 	check.setType(decl, typedesc)
+	report.TaggedDebugf("checker", "alias: set type: %s", typedesc)
 }

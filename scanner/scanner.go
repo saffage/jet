@@ -115,7 +115,7 @@ func (s *Scanner) Next() token.Token {
 
 			tok = token.Token{Kind: kind}
 
-		case s.Consume('!', '+', '*', '/', '%'):
+		case s.Consume('!', '+', '*', '/', '%', '&', '|', '^'):
 			// NOTE This tokens is order dependent
 			kind := token.KindFromString(string(s.Prev()))
 
@@ -169,7 +169,7 @@ func (s *Scanner) Next() token.Token {
 
 			tok = token.Token{Kind: kind}
 
-		case s.Match('?', '&', '|', '^', ',', ':', ';', '(', ')', '[', ']', '{', '}'):
+		case s.Match('?', ',', ':', ';', '(', ')', '[', ']', '{', '}'):
 			kind := token.KindFromString(string(s.Advance()))
 
 			if kind == token.Illegal {

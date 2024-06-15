@@ -229,13 +229,13 @@ shuffle :: (shuffler: *Shuffler) {
 }
 
 next_tetramino :: (tetramino: *Tetramino_Instance, shuffler: *Shuffler) {
-    $assert(shuffler != 0 as *Shuffler)
+    $assert(shuffler != { 0 as *Shuffler })
     if shuffler.*.index == NUM_TETRAMINOES {
         shuffle(shuffler)
         shuffler.*.index = 0
     }
 
-    $assert(tetramino != 0 as *Tetramino_Instance)
+    $assert(tetramino != { 0 as *Tetramino_Instance })
     tetramino.*.rotation  = 0
     tetramino.*.x         = 3
     tetramino.*.y         = 20
@@ -309,10 +309,10 @@ render_cell :: (x: int, y: int, color: Color) {
     cell_x := PADDING_X + x * CELL_SIZE
     cell_y := SCREEN_HEIGHT - PADDING_Y - { y + 1 } * CELL_SIZE
     cell   := Rectangle(
-        x      = cell_x as f32 + 0.5,
-        y      = cell_y as f32 + 0.5,
-        width  = CELL_SIZE as f32 - 0.5,
-        height = CELL_SIZE as f32 - 0.5,
+        x      = { cell_x as f32 } + 0.5,
+        y      = { cell_y as f32 } + 0.5,
+        width  = { CELL_SIZE as f32 } - 0.5,
+        height = { CELL_SIZE as f32 } - 0.5,
     )
     draw_rectangle_rec(cell, color)
 }
@@ -329,19 +329,19 @@ render_grid :: () {
     for i in 0..<PLAYFIELD_ROWS {
         for j in 0..<PLAYFIELD_COLS {
             if playfield[i][j] != Cell_State.Empty {
-                render_cell(j, i, tetramino_colors[playfield[i][j] as int - 1])
+                render_cell(j, i, tetramino_colors[{ playfield[i][j] as int } - 1])
             }
         }
     }
 }
 
 get_coords :: (instance: *Tetramino_Instance) -> [8]u8 {
-    $assert(instance != 0 as *Tetramino_Instance)
+    $assert(instance != { 0 as *Tetramino_Instance })
     coords: [8]u8
 
     i := 0
     for y in 0..<4 {
-        row: u32 = instance.*.tetramino.rotations[instance.*.rotation] >> y as u32 * 4
+        row: u32 = instance.*.tetramino.rotations[instance.*.rotation] >> { y as u32 } * 4
         for x in 0..<4 {
             if row&0x1 != 0 {
                 _x := instance.*.x + x

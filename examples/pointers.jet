@@ -8,9 +8,10 @@ main :: () {
         $assert(t.field == 12)
     }
     {
-        x := 1
+        x := [1, 2]
         y := &x
-        i := $size_of(int)
-        { { y as u64 + i as u64 } as *u8 }.* = 1
+        { { { y as u64 } + $size_of(int) } as *int }.* = 1
+        $assert(x[0] == 1)
+        $assert(x[1] == 1)
     }
 }

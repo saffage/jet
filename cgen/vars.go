@@ -20,15 +20,28 @@ func (gen *generator) varDecl(sym *checker.Var) string {
 func (gen *generator) tempVar(ty types.Type) *checker.Var {
 	id := fmt.Sprintf("tmp__%d", gen.funcTempVarId)
 	decl := &ast.Decl{Ident: &ast.Ident{Name: id}}
-	sym := checker.NewVar(gen.Scope, ty, decl)
+	sym := checker.NewVar(gen.scope, ty, decl)
 	gen.line(gen.varDecl(sym))
-	_ = gen.Scope.Define(sym)
+	_ = gen.scope.Define(sym)
 	gen.funcTempVarId++
 	return sym
 }
 
+func (gen *generator) resultVar(ty types.Type) *checker.Var {
+	if ty == nil {
+		return nil
+	}
+	decl := &ast.Decl{Ident: &ast.Ident{Name: "__result"}}
+	sym := checker.NewVar(gen.scope, ty, decl)
+	if !types.IsArray(ty) {
+		gen.linef("%s __result;\n", gen.TypeString(ty))
+	}
+	_ = gen.scope.Define(sym)
+	return sym
+}
+
 func (gen *generator) initFunc() {
-	gen.linef("void init%s(void) {\n", gen.Module.Name())
+	gen.linef("void init%s(void)\n{\n", gen.Module.Name())
 	gen.indent++
 
 	for def := gen.Defs.Front(); def != nil; def = def.Next() {
@@ -45,5 +58,5 @@ func (gen *generator) initFunc() {
 	}
 
 	gen.indent--
-	gen.linef("}\n")
+	gen.line("}\n")
 }

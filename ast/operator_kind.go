@@ -10,20 +10,27 @@ const (
 
 	// Prefix.
 
-	OperatorNot      // !
-	OperatorNeg      // -
-	OperatorAddrOf   // &
-	OperatorPtr      // *
-	OperatorEllipsis // ...
+	OperatorNot       // !
+	OperatorNeg       // -
+	OperatorAddrOf    // &
+	OperatorMutAddrOf // &mut
+	OperatorPtr       // *
+	OperatorMutPtr    // *mut
+	OperatorEllipsis  // ...
 
 	// Infix.
 
 	OperatorAssign         // =
-	OperatorAddAndAssign   // +=
-	OperatorSubAndAssign   // -=
-	OperatorMultAndAssign  // *=
-	OperatorDivAndAssign   // /=
-	OperatorModAndAssign   // %=
+	OperatorAddAssign      // +=
+	OperatorSubAssign      // -=
+	OperatorMultAssign     // *=
+	OperatorDivAssign      // /=
+	OperatorModAssign      // %=
+	OperatorBitAndAssign   // &=
+	OperatorBitOrAssign    // |=
+	OperatorBitXorAssign   // ^=
+	OperatorBitShlAssign   // <<=
+	OperatorBitShrAssign   // >>=
 	OperatorAdd            // +
 	OperatorSub            // -
 	OperatorMul            // *

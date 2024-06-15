@@ -213,7 +213,7 @@ func (check *Checker) resolveFuncBody(
 		return nil
 	}
 
-	if tyFunc.Result() == nil {
+	if !hasResult {
 		return types.NewFunc(tyFunc.Params(), tyBody, tyFunc.Variadic())
 	}
 

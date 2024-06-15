@@ -12,6 +12,7 @@ func Generate(w io.Writer, m *checker.Module) error {
 	gen := &generator{
 		Module: m,
 		out:    bufio.NewWriter(w),
+		scope:  m.Scope,
 	}
 
 	gen.out.WriteString(prelude)
@@ -20,7 +21,7 @@ func Generate(w io.Writer, m *checker.Module) error {
 		panic(err)
 	}
 
-	mainFn := gen.defs(gen.Defs, gen.Scope, false)
+	mainFn := gen.defs(gen.Defs, gen.Scope)
 	gen.initFunc()
 
 	if mainFn != nil {

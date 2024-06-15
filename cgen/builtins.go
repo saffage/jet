@@ -101,12 +101,13 @@ func (gen *generator) builtInPrintln(call *ast.Call) string {
 		case types.KindUntypedString:
 			if value.Value != nil {
 				return fmt.Sprintf(
-					`fwrite(%[1]s"\n", 1, sizeof(%[1]s"\n"), stdout)`,
+					`fwrite(%[1]s"\n", 1, %d+1, stdout)`,
 					value.Value,
+					len(*constant.AsString(value.Value)),
 				)
 			} else {
 				return fmt.Sprintf(
-					`fwrite(%[1]s"\n", 1, sizeof(%[1]s"\n"), stdout)`,
+					`fwrite(%[1]s, 1, strlen(%[1]s), stdout); fwrite("\n", 1, 1, stdout)`,
 					gen.exprString(call.Args.Nodes[0]),
 				)
 			}

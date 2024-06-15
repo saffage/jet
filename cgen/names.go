@@ -15,6 +15,11 @@ func (gen *generator) name(sym checker.Symbol) string {
 	}
 	buf := strings.Builder{}
 
+	if strings.HasPrefix(sym.Name(), "__") {
+		names[sym] = sym.Name()
+		return sym.Name()
+	}
+
 	switch sym := sym.(type) {
 	case *checker.Var:
 		if sym.IsGlobal() {

@@ -188,6 +188,11 @@ func (v Visitor) WalkTopDown(tree Node) {
 		v.WalkTopDown(n.IterExpr)
 		v.WalkTopDown(n.Body)
 
+	case *Defer:
+		assert(n.X != nil)
+
+		v.WalkTopDown(n.X)
+
 	case *Return:
 		if n.X != nil {
 			v.WalkTopDown(n.X)

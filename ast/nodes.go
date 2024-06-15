@@ -329,6 +329,11 @@ type (
 		TokPos   token.Pos // `for` token.
 	}
 
+	Defer struct {
+		X      Node
+		TokPos token.Pos // `defer` token.
+	}
+
 	Return struct {
 		X      Node      // optional
 		TokPos token.Pos // `return` token.
@@ -367,8 +372,20 @@ func (n *While) PosEnd() token.Pos { return n.Body.PosEnd() }
 func (n *For) Pos() token.Pos    { return n.TokPos }
 func (n *For) PosEnd() token.Pos { return n.Body.PosEnd() }
 
-func (n *Return) Pos() token.Pos    { return n.TokPos }
-func (n *Return) PosEnd() token.Pos { return n.X.PosEnd() }
+func (n *Defer) Pos() token.Pos    { return n.TokPos }
+func (n *Defer) PosEnd() token.Pos { return n.X.PosEnd() }
+
+func (n *Return) Pos() token.Pos { return n.TokPos }
+func (n *Return) PosEnd() token.Pos {
+	if n.X != nil {
+		return n.X.PosEnd()
+	}
+	const length = len("return") - 1
+	end := n.TokPos
+	end.Char += uint32(length)
+	end.Offset += uint64(length)
+	return end
+}
 
 func (n *Break) Pos() token.Pos { return n.TokPos }
 func (n *Break) PosEnd() token.Pos {
@@ -433,6 +450,7 @@ func (*If) implNode()       {}
 func (*Else) implNode()     {}
 func (*While) implNode()    {}
 func (*For) implNode()      {}
+func (*Defer) implNode()    {}
 func (*Return) implNode()   {}
 func (*Break) implNode()    {}
 func (*Continue) implNode() {}

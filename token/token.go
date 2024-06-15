@@ -77,7 +77,7 @@ func (t Token) Precedence() int {
 	case KwAs:
 		return 2
 
-	case Eq, PlusEq, MinusEq, AsteriskEq, SlashEq, PercentEq:
+	case Eq, PlusEq, MinusEq, AsteriskEq, SlashEq, PercentEq, AmpEq, PipeEq, CaretEq, ShlEq, ShrEq:
 		return 1
 
 	default:

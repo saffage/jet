@@ -2,14 +2,15 @@ package cgen
 
 import (
 	"github.com/saffage/jet/ast"
+	"github.com/saffage/jet/internal/report"
 	"github.com/saffage/jet/types"
 )
 
-func (gen *generator) StmtString(stmt ast.Node) string {
+func (gen *generator) stmt(stmt ast.Node) {
+	report.Debugf("stmt = %s", stmt.Repr())
 	switch stmt := stmt.(type) {
 	case *ast.Empty:
 		gen.line("\n")
-		return ""
 
 	case *ast.Decl:
 		if !stmt.IsVar {
@@ -22,13 +23,8 @@ func (gen *generator) StmtString(stmt ast.Node) string {
 		gen.decl(sym)
 
 	case *ast.While:
-		gen.linef("while (%s) {\n", gen.exprString(stmt.Cond))
-		gen.indent++
-		for _, stmt := range stmt.Body.Nodes {
-			gen.codeSect.WriteString(gen.StmtString(stmt))
-		}
-		gen.indent--
-		gen.linef("}\n")
+		gen.linef("while (%s)\n", gen.exprString(stmt.Cond))
+		gen.block(stmt.Body.StmtList, nil)
 
 	case *ast.For:
 		loopVar := gen.SymbolOf(stmt.DeclList.Nodes[0].(*ast.Decl).Ident)
@@ -38,18 +34,13 @@ func (gen *generator) StmtString(stmt ast.Node) string {
 			cmpOp = ast.OperatorLe
 		}
 		gen.linef(
-			"for (%[1]s %[2]s=%[3]s; %[4]s; %[2]s+=1) {\n",
+			"for (%[1]s %[2]s=%[3]s; %[4]s; %[2]s+=1)\n",
 			gen.TypeString(loopVar.Type()),
 			gen.name(loopVar),
 			gen.exprString(iterExpr.X),
 			gen.binary(loopVar.Ident(), iterExpr.Y, types.Bool, cmpOp),
 		)
-		gen.indent++
-		for _, stmt := range stmt.Body.Nodes {
-			gen.codeSect.WriteString(gen.StmtString(stmt))
-		}
-		gen.indent--
-		gen.line("}\n")
+		gen.block(stmt.Body.StmtList, nil)
 
 	case *ast.If:
 		gen.ifExpr(stmt, nil)
@@ -84,6 +75,4 @@ func (gen *generator) StmtString(stmt ast.Node) string {
 			}
 		}
 	}
-
-	return ""
 }

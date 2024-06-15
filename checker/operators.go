@@ -26,7 +26,7 @@ func (check *Checker) prefix(node *ast.Op, tyOperand types.Type) types.Type {
 			}
 		}
 
-	case ast.OperatorAddrOf:
+	case ast.OperatorAddrOf, ast.OperatorMutAddrOf:
 		switch operand := node.Y.(type) {
 		case *ast.Ident:
 			if sym, _ := check.symbolOf(operand).(*Var); sym != nil {
@@ -50,7 +50,7 @@ func (check *Checker) prefix(node *ast.Op, tyOperand types.Type) types.Type {
 		check.errorf(node.Y, "expression is not an addressable location")
 		return nil
 
-	case ast.OperatorPtr:
+	case ast.OperatorPtr, ast.OperatorMutPtr:
 		if !types.IsTypeDesc(tyOperand) {
 			check.errorf(node.Y, "expression is not a type")
 			return nil
@@ -144,10 +144,10 @@ func (check *Checker) infixPrimitive(
 			return tOperandX
 		}
 
-	case ast.OperatorAddAndAssign,
-		ast.OperatorSubAndAssign,
-		ast.OperatorMultAndAssign,
-		ast.OperatorDivAndAssign:
+	case ast.OperatorAddAssign,
+		ast.OperatorSubAssign,
+		ast.OperatorMultAssign,
+		ast.OperatorDivAssign:
 		switch tOperandX.Kind() {
 		case types.KindUntypedInt,
 			types.KindUntypedFloat,
@@ -186,7 +186,12 @@ func (check *Checker) infixPrimitive(
 			return tOperandX
 		}
 
-	case ast.OperatorModAndAssign:
+	case ast.OperatorModAssign,
+		ast.OperatorBitAndAssign,
+		ast.OperatorBitOrAssign,
+		ast.OperatorBitXorAssign,
+		ast.OperatorBitShlAssign,
+		ast.OperatorBitShrAssign:
 		switch tOperandX.Kind() {
 		case types.KindUntypedInt,
 			types.KindI8,

@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"slices"
+
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/token"
 )
@@ -54,77 +56,100 @@ func (p *parser) parseLiteralNode() *ast.Literal {
 	return nil
 }
 
-func (p *parser) parseDeclName() (mut token.Pos, name *ast.Ident) {
-	if p.flags&Trace != 0 {
-		defer un(trace(p))
+func (p *parser) skip(to ...token.Kind) (start, end token.Pos) {
+	if len(to) == 0 {
+		to = endOfExprKinds
 	}
 
-	if tokMut := p.consume(token.KwMut); tokMut != nil {
-		mut = tokMut.Start
+	start = p.tok.Start
+
+	for p.tok.Kind != token.EOF && !slices.Contains(to, p.tok.Kind) {
+		end = p.tok.End
+		p.next()
 	}
 
-	if ident := p.parseIdentNode(); ident != nil {
-		return mut, ident
+	if p.flags&Trace != 0 && end.IsValid() {
+		// TODO must be removed
+		warn := Error{
+			Start:      start,
+			End:        end,
+			Message:    "tokens was skipped for some reason",
+			isWarn:     true,
+			isInternal: true,
+		}
+		p.errors = append(p.errors, warn)
 	}
 
-	if mut.IsValid() {
-		p.error(ErrorExpectedIdentAfterMut)
-	} else {
-		p.errorExpectedToken(token.Ident)
-	}
-
-	return token.Pos{}, nil
+	return
 }
 
-func (p *parser) parseTypeName() ast.Node {
-	if p.flags&Trace != 0 {
-		defer un(trace(p))
+var (
+	endOfStmtKinds = []token.Kind{
+		token.Semicolon,
+		token.NewLine,
 	}
 
-	ident := p.parseIdentNode()
-	if ident == nil {
-		p.error(ErrorExpectedTypeName)
-		return nil
-	}
+	endOfExprKinds = append(endOfStmtKinds, []token.Kind{
+		token.Comma,
+		token.RParen,
+		token.RCurly,
+		token.RBracket,
+	}...)
 
-	path := p.parseDot(ident)
-	if path == nil {
-		return nil
-	}
-
-	if p.tok.Kind == token.LBracket {
-		brackets := p.parseBracketList(p.parseExpr)
-		if brackets == nil {
-			return nil
-		}
-
-		return &ast.Index{
-			X:    path,
-			Args: brackets,
-		}
-	}
-
-	return path
-}
-
-func (p *parser) isExprStart(kind token.Kind) bool {
-	switch kind {
-	case token.Ident,
-		token.Dollar,
+	simpleExprStartKinds = []token.Kind{
+		token.Minus,
+		token.Bang,
+		token.Asterisk,
+		token.Amp,
+		token.Ident,
 		token.Int,
 		token.Float,
 		token.String,
-		token.LParen,
-		token.LCurly,
-		token.KwStruct,
+		token.Dollar,
 		token.KwIf,
 		token.KwWhile,
+		token.KwFor,
+		token.KwStruct,
+		token.KwEnum,
+		token.LCurly,
+		token.LBracket,
+		token.LParen,
+	}
+
+	exprStartKinds = append(simpleExprStartKinds, []token.Kind{
+		token.KwDefer,
 		token.KwReturn,
 		token.KwBreak,
-		token.KwContinue:
-		return true
+		token.KwContinue,
+	}...)
 
-	default:
-		return false
+	operators = map[token.Kind]ast.OperatorKind{
+		token.Plus:       ast.OperatorAdd,
+		token.Minus:      ast.OperatorSub,
+		token.Asterisk:   ast.OperatorMul,
+		token.Slash:      ast.OperatorDiv,
+		token.Percent:    ast.OperatorMod,
+		token.Eq:         ast.OperatorAssign,
+		token.PlusEq:     ast.OperatorAddAssign,
+		token.MinusEq:    ast.OperatorSubAssign,
+		token.AsteriskEq: ast.OperatorMultAssign,
+		token.SlashEq:    ast.OperatorDivAssign,
+		token.PercentEq:  ast.OperatorModAssign,
+		token.EqOp:       ast.OperatorEq,
+		token.NeOp:       ast.OperatorNe,
+		token.LtOp:       ast.OperatorLt,
+		token.LeOp:       ast.OperatorLe,
+		token.GtOp:       ast.OperatorGt,
+		token.GeOp:       ast.OperatorGe,
+		token.Amp:        ast.OperatorBitAnd,
+		token.Pipe:       ast.OperatorBitOr,
+		token.Caret:      ast.OperatorBitXor,
+		token.Shl:        ast.OperatorBitShl,
+		token.Shr:        ast.OperatorBitShr,
+		token.KwAnd:      ast.OperatorAnd,
+		token.KwOr:       ast.OperatorOr,
+		token.KwAs:       ast.OperatorAs,
+		token.Dot2:       ast.OperatorRangeInclusive,
+		token.Dot2Less:   ast.OperatorRangeExclusive,
 	}
-}
+)

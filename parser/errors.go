@@ -3,7 +3,6 @@ package parser
 import (
 	"errors"
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/saffage/jet/internal/report"
@@ -139,43 +138,3 @@ func (p *parser) errorExpectedTokenAt(start, end token.Pos, tokens ...token.Kind
 		Message: fmt.Sprintf("want %s, got %s instead", buf.String(), p.tok.Kind.UserString()),
 	})
 }
-
-func (p *parser) skip(to ...token.Kind) (start, end token.Pos) {
-	if len(to) == 0 {
-		to = endOfExprKinds
-	}
-
-	start = p.tok.Start
-
-	for p.tok.Kind != token.EOF && !slices.Contains(to, p.tok.Kind) {
-		end = p.tok.End
-		p.next()
-	}
-
-	if p.flags&Trace != 0 && end.IsValid() {
-		// TODO must be removed
-		warn := Error{
-			Start:      start,
-			End:        end,
-			Message:    "tokens was skipped for some reason",
-			isWarn:     true,
-			isInternal: true,
-		}
-		p.errors = append(p.errors, warn)
-	}
-
-	return
-}
-
-var (
-	endOfStmtKinds = []token.Kind{
-		token.Semicolon,
-		token.NewLine,
-	}
-	endOfExprKinds = append(endOfStmtKinds, []token.Kind{
-		token.Comma,
-		token.RParen,
-		token.RCurly,
-		token.RBracket,
-	}...)
-)

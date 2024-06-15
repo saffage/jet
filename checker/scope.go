@@ -1,23 +1,29 @@
 package checker
 
-import "github.com/saffage/jet/ast"
+import (
+	"github.com/saffage/jet/ast"
+)
 
 var Global = NewScope(nil, "global")
 
 type Scope struct {
-	parent  *Scope
-	name    string
-	symbols map[string]Symbol
+	name     string
+	parentID int
+	parent   *Scope
+	children []*Scope
+	defers   []*ast.Defer
+	symbols  map[string]Symbol
 }
 
 func NewScope(parent *Scope, name string) *Scope {
-	return &Scope{parent, name, nil}
-}
+	scope := &Scope{name: name, parent: parent}
 
-// Returns the scope in which the current scope was defined,
-// or nil if the current scope has no parent.
-func (scope *Scope) Parent() *Scope {
-	return scope.parent
+	if parent != nil && parent.parent != nil {
+		scope.parentID = len(parent.children)
+		parent.children = append(parent.children, scope)
+	}
+
+	return scope
 }
 
 // Returns a name of the scope. Used in code generator.
@@ -33,19 +39,27 @@ func (scope *Scope) Name() string {
 	return scope.name
 }
 
-// Defines a symbol in the scope. If a symbol with the same
-// name is already defined in this scope, it will return it
-// without overriding it.
-//
-// NOTE: the symbol will be defined even if a symbol with the
-// same name is defined in the parent scope.
-func (scope *Scope) Define(symbol Symbol) (defined Symbol) {
-	// Scope should not contain a nil symbols.
+func (scope *Scope) Parent() *Scope {
+	return scope.parent
+}
+
+func (scope *Scope) Children() []*Scope {
+	return scope.children
+}
+
+func (scope *Scope) Defers() []*ast.Defer {
+	return scope.defers
+}
+
+// Defines a new symbol in the scope. If a symbol with the same
+// name is already defined in this scope, it will return error.
+func (scope *Scope) Define(symbol Symbol) Symbol {
 	if symbol == nil {
+		// Scope should not contain a nil symbols.
 		panic("attempt to define nil symbol")
 	}
 
-	if defined := scope.Member(symbol.Name()); defined != nil {
+	if defined := scope.LookupLocal(symbol.Name()); defined != nil {
 		return defined
 	}
 
@@ -61,7 +75,7 @@ func (scope *Scope) Define(symbol Symbol) (defined Symbol) {
 // the specified scope and returns it, or nil if such symbol
 // is undefined or unavailable (private).
 func (scope *Scope) Lookup(name string) (Symbol, *Scope) {
-	if member := scope.Member(name); member != nil {
+	if member := scope.LookupLocal(name); member != nil {
 		return member, scope
 	}
 
@@ -75,12 +89,12 @@ func (scope *Scope) Lookup(name string) (Symbol, *Scope) {
 // Searches for the specified symbol by name in the specified
 // scope and returns it, or nil if no such symbol is defined
 // in the current scope.
-func (scope *Scope) Member(name string) Symbol {
-	if symbol, ok := scope.symbols[name]; ok {
-		return symbol
+func (scope *Scope) LookupLocal(name string) Symbol {
+	if scope.symbols == nil {
+		return nil
 	}
 
-	return nil
+	return scope.symbols[name]
 }
 
 func errorAlreadyDefined(ident, previous *ast.Ident) *Error {

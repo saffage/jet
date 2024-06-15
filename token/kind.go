@@ -46,6 +46,10 @@ const (
 	LeOp       // operator '<='
 	GtOp       // operator '>'
 	GeOp       // operator '>='
+	Shl        // operator '<<'
+	ShlEq      // operator '<<='
+	Shr        // operator '>>'
+	ShrEq      // operator '>>='
 	Plus       // operator '+'
 	PlusEq     // operator '+='
 	Minus      // operator '-'
@@ -56,19 +60,20 @@ const (
 	SlashEq    // operator '/='
 	Percent    // operator '%'
 	PercentEq  // operator '%='
+	Amp        // operator '&'
+	AmpEq      // operator '&='
+	Pipe       // operator '|'
+	PipeEq     // operator '|='
+	Caret      // operator '^'
+	CaretEq    // operator '^='
 
 	// End of position dependent tokens.
 
-	Amp          // operator '&'
-	Pipe         // operator '|'
-	Caret        // operator '^'
 	At           // operator '@'
 	Dollar       // operator '$'
 	QuestionMark // operator '?'
 	Arrow        // operator '->'
 	FatArrow     // operator '=>'
-	Shl          // operator '<<'
-	Shr          // operator '>>'
 	Dot          // operator '.'
 	Dot2         // operator '..'
 	Dot2Less     // operator '..<'
@@ -85,6 +90,7 @@ const (
 	KwFor      // keyword 'for'
 	KwIn       // keyword 'in'
 	KwAs       // keyword 'as'
+	KwDefer    // keyword 'defer'
 	KwReturn   // keyword 'return'
 	KwBreak    // keyword 'break'
 	KwContinue // keyword 'continue'
@@ -207,15 +213,20 @@ var representableKinds = map[Kind]string{
 	Arrow:        "->",
 	FatArrow:     "=>",
 	Shl:          "<<",
+	ShlEq:        "<<=",
 	Shr:          ">>",
+	ShrEq:        ">>=",
 	Plus:         "+",
 	Minus:        "-",
 	Asterisk:     "*",
 	Slash:        "/",
 	Percent:      "%",
 	Amp:          "&",
+	AmpEq:        "&=",
 	Pipe:         "|",
+	PipeEq:       "|=",
 	Caret:        "^",
+	CaretEq:      "^=",
 	At:           "@",
 	Dollar:       "$",
 	PlusEq:       "+=",
@@ -237,6 +248,7 @@ var representableKinds = map[Kind]string{
 	KwFor:        "for",
 	KwIn:         "in",
 	KwAs:         "as",
+	KwDefer:      "defer",
 	KwReturn:     "return",
 	KwBreak:      "break",
 	KwContinue:   "continue",

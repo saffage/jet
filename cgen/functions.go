@@ -10,9 +10,10 @@ import (
 )
 
 func (gen *generator) fn(sym *checker.Func) {
-	prevScope := gen.Scope
-	gen.Scope = sym.Local()
+	defer gen.setScope(gen.scope)
+	gen.setScope(sym.Local())
 	gen.funcTempVarId = 0
+	gen.funcLabelID = 0
 	decl := ""
 	tyResult := types.Type(nil)
 
@@ -24,10 +25,9 @@ func (gen *generator) fn(sym *checker.Func) {
 	}
 
 	if !sym.IsExtern() {
-		gen.fnDef(sym, tyResult, decl)
+		gen.linef("%s\n", decl)
+		gen.fnDef(sym, tyResult)
 	}
-
-	gen.Scope = prevScope
 }
 
 func (gen *generator) fnDecl(sym *checker.Func) (decl string, tyResult types.Type) {
@@ -71,7 +71,7 @@ func (gen *generator) fnDecl(sym *checker.Func) (decl string, tyResult types.Typ
 	if len(sym.Params()) == 0 {
 		if isArrayResult {
 			buf.WriteString(fmt.Sprintf(
-				"%s result",
+				"%s __result",
 				gen.TypeString(tyResult),
 			))
 		} else {
@@ -96,7 +96,7 @@ func (gen *generator) fnDecl(sym *checker.Func) (decl string, tyResult types.Typ
 
 		if isArrayResult {
 			buf.WriteString(fmt.Sprintf(
-				", %s result",
+				", %s __result",
 				gen.TypeString(tyResult),
 			))
 		}
@@ -115,46 +115,27 @@ func (gen *generator) fnDecl(sym *checker.Func) (decl string, tyResult types.Typ
 	return
 }
 
-func (gen *generator) fnDef(sym *checker.Func, tyResult types.Type, decl string) {
-	isArrayResult := types.IsArray(tyResult)
-	gen.line(decl)
-
+func (gen *generator) fnDef(sym *checker.Func, tyResult types.Type) {
 	node := sym.Node().(*ast.Decl)
 	value, _ := node.Value.(*ast.Function)
 
-	var body []ast.Node
-
-	if list, _ := value.Body.(*ast.CurlyList); list != nil {
-		body = list.StmtList.Nodes
-	} else {
-		body = []ast.Node{value.Body}
-	}
-
-	gen.codeSect.WriteString(" {\n")
+	gen.line("{\n")
 	gen.indent++
 
-	if tyResult != nil && !isArrayResult {
-		gen.linef("%s result;\n", gen.TypeString(tyResult))
-	}
+	resultVar := gen.resultVar(tyResult)
 
 	if sym.Name() == "main" {
 		gen.linef("init%s();\n", gen.Module.Name())
 	}
 
-	for i, stmt := range body {
-		if tyResult != nil && i == len(body)-1 {
-			if isArrayResult {
-				gen.arrayAssign("result", stmt, types.AsArray(tyResult))
-			} else {
-				gen.linef("result = %s;\n", gen.exprString(stmt))
-			}
-		} else {
-			gen.codeSect.WriteString(gen.StmtString(stmt))
-		}
+	if list, _ := value.Body.(*ast.CurlyList); list != nil {
+		gen.block(list.StmtList, resultVar)
+	} else if resultVar != nil {
+		gen.assign("__result", value.Body)
 	}
 
-	if tyResult != nil && !isArrayResult {
-		gen.line("return result;\n")
+	if resultVar != nil && !types.IsArray(tyResult) {
+		gen.line("return __result;\n")
 	}
 
 	gen.indent--
