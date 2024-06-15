@@ -16,10 +16,10 @@ short_decl_list = short_decl, {stmt_sep, short_decl}, [stmt_sep] ;
 attribute_list  = '@', '[', [ident, {'.', ident}, paren_list], ']' ;
 
 expr           = defer | return | break | continue | assign_op | simple_expr ;
-simple_expr    = function | as_expr ;
-assign_expr    = ident, {assign_op, as_expr} ;
-as_expr        = range_expr, {as_op, range_expr} ;
-range_expr     = bool_or_expr, {range_op, bool_or_expr} ;
+simple_expr    = function | range_expr ;
+assign_expr    = ident, {assign_op, range_expr} ;
+range_expr     = as_expr, {range_op, as_expr} ;
+as_expr        = bool_or_expr, {as_op, bool_or_expr} ;
 bool_or_expr   = bool_and_expr, {bool_or_op, bool_and_expr} ;
 bool_and_expr  = compare_expr, {bool_and_op, compare_expr} ;
 compare_expr   = bitwise_expr, {compare_op, bitwise_expr} ;
@@ -33,8 +33,8 @@ operand = ident | literal | builtin_call | if | while | for | struct | enum | bl
 literal = int_literal | float_literal | string_literal ;
 
 assign_op    = '=' | '+=' | '-=' | '*=' | '/=' | '%=' | '&=' | '|=' | '<<=' | '>>=' ;
-as_op        = 'as' ;
 range_op     = '..' | '..<' ;
+as_op        = 'as' ;
 bool_or_op   = 'or' ;
 bool_and_op  = 'and' ;
 compare_op   = '>=' | '>' | '<=' | '<' | '==' | '!=' ;

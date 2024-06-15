@@ -71,11 +71,13 @@ func (t Token) Precedence() int {
 	case KwOr:
 		return 4
 
-	case Arrow, FatArrow, Dot2, Dot2Less:
+	case KwAs:
 		return 3
 
-	case KwAs:
+	case Dot2, Dot2Less:
 		return 2
+
+		// TODO maybe add 'Arrow' & 'FatArrow' operators
 
 	case Eq, PlusEq, MinusEq, AsteriskEq, SlashEq, PercentEq, AmpEq, PipeEq, CaretEq, ShlEq, ShrEq:
 		return 1
