@@ -1,0 +1,33 @@
+Node :: struct {
+    data: int
+    next: pointer # because recursive definitions is not yet supported
+}
+
+print_tree :: (tree: *Node) {
+    if tree != { 0 as *Node } {
+        $print(tree.*.data)
+        tree = tree.*.next as *Node
+    }
+
+    while tree != { 0 as *Node } {
+        $print(" -> ")
+        $print(tree.*.data)
+        tree = tree.*.next as *Node
+    }
+}
+
+@[extern_c("malloc")]
+alloc: (size: u64) -> pointer
+
+main :: () {
+    tree := alloc($size_of(Node)) as *Node
+    two  := alloc($size_of(Node)) as *Node
+    one  := alloc($size_of(Node)) as *Node
+
+    tree.* = Node(data = 3, next = 0 as pointer)
+    two.*  = Node(data = 2, next = tree as pointer)
+    one.*  = Node(data = 1, next = two as pointer)
+
+    head := one
+    print_tree(head)
+}
