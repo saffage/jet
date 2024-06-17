@@ -42,7 +42,7 @@ make_array :: () -> [N]int {
     array: [N]int
     max := N * 10
     for i in 0..<N {
-        array[i] = rand_int(-N, N)
+        array[i] = rand_int(-max, max)
     }
     array
 }
