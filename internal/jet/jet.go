@@ -48,7 +48,7 @@ func process(cfg *config.Config, fileID config.FileID) bool {
 }
 
 func genCFile(m *checker.Module, dir string) bool {
-	filename := filepath.Join(dir, m.Name()+"__jet.c")
+	filename := filepath.Join(dir, m.Name()+".c")
 	f, err := os.Create(filename)
 	if err != nil {
 		panic(err)
