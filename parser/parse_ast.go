@@ -302,15 +302,23 @@ func (p *parser) parseSuffixExpr(x ast.Node) ast.Node {
 			x = p.parseDot(x)
 
 		case token.LBracket:
-			x = &ast.Index{
-				X:    x,
-				Args: p.parseBracketList(p.parseExpr),
+			if args := p.parseBracketList(p.parseExpr); args != nil {
+				x = &ast.Index{
+					X:    x,
+					Args: args,
+				}
+			} else {
+				return nil
 			}
 
 		case token.LParen:
-			x = &ast.Call{
-				X:    x,
-				Args: p.parseParenList(p.declOr(p.parseExpr)),
+			if args := p.parseParenList(p.declOr(p.parseExpr)); args != nil {
+				x = &ast.Call{
+					X:    x,
+					Args: args,
+				}
+			} else {
+				return nil
 			}
 
 		default:
