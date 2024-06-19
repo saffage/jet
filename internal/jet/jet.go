@@ -116,7 +116,7 @@ func processFile(path string) {
 }
 
 func compileToC(cc, module, dir string) error {
-	file := filepath.Join(dir, ".jet", module+"__jet.c")
+	file := filepath.Join(dir, ".jet", module+".c")
 	args := []string{"-o", module, file}
 
 	if len(config.CLDflags) > 0 {
