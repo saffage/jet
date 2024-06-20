@@ -12,8 +12,8 @@ var UseColors = true
 // Specifies whether to output the actual code from the file.
 var ShowLine = true
 
-// Specifies whether to output debug messages.
-var IsDebug = false
+// Specifies a level of messages.
+var Level = KindNote
 
 // Reporter is an interface that is used to make the report prettier/clearer.
 //

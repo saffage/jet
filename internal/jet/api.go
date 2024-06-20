@@ -12,13 +12,23 @@ import (
 
 func ProcessArgs(args []string) {
 	args, action := config.ParseArgs(args)
-	report.IsDebug = config.FlagDebug
+
+	switch {
+	case config.FlagDebug:
+		report.Level = report.KindDebug
+
+	case config.FlagNoHints:
+		report.Level = report.KindWarning
+
+	default:
+		report.Level = report.KindHint
+	}
 
 	switch action {
 	case config.ActionShowHelp:
 		// Nothing to do
 
-	case config.ActionDefault:
+	case config.ActionNonCmd:
 		if len(args) == 0 {
 			report.Errorf("expected filename")
 			return

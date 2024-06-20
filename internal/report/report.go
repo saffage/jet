@@ -31,7 +31,7 @@ func display(kind Kind, message string) {
 }
 
 func reportInternal(kind Kind, tag, message string) {
-	if kind == KindDebug && !IsDebug {
+	if kind < Level {
 		return
 	}
 
@@ -43,7 +43,7 @@ func reportInternal(kind Kind, tag, message string) {
 }
 
 func reportAtInternal(kind Kind, tag string, start, end token.Pos, message string) {
-	if kind == KindDebug && !IsDebug {
+	if kind < Level {
 		return
 	}
 

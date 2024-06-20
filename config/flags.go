@@ -10,6 +10,10 @@ var (
 	// Enable debug information.
 	FlagDebug bool
 
+	// Enable debug information.
+	FlagNoHints bool
+
+	// Dump the checker state after checking a module.
 	FlagDumpCheckerState bool
 
 	// Display a program AST of the specified Jet module and exit.
@@ -36,9 +40,7 @@ const (
 	ActionShowHelp Action = iota
 	ActionError
 	ActionCompileToC
-	ActionGenerate // TODO remove
-
-	ActionDefault = ActionGenerate
+	ActionNonCmd
 )
 
 func ParseArgs(args []string) ([]string, Action) {
@@ -70,7 +72,7 @@ func ParseArgs(args []string) ([]string, Action) {
 		if errors.Is(err, flag.ErrHelp) {
 			return nil, ActionShowHelp
 		}
-		return cmdJet.Args(), ActionDefault
+		return cmdJet.Args(), ActionNonCmd
 	}
 }
 
@@ -83,6 +85,12 @@ func init() {
 		"debug",
 		false,
 		"Enable debug information",
+	)
+	cmdJet.BoolVar(
+		&FlagNoHints,
+		"no-hints",
+		false,
+		"Disable the compiler hints. Hints will still be enabled if the -debug flag is set",
 	)
 	cmdJet.BoolVar(
 		&FlagDumpCheckerState,
@@ -127,6 +135,12 @@ func init() {
 		"debug",
 		false,
 		"Enable compiler's debug output",
+	)
+	cmdC.BoolVar(
+		&FlagNoHints,
+		"no-hints",
+		false,
+		"Disable the compiler hints. Hints will still be enabled if the -debug flag is set",
 	)
 	cmdC.BoolVar(
 		&CFlagBuild,
