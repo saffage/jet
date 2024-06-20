@@ -77,6 +77,12 @@ func (gen *generator) builtInPrint(call *ast.Call) string {
 				gen.exprString(call.Args.Nodes[0]),
 			)
 
+		case types.KindF32, types.KindF64:
+			return fmt.Sprintf(
+				`fprintf(stdout, "%%f", %s)`,
+				gen.exprString(call.Args.Nodes[0]),
+			)
+
 		default:
 			panic("not implemented")
 		}
@@ -128,6 +134,12 @@ func (gen *generator) builtInPrintln(call *ast.Call) string {
 			types.KindU64:
 			return fmt.Sprintf(
 				`fprintf(stdout, "%%u\n", %s)`,
+				gen.exprString(call.Args.Nodes[0]),
+			)
+
+		case types.KindF32, types.KindF64:
+			return fmt.Sprintf(
+				`fprintf(stdout, "%%f\n", %s)`,
 				gen.exprString(call.Args.Nodes[0]),
 			)
 
