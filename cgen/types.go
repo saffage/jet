@@ -18,6 +18,10 @@ const (
 var arrayTypes = map[types.Type]string{}
 
 func (gen *generator) TypeString(ty types.Type) string {
+	if ty == nil {
+		panic("can't generate a type string for the nil type")
+	}
+
 	assert.Ok(!types.IsTypeDesc(ty))
 
 	switch ty := ty.Underlying().(type) {

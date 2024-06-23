@@ -82,9 +82,6 @@ func (gen *generator) builtInPrint(call *ast.Call) string {
 				`fprintf(stdout, "%%f", %s)`,
 				gen.exprString(call.Args.Nodes[0]),
 			)
-
-		default:
-			panic("not implemented")
 		}
 
 	case *types.Enum:
@@ -92,10 +89,9 @@ func (gen *generator) builtInPrint(call *ast.Call) string {
 			`fprintf(stdout, "%%d", %s)`,
 			gen.exprString(call.Args.Nodes[0]),
 		)
-
-	default:
-		panic(fmt.Sprintf("printing type %T is not implemented", value.Type))
 	}
+
+	panic(fmt.Sprintf("'$print' for the type %s is not implemented", value.Type))
 }
 
 func (gen *generator) builtInPrintln(call *ast.Call) string {
@@ -142,9 +138,6 @@ func (gen *generator) builtInPrintln(call *ast.Call) string {
 				`fprintf(stdout, "%%f\n", %s)`,
 				gen.exprString(call.Args.Nodes[0]),
 			)
-
-		default:
-			panic("not implemented")
 		}
 
 	case *types.Enum:
@@ -152,10 +145,9 @@ func (gen *generator) builtInPrintln(call *ast.Call) string {
 			`fprintf(stdout, "%%d\n", %s)`,
 			gen.exprString(call.Args.Nodes[0]),
 		)
-
-	default:
-		panic(fmt.Sprintf("printing type %T is not implemented", value.Type))
 	}
+
+	panic(fmt.Sprintf("'$println' for the type %s is not implemented", value.Type))
 }
 
 func (gen *generator) builtInAssert(call *ast.Call) string {

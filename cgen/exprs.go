@@ -32,11 +32,10 @@ func (gen *generator) exprString(expr ast.Node) string {
 			return gen.constant(sym.Value())
 
 		case nil:
-			report.TaggedErrorf("cgen", "expression `%s` have no uses", expr)
-			panic("")
+			panic(fmt.Sprintf("expression `%s` have no uses", expr))
 
 		default:
-			panic(fmt.Sprintf("idk (%T) %s", sym, sym.Node().Repr()))
+			panic(fmt.Sprintf("invalid symbol '%T' for an expression: '%s'", sym, sym.Node().Repr()))
 		}
 
 	case *ast.Literal:
@@ -54,7 +53,7 @@ func (gen *generator) exprString(expr ast.Node) string {
 		tv := gen.Types[node.X]
 		if tv == nil {
 			// Defined in another module?
-			panic("idk")
+			panic("unreachable")
 		}
 
 		if types.IsTypeDesc(tv.Type) {
@@ -117,28 +116,17 @@ func (gen *generator) exprString(expr ast.Node) string {
 		tv := gen.Types[node.X]
 		if tv == nil {
 			// Defined in another module?
-			panic("idk")
+			panic("unreachable")
 		}
 
 		if types.IsTypeDesc(tv.Type) {
-			ty := types.SkipTypeDesc(tv.Type)
-			tmp := gen.tempVar(ty)
-
-			if _struct := types.AsStruct(ty); _struct != nil {
-				gen.structInit(gen.name(tmp), node, _struct)
+			if ty := types.AsStruct(types.SkipTypeDesc(tv.Type)); ty != nil {
+				tmp := gen.tempVar(ty)
+				gen.structInit(gen.name(tmp), node, ty)
 				return gen.name(tmp)
-				// buf.WriteString(fmt.Sprintf("(%s){\n", gen.TypeString(_struct)))
-				// gen.indent++
-				// buf.WriteString(gen.structInit(_struct, node.Args.List))
-				// gen.indent--
-				// gen.indent(&buf)
-				// buf.WriteString("}")
-				// return buf.String()
-			} else if _enum := types.AsEnum(ty); _enum != nil {
-				panic("todo")
-				// return gen.TypeString(_enum) + "__" + node.Args.Repr()
 			} else {
-				return "ERROR_CGEN__INVALID_MEMBER_ACCESS"
+				// Error in the checker
+				return "ERROR_CGEN__INVALID_CALL"
 			}
 		} else if fn := types.AsFunc(tv.Type); fn != nil {
 			buf := strings.Builder{}
@@ -166,7 +154,8 @@ func (gen *generator) exprString(expr ast.Node) string {
 		buf.WriteByte('[')
 
 		if len(node.Args.Nodes) != 1 {
-			panic("idk how to handle it")
+			// Error in the checker
+			panic("invalid arguments count for the index expression")
 		}
 
 		buf.WriteString(gen.exprString(node.Args.Nodes[0]))
@@ -178,8 +167,7 @@ func (gen *generator) exprString(expr ast.Node) string {
 		// must be prefixes with the type.
 		tv := gen.Types[expr]
 		if tv == nil || !types.IsArray(tv.Type) {
-			// Defined in another module?
-			panic("idk")
+			panic("unreachable")
 		}
 		ty := types.AsArray(types.SkipUntyped(tv.Type))
 		tmp := gen.tempVar(ty)
@@ -209,10 +197,14 @@ func (gen *generator) exprString(expr ast.Node) string {
 		return ""
 
 	default:
-		fmt.Printf("not implemented '%T'\n", node)
+		report.TaggedErrorf(
+			"internal: cgen",
+			"expression '%T' is not implemented",
+			node,
+		)
 	}
 
-	report.Warningf("empty expr at node '%T'", expr)
+	report.TaggedWarningf("internal: cgen", "empty expression was generated: '%T'", expr)
 	return "ERROR_CGEN__EXPR"
 }
 

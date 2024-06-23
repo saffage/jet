@@ -28,7 +28,6 @@ func (check *Checker) typeOfInternal(expr ast.Node) types.Type {
 		*ast.StmtList,
 		*ast.List,
 		*ast.AttributeList:
-		// *ast.Signature:
 		panic("ill-formed AST")
 
 	case *ast.Empty:
@@ -185,7 +184,7 @@ func (check *Checker) typeOfCall(node *ast.Call) types.Type {
 		return tyStruct
 	}
 
-	check.errorf(node.X, "expression is not a function or struct type (%s)", tyOperand)
+	check.errorf(node.X, "expression is not a function or a struct type (%s)", tyOperand)
 	return nil
 }
 
