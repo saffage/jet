@@ -1,5 +1,6 @@
 (* Top-level *)
-grammar = decl_list ;
+grammar = decl_list, eof;
+eof     = '\0' ;
 
 stmt_sep  = ';' | '\n', {'\n'} ;
 stmt_list = stmt, {stmt_sep, stmt}, [stmt_sep] ;
@@ -29,7 +30,7 @@ addition_expr  = multiply_expr, {addition_op, multiply_expr} ;
 multiply_expr  = primary_expr, {multiply_op, primary_expr} ;
 primary_expr   = {prefix_op}, operand, {dot_op | bracket_list | paren_list};
 
-operand = ident | literal | builtin_call | if | while | for | struct | enum | block | bracket_list | paren_list;
+operand = ident | literal | builtin | if | while | for | struct | enum | block | bracket_list | paren_list;
 literal = int_literal | float_literal | string_literal ;
 
 assign_op    = '=' | '+=' | '-=' | '*=' | '/=' | '%=' | '&=' | '|=' | '<<=' | '>>=' ;
@@ -51,20 +52,26 @@ paren_list   = '(', [expr_list], ')' ;
 bracket_list = '[', [expr_list], ']' ;
 block        = '{', [stmt_list], '}' ;
 
-function     = paren_list, (expr | '->', type, [block]) ;
-builtin_call = '$', ident, [paren_list] ;
-if           = 'if', simple_expr, block, [else] ;
-else         = 'else', (if | block) ;
-while        = 'while', simple_expr, block ;
-for          = 'for', decl, 'in', simple_expr, block ;
-defer        = 'defer', simple_expr ;
-return       = 'return', [simple_expr] ;
-break        = 'break', [label] ;
-continue     = 'continue', [label] ;
-struct       = 'struct', '{', [decl_list], '}' ;
-enum         = 'enum', '{', [short_decl_list], '}' ;
+function = paren_list, (expr | '->', type, [block]) ;
+builtin  = '$', ident ;
+if       = 'if', simple_expr, block, [else] ;
+else     = 'else', (if | block) ;
+while    = 'while', simple_expr, block ;
+for      = 'for', short_decl, 'in', simple_expr, block ;
+defer    = 'defer', simple_expr ;
+return   = 'return', [simple_expr] ;
+break    = 'break', [label] ;
+continue = 'continue', [label] ;
+label    = ident ;
 
-label             = ident ;
+struct        = 'struct', '{', [struct_field, {',', struct_field}, [',']], '}' ;
+struct_field  = decl ;
+struct_fields = [struct_field, {',', struct_field}, [',']] ;
+
+enum        = 'enum', '{', [short_decl_list], '}' ;
+enum_field  = ident, ['=', simple_expr] ;
+enum_fields = [enum_field, {',', enum_field}, [',']] ;
+
 ident             = ident_start_char, {ident_char} ;
 ident_start_char  = letter | '_' ;
 ident_char        = letter | digit | '_' ;
