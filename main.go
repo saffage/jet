@@ -27,7 +27,7 @@ func catchInternalErrors() {
 			report.TaggedErrorf("internal", "%v", panicErr)
 		}
 
-		// for stack trace
+		// repanic for stack trace
 		panic(panicErr)
 	}
 }
