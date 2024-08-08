@@ -4,9 +4,9 @@ import "bytes"
 
 const (
 	_ FileID = iota
-	MainFileID
-	TypesModuleFileID
+	BuiltInModuleFileID
 	CModuleFileID
+	MainFileID
 
 	firstFreeFileID
 )
@@ -20,9 +20,8 @@ type FileInfo struct {
 }
 
 func NextFileID() FileID {
-	id := fileID
 	fileID++
-	return id
+	return fileID - 1
 }
 
 var fileID = firstFreeFileID

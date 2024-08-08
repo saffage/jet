@@ -1,19 +1,32 @@
 package config
 
-var Global = New()
+var Global = &Config{}
 
-// Must be created via the [New] function.
 type Config struct {
 	// Contains filenames indexed by their IDs.
 	//
-	// NOTE: the file on which the compiler was called always has the key [config.MainFileID].
+	// The file on which the compiler was called always has the key [MainFileID].
 	Files     map[FileID]FileInfo
 	MaxErrors int
+	Exe       string // Path to the compiler executable.
+	Flags     Flags
+	Options   Options
 }
 
-func New() *Config {
-	return &Config{
-		Files:     map[FileID]FileInfo{},
-		MaxErrors: 3,
-	}
+type Flags struct {
+	Run              bool // Run a compiled executable.
+	Debug            bool // Enable debug information.
+	NoHints          bool // Disable compiler hints.
+	DumpCheckerState bool // Dump the checker state after checking a specified module.
+	ParseAst         bool // Display program AST of the specified module and exit.
+	TraceParser      bool // Trace parser calls (used for debugging).
+	NoCoreLib        bool // Disable the language core library.
+}
+
+type Options struct {
+	CacheDir    string // Compiler cache directory.
+	CoreLibPath string // Path to the language core library.
+	CC          string // Path to a C compiler executable.
+	CCFlags     string // Flags that must be passed to a C compiler.
+	LDFlags     string // Flags that must be passed to a linker.
 }

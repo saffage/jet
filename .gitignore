@@ -15,4 +15,4 @@ go.work
 /_test
 
 # Jet
-.jet/
+.jet-cache/
