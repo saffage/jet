@@ -9,7 +9,7 @@ import (
 	"github.com/elliotchance/orderedmap/v2"
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/checker"
-	"github.com/saffage/jet/internal/report"
+	"github.com/saffage/jet/report"
 )
 
 type generator struct {

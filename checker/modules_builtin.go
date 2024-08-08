@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	"github.com/saffage/jet/config"
-	"github.com/saffage/jet/internal/report"
+	"github.com/saffage/jet/report"
 )
 
 // This module contains the declaration of the Jet built-in types.

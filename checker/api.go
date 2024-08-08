@@ -9,8 +9,8 @@ import (
 	"github.com/fatih/color"
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/config"
-	"github.com/saffage/jet/internal/report"
 	"github.com/saffage/jet/parser"
+	"github.com/saffage/jet/report"
 	"github.com/saffage/jet/scanner"
 )
 

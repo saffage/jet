@@ -8,7 +8,7 @@ import (
 
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/config"
-	"github.com/saffage/jet/internal/report"
+	"github.com/saffage/jet/report"
 )
 
 func (check *Checker) resolveImport(node *ast.Import) {
