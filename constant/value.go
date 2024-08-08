@@ -26,7 +26,6 @@ func NewBigInt(value *big.Int) Value {
 	if value == nil {
 		panic("nil argument")
 	}
-
 	return &intValue{value}
 }
 
@@ -34,7 +33,6 @@ func NewBigFloat(value *big.Float) Value {
 	if value == nil {
 		panic("nil argument")
 	}
-
 	return &floatValue{value}
 }
 
@@ -54,7 +52,6 @@ func AsInt(value Value) *big.Int {
 	if IsInt(value) {
 		return value.(*intValue).val
 	}
-
 	return nil
 }
 
@@ -62,7 +59,6 @@ func AsFloat(value Value) *big.Float {
 	if IsFloat(value) {
 		return value.(*floatValue).val
 	}
-
 	return nil
 }
 
@@ -71,7 +67,6 @@ func AsString(value Value) *string {
 		val := value.(*stringValue).val
 		return &val
 	}
-
 	return nil
 }
 
@@ -80,7 +75,6 @@ func AsBool(value Value) *bool {
 		val := value.(*boolValue).val
 		return &val
 	}
-
 	return nil
 }
 
@@ -89,7 +83,6 @@ func AsArray(value Value) *[]Value {
 		val := value.(*arrayValue).val
 		return &val
 	}
-
 	return nil
 }
 

@@ -28,16 +28,27 @@ type Reporter interface {
 // If the error implements the [Reporter] interface, it will be used instead
 // of the usual Error() function.
 func Errors(errs ...error) {
+	type (
+		ErrorWrapper  interface{ Unwrap() error }
+		ErrorsWrapper interface{ Unwrap() []error }
+	)
+
 	for _, err := range errs {
 		switch err := err.(type) {
+		case nil:
+			// Do nothing
+
 		case Reporter:
 			err.Report()
 
-		case interface{ Unwrap() []error }:
+		case ErrorWrapper:
+			Errors(err.Unwrap())
+
+		case ErrorsWrapper:
 			Errors(err.Unwrap()...)
 
 		default:
-			Error(err.Error())
+			Error("%s", err.Error())
 		}
 	}
 }

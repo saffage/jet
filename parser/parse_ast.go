@@ -57,13 +57,11 @@ func (p *parser) declOr(f parseFunc) parseFunc {
 			}
 		}
 
-		if !isDecl {
-			return f()
-		} else if decl := p.parseDecl(); decl != nil {
-			return decl
+		if isDecl {
+			return p.parseDecl()
 		}
 
-		return nil
+		return f()
 	}
 }
 
@@ -521,7 +519,6 @@ func (p *parser) parseDecl() ast.Node {
 	}
 
 	attributes := p.parseAttributeListNode()
-
 	if attributes != nil {
 		for p.tok.Kind == token.NewLine {
 			p.next()
@@ -836,7 +833,6 @@ func (p *parser) parseForLoopDecl() ast.Node {
 	}
 
 	attributes := p.parseAttributeListNode()
-
 	if attributes != nil {
 		for p.tok.Kind == token.NewLine {
 			p.next()
