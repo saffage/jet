@@ -170,9 +170,12 @@ func (gen *generator) exprString(expr ast.Node) string {
 			panic("unreachable")
 		}
 		ty := types.AsArray(types.SkipUntyped(tv.Type))
-		tmp := gen.tempVar(ty)
-		gen.arrayInit(gen.name(tmp), node, ty)
-		return gen.name(tmp)
+		tmpVar := gen.tempVar(ty)
+		gen.arrayInit(gen.name(tmpVar), node, ty)
+		if tmpVar == nil {
+			return ""
+		}
+		return gen.name(tmpVar)
 
 	case *ast.If:
 		ty := gen.TypeOf(expr)
@@ -182,6 +185,9 @@ func (gen *generator) exprString(expr ast.Node) string {
 
 		tmpVar := gen.tempVar(types.SkipUntyped(ty))
 		gen.ifExpr(node, tmpVar)
+		if tmpVar == nil {
+			return ""
+		}
 		return gen.name(tmpVar)
 
 	case *ast.CurlyList:
@@ -191,6 +197,9 @@ func (gen *generator) exprString(expr ast.Node) string {
 		}
 		tmpVar := gen.tempVar(types.SkipUntyped(ty))
 		gen.block(node.StmtList, tmpVar)
+		if tmpVar == nil {
+			return ""
+		}
 		return gen.name(tmpVar)
 
 	case *ast.Defer:
@@ -375,7 +384,11 @@ func (gen *generator) assign(dest string, value ast.Node) {
 		gen.structAssign(dest, value, ty)
 
 	default:
-		gen.linef("%s = %s;\n", dest, gen.exprString(value))
+		if ty.Equals(types.Unit) {
+			gen.linef("(void)%s;\n", gen.exprString(value))
+		} else {
+			gen.linef("%s = %s;\n", dest, gen.exprString(value))
+		}
 	}
 }
 
