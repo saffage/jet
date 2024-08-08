@@ -15,7 +15,7 @@ func Generate(w io.Writer, m *checker.Module) error {
 		scope:  m.Scope,
 	}
 
-	gen.out.WriteString(prelude)
+	_, _ = gen.out.WriteString(prelude)
 
 	if err := gen.out.Flush(); err != nil {
 		panic(err)
@@ -28,6 +28,7 @@ func Generate(w io.Writer, m *checker.Module) error {
 		gen.fn(mainFn)
 	}
 
+	_, _ = gen.out.WriteString(gen.includeSect.String())
 	_, _ = gen.out.WriteString("\n/* TYPES */\n")
 	_, _ = gen.out.WriteString(gen.typeSect.String())
 	_, _ = gen.out.WriteString("\n/* DECL */\n")
