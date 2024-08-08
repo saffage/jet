@@ -54,19 +54,17 @@ func (decl *Decl) Repr() string {
 
 	buf.WriteString(decl.Ident.Repr())
 
-	c := ':'
-	if decl.IsVar {
-		c = '='
-	}
-
 	if decl.Type != nil {
 		buf.WriteString(fmt.Sprintf(": %s", decl.Type.Repr()))
+	} else {
+		buf.WriteString(" :")
+	}
 
-		if decl.Value != nil {
-			buf.WriteString(fmt.Sprintf(" %c %s", c, decl.Value.Repr()))
+	if decl.Value != nil {
+		if decl.Type != nil {
+			buf.WriteByte(' ')
 		}
-	} else if decl.Value != nil {
-		buf.WriteString(fmt.Sprintf(" :%c %s", c, decl.Value.Repr()))
+		buf.WriteString(fmt.Sprintf("= %s", decl.Value.Repr()))
 	}
 
 	return buf.String()
@@ -101,7 +99,7 @@ func (n *ArrayType) Repr() string {
 
 func (n *StructType) Repr() string {
 	buf := strings.Builder{}
-	buf.WriteString("struct{")
+	buf.WriteString("struct {")
 
 	for i, field := range n.Fields {
 		if i != 0 {
@@ -118,7 +116,7 @@ func (n *StructType) Repr() string {
 
 func (n *EnumType) Repr() string {
 	buf := strings.Builder{}
-	buf.WriteString("enum{")
+	buf.WriteString("enum {")
 
 	for i, field := range n.Fields {
 		if i != 0 {
@@ -170,19 +168,21 @@ func (n *Deref) Repr() string {
 }
 
 func (n *Op) Repr() string {
-	buf := strings.Builder{}
-
 	if n.X != nil {
-		buf.WriteString(n.X.Repr())
+		if n.Y != nil {
+			return fmt.Sprintf(
+				"%s %s %s",
+				n.X.Repr(),
+				n.Kind.String(),
+				n.Y.Repr(),
+			)
+		}
+		return n.X.Repr() + n.Kind.String()
 	}
-
-	buf.WriteString(n.Kind.String())
-
 	if n.Y != nil {
-		buf.WriteString(n.Y.Repr())
+		return n.Kind.String() + n.Y.Repr()
 	}
-
-	return buf.String()
+	return n.Kind.String()
 }
 
 //------------------------------------------------
