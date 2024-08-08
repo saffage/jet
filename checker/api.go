@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/fatih/color"
@@ -37,13 +38,13 @@ func Check(cfg *config.Config, fileID config.FileID, stmts *ast.StmtList) (*Modu
 
 	module.completed = true
 
-	if config.FlagDumpCheckerState {
-		err := os.Mkdir(".jet", os.ModePerm)
+	if cfg.Flags.DumpCheckerState {
+		err := os.Mkdir(cfg.Options.CacheDir, os.ModePerm)
 		if err != nil && !os.IsExist(err) {
 			panic(err)
 		}
 
-		f, err := os.Create(".jet/checker_state.txt")
+		f, err := os.Create(filepath.Join(cfg.Options.CacheDir, "checker-state.txt"))
 		if err != nil {
 			panic(err)
 		}
@@ -60,7 +61,7 @@ func CheckFile(cfg *config.Config, fileID config.FileID) (*Module, error) {
 	scannerFlags := scanner.SkipWhitespace | scanner.SkipComments
 	parserFlags := parser.DefaultFlags
 
-	if config.FlagTraceParser {
+	if cfg.Flags.TraceParser {
 		parserFlags |= parser.Trace
 	}
 
@@ -83,9 +84,9 @@ func CheckFile(cfg *config.Config, fileID config.FileID) (*Module, error) {
 		return NewModule(NewScope(nil, "module "+fi.Name), fi.Name, nil), nil
 	}
 
-	if config.FlagParseAst {
+	if cfg.Flags.ParseAst {
 		printRecreatedAST(stmts)
-		return nil, nil
+		return NewModule(NewScope(nil, "module "+fi.Name), fi.Name, nil), nil
 	}
 
 	return Check(cfg, fileID, stmts)
