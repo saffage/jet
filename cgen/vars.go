@@ -9,15 +9,24 @@ import (
 )
 
 func (gen *generator) globalVarDecl(sym *checker.Var) {
+	if sym.Type().Equals(types.Unit) {
+		return
+	}
 	t := gen.TypeString(sym.Type())
 	gen.declVarsSect.WriteString(fmt.Sprintf("%s %s;\n", t, gen.name(sym)))
 }
 
 func (gen *generator) varDecl(sym *checker.Var) string {
+	if sym.Type().Equals(types.Unit) {
+		return ""
+	}
 	return fmt.Sprintf("%s %s;\n", gen.TypeString(sym.Type()), gen.name(sym))
 }
 
 func (gen *generator) tempVar(ty types.Type) *checker.Var {
+	if ty == nil || ty.Equals(types.Unit) {
+		return nil
+	}
 	id := fmt.Sprintf("tmp__%d", gen.funcTempVarId)
 	decl := &ast.Decl{Ident: &ast.Ident{Name: id}}
 	sym := checker.NewVar(gen.scope, ty, decl)
@@ -28,7 +37,7 @@ func (gen *generator) tempVar(ty types.Type) *checker.Var {
 }
 
 func (gen *generator) resultVar(ty types.Type) *checker.Var {
-	if ty == nil {
+	if ty == nil || ty.Equals(types.Unit) {
 		return nil
 	}
 	decl := &ast.Decl{Ident: &ast.Ident{Name: "__result"}}
