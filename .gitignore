@@ -9,10 +9,10 @@
 go.work
 
 # Editor configuration
-/.vscode
+/.vscode/
 
-# For local testing
-/_test
+# For local files
+/.local/
 
 # Jet
-.jet/
+.jet-cache/

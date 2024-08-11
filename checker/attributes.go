@@ -51,6 +51,9 @@ func (check *Checker) resolveFuncAttrs(sym *Func) {
 			case "extern_c":
 				check.attrExternC(sym, attr)
 
+			case "header":
+				// Unchecked attribute
+
 			default:
 				check.errorf(attrIdent, "unknown attribute")
 			}

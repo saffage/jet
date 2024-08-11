@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/saffage/jet/internal/report"
+	"github.com/saffage/jet/report"
 	"github.com/saffage/jet/token"
 )
 
@@ -47,10 +47,6 @@ func (e Error) Error() string {
 
 func (e Error) Unwrap() error {
 	return e.err
-}
-
-func (e Error) Is(err error) bool {
-	return e.err == err
 }
 
 func (e Error) Report() {

@@ -6,7 +6,6 @@ import (
 	"github.com/elliotchance/orderedmap/v2"
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/checker"
-	"github.com/saffage/jet/internal/assert"
 	"github.com/saffage/jet/types"
 )
 
@@ -22,7 +21,9 @@ func (gen *generator) TypeString(ty types.Type) string {
 		panic("can't generate a type string for the nil type")
 	}
 
-	assert.Ok(!types.IsTypeDesc(ty))
+	if types.IsTypeDesc(ty) {
+		panic("unreachable")
+	}
 
 	switch ty := ty.Underlying().(type) {
 	case nil:

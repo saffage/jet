@@ -1,17 +1,15 @@
 package types
 
-import (
-	"fmt"
-
-	"github.com/saffage/jet/internal/assert"
-)
+import "fmt"
 
 type TypeDesc struct {
 	base Type
 }
 
 func NewTypeDesc(t Type) *TypeDesc {
-	assert.Ok(t != nil)
+	if t == nil {
+		panic("unreachable")
+	}
 
 	if typedesc, _ := t.(*TypeDesc); typedesc != nil {
 		return typedesc

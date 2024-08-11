@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/saffage/jet/internal/report"
+	"github.com/saffage/jet/report"
 	"github.com/saffage/jet/token"
 )
 

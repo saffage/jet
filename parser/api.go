@@ -44,6 +44,10 @@ func New(tokens []token.Token, flags Flags) *parser {
 		panic("expected at least 1 token (EOF)")
 	}
 
+	if tokens[len(tokens)-1].Kind != token.EOF {
+		panic("expected EOF token is the end of the stream")
+	}
+
 	return &parser{
 		tokens: tokens,
 		flags:  flags,

@@ -59,10 +59,8 @@ func reportAtInternal(kind Kind, tag string, start, end token.Pos, message strin
 
 	line := "\n" + formatLoc(start)
 
-	if config.Global != nil {
-		if fileInfo, ok := config.Global.Files[start.FileID]; ok {
-			line += generateLine(kind, start, end, fileInfo.Buf.Bytes())
-		}
+	if fileInfo, ok := config.Global.Files[start.FileID]; ok {
+		line += generateLine(kind, start, end, fileInfo.Buf.Bytes())
 	}
 
 	if UseColors {

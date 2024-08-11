@@ -11,7 +11,7 @@ type Visitor func(Node) Visitor
 
 // Preorder\top-down traversal.
 // Visit a parent node before visiting its children.
-// Each node is terminated by a call with `nil` argument.
+// Each node is terminated by a call with 'nil' argument.
 //
 // Example:
 //   - List(len: 3)
@@ -237,11 +237,8 @@ func (v Visitor) walkStmtList(list *StmtList) {
 	}
 }
 
-func assert(ok bool, message ...any) {
+func assert(ok bool) {
 	if !ok {
-		if len(message) > 0 {
-			panic("assertion failed: " + fmt.Sprint(message...))
-		}
 		panic("assertion failed")
 	}
 }

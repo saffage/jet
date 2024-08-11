@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
-	"github.com/saffage/jet/internal/report"
+	"github.com/saffage/jet/report"
 )
 
 func printTrace(p *parser, args ...any) {

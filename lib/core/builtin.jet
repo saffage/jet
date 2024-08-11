@@ -1,19 +1,19 @@
-bool :: $builtin("Bool")
-int  :: $builtin("I32")
-i8   :: $builtin("I8")
-i16  :: $builtin("I16")
-i32  :: $builtin("I32")
-i64  :: $builtin("I64")
-u8   :: $builtin("U8")
-u16  :: $builtin("U16")
-u32  :: $builtin("U32")
-u64  :: $builtin("U64")
-f32  :: $builtin("F32")
-f64  :: $builtin("F64")
+@[comptime] bool := $builtin("Bool")
+@[comptime] int  := $builtin("I32")
+@[comptime] i8   := $builtin("I8")
+@[comptime] i16  := $builtin("I16")
+@[comptime] i32  := $builtin("I32")
+@[comptime] i64  := $builtin("I64")
+@[comptime] u8   := $builtin("U8")
+@[comptime] u16  := $builtin("U16")
+@[comptime] u32  := $builtin("U32")
+@[comptime] u64  := $builtin("U64")
+@[comptime] f32  := $builtin("F32")
+@[comptime] f64  := $builtin("F64")
 
-string  :: $builtin("String")
-char    :: $builtin("Char")
-pointer :: $builtin("Pointer")
+@[comptime] string  := $builtin("String")
+@[comptime] char    := $builtin("Char")
+@[comptime] pointer := $builtin("Pointer")
 
-false :: 0 != 0
-true  :: 0 == 0
+@[comptime] false := 0 != 0
+@[comptime] true  := 0 == 0

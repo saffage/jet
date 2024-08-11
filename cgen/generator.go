@@ -4,12 +4,13 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 
 	"github.com/elliotchance/orderedmap/v2"
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/checker"
-	"github.com/saffage/jet/internal/report"
+	"github.com/saffage/jet/report"
 )
 
 type generator struct {
@@ -18,6 +19,8 @@ type generator struct {
 	scope         *checker.Scope
 	funcTempVarId int
 	funcLabelID   int
+	headers       []string
+	includeSect   strings.Builder
 	typeSect      strings.Builder
 	declVarsSect  strings.Builder
 	declFnsSect   strings.Builder
@@ -37,6 +40,17 @@ func (gen *generator) defs(
 
 		if def.Owner() != owner && !isImportedModule {
 			continue
+		}
+
+		if attr := checker.GetAttribute(def, "header"); attr != nil {
+			header := attr.(*ast.Call).Args.Nodes[0].(*ast.Literal).Value
+			if strings.HasPrefix(header, "\"<") && strings.HasSuffix(header, ">\"") {
+				header = header[1 : len(header)-1]
+			}
+			if !slices.Contains(gen.headers, header) {
+				gen.headers = append(gen.headers, header)
+				gen.includeSect.WriteString(fmt.Sprintf("\n#include %s", header))
+			}
 		}
 
 		switch sym := def.(type) {

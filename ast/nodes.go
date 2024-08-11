@@ -72,20 +72,20 @@ type (
 		Comments []*Comment
 	}
 
-	// Represents `@[...attributes]`.
+	// Represents '@[...attributes]'.
 	AttributeList struct {
 		List   *BracketList
-		TokLoc token.Pos // `@` token.
+		TokLoc token.Pos // '@' token.
 	}
 
-	// Represents `@[..attributes] mut name: T = expr`.
+	// Represents '@[..attributes] mut name: T = expr'.
 	Decl struct {
 		Attrs *AttributeList
 		Ident *Ident
 		Mut   token.Pos // optional
 		Type  Node      // optional
 		Value Node      // optional
-		IsVar bool      // indicates whether `=` is used before the value instead of `:`
+		IsVar bool      // indicates whether '=' is used before the value instead of ':'
 	}
 )
 
@@ -130,13 +130,13 @@ func (n *CommentGroup) Merged() string {
 //------------------------------------------------
 
 type (
-	// Represents `[...args]x`.
+	// Represents '[...args]x'.
 	ArrayType struct {
 		X    Node
 		Args *BracketList
 	}
 
-	// Represents `struct{...fields}`.
+	// Represents 'struct {...fields}'.
 	StructType struct {
 		Fields []*Decl
 		TokPos token.Pos
@@ -144,7 +144,7 @@ type (
 		Close  token.Pos
 	}
 
-	// Represents `enum{...fields}`.
+	// Represents 'enum {...fields}'.
 	EnumType struct {
 		Fields []*Ident
 		TokPos token.Pos
@@ -152,7 +152,7 @@ type (
 		Close  token.Pos
 	}
 
-	// Represents `() -> ()`.
+	// Represents '() -> ()'.
 	Signature struct {
 		Params *ParenList
 		Result Node // can be nil in some cases
@@ -164,39 +164,39 @@ type (
 		TokPos token.Pos // '$' token.
 	}
 
-	// Represents `x(...args)`.
+	// Represents 'x(...args)'.
 	Call struct {
 		X    Node
 		Args *ParenList
 	}
 
-	// Represents `x[...args]`.
+	// Represents 'x[...args]'.
 	Index struct {
 		X    Node
 		Args *BracketList
 	}
 
-	// Represents `(...params) -> T {...}` or `() expr`
+	// Represents '(...params) -> T {...}' or '() expr'
 	Function struct {
 		*Signature
 		Body Node
 	}
 
-	// Represents `x.y`.
+	// Represents 'x.y'.
 	Dot struct {
 		X      Node
 		Y      *Ident
 		DotPos token.Pos
 	}
 
-	// Represents `x.*`.
+	// Represents 'x.*'.
 	Deref struct {
 		X       Node
 		DotPos  token.Pos
 		StarPos token.Pos
 	}
 
-	// Represents `x OP y`, where `OP` is an operator.
+	// Represents 'x OP y', where 'OP' is an operator.
 	Op struct {
 		X     Node
 		Y     Node
@@ -265,22 +265,22 @@ type (
 		Nodes []Node
 	}
 
-	// Represents `[a, b, c]`.
+	// Represents '[a, b, c]'.
 	BracketList struct {
 		*List
-		Open, Close token.Pos // `[` and `]`.
+		Open, Close token.Pos // '[' and ']'.
 	}
 
-	// Represents `(a, b, c)`.
+	// Represents '(a, b, c)'.
 	ParenList struct {
 		*List
-		Open, Close token.Pos // `(` and `)`.
+		Open, Close token.Pos // '(' and ')'.
 	}
 
-	// Represents `{a; b; c}`.
+	// Represents '{a; b; c}'.
 	CurlyList struct {
 		*StmtList
-		Open, Close token.Pos // `{` and `}`.
+		Open, Close token.Pos // '{' and '}'.
 	}
 )
 
@@ -308,35 +308,35 @@ type (
 		Cond   Node
 		Body   *CurlyList
 		Else   *Else
-		TokPos token.Pos // `if` token.
+		TokPos token.Pos // 'if' token.
 	}
 
 	Else struct {
 		Body   Node      // Can be either [*If] or [*CurlyList].
-		TokPos token.Pos // `else` token.
+		TokPos token.Pos // 'else' token.
 	}
 
 	While struct {
 		Cond   Node
 		Body   *CurlyList
-		TokPos token.Pos // `while` token.
+		TokPos token.Pos // 'while' token.
 	}
 
 	For struct {
 		DeclList *List
 		IterExpr Node
 		Body     *CurlyList
-		TokPos   token.Pos // `for` token.
+		TokPos   token.Pos // 'for' token.
 	}
 
 	Defer struct {
 		X      Node
-		TokPos token.Pos // `defer` token.
+		TokPos token.Pos // 'defer' token.
 	}
 
 	Return struct {
 		X      Node      // optional
-		TokPos token.Pos // `return` token.
+		TokPos token.Pos // 'return' token.
 	}
 
 	Break struct {

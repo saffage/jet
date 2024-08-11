@@ -57,13 +57,11 @@ func (p *parser) declOr(f parseFunc) parseFunc {
 			}
 		}
 
-		if !isDecl {
-			return f()
-		} else if decl := p.parseDecl(); decl != nil {
-			return decl
+		if isDecl {
+			return p.parseDecl()
 		}
 
-		return nil
+		return f()
 	}
 }
 
@@ -521,7 +519,6 @@ func (p *parser) parseDecl() ast.Node {
 	}
 
 	attributes := p.parseAttributeListNode()
-
 	if attributes != nil {
 		for p.tok.Kind == token.NewLine {
 			p.next()
@@ -563,28 +560,20 @@ func (p *parser) parseDeclNode(mut token.Pos, name *ast.Ident) *ast.Decl {
 	}
 
 	var ty, value ast.Node
-	isVar := true
 
-	switch {
-	case p.tok.Kind != token.Colon && p.tok.Kind != token.Eq:
-		ty = p.parseEllipsisExpr()
-		if ty == nil {
+	if p.tok.Kind != token.Eq {
+		if ty = p.parseEllipsisExpr(); ty == nil {
 			return nil
 		}
-		fallthrough
+	}
 
-	default:
-		if tok := p.consume(token.Colon, token.Eq); tok != nil {
-			// TODO value can be a type.
-			isVar = tok.Kind != token.Colon
-			value = p.parseExpr()
-			if value == nil {
-				return nil
-			}
-		} else if ty == nil {
-			p.error(ErrorExpectedTypeOrValue)
+	if tok := p.consume(token.Eq); tok != nil {
+		if value = p.parseExpr(); value == nil {
 			return nil
 		}
+	} else if ty == nil {
+		p.error(ErrorExpectedTypeOrValue)
+		return nil
 	}
 
 	return &ast.Decl{
@@ -592,7 +581,6 @@ func (p *parser) parseDeclNode(mut token.Pos, name *ast.Ident) *ast.Decl {
 		Mut:   mut,
 		Type:  ty,
 		Value: value,
-		IsVar: isVar,
 	}
 }
 
@@ -836,7 +824,6 @@ func (p *parser) parseForLoopDecl() ast.Node {
 	}
 
 	attributes := p.parseAttributeListNode()
-
 	if attributes != nil {
 		for p.tok.Kind == token.NewLine {
 			p.next()
