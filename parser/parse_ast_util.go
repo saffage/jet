@@ -7,53 +7,62 @@ import (
 	"github.com/saffage/jet/token"
 )
 
-func (p *parser) parseIdentNode() *ast.Ident {
-	if p.flags&Trace != 0 {
-		defer un(trace(p))
+func precedenceOf(t *token.Token) int {
+	switch t.Kind {
+	case token.Asterisk,
+		token.Slash,
+		token.Percent:
+		return 10
+
+	case token.Plus,
+		token.Minus:
+		return 9
+
+	case token.Shl,
+		token.Shr:
+		return 8
+
+	case token.Amp,
+		token.Pipe,
+		token.Caret:
+		return 7
+
+	case token.EqOp,
+		token.NeOp,
+		token.LtOp,
+		token.GtOp,
+		token.LeOp,
+		token.GeOp:
+		return 6
+
+	case token.And:
+		return 5
+
+	case token.Or:
+		return 4
+
+	case token.KwAs:
+		return 3
+
+	case token.Dot2:
+		return 2
+
+	case token.Eq,
+		token.PlusEq,
+		token.MinusEq,
+		token.AsteriskEq,
+		token.SlashEq,
+		token.PercentEq,
+		token.AmpEq,
+		token.PipeEq,
+		token.CaretEq,
+		token.ShlEq,
+		token.ShrEq:
+		return 1
+
+	default:
+		return 0
 	}
-
-	if tok := p.consume(token.Ident); tok != nil {
-		return &ast.Ident{
-			Name:  tok.Data,
-			Start: tok.Start,
-			End:   tok.End,
-		}
-	}
-
-	return nil
-}
-
-func (p *parser) parseLiteralNode() *ast.Literal {
-	if p.flags&Trace != 0 {
-		defer un(trace(p))
-	}
-
-	if tok := p.consume(token.Int, token.Float, token.String); tok != nil {
-		var litKind ast.LiteralKind
-
-		switch tok.Kind {
-		case token.Int:
-			litKind = ast.IntLiteral
-
-		case token.Float:
-			litKind = ast.FloatLiteral
-
-		case token.String:
-			litKind = ast.StringLiteral
-
-		default:
-			panic("unreachable")
-		}
-
-		return &ast.Literal{
-			Kind:  litKind,
-			Value: tok.Data,
-			Start: tok.Start,
-			End:   tok.End,
-		}
-	}
-
-	return nil
 }
 
 func (p *parser) skip(to ...token.Kind) (start, end token.Pos) {
@@ -84,44 +93,20 @@ func (p *parser) skip(to ...token.Kind) (start, end token.Pos) {
 }
 
 var (
-	endOfStmtKinds = []token.Kind{
-		token.Semicolon,
-		token.NewLine,
-	}
-
-	endOfExprKinds = append(endOfStmtKinds, []token.Kind{
+	endOfExprKinds = []token.Kind{
+		token.EOF,
 		token.Comma,
 		token.RParen,
 		token.RCurly,
 		token.RBracket,
-	}...)
-
-	simpleExprStartKinds = []token.Kind{
-		token.Minus,
-		token.Bang,
-		token.Asterisk,
-		token.Amp,
-		token.Ident,
-		token.Int,
-		token.Float,
-		token.String,
-		token.Dollar,
-		token.KwIf,
-		token.KwWhile,
-		token.KwFor,
-		token.KwStruct,
-		token.KwEnum,
-		token.LCurly,
-		token.LBracket,
-		token.LParen,
 	}
 
-	exprStartKinds = append(simpleExprStartKinds, []token.Kind{
+	exprStartKinds = []token.Kind{
 		token.KwDefer,
 		token.KwReturn,
 		token.KwBreak,
 		token.KwContinue,
-	}...)
+	}
 
 	operators = map[token.Kind]ast.OperatorKind{
 		token.Plus:       ast.OperatorAdd,
@@ -146,10 +131,15 @@ var (
 		token.Caret:      ast.OperatorBitXor,
 		token.Shl:        ast.OperatorBitShl,
 		token.Shr:        ast.OperatorBitShr,
-		token.KwAnd:      ast.OperatorAnd,
-		token.KwOr:       ast.OperatorOr,
+		token.And:        ast.OperatorAnd,
+		token.Or:         ast.OperatorOr,
 		token.KwAs:       ast.OperatorAs,
 		token.Dot2:       ast.OperatorRangeInclusive,
-		token.Dot2Less:   ast.OperatorRangeExclusive,
+	}
+
+	literals = map[token.Kind]ast.LiteralKind{
+		token.Int:    ast.IntLiteral,
+		token.Float:  ast.FloatLiteral,
+		token.String: ast.StringLiteral,
 	}
 )

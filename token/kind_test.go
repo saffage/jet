@@ -12,7 +12,13 @@ func TestKindRepr(t *testing.T) {
 		kinds = append(kinds, kind)
 	}
 
-	expectedKinds := append(PunctuationKinds(), append(OperatorKinds(), KeywordKinds()...)...)
+	expectedKinds := append(
+		PunctuationKinds(),
+		append(
+			OperatorKinds(),
+			KeywordKinds()...,
+		)...,
+	)
 	missingKinds, extraKinds := []Kind{}, []Kind{}
 
 	for _, expectedKind := range expectedKinds {

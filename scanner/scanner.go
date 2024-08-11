@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"strings"
+	"unicode"
 
 	"github.com/galsondor/go-ascii"
 	"github.com/saffage/jet/config"
@@ -38,9 +39,16 @@ func (s *Scanner) AllTokens() (toks []token.Token) {
 
 func (s *Scanner) Next() token.Token {
 	if !s.Match('\000') {
-		startPos, tok := s.Pos(), token.Token{Kind: token.Illegal}
+		var startPos = s.Pos()
+		var tok token.Token
 
 		switch {
+		case s.ConsumeAny(' ', '\t', '\n', '\r'):
+			// s.TakeWhile(func(b byte) bool {
+			// 	return bytes.IndexByte([]byte{' ', '\t', '\n', '\r'}, b) >= 0
+			// })
+			return s.Next()
+
 		case s.Match('#'):
 			tok = token.Token{
 				Kind: token.Comment,
@@ -51,132 +59,116 @@ func (s *Scanner) Next() token.Token {
 				return s.Next()
 			}
 
-		case s.Consume('@'):
-			tok = token.Token{Kind: token.At}
+		case ascii.IsAlnum(s.Peek()), s.Match('_'):
+			ident := s.TakeWhile(token.IsIdentChar)
 
-		case s.Consume('$'):
-			tok = token.Token{Kind: token.Dollar}
-
-		case s.Match(' '):
-			tok = token.Token{
-				Kind: token.Whitespace,
-				Data: s.TakeWhile(func(c byte) bool { return c == ' ' }),
-			}
-
-		case s.Match('\t'):
-			tok = token.Token{
-				Kind: token.Tab,
-				Data: string(s.Advance()),
-			}
-
-		case s.Match('\n', '\r'):
-			tok = token.Token{
-				Kind: token.NewLine,
-				Data: s.TakeWhile(isNewLine),
+			if kind := token.KindFromString(ident); kind != token.Illegal {
+				tok = token.Token{Kind: kind}
+			} else if ident[0] == '_' {
+				tok = token.Token{Kind: token.Underscore, Data: ident}
+			} else if strings.ContainsFunc(ident, unicode.IsUpper) {
+				tok = token.Token{Kind: token.Type, Data: ident}
+			} else {
+				tok = token.Token{Kind: token.Ident, Data: ident}
 			}
 
 		case ascii.IsDigit(s.Peek()):
 			tok = s.scanNumber()
 
-		case token.IsIdentifierStartChar(s.Peek()):
-			identifier := s.TakeWhile(token.IsIdentifierChar)
-
-			if kind := token.KindFromString(identifier); kind != token.Illegal {
-				tok = token.Token{Kind: kind}
-			} else {
-				tok = token.Token{
-					Kind: token.Ident,
-					Data: identifier,
-				}
-
-				if s.Match('"', '\'') {
-					strTok := s.scanString()
-					strTok.Start = tok.Start
-					strTok.Data = tok.Data + strTok.Data
-					tok = strTok
-				}
-			}
-
 		case s.Match('"', '\''):
 			tok = s.scanString()
 
 		case s.Consume('.'):
-			kind := token.Dot
+			tok = token.Token{Kind: token.Dot}
 
 			if s.Consume('.') {
-				if s.Consume('.') {
-					kind = token.Ellipsis
-				} else if s.Consume('<') {
-					kind = token.Dot2Less
-				} else {
-					kind = token.Dot2
+				tok.Kind = token.Dot2
+			}
+
+		case s.ConsumeAny('!', '+', '*', '/', '%', '^'):
+			// NOTE This tokens is order dependent
+			tok = token.Token{Kind: token.KindFromByte(s.Prev())}
+
+			if s.Consume('=') {
+				tok.Kind++
+			}
+
+		case s.Consume('|'):
+			tok = token.Token{Kind: token.Pipe}
+
+			if s.Consume('=') {
+				tok.Kind = token.PipeEq
+			} else if s.Consume('|') {
+				tok.Kind = token.Or
+
+				if s.Consume('=') {
+					tok.Kind = token.OrEq
 				}
 			}
 
-			tok = token.Token{Kind: kind}
-
-		case s.Consume('!', '+', '*', '/', '%', '&', '|', '^'):
-			// NOTE This tokens is order dependent
-			kind := token.KindFromString(string(s.Prev()))
+		case s.Consume('&'):
+			tok = token.Token{Kind: token.Amp}
 
 			if s.Consume('=') {
-				kind += 1
-			}
+				tok.Kind = token.AmpEq
+			} else if s.Consume('|') {
+				tok.Kind = token.And
 
-			tok = token.Token{Kind: kind}
+				if s.Consume('=') {
+					tok.Kind = token.AndEq
+				}
+			}
 
 		case s.Consume('<'):
-			kind := token.LtOp
+			tok = token.Token{Kind: token.LtOp}
 
-			if s.Consume('<') {
-				kind = token.Shl
-			} else if s.Consume('=') {
-				kind = token.LeOp
+			if s.Consume('=') {
+				tok.Kind = token.LeOp
+			} else if s.Consume('<') {
+				tok.Kind = token.Shl
+
+				if s.Consume('=') {
+					tok.Kind = token.ShlEq
+				}
 			}
-
-			tok = token.Token{Kind: kind}
 
 		case s.Consume('>'):
-			kind := token.GtOp
+			tok = token.Token{Kind: token.GtOp}
 
-			if s.Consume('>') {
-				kind = token.Shr
-			} else if s.Consume('=') {
-				kind = token.GeOp
+			if s.Consume('=') {
+				tok.Kind = token.GeOp
+			} else if s.Consume('>') {
+				tok.Kind = token.Shr
+
+				if s.Consume('=') {
+					tok.Kind = token.ShrEq
+				}
 			}
-
-			tok = token.Token{Kind: kind}
 
 		case s.Consume('-'):
-			kind := token.Minus
+			tok = token.Token{Kind: token.Minus}
 
 			if s.Consume('=') {
-				kind = token.MinusEq
+				tok.Kind = token.MinusEq
 			} else if s.Consume('>') {
-				kind = token.Arrow
+				tok.Kind = token.Arrow
 			}
-
-			tok = token.Token{Kind: kind}
 
 		case s.Consume('='):
-			kind := token.Eq
+			tok = token.Token{Kind: token.Eq}
 
 			if s.Consume('=') {
-				kind = token.EqOp
+				tok.Kind = token.EqOp
 			} else if s.Consume('>') {
-				kind = token.FatArrow
+				tok.Kind = token.FatArrow
 			}
 
-			tok = token.Token{Kind: kind}
+		case s.ConsumeAny('(', ')', '{', '}', '[', ']', ':', ','):
+			tok = token.Token{Kind: token.KindFromByte(s.Prev())}
 
-		case s.Match('?', ',', ':', ';', '(', ')', '[', ']', '{', '}'):
-			kind := token.KindFromString(string(s.Advance()))
-
-			if kind == token.Illegal {
+			if tok.Kind == token.Illegal {
 				panic("unreachable")
 			}
-
-			tok = token.Token{Kind: kind}
 
 		default:
 			s.error(ErrorIllegalCharacter, s.Pos())
@@ -195,10 +187,7 @@ func (s *Scanner) Next() token.Token {
 			tok.End = s.PrevPos()
 		}
 
-		if s.flags&SkipWhitespace != 0 &&
-			(tok.Kind == token.Whitespace || tok.Kind == token.Tab) {
-			return s.Next()
-		} else if s.flags&SkipIllegal != 0 && tok.Kind == token.Illegal {
+		if s.flags&SkipIllegal != 0 && tok.Kind == token.Illegal {
 			return s.Next()
 		}
 
@@ -393,11 +382,11 @@ func (s *Scanner) scanNumber() token.Token {
 		}
 	}
 
-	if s.Consume('e', 'E') {
+	if s.ConsumeAny('e', 'E') {
 		buf.WriteByte(s.Prev())
 		tok.Kind = token.Float
 
-		if s.Consume('+', '-') {
+		if s.ConsumeAny('+', '-') {
 			buf.WriteByte(s.Prev())
 		}
 
@@ -411,12 +400,12 @@ func (s *Scanner) scanNumber() token.Token {
 	if s.Consume('\'') {
 		buf.WriteByte('\'')
 
-		if !token.IsIdentifierStartChar(s.Peek()) {
+		if !token.IsIdentStartChar(s.Peek()) {
 			s.error(ErrorExpectedIdentForSuffix, s.Pos())
 			tok.Kind = token.Illegal
 			return tok
 		} else {
-			buf.WriteString(s.TakeWhile(token.IsIdentifierChar))
+			buf.WriteString(s.TakeWhile(token.IsIdentChar))
 		}
 	}
 

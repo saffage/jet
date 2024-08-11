@@ -1,6 +1,10 @@
 package cmd
 
 import (
+	"bytes"
+	"errors"
+	"path/filepath"
+
 	"github.com/saffage/jet/config"
 	"github.com/saffage/jet/report"
 	"github.com/urfave/cli/v2"
@@ -73,6 +77,7 @@ func Run(args []string) error {
 		Version: "0.0.1",
 		Flags:   appFlags,
 		Before:  beforeCommand,
+		ExitErrHandler: nil,
 		Commands: []*cli.Command{
 			{
 				Name:            "build",
@@ -113,5 +118,32 @@ func beforeCommand(ctx *cli.Context) error {
 		report.Level = report.KindHint
 	}
 
+	return nil
+}
+
+func onError(_ *cli.Context, err error) {
+	report.Error("%s", err)
+}
+
+func readFileToConcig(ctx *cli.Context, cfg *config.Config, fileID config.FileID) error {
+	if !ctx.Args().Present() {
+		return errors.New("expected path to a file")
+	}
+
+	if ctx.Args().Len() != 1 {
+		return errors.New("invalid arguments count (expected 1)")
+	}
+
+	path := filepath.Clean(ctx.Args().Get(0))
+	name, data, err := readFile(path)
+	if err != nil {
+		return err
+	}
+
+	cfg.Files[fileID] = config.FileInfo{
+		Name: name,
+		Path: path,
+		Buf:  bytes.NewBuffer(data),
+	}
 	return nil
 }

@@ -6,13 +6,16 @@ import (
 	"github.com/saffage/jet/config"
 )
 
+type RangePos struct {
+	Offset uint64
+	Line   uint32
+	Char   uint32
+}
+
 type Range struct {
-	FileID     config.FileID
-	Start, End struct {
-		Offset uint64
-		Line   uint32
-		Char   uint32
-	}
+	FileID config.FileID
+	Start  RangePos
+	End    RangePos
 }
 
 func (rng Range) StartPos() Pos {

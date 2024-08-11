@@ -55,14 +55,14 @@ func New(tokens []token.Token, flags Flags) *parser {
 	}
 }
 
-func (p *parser) Parse() (*ast.StmtList, error) {
-	decls := p.parseDeclList()
-	return decls, errors.Join(p.errors...)
+func (parse *parser) Parse() (*ast.StmtList, error) {
+	decls, _ := parse.decls().(*ast.StmtList)
+	return decls, errors.Join(parse.errors...)
 }
 
-func (p *parser) ParseExpr() (ast.Node, error) {
-	expr := p.parseExpr()
-	return expr, errors.Join(p.errors...)
+func (parse *parser) ParseExpr() (ast.Node, error) {
+	expr := parse.expr()
+	return expr, errors.Join(parse.errors...)
 }
 
 func (p *parser) MustParse() *ast.StmtList {
@@ -85,9 +85,8 @@ type Flags int
 
 const (
 	Trace Flags = 1 << iota
-	SkipWhitespace
 	SkipIllegal
 
 	NoFlags      = Flags(0)
-	DefaultFlags = SkipWhitespace | SkipIllegal
+	DefaultFlags = NoFlags
 )

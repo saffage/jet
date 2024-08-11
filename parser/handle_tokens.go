@@ -43,17 +43,24 @@ func (p *parser) next() {
 		p.next()
 	}
 
-	if p.flags&SkipWhitespace != 0 &&
-		(p.tok.Kind == token.Whitespace || p.tok.Kind == token.Tab) {
-		p.next()
-	}
-
 	if p.flags&SkipIllegal != 0 && p.tok.Kind == token.Illegal {
 		p.next()
 	}
 }
 
-func (p *parser) match(tokens ...token.Kind) bool {
+func (p *parser) drop(token token.Kind) bool {
+	if p.match(token) {
+		p.next()
+		return true
+	}
+	return false
+}
+
+func (p *parser) match(token token.Kind) bool {
+	return p.tok.Kind == token
+}
+
+func (p *parser) matchAny(tokens ...token.Kind) bool {
 	return slices.Contains(tokens, p.tok.Kind)
 }
 
@@ -70,8 +77,19 @@ func (p *parser) matchSequence(tokens ...token.Kind) bool {
 }
 
 // Cunsumes a specified token or returns nil without emitting error.
-func (p *parser) consume(kinds ...token.Kind) *token.Token {
-	if len(kinds) == 0 || p.match(kinds...) {
+func (p *parser) consume(kind token.Kind) *token.Token {
+	if p.match(kind) {
+		tok := p.tok
+		p.next()
+		return &tok
+	}
+
+	return nil
+}
+
+// Cunsumes a specified tokens or returns nil without emitting error.
+func (p *parser) consumeAny(kinds ...token.Kind) *token.Token {
+	if p.matchAny(kinds...) {
 		tok := p.tok
 		p.next()
 		return &tok
@@ -81,8 +99,18 @@ func (p *parser) consume(kinds ...token.Kind) *token.Token {
 }
 
 // Cunsumes a specified token or returns nil and emits error.
-func (p *parser) expect(kinds ...token.Kind) *token.Token {
-	if tok := p.consume(kinds...); tok != nil {
+func (p *parser) expect(kind token.Kind) *token.Token {
+	if tok := p.consume(kind); tok != nil {
+		return tok
+	}
+
+	p.errorExpectedToken(kind)
+	return nil
+}
+
+// Cunsumes a specified token or returns nil and emits error.
+func (p *parser) expectAny(kinds ...token.Kind) *token.Token {
+	if tok := p.consumeAny(kinds...); tok != nil {
 		return tok
 	}
 

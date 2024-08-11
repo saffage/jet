@@ -10,21 +10,21 @@ import (
 )
 
 var (
-	ErrorInvalidBinaryOperator  = errors.New("invalid binary operator")
-	ErrorBracketIsNeverClosed   = errors.New("bracket is never closed")
-	ErrorUnterminatedExpr       = errors.New("unterminated expression")
-	ErrorUnexpectedToken        = errors.New("unexpected token")
-	ErrorExpectedExpr           = errors.New("expected expression")
-	ErrorExpectedOperand        = errors.New("expected operand")
-	ErrorExpectedBlock          = errors.New("expected block")
-	ErrorExpectedBlockOrIf      = errors.New("expected block of 'if' clause")
-	ErrorExpectedType           = errors.New("expected type")
-	ErrorExpectedTypeName       = errors.New("expected type name")
-	ErrorExpectedTypeOrValue    = errors.New("expected type or value")
-	ErrorExpectedDecl           = errors.New("expected declaration")
-	ErrorExpectedDeclAfterAttrs = errors.New("expected declaration after attribute list")
-	ErrorExpectedIdent          = errors.New("expected identifier")
-	ErrorExpectedIdentAfterMut  = errors.New("expected identifier after 'mut'")
+	ErrBracketIsNeverClosed   = errors.New("bracket is never closed")
+	ErrUnterminatedExpr       = errors.New("unterminated expression")
+	ErrUnexpectedToken        = errors.New("unexpected token")
+	ErrUnexpectedOperator     = errors.New("unexpected operator")
+	ErrExpectedExpr           = errors.New("expected expression")
+	ErrExpectedOperand        = errors.New("expected operand")
+	ErrExpectedBlock          = errors.New("expected block")
+	ErrExpectedBlockOrIf      = errors.New("expected block of 'if' clause")
+	ErrExpectedType           = errors.New("expected type")
+	ErrExpectedTypeName       = errors.New("expected type name")
+	ErrExpectedTypeOrValue    = errors.New("expected type or value")
+	ErrExpectedDecl           = errors.New("expected declaration")
+	ErrExpectedDeclAfterAttrs = errors.New("expected declaration after attribute list")
+	ErrExpectedIdent          = errors.New("expected identifier")
+	ErrExpectedIdentAfterMut  = errors.New("expected identifier after 'mut'")
 )
 
 type Error struct {
@@ -128,7 +128,7 @@ func (p *parser) errorExpectedTokenAt(start, end token.Pos, tokens ...token.Kind
 		buf.WriteString(tok.UserString())
 	}
 	p.appendError(Error{
-		err:     ErrorUnexpectedToken,
+		err:     ErrUnexpectedToken,
 		Start:   start,
 		End:     end,
 		Message: fmt.Sprintf("want %s, got %s instead", buf.String(), p.tok.Kind.UserString()),

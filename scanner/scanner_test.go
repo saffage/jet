@@ -24,6 +24,4 @@ func testTokenKinds(t *testing.T, input string, expectedKinds ...token.Kind) {
 func TestSelectToken(t *testing.T) {
 	testTokenKinds(t, ".", token.Dot, token.EOF)
 	testTokenKinds(t, "..", token.Dot2, token.EOF)
-	testTokenKinds(t, "...", token.Ellipsis, token.EOF)
-	testTokenKinds(t, "..<", token.Dot2Less, token.EOF)
 }

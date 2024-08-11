@@ -58,7 +58,7 @@ func Check(cfg *config.Config, fileID config.FileID, stmts *ast.StmtList) (*Modu
 }
 
 func CheckFile(cfg *config.Config, fileID config.FileID) (*Module, error) {
-	scannerFlags := scanner.SkipWhitespace | scanner.SkipComments
+	scannerFlags := scanner.SkipComments
 	parserFlags := parser.DefaultFlags
 
 	if cfg.Flags.TraceParser {

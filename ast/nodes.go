@@ -38,6 +38,16 @@ type (
 		Start, End token.Pos
 	}
 
+	Type struct {
+		Name       string
+		Start, End token.Pos
+	}
+
+	Underscore struct {
+		Name       string
+		Start, End token.Pos
+	}
+
 	Literal struct {
 		Value      string
 		Kind       LiteralKind
@@ -53,6 +63,12 @@ func (n *Empty) PosEnd() token.Pos { return n.DesiredPos }
 
 func (n *Ident) Pos() token.Pos    { return n.Start }
 func (n *Ident) PosEnd() token.Pos { return n.End }
+
+func (n *Type) Pos() token.Pos    { return n.Start }
+func (n *Type) PosEnd() token.Pos { return n.End }
+
+func (n *Underscore) Pos() token.Pos    { return n.Start }
+func (n *Underscore) PosEnd() token.Pos { return n.End }
 
 func (n *Literal) Pos() token.Pos    { return n.Start }
 func (n *Literal) PosEnd() token.Pos { return n.End }
@@ -78,7 +94,7 @@ type (
 		TokLoc token.Pos // '@' token.
 	}
 
-	// Represents '@[..attributes] mut name: T = expr'.
+	// Represents '@[..attributes] let name T = expr'.
 	Decl struct {
 		Attrs *AttributeList
 		Ident *Ident
@@ -250,6 +266,10 @@ func (n *Op) PosEnd() token.Pos {
 	return n.End
 }
 
+func (n *Op) IsInfix() bool   { return n.X != nil && n.Y != nil }
+func (n *Op) IsPrefix() bool  { return n.X != nil && n.Y == nil }
+func (n *Op) IsPostfix() bool { return n.X == nil && n.Y != nil }
+
 //------------------------------------------------
 // Lists
 //------------------------------------------------
@@ -418,10 +438,12 @@ func (n *Import) PosEnd() token.Pos { return n.Module.PosEnd() }
 // TODO name it
 //-----------------------------------------------
 
-func (*BadNode) implNode() {}
-func (*Empty) implNode()   {}
-func (*Ident) implNode()   {}
-func (*Literal) implNode() {}
+func (*BadNode) implNode()    {}
+func (*Empty) implNode()      {}
+func (*Ident) implNode()      {}
+func (*Type) implNode()       {}
+func (*Underscore) implNode() {}
+func (*Literal) implNode()    {}
 
 func (*Comment) implNode()       {}
 func (*CommentGroup) implNode()  {}

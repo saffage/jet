@@ -18,81 +18,30 @@ var (
 )
 
 type Token struct {
-	Kind       Kind
-	Data       string
-	Start, End Pos
+	Kind  Kind
+	Data  string
+	Start Pos
+	End   Pos
 }
 
 func (token Token) String() string {
-	switch token.Kind {
-	case Whitespace, NewLine:
-		return fmt.Sprintf("<%ss %d at %s>",
-			token.Kind.String(),
-			len(token.Data),
-			token.Start.String(),
-		)
-
-	default:
-		if len(token.Data) > 0 {
-			return fmt.Sprintf("<%s %s at %s>",
-				token.Kind,
-				strconv.Quote(token.Data),
-				token.Start.String(),
-			)
-		}
-
-		return fmt.Sprintf("<%s at %s>",
-			token.Kind.String(),
-			token.Start.String(),
+	if len(token.Data) > 0 {
+		return fmt.Sprintf("(%s %s at %s)",
+			token.Kind,
+			strconv.Quote(token.Data),
+			token.Start,
 		)
 	}
+
+	return fmt.Sprintf("(%s at %s)", token.Kind, token.Start)
 }
 
-func (t Token) Precedence() int {
-	switch t.Kind {
-	case Asterisk, Slash, Percent:
-		return 10
-
-	case Plus, Minus:
-		return 9
-
-	case Shl, Shr:
-		return 8
-
-	case Amp, Pipe, Caret:
-		return 7
-
-	case EqOp, NeOp, LtOp, GtOp, LeOp, GeOp:
-		return 6
-
-	case KwAnd:
-		return 5
-
-	case KwOr:
-		return 4
-
-	case KwAs:
-		return 3
-
-	case Dot2, Dot2Less:
-		return 2
-
-		// TODO maybe add 'Arrow' & 'FatArrow' operators
-
-	case Eq, PlusEq, MinusEq, AsteriskEq, SlashEq, PercentEq, AmpEq, PipeEq, CaretEq, ShlEq, ShrEq:
-		return 1
-
-	default:
-		return 0
-	}
-}
-
-func IsIdentifierStartChar(char byte) bool {
+func IsIdentStartChar(char byte) bool {
 	return char == '_' || ascii.IsLetter(char)
 }
 
-func IsIdentifierChar(char byte) bool {
-	return IsIdentifierStartChar(char) || ascii.IsDigit(char)
+func IsIdentChar(char byte) bool {
+	return char == '_' || ascii.IsAlnum(char)
 }
 
 func IsValidIdent(s string) (int, error) {

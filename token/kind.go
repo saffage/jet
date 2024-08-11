@@ -14,26 +14,24 @@ type Kind byte
 const (
 	Illegal Kind = iota // illegal character
 
-	EOF        // end of file
-	Comment    // comment
-	Whitespace // whitespace
-	Tab        // horizontal tabulation
-	NewLine    // new line
+	EOF     // end of file
+	Comment // comment
 
-	Ident  // identifier
-	Int    // untyped int
-	Float  // untyped float
-	String // untyped string
+	Ident      // identifier
+	Underscore // underscore
+	Type       // type
+	Int        // untyped int
+	Float      // untyped float
+	String     // untyped string
 
-	LParen    // '('
-	RParen    // ')'
-	LCurly    // '{'
-	RCurly    // '}'
-	LBracket  // '['
-	RBracket  // ']'
-	Comma     // ','
-	Colon     // ':'
-	Semicolon // ';'
+	LParen   // '('
+	RParen   // ')'
+	LCurly   // '{'
+	RCurly   // '}'
+	LBracket // '['
+	RBracket // ']'
+	Colon    // ':'
+	Comma    // ','
 
 	// The following operators are position dependent
 	// in the current implementation of the scanner.
@@ -60,60 +58,66 @@ const (
 	SlashEq    // operator '/='
 	Percent    // operator '%'
 	PercentEq  // operator '%='
-	Amp        // operator '&'
-	AmpEq      // operator '&='
-	Pipe       // operator '|'
-	PipeEq     // operator '|='
 	Caret      // operator '^'
 	CaretEq    // operator '^='
+	Amp        // operator '&'
+	AmpEq      // operator '&='
+	And        // operator '&&'
+	AndEq      // operator '&&='
+	Pipe       // operator '|'
+	PipeEq     // operator '|='
+	Or         // operator '||'
+	OrEq       // operator '||='
 
 	// End of position dependent tokens.
 
-	At           // operator '@'
-	Dollar       // operator '$'
-	QuestionMark // operator '?'
-	Arrow        // operator '->'
-	FatArrow     // operator '=>'
-	Dot          // operator '.'
-	Dot2         // operator '..'
-	Dot2Less     // operator '..<'
-	Ellipsis     // operator '...'
+	Arrow    // operator '->'
+	FatArrow // operator '=>'
+	Dot      // operator '.'
+	Dot2     // operator '..'
 
-	KwAnd      // keyword 'and'
-	KwOr       // keyword 'or'
-	KwStruct   // keyword 'struct'
-	KwEnum     // keyword 'enum'
-	KwMut      // keyword 'mut'
+	KwLet      // keyword 'let'
+	KwType     // keyword 'type'
+	KwWhen     // keyword 'when'
 	KwIf       // keyword 'if'
 	KwElse     // keyword 'else'
-	KwWhile    // keyword 'while'
-	KwFor      // keyword 'for'
 	KwIn       // keyword 'in'
 	KwAs       // keyword 'as'
 	KwDefer    // keyword 'defer'
-	KwReturn   // keyword 'return'
+	KwPanic    // keyword 'panic'
 	KwBreak    // keyword 'break'
+	KwReturn   // keyword 'return'
 	KwContinue // keyword 'continue'
 )
 
 const (
-	_special_begin = EOF
-	_special_end   = NewLine
-
-	_primary_begin = Ident
-	_primary_end   = String
-
-	_punctuation_begin = LParen
-	_punctuation_end   = Semicolon
-
-	_operator_begin = Eq
-	_operator_end   = Ellipsis
-
-	_keywords_begin = KwAnd
-	_keywords_end   = KwContinue
-
-	_kinds_last = _keywords_end
+	_SpecialBegin     = EOF
+	_SpecialEnd       = Comment
+	_PrimaryBegin     = Ident
+	_PrimaryEnd       = String
+	_PunctuationBegin = LParen
+	_PunctuationEnd   = Comma
+	_OperatorBegin    = Eq
+	_OperatorEnd      = Dot2
+	_KeywordsBegin    = KwLet
+	_KeywordsEnd      = KwContinue
+	_LastKind         = _KeywordsEnd
 )
+
+// Returns `Illegal` if `s` is not a kind name.
+func KindFromBytes(b []byte) Kind {
+	return KindFromString(string(b))
+}
+
+// Returns `Illegal` if `s` is not a kind name.
+func KindFromByte(b byte) Kind {
+	return KindFromString(string(b))
+}
+
+// Returns `Illegal` if `s` is not a kind name.
+func KindFromRune(r rune) Kind {
+	return KindFromString(string(r))
+}
 
 // Returns `Illegal` if `s` is not a kind name.
 func KindFromString(s string) Kind {
@@ -127,23 +131,23 @@ func KindFromString(s string) Kind {
 }
 
 func (kind Kind) IsSpecial() bool {
-	return _special_begin <= kind && kind <= _special_end
+	return _SpecialBegin <= kind && kind <= _SpecialEnd
 }
 
 func (kind Kind) IsPrimary() bool {
-	return _primary_begin <= kind && kind <= _primary_end
+	return _PrimaryBegin <= kind && kind <= _PrimaryEnd
 }
 
 func (kind Kind) IsPunctuation() bool {
-	return _punctuation_begin <= kind && kind <= _punctuation_end
+	return _PunctuationBegin <= kind && kind <= _PunctuationEnd
 }
 
 func (kind Kind) IsOperator() bool {
-	return _operator_begin <= kind && kind <= _operator_end
+	return _OperatorBegin <= kind && kind <= _OperatorEnd
 }
 
 func (kind Kind) IsKeyword() bool {
-	return _keywords_begin <= kind && kind <= _keywords_end
+	return _KeywordsBegin <= kind && kind <= _KeywordsEnd
 }
 
 func (kind Kind) Repr() string {
@@ -167,89 +171,84 @@ func getKinds(begin, end int) []Kind {
 }
 
 func SpecialKinds() []Kind {
-	return getKinds(int(_special_begin), int(_special_end))
+	return getKinds(int(_SpecialBegin), int(_SpecialEnd))
 }
 
 func PrimaryKinds() []Kind {
-	return getKinds(int(_primary_begin), int(_primary_end))
+	return getKinds(int(_PrimaryBegin), int(_PrimaryEnd))
 }
 
 func PunctuationKinds() []Kind {
-	return getKinds(int(_punctuation_begin), int(_punctuation_end))
+	return getKinds(int(_PunctuationBegin), int(_PunctuationEnd))
 }
 
 func OperatorKinds() []Kind {
-	return getKinds(int(_operator_begin), int(_operator_end))
+	return getKinds(int(_OperatorBegin), int(_OperatorEnd))
 }
 
 func KeywordKinds() []Kind {
-	return getKinds(int(_keywords_begin), int(_keywords_end))
+	return getKinds(int(_KeywordsBegin), int(_KeywordsEnd))
 }
 
 func AllKinds() []Kind {
-	return getKinds(0, int(_kinds_last))
+	return getKinds(0, int(_LastKind))
 }
 
 var representableKinds = map[Kind]string{
-	LParen:       "(",
-	RParen:       ")",
-	LCurly:       "{",
-	RCurly:       "}",
-	LBracket:     "[",
-	RBracket:     "]",
-	Dot:          ".",
-	Comma:        ",",
-	Colon:        ":",
-	Semicolon:    ";",
-	Eq:           "=",
-	Bang:         "!",
-	QuestionMark: "?",
-	EqOp:         "==",
-	NeOp:         "!=",
-	LtOp:         "<",
-	GtOp:         ">",
-	LeOp:         "<=",
-	GeOp:         ">=",
-	Arrow:        "->",
-	FatArrow:     "=>",
-	Shl:          "<<",
-	ShlEq:        "<<=",
-	Shr:          ">>",
-	ShrEq:        ">>=",
-	Plus:         "+",
-	Minus:        "-",
-	Asterisk:     "*",
-	Slash:        "/",
-	Percent:      "%",
-	Amp:          "&",
-	AmpEq:        "&=",
-	Pipe:         "|",
-	PipeEq:       "|=",
-	Caret:        "^",
-	CaretEq:      "^=",
-	At:           "@",
-	Dollar:       "$",
-	PlusEq:       "+=",
-	MinusEq:      "-=",
-	AsteriskEq:   "*=",
-	SlashEq:      "/=",
-	PercentEq:    "%=",
-	Dot2:         "..",
-	Dot2Less:     "..<",
-	Ellipsis:     "...",
-	KwAnd:        "and",
-	KwOr:         "or",
-	KwStruct:     "struct",
-	KwEnum:       "enum",
-	KwMut:        "mut",
-	KwIf:         "if",
-	KwElse:       "else",
-	KwWhile:      "while",
-	KwFor:        "for",
-	KwIn:         "in",
-	KwAs:         "as",
-	KwDefer:      "defer",
-	KwReturn:     "return",
-	KwBreak:      "break",
-	KwContinue:   "continue",
+	LParen:     "(",
+	RParen:     ")",
+	LCurly:     "{",
+	RCurly:     "}",
+	LBracket:   "[",
+	RBracket:   "]",
+	Colon:      ":",
+	Comma:      ",",
+	Eq:         "=",
+	EqOp:       "==",
+	Bang:       "!",
+	NeOp:       "!=",
+	LtOp:       "<",
+	LeOp:       "<=",
+	GtOp:       ">",
+	GeOp:       ">=",
+	Shl:        "<<",
+	ShlEq:      "<<=",
+	Shr:        ">>",
+	ShrEq:      ">>=",
+	Plus:       "+",
+	PlusEq:     "+=",
+	Minus:      "-",
+	MinusEq:    "-=",
+	Asterisk:   "*",
+	AsteriskEq: "*=",
+	Slash:      "/",
+	SlashEq:    "/=",
+	Percent:    "%",
+	PercentEq:  "%=",
+	Amp:        "&",
+	AmpEq:      "&=",
+	And:        "&&",
+	AndEq:      "&&=",
+	Pipe:       "|",
+	PipeEq:     "|=",
+	Or:         "||",
+	OrEq:       "||=",
+	Caret:      "^",
+	CaretEq:    "^=",
+	Arrow:      "->",
+	FatArrow:   "=>",
+	Dot:        ".",
+	Dot2:       "..",
+	KwLet:      "let",
+	KwType:     "type",
+	KwWhen:     "when",
+	KwIf:       "if",
+	KwElse:     "else",
+	KwIn:       "in",
+	KwAs:       "as",
+	KwDefer:    "defer",
+	KwPanic:    "panic",
+	KwBreak:    "break",
+	KwReturn:   "return",
+	KwContinue: "continue",
 }

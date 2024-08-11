@@ -65,8 +65,17 @@ func (base *Base) Advance() (previous byte) {
 	return
 }
 
+// Comsumes `char` and returns true, otherwise returns false.
+func (base *Base) Consume(char byte) bool {
+	if base.Peek() == char {
+		base.Advance()
+		return true
+	}
+
+	return false
+}
 // Comsumes any of `chars` and returns true, otherwise returns false.
-func (base *Base) Consume(chars ...byte) bool {
+func (base *Base) ConsumeAny(chars ...byte) bool {
 	if len(chars) == 0 || base.Match(chars...) {
 		base.Advance()
 		return true

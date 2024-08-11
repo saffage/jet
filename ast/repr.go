@@ -22,6 +22,14 @@ func (n *Ident) Repr() string {
 	return n.Name
 }
 
+func (n *Type) Repr() string {
+	return n.Name
+}
+
+func (n *Underscore) Repr() string {
+	return n.Name
+}
+
 func (n *Literal) Repr() string {
 	switch n.Kind {
 	case IntLiteral, FloatLiteral:

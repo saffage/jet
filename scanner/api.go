@@ -10,12 +10,11 @@ import (
 type Flags int
 
 const (
-	SkipWhitespace Flags = 1 << iota
-	SkipIllegal
+	SkipIllegal Flags = 1 << iota
 	SkipComments
 
 	NoFlags      Flags = 0
-	DefaultFlags Flags = NoFlags
+	DefaultFlags Flags = SkipComments
 )
 
 func Scan(buffer []byte, fileid config.FileID, flags Flags) ([]token.Token, error) {
