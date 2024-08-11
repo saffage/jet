@@ -3,6 +3,7 @@ package parser
 import (
 	"encoding/json"
 	"os"
+	"reflect"
 	"testing"
 
 	"github.com/saffage/jet/ast"
@@ -18,6 +19,7 @@ func TestMatchSequence(t *testing.T) {
 		{Kind: token.Ident},
 		{Kind: token.At},
 		{Kind: token.Ident},
+		{Kind: token.EOF},
 	}
 	p := New(tokens, DefaultFlags)
 	kinds := []token.Kind{token.At, token.Ident}
@@ -108,6 +110,7 @@ func TestExprs(t *testing.T) {
 			} else {
 				stmts, err = Parse(tokens, c.parserFlags)
 			}
+
 			if !checkError(t, err, c.error) {
 				return
 			}
@@ -115,24 +118,27 @@ func TestExprs(t *testing.T) {
 			if c.expectedJSON != "" {
 				filename := "./testdata/" + c.expectedJSON
 				expect, err := os.ReadFile(filename)
+
 				if err != nil {
 					t.Errorf("unexpected error while reading file '%s': %s", filename, err)
 					return
 				}
 
 				actual, err := json.MarshalIndent(stmts, "", "\t")
+
 				if err != nil {
 					t.Error("unexpected JSON marshal error:", err)
 					return
 				}
 
-				if string(actual) != string(expect) {
+				if equal, err := JSONBytesEqual(actual, expect); err != nil {
+					t.Error(err)
+				} else if !equal {
 					t.Errorf(
 						"invalid AST was parsed\nexpect %s\nactual %s",
 						string(expect),
 						string(actual),
 					)
-					return
 				}
 			} else {
 				encoded, err := json.MarshalIndent(stmts, "", "    ")
@@ -172,4 +178,18 @@ func checkError(t *testing.T, got, want error) bool {
 	}
 
 	return true
+}
+
+func JSONBytesEqual(a, b []byte) (bool, error) {
+	var jsonA, jsonB any
+
+	if err := json.Unmarshal(a, &jsonA); err != nil {
+		return false, err
+	}
+
+	if err := json.Unmarshal(b, &jsonB); err != nil {
+		return false, err
+	}
+
+	return reflect.DeepEqual(jsonB, jsonA), nil
 }
