@@ -42,10 +42,6 @@ func (e Error) Unwrap() error {
 	return e.err
 }
 
-func (e Error) Is(err error) bool {
-	return e.err == err
-}
-
 func (e Error) Report() {
 	err, ok := e.err.(report.Reporter)
 	if ok && err != nil {
