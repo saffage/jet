@@ -623,12 +623,12 @@ func (check *Checker) typeOfFor(node *ast.For) (ty types.Type) {
 	// TODO allow only integral types
 	tyLoopVar := tyX
 
-	if len(node.DeclList.Nodes) > 1 {
-		check.errorf(node.DeclList.Nodes[1], "invalid loop variables count (expected 1)")
+	if len(node.Decls.Nodes) > 1 {
+		check.errorf(node.Decls.Nodes[1], "invalid loop variables count (expected 1)")
 		return
 	}
 
-	loopVarDecl, _ := node.DeclList.Nodes[0].(*ast.Decl)
+	loopVarDecl, _ := node.Decls.Nodes[0].(*ast.Decl)
 	if loopVarDecl == nil {
 		panic("unreachable")
 	}

@@ -263,7 +263,7 @@ func (n *While) Repr() string {
 }
 
 func (n *For) Repr() string {
-	return fmt.Sprintf("for %s in %s %s", n.DeclList.Repr(), n.IterExpr.Repr(), n.Body.Repr())
+	return fmt.Sprintf("for %s in %s %s", n.Decls.Repr(), n.IterExpr.Repr(), n.Body.Repr())
 }
 
 func (n *Defer) Repr() string {

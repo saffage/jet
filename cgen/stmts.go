@@ -27,7 +27,7 @@ func (gen *generator) stmt(stmt ast.Node) {
 		gen.block(stmt.Body.StmtList, nil)
 
 	case *ast.For:
-		loopVar := gen.SymbolOf(stmt.DeclList.Nodes[0].(*ast.Decl).Ident)
+		loopVar := gen.SymbolOf(stmt.Decls.Nodes[0].(*ast.Decl).Ident)
 		iterExpr := stmt.IterExpr.(*ast.Op)
 		cmpOp := ast.OperatorLt
 		if iterExpr.Kind == ast.OperatorRangeInclusive {

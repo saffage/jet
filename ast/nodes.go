@@ -72,9 +72,8 @@ func (n *Literal) PosEnd() token.Pos { return n.End }
 
 type (
 	Comment struct {
-		Value string
-		Start token.Pos
-		End   token.Pos
+		Value      string
+		Start, End token.Pos
 	}
 
 	CommentGroup struct {
@@ -84,7 +83,7 @@ type (
 	// Represents '@[...attributes]'.
 	AttributeList struct {
 		List   *BracketList
-		TokLoc token.Pos // '@' token.
+		TokPos token.Pos // '@' token.
 	}
 
 	// Represents '@[..attributes] let name T = expr'.
@@ -104,7 +103,7 @@ func (n *Comment) PosEnd() token.Pos { return n.End }
 func (n *CommentGroup) Pos() token.Pos    { return n.Comments[0].Pos() }
 func (n *CommentGroup) PosEnd() token.Pos { return n.Comments[len(n.Comments)-1].PosEnd() }
 
-func (n *AttributeList) Pos() token.Pos    { return n.TokLoc }
+func (n *AttributeList) Pos() token.Pos    { return n.TokPos }
 func (n *AttributeList) PosEnd() token.Pos { return n.List.PosEnd() }
 
 func (decl *Decl) Pos() token.Pos {
@@ -126,11 +125,9 @@ func (decl *Decl) PosEnd() token.Pos {
 
 func (n *CommentGroup) Merged() string {
 	buf := strings.Builder{}
-
 	for _, comment := range n.Comments {
 		buf.WriteString(comment.Value[1:])
 	}
-
 	return buf.String()
 }
 
@@ -336,7 +333,7 @@ type (
 	}
 
 	For struct {
-		DeclList *List
+		Decls    *List
 		IterExpr Node
 		Body     *CurlyList
 		TokPos   token.Pos // 'for' token.
