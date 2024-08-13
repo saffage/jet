@@ -6,6 +6,12 @@ import (
 	"strings"
 )
 
+type Representable interface {
+	// Representation of the node tree. Result must be equal to the
+	// code from which this tree can be parsed.
+	Repr() string
+}
+
 //------------------------------------------------
 // Atoms
 //------------------------------------------------

@@ -7,16 +7,9 @@ import (
 )
 
 type Node interface {
-	// Start of the entire tree. This position must also include nested nodes.
-	Pos() token.Pos
-
-	// End of the entire tree. This position must also include nested nodes.
-	PosEnd() token.Pos
-
-	// String representation of the node. This string must be equal to the
-	// code from which this tree was parsed (ignoring location).
-	Repr() string
-
+	Representable
+	Pos() token.Pos    // Start of the entire tree.
+	PosEnd() token.Pos // End of the entire tree.
 	implNode()
 }
 
