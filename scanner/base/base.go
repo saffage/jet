@@ -15,7 +15,7 @@ type Base struct {
 	bufPos          int           // Current character index.
 	lineNum         uint32        // Current line number.
 	charNum         uint32        // Current character number.
-	prevLineCharNum uint32        // Last character number in the previous line (needed for [PrevPos] function).
+	prevLineCharNum uint32        // Last character number in the previous line (needed for [Base.PrevPos] function).
 }
 
 func New(buffer []byte, fileID config.FileID) *Base {
@@ -65,7 +65,7 @@ func (base *Base) Advance() (previous byte) {
 	return
 }
 
-// Comsumes `char` and returns true, otherwise returns false.
+// Comsumes 'char' and returns true, otherwise returns false.
 func (base *Base) Consume(char byte) bool {
 	if base.Peek() == char {
 		base.Advance()
@@ -74,7 +74,8 @@ func (base *Base) Consume(char byte) bool {
 
 	return false
 }
-// Comsumes any of `chars` and returns true, otherwise returns false.
+
+// Consumes any of 'chars' and returns true, otherwise returns false.
 func (base *Base) ConsumeAny(chars ...byte) bool {
 	if len(chars) == 0 || base.Match(chars...) {
 		base.Advance()
@@ -89,9 +90,9 @@ func (base *Base) Match(chars ...byte) bool {
 	return slices.Contains(chars, base.Peek())
 }
 
-// Takes all `data` while not `stop`.
+// Takes all 'data' while 'stop' returns true.
 //
-// Note: `function` should advance on every iteration.
+// Note that 'f' should advance on every iteration.
 func (base *Base) Take(f func() (data []byte, stop bool)) string {
 	result := strings.Builder{}
 
@@ -107,7 +108,7 @@ func (base *Base) Take(f func() (data []byte, stop bool)) string {
 	return result.String()
 }
 
-// Takes all characters while `predicate` returns true.
+// Takes all characters while 'predicate' returns true.
 func (base *Base) TakeWhile(predicate func(byte) bool) string {
 	return base.Take(func() ([]byte, bool) {
 		if predicate(base.Peek()) {
@@ -117,7 +118,7 @@ func (base *Base) TakeWhile(predicate func(byte) bool) string {
 	})
 }
 
-// Takes all characters while `predicate` returns false.
+// Takes all characters while 'predicate' returns false.
 func (base *Base) TakeUntil(predicate func(byte) bool) string {
 	return base.Take(func() ([]byte, bool) {
 		if !predicate(base.Peek()) {
