@@ -24,11 +24,11 @@ var (
 )
 
 type Error struct {
+	err error
+
+	Message string
 	Start   token.Pos
 	End     token.Pos
-	Message string
-
-	err error
 }
 
 func (e Error) Error() string {

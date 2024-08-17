@@ -18,10 +18,10 @@ var (
 )
 
 type Token struct {
-	Kind  Kind
 	Data  string
 	Start Pos
 	End   Pos
+	Kind  Kind
 }
 
 func (token Token) String() string {
