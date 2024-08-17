@@ -55,7 +55,10 @@ func (check *Checker) resolveStructDecl(decl *ast.LetDecl, value *ast.StructType
 		t := types.AsTypeDesc(tField).Base()
 		fieldSym := NewVar(local, t, fieldDecl)
 		fieldSym.isField = true
-		fields[i] = types.StructField{fieldDecl.Decl.Name.Ident(), t}
+		fields[i] = types.StructField{
+			Name: fieldDecl.Decl.Name.Ident(),
+			Type: t,
+		}
 
 		if defined := local.Define(fieldSym); defined != nil {
 			err := newErrorf(fieldSym.Ident(), "duplicate field '%s'", fieldSym.Name())

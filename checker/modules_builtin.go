@@ -125,9 +125,3 @@ func checkBuiltInPkgsAux(cfg *config.Config) error {
 }
 
 var ErrorInvalidPkgPath = errors.New("invalid path to the package")
-
-func internalCheckBuiltInModule(cfg *config.Config, filepath string) (*Module, error) {
-	var fileID config.FileID
-
-	return CheckFile(cfg, fileID)
-}

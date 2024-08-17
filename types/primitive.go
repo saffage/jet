@@ -1,6 +1,10 @@
 package types
 
-import "github.com/saffage/jet/constant"
+import (
+	"slices"
+
+	"github.com/saffage/jet/constant"
+)
 
 var (
 	UntypedBool   = &Primitive{KindUntypedBool}
@@ -180,6 +184,8 @@ func SkipUntyped(t Type) Type {
 
 			case KindUntypedString:
 				return String
+
+			default:
 			}
 
 		case *Tuple:
@@ -193,6 +199,7 @@ func SkipUntyped(t Type) Type {
 			return NewArray(t.size, SkipUntyped(t.elem))
 		}
 	}
+
 	return t
 }
 
@@ -200,22 +207,24 @@ func IsUntyped(t Type) bool {
 	if t != nil {
 		switch t := t.Underlying().(type) {
 		case *Primitive:
-			switch t.kind {
-			case KindUntypedBool, KindUntypedInt, KindUntypedFloat, KindUntypedString:
-				return true
-			}
+			return slices.Contains(
+				[]PrimitiveKind{
+					KindUntypedBool,
+					KindUntypedInt,
+					KindUntypedFloat,
+					KindUntypedString,
+				},
+				t.kind,
+			)
 
 		case *Tuple:
-			for _, elem := range t.types {
-				if IsUntyped(elem) {
-					return true
-				}
-			}
+			return slices.ContainsFunc(t.types, IsUntyped)
 
 		case *Array:
 			return IsUntyped(t.elem)
 		}
 	}
+
 	return false
 }
 

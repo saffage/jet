@@ -15,6 +15,8 @@ func (check *Checker) prefix(node *ast.Op, tyOperand types.Type) types.Type {
 			switch p.Kind() {
 			case types.KindUntypedBool, types.KindBool:
 				return tyOperand
+
+			default:
 			}
 		}
 
@@ -23,6 +25,8 @@ func (check *Checker) prefix(node *ast.Op, tyOperand types.Type) types.Type {
 			switch p.Kind() {
 			case types.KindUntypedInt, types.KindUntypedFloat, types.KindI32:
 				return tyOperand
+
+			default:
 			}
 		}
 
@@ -101,6 +105,8 @@ func (check *Checker) infix(node *ast.Op, tOperandX, tOperandY types.Type) types
 		switch node.Kind {
 		case ast.OperatorEq, ast.OperatorNe:
 			return types.Bool
+
+		default:
 		}
 	}
 
@@ -121,7 +127,7 @@ func (check *Checker) infixAs(node *ast.Op, _, tyY types.Type) types.Type {
 func (check *Checker) infixPrimitive(
 	node *ast.Op,
 	tOperandX *types.Primitive,
-	tOperandY types.Type,
+	_ types.Type, // tOperandY
 ) types.Type {
 	switch node.Kind {
 	case ast.OperatorAdd,
@@ -142,6 +148,8 @@ func (check *Checker) infixPrimitive(
 			types.KindF32,
 			types.KindF64:
 			return tOperandX
+
+		default:
 		}
 
 	case ast.OperatorAddAssign,
@@ -165,6 +173,8 @@ func (check *Checker) infixPrimitive(
 				check.errorf(node.X, "expression cannot be assigned")
 			}
 			return types.Unit
+
+		default:
 		}
 
 	case ast.OperatorMod,
@@ -184,6 +194,8 @@ func (check *Checker) infixPrimitive(
 			types.KindU32,
 			types.KindU64:
 			return tOperandX
+
+		default:
 		}
 
 	case ast.OperatorModAssign,
@@ -206,6 +218,8 @@ func (check *Checker) infixPrimitive(
 				check.errorf(node.X, "expression cannot be assigned")
 			}
 			return types.Unit
+
+		default:
 		}
 
 	case ast.OperatorEq,
@@ -230,6 +244,8 @@ func (check *Checker) infixPrimitive(
 			types.KindF32,
 			types.KindF64:
 			return types.Bool
+
+		default:
 		}
 
 	case ast.OperatorAnd, ast.OperatorOr:
@@ -239,6 +255,8 @@ func (check *Checker) infixPrimitive(
 
 		case types.KindBool:
 			return types.Bool
+
+		default:
 		}
 
 	default:

@@ -82,6 +82,8 @@ func (gen *generator) builtInPrint(call *ast.Call) string {
 				`fprintf(stdout, "%%f", %s)`,
 				gen.exprString(call.Args.Nodes[0]),
 			)
+
+		default:
 		}
 
 	case *types.Enum:
@@ -138,6 +140,8 @@ func (gen *generator) builtInPrintln(call *ast.Call) string {
 				`fprintf(stdout, "%%f\n", %s)`,
 				gen.exprString(call.Args.Nodes[0]),
 			)
+
+		default:
 		}
 
 	case *types.Enum:
