@@ -60,7 +60,6 @@ func beforeBuild(ctx *cli.Context) error {
 	config.Global.Flags.Run = ctx.Bool("run")
 	config.Global.Flags.DumpCheckerState = ctx.Bool("dump-checker-state")
 	config.Global.Flags.ParseAst = ctx.Bool("parse-ast")
-	config.Global.Flags.TraceParser = ctx.Bool("trace-parser")
 	config.Global.Options.CC = ctx.String("cc")
 	config.Global.Options.CCFlags = ctx.String("cc-flags")
 	config.Global.Options.LDFlags = ctx.String("ld-flags")

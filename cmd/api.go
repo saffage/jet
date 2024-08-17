@@ -23,11 +23,6 @@ func Run(args []string) error {
 			Usage:              "display program AST of the specified module and exit",
 			DisableDefaultText: true,
 		},
-		&cli.BoolFlag{
-			Name:               "trace-parser",
-			Usage:              "trace parser calls (used for debugging)",
-			DisableDefaultText: true,
-		},
 		&cli.PathFlag{
 			Name:  "cc",
 			Usage: "path to a C compiler executable",
