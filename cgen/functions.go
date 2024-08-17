@@ -116,7 +116,7 @@ func (gen *generator) fnDecl(sym *checker.Func) (decl string, tyResult types.Typ
 }
 
 func (gen *generator) fnDef(sym *checker.Func, tyResult types.Type) {
-	node := sym.Node().(*ast.Decl)
+	node := sym.Node().(*ast.LetDecl)
 	value, _ := node.Value.(*ast.Function)
 
 	gen.line("{\n")

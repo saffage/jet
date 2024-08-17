@@ -63,14 +63,14 @@ func (gen *generator) structInitList(prefix string, initList *ast.List, _ *types
 			if expr.X == nil || expr.Y == nil {
 				panic("unreachable")
 			}
-			field, ok := expr.X.(*ast.Ident)
+			field, ok := expr.X.(*ast.Name)
 			if !ok {
 				panic("unreachable")
 			}
-			gen.assign(prefix+"."+field.Name, expr.Y)
+			gen.assign(prefix+"."+field.Data, expr.Y)
 			// gen.linef("%s.%s = %s;\n", prefix, field.Name, value)
 
-		case *ast.Ident, *ast.Dot:
+		case *ast.Name, *ast.Dot:
 			println(expr.Repr())
 			panic("not implemented")
 

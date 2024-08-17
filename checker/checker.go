@@ -72,7 +72,7 @@ func (check *Checker) setValue(expr ast.Node, value *TypedValue) {
 	check.module.Types[expr] = value
 }
 
-func (check *Checker) newDef(ident *ast.Ident, sym Symbol) {
+func (check *Checker) newDef(ident ast.Ident, sym Symbol) {
 	assert(ident != nil)
 	assert(sym != nil)
 
@@ -88,7 +88,7 @@ func (check *Checker) newDef(ident *ast.Ident, sym Symbol) {
 		ident,
 	)
 	if !check.module.Defs.Set(ident, sym) {
-		report.TaggedWarningf("checker", "identifier '%s' was redefined", ident.Name)
+		report.TaggedWarningf("checker", "identifier '%s' was redefined", ident.Ident())
 	}
 	// check.setType(ident, sym.Type())
 
@@ -98,7 +98,7 @@ func (check *Checker) newDef(ident *ast.Ident, sym Symbol) {
 	}
 }
 
-func (check *Checker) newUse(ident *ast.Ident, sym Symbol) {
+func (check *Checker) newUse(ident *ast.Name, sym Symbol) {
 	assert(ident != nil)
 	assert(sym != nil)
 

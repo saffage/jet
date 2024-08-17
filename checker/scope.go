@@ -97,10 +97,10 @@ func (scope *Scope) LookupLocal(name string) Symbol {
 	return scope.symbols[name]
 }
 
-func errorAlreadyDefined(ident, previous *ast.Ident) *Error {
-	err := newErrorf(ident, "name '%s' is already defined in this scope", ident.Name)
+func errorAlreadyDefined(name, previous ast.Ident) *Error {
+	err := newErrorf(name, "name '%s' is already defined in this scope", name.Ident())
 
-	if previous != nil && previous.Start.Line > 0 {
+	if previous != nil && previous.Pos().Line > 0 {
 		err.Notes = append(err.Notes, &Error{
 			Message: "previous declaration was here",
 			Node:    previous,

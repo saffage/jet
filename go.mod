@@ -8,6 +8,7 @@ require (
 	github.com/fatih/color v1.16.0
 	github.com/galsondor/go-ascii v0.0.0-20151210013816-e2eb5175fb10
 	github.com/urfave/cli/v2 v2.27.2
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (

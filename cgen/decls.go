@@ -7,7 +7,7 @@ import (
 )
 
 func (gen *generator) decl(sym checker.Symbol) {
-	node := sym.Node().(*ast.Decl)
+	node := sym.Node().(*ast.LetDecl)
 	ty := sym.Type()
 	gen.linef("%s %s;\n", gen.TypeString(ty), gen.name(sym))
 
@@ -20,7 +20,7 @@ func (gen *generator) decl(sym checker.Symbol) {
 		} else {
 			gen.linef("%s;\n",
 				gen.binary(
-					node.Ident,
+					node.Decl.Name,
 					node.Value,
 					types.Unit,
 					ast.OperatorAssign,

@@ -8,7 +8,7 @@ import (
 
 type TypeInfo struct {
 	// Every definition in the entire module.
-	Defs *orderedmap.OrderedMap[*ast.Ident, Symbol]
+	Defs *orderedmap.OrderedMap[ast.Ident, Symbol]
 
 	// Type symbols for every type defined in the module.
 	TypeSyms map[types.Type]Symbol
@@ -17,7 +17,7 @@ type TypeInfo struct {
 	Types map[ast.Node]*TypedValue
 
 	// Every usage in the entire module.
-	Uses map[*ast.Ident]Symbol
+	Uses map[ast.Ident]Symbol
 }
 
 func (ti *TypeInfo) TypeOf(expr ast.Node) types.Type {
@@ -38,7 +38,7 @@ func (ti *TypeInfo) ValueOf(expr ast.Node) *TypedValue {
 	return nil
 }
 
-func (ti *TypeInfo) SymbolOf(ident *ast.Ident) Symbol {
+func (ti *TypeInfo) SymbolOf(ident ast.Ident) Symbol {
 	if ident != nil {
 		if sym, ok := ti.Defs.Get(ident); ok && sym != nil {
 			return sym

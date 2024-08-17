@@ -1,28 +1,29 @@
 package parser
 
 import (
-	"encoding/json"
 	"os"
 	"reflect"
 	"testing"
 
 	"github.com/saffage/jet/ast"
+	"github.com/saffage/jet/report"
 	"github.com/saffage/jet/scanner"
 	"github.com/saffage/jet/token"
+	"gopkg.in/yaml.v3"
 )
 
 func TestMatchSequence(t *testing.T) {
 	tokens := []token.Token{
-		{Kind: token.At},
-		{Kind: token.Ident},
-		{Kind: token.At},
-		{Kind: token.Ident},
-		{Kind: token.At},
-		{Kind: token.Ident},
+		{Kind: token.Name},
+		{Kind: token.Colon},
+		{Kind: token.Name},
+		{Kind: token.Colon},
+		{Kind: token.Name},
+		{Kind: token.Colon},
 		{Kind: token.EOF},
 	}
-	p := New(tokens, DefaultFlags)
-	kinds := []token.Kind{token.At, token.Ident}
+	p, _ := New(tokens, DefaultFlags)
+	kinds := []token.Kind{token.Name, token.Colon}
 	if !p.matchSequence(kinds...) {
 		t.Errorf("expected `matchSequence(%v)` to return true, got false", kinds)
 	}
@@ -36,7 +37,7 @@ func TestMatchSequence(t *testing.T) {
 	}
 
 	p.current = 0
-	kinds = []token.Kind{token.At}
+	kinds = []token.Kind{token.Name}
 	if !p.matchSequence(kinds...) {
 		t.Errorf("expected `matchSequence(%v)` to return true, got false", kinds)
 	}
@@ -50,7 +51,7 @@ func TestMatchSequence(t *testing.T) {
 	}
 
 	p.current = 0
-	kinds = []token.Kind{token.At, token.Ident, token.Ident}
+	kinds = []token.Kind{token.Name, token.Name}
 	if p.matchSequence(kinds...) {
 		t.Errorf("expected `matchSequence(%v)` to return false, got true", kinds)
 	}
@@ -62,41 +63,41 @@ func TestMatchSequence(t *testing.T) {
 	if p.matchSequence(kinds...) {
 		t.Errorf("expected `matchSequence(%v)` to return false, got true", kinds)
 	}
-}
-
-type testCase struct {
-	input        string
-	name         string
-	expectedJSON string
-	error        error
-	isExpr       bool
-	scannerFlags scanner.Flags
-	parserFlags  Flags
 }
 
 func TestExprs(t *testing.T) {
-	cases := []testCase{
+	type testCase struct {
+		error        error
+		input        string
+		name         string
+		expectedAST  string
+		scannerFlags scanner.Flags
+		parserFlags  Flags
+		isExpr       bool
+	}
+
+	testCases := []testCase{
 		{
-			input:        `10`,
-			name:         "untyped integer literal",
-			expectedJSON: "untyped_integer_literal_ast.json",
-			isExpr:       true,
+			input:       `10`,
+			name:        "untyped integer literal",
+			expectedAST: "untyped_integer_literal_ast.yml",
+			isExpr:      true,
 		},
 		{
-			input:        `"hi"`,
-			name:         "untyped string literal",
-			expectedJSON: "untyped_string_literal_ast.json",
-			isExpr:       true,
+			input:       `"hi"`,
+			name:        "untyped string literal",
+			expectedAST: "untyped_string_literal_ast.yml",
+			isExpr:      true,
 		},
 		{
-			input:        `()`,
-			name:         "empty parentheses",
-			expectedJSON: "empty_parentheses.json",
-			isExpr:       true,
+			input:       `0.1`,
+			name:        "untyped float literal",
+			expectedAST: "untyped_float_literal_ast.yml",
+			isExpr:      true,
 		},
 	}
 
-	for _, c := range cases {
+	for _, c := range testCases {
 		t.Run(c.name, func(t *testing.T) {
 			tokens := scanner.MustScan(([]byte)(c.input), 1, c.scannerFlags)
 
@@ -115,8 +116,8 @@ func TestExprs(t *testing.T) {
 				return
 			}
 
-			if c.expectedJSON != "" {
-				filename := "./testdata/" + c.expectedJSON
+			if c.expectedAST != "" {
+				filename := "./testdata/" + c.expectedAST
 				expect, err := os.ReadFile(filename)
 
 				if err != nil {
@@ -124,7 +125,7 @@ func TestExprs(t *testing.T) {
 					return
 				}
 
-				actual, err := json.MarshalIndent(stmts, "", "\t")
+				actual, err := yaml.Marshal(stmts)
 
 				if err != nil {
 					t.Error("unexpected JSON marshal error:", err)
@@ -141,7 +142,8 @@ func TestExprs(t *testing.T) {
 					)
 				}
 			} else {
-				encoded, err := json.MarshalIndent(stmts, "", "    ")
+				encoded, err := yaml.Marshal(stmts)
+
 				if err != nil {
 					t.Error("unexpected JSON marshal error:", err)
 					return
@@ -160,10 +162,12 @@ func checkError(t *testing.T, got, want error) bool {
 
 	if want == nil {
 		if got != nil {
+			report.Errors(got)
 			t.Errorf("parsing failed with unexpected error: '%s'", got.Error())
 			return false
 		}
 	} else if got == nil {
+		report.Errors(want)
 		t.Errorf("expected an error: '%s', got nothing", want.Error())
 		return false
 	}
@@ -183,11 +187,11 @@ func checkError(t *testing.T, got, want error) bool {
 func JSONBytesEqual(a, b []byte) (bool, error) {
 	var jsonA, jsonB any
 
-	if err := json.Unmarshal(a, &jsonA); err != nil {
+	if err := yaml.Unmarshal(a, &jsonA); err != nil {
 		return false, err
 	}
 
-	if err := json.Unmarshal(b, &jsonB); err != nil {
+	if err := yaml.Unmarshal(b, &jsonB); err != nil {
 		return false, err
 	}
 

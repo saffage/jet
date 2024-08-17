@@ -28,7 +28,7 @@ func (check *Checker) prefix(node *ast.Op, tyOperand types.Type) types.Type {
 
 	case ast.OperatorAddrOf, ast.OperatorMutAddrOf:
 		switch operand := node.Y.(type) {
-		case *ast.Ident:
+		case *ast.Name:
 			if sym, _ := check.symbolOf(operand).(*Var); sym != nil {
 				return types.NewRef(tyOperand)
 			}
@@ -303,7 +303,7 @@ func (check *Checker) postfix(node *ast.Op, tyOperand types.Type) types.Type {
 
 func (check *Checker) assignable(node ast.Node) bool {
 	switch operand := node.(type) {
-	case *ast.Ident:
+	case *ast.Name:
 		if operand != nil {
 			varSym, ok := check.symbolOf(operand).(*Var)
 			if !ok || varSym == nil {

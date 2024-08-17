@@ -52,6 +52,7 @@ const (
 	OperatorAs             // as
 	OperatorRangeInclusive // ..
 	OperatorRangeExclusive // ..<
+	OperatorFatArrow       // =>
 
 	// Postfix.
 

@@ -28,7 +28,7 @@ func (gen *generator) tempVar(ty types.Type) *checker.Var {
 		return nil
 	}
 	id := fmt.Sprintf("tmp__%d", gen.funcTempVarId)
-	decl := &ast.Decl{Ident: &ast.Ident{Name: id}}
+	decl := &ast.LetDecl{Decl: &ast.Decl{Name: &ast.Name{Data: id}}}
 	sym := checker.NewVar(gen.scope, ty, decl)
 	gen.line(gen.varDecl(sym))
 	_ = gen.scope.Define(sym)
@@ -40,7 +40,7 @@ func (gen *generator) resultVar(ty types.Type) *checker.Var {
 	if ty == nil || ty.Equals(types.Unit) {
 		return nil
 	}
-	decl := &ast.Decl{Ident: &ast.Ident{Name: "__result"}}
+	decl := &ast.LetDecl{Decl: &ast.Decl{Name: &ast.Name{Data: "__result"}}}
 	sym := checker.NewVar(gen.scope, ty, decl)
 	if !types.IsArray(ty) {
 		gen.linef("%s __result;\n", gen.TypeString(ty))
@@ -58,7 +58,7 @@ func (gen *generator) initFunc() {
 
 		if _var, _ := def.(*checker.Var); _var != nil && _var.IsGlobal() && _var.Value() != nil {
 			gen.linef("%s;\n", gen.binary(
-				_var.Node().(*ast.Decl).Ident,
+				_var.Node().(*ast.LetDecl).Decl.Name,
 				_var.Value(),
 				types.Unit,
 				ast.OperatorAssign,

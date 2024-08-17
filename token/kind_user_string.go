@@ -11,9 +11,9 @@ func _() {
 	_ = x[Illegal-0]
 	_ = x[EOF-1]
 	_ = x[Comment-2]
-	_ = x[Ident-3]
-	_ = x[Underscore-4]
-	_ = x[Type-5]
+	_ = x[Type-3]
+	_ = x[Name-4]
+	_ = x[Underscore-5]
 	_ = x[Int-6]
 	_ = x[Float-7]
 	_ = x[String-8]
@@ -69,15 +69,14 @@ func _() {
 	_ = x[KwIn-58]
 	_ = x[KwAs-59]
 	_ = x[KwDefer-60]
-	_ = x[KwPanic-61]
-	_ = x[KwBreak-62]
-	_ = x[KwReturn-63]
-	_ = x[KwContinue-64]
+	_ = x[KwBreak-61]
+	_ = x[KwReturn-62]
+	_ = x[KwContinue-63]
 }
 
-const _Kind_user_name = "illegal characterend of filecommentidentifierunderscoretypeuntyped intuntyped floatuntyped string'('')''{''}''['']'':'','operator '='operator '=='operator '!'operator '!='operator '<'operator '<='operator '>'operator '>='operator '<<'operator '<<='operator '>>'operator '>>='operator '+'operator '+='operator '-'operator '-='operator '*'operator '*='operator '/'operator '/='operator '%'operator '%='operator '^'operator '^='operator '&'operator '&='operator '&&'operator '&&='operator '|'operator '|='operator '||'operator '||='operator '->'operator '=>'operator '.'operator '..'keyword 'let'keyword 'type'keyword 'when'keyword 'if'keyword 'else'keyword 'in'keyword 'as'keyword 'defer'keyword 'panic'keyword 'break'keyword 'return'keyword 'continue'"
+const _Kind_user_name = "illegal characterend of filecommenttypenameunderscoreuntyped intuntyped floatuntyped string'('')''{''}''['']'':'','operator '='operator '=='operator '!'operator '!='operator '<'operator '<='operator '>'operator '>='operator '<<'operator '<<='operator '>>'operator '>>='operator '+'operator '+='operator '-'operator '-='operator '*'operator '*='operator '/'operator '/='operator '%'operator '%='operator '^'operator '^='operator '&'operator '&='operator '&&'operator '&&='operator '|'operator '|='operator '||'operator '||='operator '->'operator '=>'operator '.'operator '..'keyword 'let'keyword 'type'keyword 'when'keyword 'if'keyword 'else'keyword 'in'keyword 'as'keyword 'defer'keyword 'break'keyword 'return'keyword 'continue'"
 
-var _Kind_user_index = [...]uint16{0, 17, 28, 35, 45, 55, 59, 70, 83, 97, 100, 103, 106, 109, 112, 115, 118, 121, 133, 146, 158, 171, 183, 196, 208, 221, 234, 248, 261, 275, 287, 300, 312, 325, 337, 350, 362, 375, 387, 400, 412, 425, 437, 450, 463, 477, 489, 502, 515, 529, 542, 555, 567, 580, 593, 607, 621, 633, 647, 659, 671, 686, 701, 716, 732, 750}
+var _Kind_user_index = [...]uint16{0, 17, 28, 35, 39, 43, 53, 64, 77, 91, 94, 97, 100, 103, 106, 109, 112, 115, 127, 140, 152, 165, 177, 190, 202, 215, 228, 242, 255, 269, 281, 294, 306, 319, 331, 344, 356, 369, 381, 394, 406, 419, 431, 444, 457, 471, 483, 496, 509, 523, 536, 549, 561, 574, 587, 601, 615, 627, 641, 653, 665, 680, 695, 711, 729}
 
 func (i Kind) UserString() string {
 	if i >= Kind(len(_Kind_user_index)-1) {

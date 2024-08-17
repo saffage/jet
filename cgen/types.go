@@ -136,11 +136,11 @@ func (gen *generator) arrayType(ty *types.Array) string {
 }
 
 func (gen *generator) findTypeSym(
-	defs *orderedmap.OrderedMap[*ast.Ident, checker.Symbol],
+	defs *orderedmap.OrderedMap[ast.Ident, checker.Symbol],
 	t types.Type,
 	// prefix string,
 ) string {
-	otherModulesDefs := []*orderedmap.OrderedMap[*ast.Ident, checker.Symbol]{}
+	otherModulesDefs := []*orderedmap.OrderedMap[ast.Ident, checker.Symbol]{}
 
 	for def := defs.Front(); def != nil; def = def.Next() {
 		def := def.Value

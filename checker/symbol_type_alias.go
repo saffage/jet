@@ -9,26 +9,26 @@ import (
 type TypeAlias struct {
 	owner *Scope
 	t     *types.Alias
-	decl  *ast.Decl
+	decl  *ast.LetDecl
 }
 
-func NewTypeAlias(owner *Scope, t *types.TypeDesc, decl *ast.Decl) *TypeAlias {
+func NewTypeAlias(owner *Scope, t *types.TypeDesc, decl *ast.LetDecl) *TypeAlias {
 	assert(!types.IsUntyped(t))
 
 	return &TypeAlias{
 		owner: owner,
-		t:     types.NewAlias(t.Base(), decl.Ident.Name),
+		t:     types.NewAlias(t.Base(), decl.Decl.Name.Ident()),
 		decl:  decl,
 	}
 }
 
-func (sym *TypeAlias) Owner() *Scope     { return sym.owner }
-func (sym *TypeAlias) Type() types.Type  { return types.NewTypeDesc(sym.t) }
-func (sym *TypeAlias) Name() string      { return sym.decl.Ident.Name }
-func (sym *TypeAlias) Ident() *ast.Ident { return sym.decl.Ident }
-func (sym *TypeAlias) Node() ast.Node    { return sym.decl }
+func (sym *TypeAlias) Owner() *Scope    { return sym.owner }
+func (sym *TypeAlias) Type() types.Type { return types.NewTypeDesc(sym.t) }
+func (sym *TypeAlias) Name() string     { return sym.Ident().Ident() }
+func (sym *TypeAlias) Ident() ast.Ident { return sym.decl.Decl.Name }
+func (sym *TypeAlias) Node() ast.Node   { return sym.decl }
 
-func (check *Checker) resolveTypeAliasDecl(decl *ast.Decl) {
+func (check *Checker) resolveTypeAliasDecl(decl *ast.LetDecl) {
 	t := check.typeOf(decl.Value)
 	if t == nil {
 		return
@@ -48,7 +48,7 @@ func (check *Checker) resolveTypeAliasDecl(decl *ast.Decl) {
 		return
 	}
 
-	check.newDef(decl.Ident, sym)
+	check.newDef(decl.Decl.Name, sym)
 	check.setType(decl, typedesc)
 	report.TaggedDebugf("checker", "alias: set type: %s", typedesc)
 }

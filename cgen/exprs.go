@@ -13,7 +13,7 @@ import (
 )
 
 func (gen *generator) exprString(expr ast.Node) string {
-	if _, isDecl := expr.(*ast.Decl); isDecl {
+	if _, isDecl := expr.(*ast.LetDecl); isDecl {
 		return "ERROR_CGEN__EXPR_IS_DECL"
 	}
 
@@ -23,7 +23,7 @@ func (gen *generator) exprString(expr ast.Node) string {
 	case *ast.Empty:
 		return ""
 
-	case *ast.Ident:
+	case *ast.Name:
 		switch sym := gen.SymbolOf(node).(type) {
 		case *checker.Var, *checker.Func:
 			return gen.name(sym)
@@ -63,14 +63,14 @@ func (gen *generator) exprString(expr ast.Node) string {
 				// if tyY := gen.TypeOf(node.Y); tyY != nil && tyY.Equals(ty) {
 				// 	// Enum field.
 				// }
-				return gen.TypeString(_enum) + "__" + node.Y.Name
+				return gen.TypeString(_enum) + "__" + node.Y.Data
 				// return "ERROR_CGEN__INVALID_ENUM_FIELD"
 			} else {
 				return "ERROR_CGEN__INVALID_MEMBER_ACCESS"
 			}
 		}
 
-		return gen.exprString(node.X) + "." + node.Y.Name
+		return gen.exprString(node.X) + "." + node.Y.Data
 
 	case *ast.Deref:
 		return fmt.Sprintf("(*%s)", gen.exprString(node.X))

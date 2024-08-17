@@ -13,11 +13,11 @@ type BuiltIn struct {
 	t    *types.Func
 }
 
-func (b *BuiltIn) Owner() *Scope     { return nil }
-func (b *BuiltIn) Type() types.Type  { return b.t }
-func (b *BuiltIn) Name() string      { return b.name }
-func (b *BuiltIn) Ident() *ast.Ident { return nil }
-func (b *BuiltIn) Node() ast.Node    { return nil }
+func (b *BuiltIn) Owner() *Scope    { return nil }
+func (b *BuiltIn) Type() types.Type { return b.t }
+func (b *BuiltIn) Name() string     { return b.name }
+func (b *BuiltIn) Ident() *ast.Name { return nil }
+func (b *BuiltIn) Node() ast.Node   { return nil }
 
 var builtIns = []*BuiltIn{
 	{

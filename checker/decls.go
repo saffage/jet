@@ -7,14 +7,14 @@ import (
 	"github.com/saffage/jet/types"
 )
 
-func (check *Checker) resolveDecl(decl *ast.Decl) {
+func (check *Checker) resolveDecl(decl *ast.LetDecl) {
 	switch {
-	case decl.Ident.Name == "_":
+	case decl.Decl.Name.Ident() == "_":
 		// TODO do not introduce a new symbol and do
 		// type checking instead of the error
-		check.errorf(decl.Ident, "attempt to declare an empty identifier")
+		check.errorf(decl.Decl.Name, "attempt to declare an empty identifier")
 
-	case unicode.IsUpper([]rune(decl.Ident.Name)[0]), FindAttr(decl.Attrs, "comptime") != nil:
+	case unicode.IsUpper([]rune(decl.Decl.Name.Ident())[0]), FindAttr(decl.Attrs, "comptime") != nil:
 		switch expr := decl.Value.(type) {
 		case nil:
 			// TODO?
@@ -44,14 +44,14 @@ func (check *Checker) resolveDecl(decl *ast.Decl) {
 			}
 		}
 
-	case decl.Mut.IsValid():
-		check.errorf(decl.Ident, "mutable compile-time variables are not supported")
+	// case decl.Mut.IsValid():
+	// 	check.errorf(decl.Ident, "mutable compile-time variables are not supported")
 
 	default:
 		if fn, _ := decl.Value.(*ast.Function); fn != nil {
 			// TODO check is we are in the module context
 			check.resolveFuncDecl(decl, fn)
-		} else if sig, _ := decl.Type.(*ast.Signature); sig != nil && decl.Value == nil {
+		} else if sig, _ := decl.Decl.Type.(*ast.Signature); sig != nil && decl.Value == nil {
 			check.resolveFuncDecl(decl, &ast.Function{
 				Signature: sig,
 				Body:      nil,

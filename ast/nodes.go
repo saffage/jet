@@ -13,36 +13,41 @@ type Node interface {
 	implNode()
 }
 
+type Ident interface {
+	Node
+	Ident() string
+}
+
 //------------------------------------------------
 // Atoms
 //------------------------------------------------
 
 type (
 	BadNode struct {
-		DesiredPos token.Pos
+		DesiredPos token.Pos `yaml:"desired_pos"`
 	}
 
 	Empty struct {
-		DesiredPos token.Pos
+		DesiredPos token.Pos `yaml:"desired_pos"`
 	}
 
-	Ident struct {
-		Name       string
+	Name struct {
+		Data       string
 		Start, End token.Pos
 	}
 
 	Type struct {
-		Name       string
+		Data       string
 		Start, End token.Pos
 	}
 
 	Underscore struct {
-		Name       string
+		Data       string
 		Start, End token.Pos
 	}
 
 	Literal struct {
-		Value      string
+		Data       string
 		Kind       LiteralKind
 		Start, End token.Pos
 	}
@@ -54,12 +59,15 @@ func (n *BadNode) PosEnd() token.Pos { return n.DesiredPos }
 func (n *Empty) Pos() token.Pos    { return n.DesiredPos }
 func (n *Empty) PosEnd() token.Pos { return n.DesiredPos }
 
-func (n *Ident) Pos() token.Pos    { return n.Start }
-func (n *Ident) PosEnd() token.Pos { return n.End }
+func (n *Name) Ident() string     { return n.Data }
+func (n *Name) Pos() token.Pos    { return n.Start }
+func (n *Name) PosEnd() token.Pos { return n.End }
 
+func (n *Type) Ident() string     { return n.Data }
 func (n *Type) Pos() token.Pos    { return n.Start }
 func (n *Type) PosEnd() token.Pos { return n.End }
 
+func (n *Underscore) Ident() string     { return n.Data }
 func (n *Underscore) Pos() token.Pos    { return n.Start }
 func (n *Underscore) PosEnd() token.Pos { return n.End }
 
@@ -86,14 +94,27 @@ type (
 		TokPos token.Pos // '@' token.
 	}
 
-	// Represents '@[..attributes] let name T = expr'.
+	// Represents 'let name T = expr'.
+	LetDecl struct {
+		Attrs  *AttributeList `yaml:",omitempty"`
+		LetTok token.Pos      ``
+		Decl   *Decl          ``
+		Value  Node           `yaml:",omitempty"`
+	}
+
+	// Represents 'type T = expr'.
+	TypeDecl struct {
+		Attrs   *AttributeList `yaml:",omitempty"`
+		TypeTok token.Pos      ``
+		Type    *Type          ``
+		Args    *ParenList     `yaml:",omitempty"`
+		Expr    Node           `yaml:",omitempty"`
+	}
+
+	// Represents 'name T' or just 'name'.
 	Decl struct {
-		Attrs *AttributeList
-		Ident *Ident
-		Mut   token.Pos // optional
-		Type  Node      // optional
-		Value Node      // optional
-		IsVar bool      // indicates whether '=' is used before the value instead of ':'
+		Name Ident
+		Type Node `yaml:",omitempty"` // Optional.
 	}
 )
 
@@ -106,21 +127,26 @@ func (n *CommentGroup) PosEnd() token.Pos { return n.Comments[len(n.Comments)-1]
 func (n *AttributeList) Pos() token.Pos    { return n.TokPos }
 func (n *AttributeList) PosEnd() token.Pos { return n.List.PosEnd() }
 
-func (decl *Decl) Pos() token.Pos {
-	if decl.Mut.IsValid() {
-		return decl.Mut
+func (n *LetDecl) Pos() token.Pos    { return n.LetTok }
+func (n *LetDecl) PosEnd() token.Pos { return n.Value.PosEnd() }
+
+func (n *TypeDecl) Pos() token.Pos { return n.TypeTok }
+func (n *TypeDecl) PosEnd() token.Pos {
+	if n.Expr != nil {
+		return n.Expr.PosEnd()
 	}
-	return decl.Ident.Pos()
+	if n.Args != nil {
+		return n.Args.PosEnd()
+	}
+	return n.Type.PosEnd()
 }
 
-func (decl *Decl) PosEnd() token.Pos {
-	if decl.Value != nil {
-		return decl.Value.PosEnd()
+func (n *Decl) Pos() token.Pos { return n.Name.Pos() }
+func (n *Decl) PosEnd() token.Pos {
+	if n.Type != nil {
+		return n.Type.PosEnd()
 	}
-	if decl.Type != nil {
-		return decl.Type.PosEnd()
-	}
-	return decl.Ident.PosEnd()
+	return n.Name.PosEnd()
 }
 
 func (n *CommentGroup) Merged() string {
@@ -136,15 +162,20 @@ func (n *CommentGroup) Merged() string {
 //------------------------------------------------
 
 type (
+	Label struct {
+		Label *Name
+		X     Node
+	}
+
 	// Represents '[...args]x'.
 	ArrayType struct {
 		X    Node
-		Args *BracketList
+		Args *BracketList `yaml:",omitempty"`
 	}
 
 	// Represents 'struct {...fields}'.
 	StructType struct {
-		Fields []*Decl
+		Fields []*LetDecl `yaml:",omitempty"`
 		TokPos token.Pos
 		Open   token.Pos
 		Close  token.Pos
@@ -152,7 +183,7 @@ type (
 
 	// Represents 'enum {...fields}'.
 	EnumType struct {
-		Fields []*Ident
+		Fields []*Name `yaml:",omitempty"`
 		TokPos token.Pos
 		Open   token.Pos
 		Close  token.Pos
@@ -160,13 +191,13 @@ type (
 
 	// Represents '() -> ()'.
 	Signature struct {
-		Params *ParenList
-		Result Node // can be nil in some cases
+		Params *ParenList `yaml:",omitempty"`
+		Result Node       `yaml:",omitempty"` // can be nil in some cases
 	}
 
 	// Represents an identifier, prefixed with a '$' sign.
 	BuiltIn struct {
-		*Ident
+		*Name
 		TokPos token.Pos // '$' token.
 	}
 
@@ -191,7 +222,7 @@ type (
 	// Represents 'x.y'.
 	Dot struct {
 		X      Node
-		Y      *Ident
+		Y      *Name
 		DotPos token.Pos
 	}
 
@@ -202,15 +233,18 @@ type (
 		StarPos token.Pos
 	}
 
-	// Represents 'x OP y', where 'OP' is an operator.
+	// Represents 'x OP y, where 'OP' is an operator.
 	Op struct {
-		X     Node
-		Y     Node
+		X     Node `yaml:",omitempty"`
+		Y     Node `yaml:",omitempty"`
 		Start token.Pos
 		End   token.Pos
 		Kind  OperatorKind
 	}
 )
+
+func (n *Label) Pos() token.Pos    { return n.Label.Start }
+func (n *Label) PosEnd() token.Pos { return n.X.PosEnd() }
 
 func (n *ArrayType) Pos() token.Pos    { return n.Args.Pos() }
 func (n *ArrayType) PosEnd() token.Pos { return n.X.PosEnd() }
@@ -225,7 +259,7 @@ func (n *Signature) Pos() token.Pos    { return n.Params.Pos() }
 func (n *Signature) PosEnd() token.Pos { return n.Result.PosEnd() }
 
 func (n *BuiltIn) Pos() token.Pos    { return n.TokPos }
-func (n *BuiltIn) PosEnd() token.Pos { return n.Ident.PosEnd() }
+func (n *BuiltIn) PosEnd() token.Pos { return n.Name.PosEnd() }
 
 func (n *Call) Pos() token.Pos    { return n.X.Pos() }
 func (n *Call) PosEnd() token.Pos { return n.Args.PosEnd() }
@@ -317,7 +351,7 @@ type (
 	If struct {
 		Cond   Node
 		Body   *CurlyList
-		Else   *Else
+		Else   *Else     `yaml:",omitempty"`
 		TokPos token.Pos // 'if' token.
 	}
 
@@ -333,10 +367,16 @@ type (
 	}
 
 	For struct {
-		Decls    *List
+		Decls    *List `yaml:",omitempty"`
 		IterExpr Node
 		Body     *CurlyList
 		TokPos   token.Pos // 'for' token.
+	}
+
+	When struct {
+		TokPos token.Pos ``
+		Expr   Node      `yaml:",omitempty"`
+		Body   *CurlyList
 	}
 
 	Defer struct {
@@ -345,22 +385,22 @@ type (
 	}
 
 	Return struct {
-		X      Node      // optional
+		X      Node      `yaml:",omitempty"` // optional
 		TokPos token.Pos // 'return' token.
 	}
 
 	Break struct {
-		Label  *Ident
+		Label  *Name `yaml:",omitempty"`
 		TokPos token.Pos
 	}
 
 	Continue struct {
-		Label  *Ident
+		Label  *Name `yaml:",omitempty"`
 		TokPos token.Pos
 	}
 
 	Import struct {
-		Module *Ident
+		Module *Name
 		TokPos token.Pos
 	}
 )
@@ -381,6 +421,9 @@ func (n *While) PosEnd() token.Pos { return n.Body.PosEnd() }
 
 func (n *For) Pos() token.Pos    { return n.TokPos }
 func (n *For) PosEnd() token.Pos { return n.Body.PosEnd() }
+
+func (n *When) Pos() token.Pos    { return n.TokPos }
+func (n *When) PosEnd() token.Pos { return n.Body.PosEnd() }
 
 func (n *Defer) Pos() token.Pos    { return n.TokPos }
 func (n *Defer) PosEnd() token.Pos { return n.X.PosEnd() }
@@ -430,7 +473,7 @@ func (n *Import) PosEnd() token.Pos { return n.Module.PosEnd() }
 
 func (*BadNode) implNode()    {}
 func (*Empty) implNode()      {}
-func (*Ident) implNode()      {}
+func (*Name) implNode()       {}
 func (*Type) implNode()       {}
 func (*Underscore) implNode() {}
 func (*Literal) implNode()    {}
@@ -438,8 +481,11 @@ func (*Literal) implNode()    {}
 func (*Comment) implNode()       {}
 func (*CommentGroup) implNode()  {}
 func (*AttributeList) implNode() {}
+func (*LetDecl) implNode()       {}
+func (*TypeDecl) implNode()      {}
 func (*Decl) implNode()          {}
 
+func (*Label) implNode()      {}
 func (*ArrayType) implNode()  {}
 func (*StructType) implNode() {}
 func (*EnumType) implNode()   {}
@@ -462,8 +508,55 @@ func (*If) implNode()       {}
 func (*Else) implNode()     {}
 func (*While) implNode()    {}
 func (*For) implNode()      {}
+func (*When) implNode()     {}
 func (*Defer) implNode()    {}
 func (*Return) implNode()   {}
 func (*Break) implNode()    {}
 func (*Continue) implNode() {}
 func (*Import) implNode()   {}
+
+var (
+	_ Node = (*BadNode)(nil)
+	_ Node = (*Empty)(nil)
+	_ Node = (*Name)(nil)
+	_ Node = (*Type)(nil)
+	_ Node = (*Underscore)(nil)
+	_ Node = (*Literal)(nil)
+
+	_ Node = (*Comment)(nil)
+	_ Node = (*CommentGroup)(nil)
+	_ Node = (*AttributeList)(nil)
+	_ Node = (*LetDecl)(nil)
+	_ Node = (*TypeDecl)(nil)
+	_ Node = (*Decl)(nil)
+
+	_ Node = (*Label)(nil)
+	_ Node = (*ArrayType)(nil)
+	_ Node = (*StructType)(nil)
+	_ Node = (*EnumType)(nil)
+	_ Node = (*Signature)(nil)
+	_ Node = (*BuiltIn)(nil)
+	_ Node = (*Call)(nil)
+	_ Node = (*Index)(nil)
+	_ Node = (*Function)(nil)
+	_ Node = (*Dot)(nil)
+	_ Node = (*Deref)(nil)
+	_ Node = (*Op)(nil)
+
+	_ Node = (*List)(nil)
+	_ Node = (*StmtList)(nil)
+	_ Node = (*BracketList)(nil)
+	_ Node = (*ParenList)(nil)
+	_ Node = (*CurlyList)(nil)
+
+	_ Node = (*If)(nil)
+	_ Node = (*Else)(nil)
+	_ Node = (*While)(nil)
+	_ Node = (*For)(nil)
+	_ Node = (*When)(nil)
+	_ Node = (*Defer)(nil)
+	_ Node = (*Return)(nil)
+	_ Node = (*Break)(nil)
+	_ Node = (*Continue)(nil)
+	_ Node = (*Import)(nil)
+)

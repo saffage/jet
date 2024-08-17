@@ -24,26 +24,26 @@ func (n *Empty) Repr() string {
 	return ";"
 }
 
-func (n *Ident) Repr() string {
-	return n.Name
+func (n *Name) Repr() string {
+	return n.Data
 }
 
 func (n *Type) Repr() string {
-	return n.Name
+	return n.Data
 }
 
 func (n *Underscore) Repr() string {
-	return n.Name
+	return n.Data
 }
 
 func (n *Literal) Repr() string {
 	switch n.Kind {
 	case IntLiteral, FloatLiteral:
-		return n.Value
+		return n.Data
 
 	case StringLiteral:
 		// TODO replace [strconv.Quote].
-		return strconv.Quote(n.Value)
+		return strconv.Quote(n.Data)
 
 	default:
 		panic("unreachable")
@@ -54,34 +54,47 @@ func (n *Literal) Repr() string {
 // Declaration
 //------------------------------------------------
 
-func (decl *Decl) Repr() string {
+func (n *LetDecl) Repr() string {
+	if n.Attrs != nil {
+		return fmt.Sprintf(
+			"%s let %s = %s",
+			n.Attrs.Repr(),
+			n.Decl.Repr(),
+			n.Value.Repr(),
+		)
+	}
+
+	return fmt.Sprintf(
+		"let %s = %s",
+		n.Decl.Repr(),
+		n.Value.Repr(),
+	)
+}
+
+func (n *TypeDecl) Repr() string {
 	buf := strings.Builder{}
 
-	if decl.Attrs != nil {
-		buf.WriteString(decl.Attrs.Repr())
+	if n.Attrs != nil {
+		buf.WriteString(n.Attrs.Repr())
 		buf.WriteByte(' ')
 	}
 
-	if decl.Mut.IsValid() {
-		buf.WriteString("mut ")
+	buf.WriteString("type " + n.Type.Repr())
+
+	if n.Args != nil {
+		buf.WriteString(n.Args.Repr())
 	}
 
-	buf.WriteString(decl.Ident.Repr())
-
-	if decl.Type != nil {
-		buf.WriteString(fmt.Sprintf(": %s", decl.Type.Repr()))
-	} else {
-		buf.WriteString(" :")
-	}
-
-	if decl.Value != nil {
-		if decl.Type != nil {
-			buf.WriteByte(' ')
-		}
-		buf.WriteString(fmt.Sprintf("= %s", decl.Value.Repr()))
-	}
-
+	buf.WriteString(" = " + n.Expr.Repr())
 	return buf.String()
+}
+
+func (n *Decl) Repr() string {
+	if n.Type != nil {
+		return n.Name.Repr() + " " + n.Type.Repr()
+	}
+
+	return n.Name.Repr()
 }
 
 func (n *AttributeList) Repr() string {
@@ -106,6 +119,10 @@ func (n *CommentGroup) Repr() string {
 //------------------------------------------------
 // Composite nodes
 //------------------------------------------------
+
+func (n *Label) Repr() string {
+	return n.Label.Repr() + ": " + n.X.Repr()
+}
 
 func (n *ArrayType) Repr() string {
 	return n.Args.Repr() + n.X.Repr()
@@ -154,7 +171,7 @@ func (n *Signature) Repr() string {
 }
 
 func (n *BuiltIn) Repr() string {
-	return "$" + n.Ident.Repr()
+	return "$" + n.Name.Repr()
 }
 
 func (n *Call) Repr() string {
@@ -264,6 +281,10 @@ func (n *While) Repr() string {
 
 func (n *For) Repr() string {
 	return fmt.Sprintf("for %s in %s %s", n.Decls.Repr(), n.IterExpr.Repr(), n.Body.Repr())
+}
+
+func (n *When) Repr() string {
+	return fmt.Sprintf("when %s %s", n.Expr.Repr(), n.Body.Repr())
 }
 
 func (n *Defer) Repr() string {

@@ -7,8 +7,8 @@ import (
 	"github.com/saffage/jet/token"
 )
 
-func precedenceOf(t *token.Token) int {
-	switch t.Kind {
+func precedenceOf(kind token.Kind) int {
+	switch kind {
 	case token.Asterisk,
 		token.Slash,
 		token.Percent:
@@ -77,19 +77,7 @@ func (p *parser) skip(to ...token.Kind) (start, end token.Pos) {
 		p.next()
 	}
 
-	if p.flags&Trace != 0 && end.IsValid() {
-		// TODO must be removed
-		warn := Error{
-			Start:      start,
-			End:        end,
-			Message:    "tokens was skipped for some reason",
-			isWarn:     true,
-			isInternal: true,
-		}
-		p.errors = append(p.errors, warn)
-	}
-
-	return
+	return start, end
 }
 
 var (

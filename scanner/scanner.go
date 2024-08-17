@@ -69,7 +69,7 @@ func (s *Scanner) Next() token.Token {
 			} else if strings.ContainsFunc(ident, unicode.IsUpper) {
 				tok = token.Token{Kind: token.Type, Data: ident}
 			} else {
-				tok = token.Token{Kind: token.Ident, Data: ident}
+				tok = token.Token{Kind: token.Name, Data: ident}
 			}
 
 		case ascii.IsDigit(s.Peek()):

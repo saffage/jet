@@ -61,10 +61,6 @@ func CheckFile(cfg *config.Config, fileID config.FileID) (*Module, error) {
 	scannerFlags := scanner.SkipComments
 	parserFlags := parser.DefaultFlags
 
-	if cfg.Flags.TraceParser {
-		parserFlags |= parser.Trace
-	}
-
 	fi := cfg.Files[fileID]
 	if fi.Buf == nil {
 		return nil, ErrorEmptyFileBuf

@@ -25,7 +25,7 @@ func (check *Checker) resolveImport(node *ast.Import) {
 
 	fileID := config.NextFileID()
 	check.cfg.Files[fileID] = config.FileInfo{
-		Name: node.Module.Name,
+		Name: node.Module.Data,
 		Path: path,
 		Buf:  bytes.NewBuffer(fileContent),
 	}
@@ -44,10 +44,10 @@ func (check *Checker) resolveImport(node *ast.Import) {
 	check.newDef(node.Module, m)
 }
 
-func (check *Checker) resolveImportPath(ident *ast.Ident) string {
+func (check *Checker) resolveImportPath(ident *ast.Name) string {
 	modulePath := ""
 	dir := filepath.Dir(check.cfg.Files[check.fileID].Path)
-	err := filepath.Walk(dir, makeWalkFunc(dir, ident.Name, &modulePath))
+	err := filepath.Walk(dir, makeWalkFunc(dir, ident.Data, &modulePath))
 	if err != nil {
 		check.errorf(ident, "while walking dir: %s", err.Error())
 		return ""

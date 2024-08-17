@@ -17,9 +17,9 @@ const (
 	EOF     // end of file
 	Comment // comment
 
-	Ident      // identifier
-	Underscore // underscore
 	Type       // type
+	Name       // name
+	Underscore // underscore
 	Int        // untyped int
 	Float      // untyped float
 	String     // untyped string
@@ -84,7 +84,6 @@ const (
 	KwIn       // keyword 'in'
 	KwAs       // keyword 'as'
 	KwDefer    // keyword 'defer'
-	KwPanic    // keyword 'panic'
 	KwBreak    // keyword 'break'
 	KwReturn   // keyword 'return'
 	KwContinue // keyword 'continue'
@@ -93,7 +92,7 @@ const (
 const (
 	_SpecialBegin     = EOF
 	_SpecialEnd       = Comment
-	_PrimaryBegin     = Ident
+	_PrimaryBegin     = Type
 	_PrimaryEnd       = String
 	_PunctuationBegin = LParen
 	_PunctuationEnd   = Comma
@@ -247,7 +246,6 @@ var representableKinds = map[Kind]string{
 	KwIn:       "in",
 	KwAs:       "as",
 	KwDefer:    "defer",
-	KwPanic:    "panic",
 	KwBreak:    "break",
 	KwReturn:   "return",
 	KwContinue: "continue",

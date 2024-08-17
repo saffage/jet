@@ -18,8 +18,8 @@ func NewBlock(scope *Scope) *Block {
 
 func (check *Checker) visitBlock(expr *Block) ast.Visitor {
 	return func(node ast.Node) ast.Visitor {
-		if decl, _ := node.(*ast.Decl); decl != nil {
-			if unicode.IsUpper([]rune(decl.Ident.Name)[0]) || FindAttr(decl.Attrs, "comptime") != nil {
+		if decl, _ := node.(*ast.LetDecl); decl != nil {
+			if unicode.IsUpper([]rune(decl.Decl.Name.Ident())[0]) || FindAttr(decl.Attrs, "comptime") != nil {
 				check.errorf(decl, "local constants are not supported")
 				return nil
 			}

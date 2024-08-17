@@ -1,0 +1,15 @@
+node_kind: StmtList
+nodes:
+    - node_kind: Literal
+      data: "0.1"
+      kind: 2
+      start:
+        fileid: 1
+        offset: 0
+        line: 1
+        char: 1
+      end:
+        fileid: 1
+        offset: 2
+        line: 1
+        char: 3

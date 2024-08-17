@@ -34,7 +34,7 @@ func (v Visitor) WalkTopDown(tree Node) {
 	}
 
 	switch n := tree.(type) {
-	case *BadNode, *Empty, *Ident, *Literal, *Comment, *CommentGroup:
+	case *BadNode, *Empty, *Name, *Literal, *Comment, *CommentGroup:
 		// Nothing to walk
 
 	case *AttributeList:
@@ -42,23 +42,21 @@ func (v Visitor) WalkTopDown(tree Node) {
 
 		v.walkList(n.List.List)
 
-	case *Decl:
-		assert(n.Ident != nil)
-		assert(n.Type != nil || n.Value != nil)
+	case *LetDecl:
+		assert(n.Decl.Name != nil)
+		assert(n.Value != nil)
 
 		if n.Attrs != nil {
 			v.WalkTopDown(n.Attrs)
 		}
 
-		v.WalkTopDown(n.Ident)
+		v.WalkTopDown(n.Decl.Name)
 
-		if n.Type != nil {
-			v.WalkTopDown(n.Type)
+		if n.Decl.Type != nil {
+			v.WalkTopDown(n.Decl.Type)
 		}
 
-		if n.Value != nil {
-			v.WalkTopDown(n.Value)
-		}
+		v.WalkTopDown(n.Value)
 
 	case *ArrayType:
 		assert(n.X != nil)
@@ -91,9 +89,9 @@ func (v Visitor) WalkTopDown(tree Node) {
 		}
 
 	case *BuiltIn:
-		assert(n.Ident != nil)
+		assert(n.Name != nil)
 
-		v.WalkTopDown(n.Ident)
+		v.WalkTopDown(n.Name)
 
 	case *Call:
 		assert(n.X != nil)

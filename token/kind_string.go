@@ -11,9 +11,9 @@ func _() {
 	_ = x[Illegal-0]
 	_ = x[EOF-1]
 	_ = x[Comment-2]
-	_ = x[Ident-3]
-	_ = x[Underscore-4]
-	_ = x[Type-5]
+	_ = x[Type-3]
+	_ = x[Name-4]
+	_ = x[Underscore-5]
 	_ = x[Int-6]
 	_ = x[Float-7]
 	_ = x[String-8]
@@ -69,15 +69,14 @@ func _() {
 	_ = x[KwIn-58]
 	_ = x[KwAs-59]
 	_ = x[KwDefer-60]
-	_ = x[KwPanic-61]
-	_ = x[KwBreak-62]
-	_ = x[KwReturn-63]
-	_ = x[KwContinue-64]
+	_ = x[KwBreak-61]
+	_ = x[KwReturn-62]
+	_ = x[KwContinue-63]
 }
 
-const _Kind_name = "IllegalEOFCommentIdentUnderscoreTypeIntFloatStringLParenRParenLCurlyRCurlyLBracketRBracketColonCommaEqEqOpBangNeOpLtOpLeOpGtOpGeOpShlShlEqShrShrEqPlusPlusEqMinusMinusEqAsteriskAsteriskEqSlashSlashEqPercentPercentEqCaretCaretEqAmpAmpEqAndAndEqPipePipeEqOrOrEqArrowFatArrowDotDot2KwLetKwTypeKwWhenKwIfKwElseKwInKwAsKwDeferKwPanicKwBreakKwReturnKwContinue"
+const _Kind_name = "IllegalEOFCommentTypeNameUnderscoreIntFloatStringLParenRParenLCurlyRCurlyLBracketRBracketColonCommaEqEqOpBangNeOpLtOpLeOpGtOpGeOpShlShlEqShrShrEqPlusPlusEqMinusMinusEqAsteriskAsteriskEqSlashSlashEqPercentPercentEqCaretCaretEqAmpAmpEqAndAndEqPipePipeEqOrOrEqArrowFatArrowDotDot2KwLetKwTypeKwWhenKwIfKwElseKwInKwAsKwDeferKwBreakKwReturnKwContinue"
 
-var _Kind_index = [...]uint16{0, 7, 10, 17, 22, 32, 36, 39, 44, 50, 56, 62, 68, 74, 82, 90, 95, 100, 102, 106, 110, 114, 118, 122, 126, 130, 133, 138, 141, 146, 150, 156, 161, 168, 176, 186, 191, 198, 205, 214, 219, 226, 229, 234, 237, 242, 246, 252, 254, 258, 263, 271, 274, 278, 283, 289, 295, 299, 305, 309, 313, 320, 327, 334, 342, 352}
+var _Kind_index = [...]uint16{0, 7, 10, 17, 21, 25, 35, 38, 43, 49, 55, 61, 67, 73, 81, 89, 94, 99, 101, 105, 109, 113, 117, 121, 125, 129, 132, 137, 140, 145, 149, 155, 160, 167, 175, 185, 190, 197, 204, 213, 218, 225, 228, 233, 236, 241, 245, 251, 253, 257, 262, 270, 273, 277, 282, 288, 294, 298, 304, 308, 312, 319, 326, 334, 344}
 
 func (i Kind) String() string {
 	if i >= Kind(len(_Kind_index)-1) {

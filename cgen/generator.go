@@ -31,7 +31,7 @@ type generator struct {
 }
 
 func (gen *generator) defs(
-	defs *orderedmap.OrderedMap[*ast.Ident, checker.Symbol],
+	defs *orderedmap.OrderedMap[ast.Ident, checker.Symbol],
 	owner *checker.Scope,
 ) (mainFunc *checker.Func) {
 	for def := defs.Front(); def != nil; def = def.Next() {
@@ -43,7 +43,7 @@ func (gen *generator) defs(
 		}
 
 		if attr := checker.GetAttribute(def, "header"); attr != nil {
-			header := attr.(*ast.Call).Args.Nodes[0].(*ast.Literal).Value
+			header := attr.(*ast.Call).Args.Nodes[0].(*ast.Literal).Data
 			if strings.HasPrefix(header, "\"<") && strings.HasSuffix(header, ">\"") {
 				header = header[1 : len(header)-1]
 			}

@@ -18,7 +18,7 @@ func (check *Checker) typeOfInternal(expr ast.Node) types.Type {
 	case nil:
 		panic("got nil node for expr")
 
-	case *ast.Decl:
+	case *ast.LetDecl:
 		panic("unhandled declaration at " + expr.Pos().String())
 
 	case *ast.BadNode,
@@ -33,7 +33,7 @@ func (check *Checker) typeOfInternal(expr ast.Node) types.Type {
 	case *ast.Empty:
 		return types.Unit
 
-	case *ast.Ident:
+	case *ast.Name:
 		return check.typeOfIdent(node)
 
 	case *ast.Literal:
@@ -106,14 +106,14 @@ func (check *Checker) typeOfInternal(expr ast.Node) types.Type {
 	}
 }
 
-func (check *Checker) symbolOf(ident *ast.Ident) Symbol {
-	if sym, _ := check.scope.Lookup(ident.Name); sym != nil {
+func (check *Checker) symbolOf(ident *ast.Name) Symbol {
+	if sym, _ := check.scope.Lookup(ident.Data); sym != nil {
 		return sym
 	}
 	return check.module.SymbolOf(ident)
 }
 
-func (check *Checker) typeOfIdent(node *ast.Ident) types.Type {
+func (check *Checker) typeOfIdent(node *ast.Name) types.Type {
 	if sym := check.symbolOf(node); sym != nil {
 		if sym.Type() != nil {
 			check.newUse(node, sym)
@@ -628,17 +628,17 @@ func (check *Checker) typeOfFor(node *ast.For) (ty types.Type) {
 		return
 	}
 
-	loopVarDecl, _ := node.Decls.Nodes[0].(*ast.Decl)
+	loopVarDecl, _ := node.Decls.Nodes[0].(*ast.LetDecl)
 	if loopVarDecl == nil {
 		panic("unreachable")
 	}
-	if loopVarDecl.Type != nil {
-		tyLoopVarExplicit := check.typeOf(loopVarDecl.Type)
+	if loopVarDecl.Decl.Type != nil {
+		tyLoopVarExplicit := check.typeOf(loopVarDecl.Decl.Type)
 		if tyLoopVarExplicit == nil {
 			return
 		}
 		if !types.IsTypeDesc(tyLoopVarExplicit) {
-			check.errorf(loopVarDecl.Type, "'%s' is not a type", loopVarDecl.Type)
+			check.errorf(loopVarDecl.Decl.Type, "'%s' is not a type", loopVarDecl.Decl.Type)
 			return
 		}
 		tyLoopVarExplicit = types.SkipTypeDesc(tyLoopVarExplicit)
@@ -659,7 +659,7 @@ func (check *Checker) typeOfFor(node *ast.For) (ty types.Type) {
 	bodyScope := NewScope(check.scope, "loop body")
 	loopVar := NewVar(bodyScope, tyLoopVar, loopVarDecl)
 	bodyScope.Define(loopVar)
-	check.newDef(loopVarDecl.Ident, loopVar)
+	check.newDef(loopVarDecl.Decl.Name, loopVar)
 
 	var tyBody types.Type
 	{

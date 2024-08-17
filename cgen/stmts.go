@@ -12,11 +12,11 @@ func (gen *generator) stmt(stmt ast.Node) {
 	case *ast.Empty:
 		gen.line("\n")
 
-	case *ast.Decl:
-		if !stmt.IsVar {
-			break
-		}
-		sym, _ := gen.Defs.Get(stmt.Ident)
+	case *ast.LetDecl:
+		// if !stmt.IsVar {
+		// 	break
+		// }
+		sym, _ := gen.Defs.Get(stmt.Decl.Name)
 		if sym == nil {
 			panic("unreachable")
 		}
@@ -27,7 +27,7 @@ func (gen *generator) stmt(stmt ast.Node) {
 		gen.block(stmt.Body.StmtList, nil)
 
 	case *ast.For:
-		loopVar := gen.SymbolOf(stmt.Decls.Nodes[0].(*ast.Decl).Ident)
+		loopVar := gen.SymbolOf(stmt.Decls.Nodes[0].(*ast.LetDecl).Decl.Name)
 		iterExpr := stmt.IterExpr.(*ast.Op)
 		cmpOp := ast.OperatorLt
 		if iterExpr.Kind == ast.OperatorRangeInclusive {

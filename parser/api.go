@@ -2,79 +2,87 @@ package parser
 
 import (
 	"errors"
+	"slices"
 
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/token"
 )
 
+var (
+	ErrEmptyStream       = errors.New("token stream is empty")
+	ErrMissingEOFToken   = errors.New("missing EOF token at the end")
+	ErrDuplicateEOFToken = errors.New("duplicate EOF token")
+)
+
 func Parse(tokens []token.Token, flags Flags) (*ast.StmtList, error) {
-	return New(tokens, flags).Parse()
+	p, err := New(tokens, flags)
+	if err != nil {
+		panic(err)
+	}
+	return p.Parse()
 }
 
 func MustParse(tokens []token.Token, flags Flags) *ast.StmtList {
-	return New(tokens, flags).MustParse()
+	p, err := New(tokens, flags)
+	if err != nil {
+		panic(err)
+	}
+	return p.MustParse()
 }
 
 func ParseExpr(tokens []token.Token, flags Flags) (ast.Node, error) {
-	return New(tokens, flags).ParseExpr()
+	p, err := New(tokens, flags)
+	if err != nil {
+		panic(err)
+	}
+	return p.ParseExpr()
 }
 
 func MustParseExpr(tokens []token.Token, flags Flags) ast.Node {
-	return New(tokens, flags).MustParseExpr()
+	p, err := New(tokens, flags)
+	if err != nil {
+		panic(err)
+	}
+	return p.MustParseExpr()
 }
 
 type parser struct {
-	errors  []error
 	tokens  []token.Token
-	current int // index of the current token in `tokens` stream
+	tok     token.Token // For quick access.
 	flags   Flags
-
-	// Quick access
-	tok token.Token
-
-	// Debugging
-	indent int
-
-	// State
-	restoreData []restoreData
+	current int
 }
 
-func New(tokens []token.Token, flags Flags) *parser {
-	if len(tokens) < 1 {
-		panic("expected at least 1 token (EOF)")
+func New(tokens []token.Token, flags Flags) (*parser, error) {
+	if len(tokens) == 0 {
+		return nil, ErrEmptyStream
 	}
-
-	if tokens[len(tokens)-1].Kind != token.EOF {
-		panic("expected EOF token is the end of the stream")
+	if !slices.ContainsFunc(tokens, isEOFToken) {
+		return nil, ErrMissingEOFToken
 	}
-
-	return &parser{
-		tokens: tokens,
-		flags:  flags,
-		tok:    tokens[0],
-	}
+	return &parser{tokens: tokens, flags: flags, tok: tokens[0]}, nil
 }
 
 func (parse *parser) Parse() (*ast.StmtList, error) {
-	decls, _ := parse.decls().(*ast.StmtList)
-	return decls, errors.Join(parse.errors...)
+	decls, err := parse.decls()
+	stmts, _ := decls.(*ast.StmtList)
+	return stmts, err
 }
 
 func (parse *parser) ParseExpr() (ast.Node, error) {
-	expr := parse.expr()
-	return expr, errors.Join(parse.errors...)
+	return parse.expr()
 }
 
-func (p *parser) MustParse() *ast.StmtList {
-	decls, err := p.Parse()
+func (parse *parser) MustParse() *ast.StmtList {
+	decls, err := parse.Parse()
 	if err != nil {
 		panic(err)
 	}
 	return decls
 }
 
-func (p *parser) MustParseExpr() ast.Node {
-	expr, err := p.ParseExpr()
+func (parse *parser) MustParseExpr() ast.Node {
+	expr, err := parse.ParseExpr()
 	if err != nil {
 		panic(err)
 	}
@@ -84,9 +92,12 @@ func (p *parser) MustParseExpr() ast.Node {
 type Flags int
 
 const (
-	Trace Flags = 1 << iota
-	SkipIllegal
+	SkipIllegal Flags = 1 << iota
 
 	NoFlags      = Flags(0)
 	DefaultFlags = NoFlags
 )
+
+func isEOFToken(tok token.Token) bool {
+	return tok.Kind == token.EOF
+}

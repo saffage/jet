@@ -10,7 +10,7 @@ import (
 )
 
 func (gen *generator) BuiltInCall(node *ast.BuiltIn, call *ast.Call) string {
-	switch node.Name {
+	switch node.Data {
 	case "print":
 		return gen.builtInPrint(call)
 

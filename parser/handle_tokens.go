@@ -1,141 +1,98 @@
 package parser
 
 import (
-	"fmt"
 	"slices"
 
 	"github.com/saffage/jet/token"
 )
 
-type restoreData struct {
-	tokenIndex int
-	errors     []error
-}
-
-func (p *parser) next() {
-	if p.current >= len(p.tokens) {
+func (parse *parser) next() (prev token.Token) {
+	if parse.current >= len(parse.tokens) {
 		panic("EOF token was skipped or missing in the token stream")
 	}
 
-	if p.tok.Kind != token.EOF {
-		p.current++
+	if parse.tok.Kind == token.EOF {
+		return parse.tok
 	}
 
-	p.tok = p.tokens[p.current]
+	prev = parse.tok
+	parse.current++
 
-	// if p.commentGroup != nil && p.tok.End.Line > p.commentGroup.LocEnd().Line+1 {
-	// 	p.commentGroup = nil
-	// }
-
-	if p.tok.Kind == token.Comment {
-		// 	if strings.HasPrefix(p.tok.Data, "##") {
-		// 		if p.commentGroup == nil {
-		// 			p.commentGroup = &ast.CommentGroup{}
-		// 		}
-
-		// 		p.commentGroup.Comments = append(p.commentGroup.Comments, &ast.Comment{
-		// 			Data:  p.tok.Data[2:],
-		// 			Start: p.tok.Start,
-		// 			End:   p.tok.End,
-		// 		})
-		// 	}
-
-		p.next()
+	for parse.tok.Kind == token.Comment {
+		parse.current++
 	}
 
-	if p.flags&SkipIllegal != 0 && p.tok.Kind == token.Illegal {
-		p.next()
+	if parse.flags&SkipIllegal != 0 {
+		for parse.tok.Kind == token.Illegal {
+			parse.current++
+		}
 	}
+
+	parse.tok = parse.tokens[parse.current]
+	return prev
 }
 
-func (p *parser) drop(token token.Kind) bool {
-	if p.match(token) {
-		p.next()
-		return true
-	}
-	return false
+func (parse *parser) match(kind token.Kind) bool {
+	return parse.tok.Kind == kind
 }
 
-func (p *parser) match(token token.Kind) bool {
-	return p.tok.Kind == token
+func (parse *parser) matchAny(kinds ...token.Kind) bool {
+	return slices.Contains(kinds, parse.tok.Kind)
 }
 
-func (p *parser) matchAny(tokens ...token.Kind) bool {
-	return slices.Contains(tokens, p.tok.Kind)
-}
-
-func (p *parser) matchSequence(tokens ...token.Kind) bool {
-	if len(tokens)+p.current-1 >= len(p.tokens) {
+func (parse *parser) matchSequence(kinds ...token.Kind) bool {
+	if len(kinds)+parse.current-1 >= len(parse.tokens) {
 		return false
 	}
-	for i, kind := range tokens {
-		if p.tokens[p.current+i].Kind != kind {
+
+	for i, kind := range kinds {
+		if parse.tokens[parse.current+i].Kind != kind {
 			return false
 		}
 	}
+
 	return true
 }
 
-// Cunsumes a specified token or returns nil without emitting error.
-func (p *parser) consume(kind token.Kind) *token.Token {
-	if p.match(kind) {
-		tok := p.tok
-		p.next()
-		return &tok
-	}
-
-	return nil
+// Consumes a specified token or returns nil without emitting error.
+func (parse *parser) consume(kind token.Kind) bool {
+	_, ok := parse.take(kind)
+	return ok
 }
 
-// Cunsumes a specified tokens or returns nil without emitting error.
-func (p *parser) consumeAny(kinds ...token.Kind) *token.Token {
-	if p.matchAny(kinds...) {
-		tok := p.tok
-		p.next()
-		return &tok
+// Consumes a specified token or returns nil without emitting error.
+func (parse *parser) consumeAny(kinds ...token.Kind) bool {
+	_, ok := parse.takeAny(kinds...)
+	return ok
+}
+
+// Consumes a specified token or returns nil without emitting error.
+func (parse *parser) take(kind token.Kind) (token.Token, bool) {
+	if parse.match(kind) {
+		return parse.next(), true
 	}
 
-	return nil
+	return token.Token{}, false
+}
+
+// Consumes a specified tokens or returns nil without emitting error.
+func (parse *parser) takeAny(kinds ...token.Kind) (token.Token, bool) {
+	if len(kinds) == 0 || parse.matchAny(kinds...) {
+		return parse.next(), true
+	}
+
+	return token.Token{}, false
 }
 
 // Cunsumes a specified token or returns nil and emits error.
-func (p *parser) expect(kind token.Kind) *token.Token {
-	if tok := p.consume(kind); tok != nil {
-		return tok
+func (parse *parser) expect(kind token.Kind) (token.Token, error) {
+	if tok, ok := parse.take(kind); ok {
+		return tok, nil
 	}
 
-	p.errorExpectedToken(kind)
-	return nil
-}
-
-// Cunsumes a specified token or returns nil and emits error.
-func (p *parser) expectAny(kinds ...token.Kind) *token.Token {
-	if tok := p.consumeAny(kinds...); tok != nil {
-		return tok
-	}
-
-	p.errorExpectedToken(kinds...)
-	return nil
-}
-
-// TODO rename it.
-func (p *parser) save() (index int) {
-	index = len(p.restoreData)
-	p.restoreData = append(p.restoreData, restoreData{
-		tokenIndex: p.current,
-		errors:     p.errors,
-	})
-	return
-}
-
-func (p *parser) restore(index int) {
-	if index >= len(p.restoreData) {
-		panic(fmt.Sprintf("invalid restore index: %d (length is %d)", index, len(p.restoreData)))
-	}
-
-	data := p.restoreData[index]
-	p.current = data.tokenIndex
-	p.errors = data.errors
-	p.tok = p.tokens[p.current]
-	p.restoreData = p.restoreData[:index]
+	return token.Token{}, parse.errorf(
+		ErrUnexpectedToken,
+		"expected %s",
+		kind.UserString(),
+	)
 }

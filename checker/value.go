@@ -25,9 +25,9 @@ func constantFromNode(node *ast.Literal) constant.Value {
 
 	switch node.Kind {
 	case ast.IntLiteral:
-		value := node.Value
+		value := node.Data
 
-		if suffixIdx := strings.LastIndex(node.Value, "'"); suffixIdx != -1 {
+		if suffixIdx := strings.LastIndex(node.Data, "'"); suffixIdx != -1 {
 			value = value[:suffixIdx]
 		}
 
@@ -39,9 +39,9 @@ func constantFromNode(node *ast.Literal) constant.Value {
 		panic(fmt.Sprintf("invalid integer value for constant: '%s'", value))
 
 	case ast.FloatLiteral:
-		value := node.Value
+		value := node.Data
 
-		if suffixIdx := strings.LastIndex(node.Value, "'"); suffixIdx != -1 {
+		if suffixIdx := strings.LastIndex(node.Data, "'"); suffixIdx != -1 {
 			value = value[:suffixIdx]
 		}
 
@@ -50,12 +50,12 @@ func constantFromNode(node *ast.Literal) constant.Value {
 		}
 
 		// Unreachable?
-		panic(fmt.Sprintf("invalid float value for constant: '%s'", node.Value))
+		panic(fmt.Sprintf("invalid float value for constant: '%s'", node.Data))
 
 	case ast.StringLiteral:
-		start := strings.IndexAny(node.Value, "\"'")
-		end := strings.LastIndexAny(node.Value, "\"'")
-		value := node.Value[start+1 : end]
+		start := strings.IndexAny(node.Data, "\"'")
+		end := strings.LastIndexAny(node.Data, "\"'")
+		value := node.Data[start+1 : end]
 
 		return constant.NewString(value)
 
@@ -79,7 +79,7 @@ func (check *Checker) valueOfInternal(expr ast.Node) *TypedValue {
 			Value: value,
 		}
 
-	case *ast.Ident:
+	case *ast.Name:
 		if sym := check.symbolOf(node); sym != nil {
 			if _const, _ := sym.(*Const); _const != nil {
 				return _const.value
@@ -139,7 +139,7 @@ func (check *Checker) valueOfInternal(expr ast.Node) *TypedValue {
 
 func (check *Checker) resolveBuiltInCall(node *ast.BuiltIn, call *ast.Call) *TypedValue {
 	idx := slices.IndexFunc(builtIns, func(b *BuiltIn) bool {
-		return b.name == node.Name
+		return b.name == node.Data
 	})
 	if idx == -1 {
 		check.errorf(node, "unknown built-in function '%s'", node.Repr())

@@ -13,36 +13,34 @@ type Func struct {
 	local      *Scope
 	params     []*Var
 	ty         *types.Func
-	decl       *ast.Decl
-	body       ast.Node
+	node       *ast.LetDecl
 	isExtern   bool
 	externName string
 }
 
-func NewFunc(owner *Scope, local *Scope, t *types.Func, decl *ast.Decl) *Func {
-	return &Func{owner, local, nil, t, decl, nil, false, ""}
+func NewFunc(owner *Scope, local *Scope, t *types.Func, decl *ast.LetDecl) *Func {
+	return &Func{owner, local, nil, t, decl, false, ""}
 }
 
 func (sym *Func) Owner() *Scope        { return sym.owner }
 func (sym *Func) Type() types.Type     { return sym.ty }
-func (sym *Func) Name() string         { return sym.decl.Ident.Name }
-func (sym *Func) Ident() *ast.Ident    { return sym.decl.Ident }
-func (sym *Func) Node() ast.Node       { return sym.decl }
+func (sym *Func) Name() string         { return ast.Data(sym.node.Decl.Name) }
+func (sym *Func) Ident() ast.Ident     { return sym.node.Decl.Name }
+func (sym *Func) Node() ast.Node       { return sym.node }
 func (sym *Func) Local() *Scope        { return sym.local }
 func (sym *Func) Params() []*Var       { return sym.params }
 func (sym *Func) IsExtern() bool       { return sym.isExtern }
 func (sym *Func) ExternName() string   { return sym.externName }
 func (sym *Func) Variadic() types.Type { return sym.ty.Variadic() }
 
-func (check *Checker) resolveFuncDecl(decl *ast.Decl, value *ast.Function) {
+func (check *Checker) resolveFuncDecl(decl *ast.LetDecl, value *ast.Function) {
 	var (
 		isDefined                = false
-		local                    = NewScope(check.scope, "func "+decl.Ident.Name)
+		local                    = NewScope(check.scope, "func "+decl.Decl.Name.Ident())
 		ty, params, hasResult, _ = check.resolveFuncSignature(value.Signature, local)
 		sym                      = NewFunc(check.scope, local, ty, decl)
 	)
 	sym.params = params
-	sym.body = value.Body
 	report.TaggedDebugf("checker", "func: set type: %s", ty)
 
 	if ty.Result() != nil {
@@ -71,7 +69,7 @@ func (check *Checker) resolveFuncDecl(decl *ast.Decl, value *ast.Function) {
 	}
 
 	check.resolveFuncAttrs(sym)
-	check.newDef(decl.Ident, sym)
+	check.newDef(decl.Decl.Name, sym)
 }
 
 func (check *Checker) resolveFuncSignature(
@@ -85,7 +83,7 @@ func (check *Checker) resolveFuncSignature(
 	variadic := types.Type(nil)
 
 	for i, node := range sig.Params.Nodes {
-		param, _ := node.(*ast.Decl)
+		param, _ := node.(*ast.LetDecl)
 		if param == nil {
 			panic(
 				fmt.Sprintf("ill-formed AST: unexpected node type '%T'", node),
@@ -102,7 +100,7 @@ func (check *Checker) resolveFuncSignature(
 
 		var tyParam types.Type
 
-		if paramType, _ := param.Type.(*ast.Op); paramType != nil &&
+		if paramType, _ := param.Decl.Type.(*ast.Op); paramType != nil &&
 			paramType.Kind == ast.OperatorEllipsis {
 			if paramType.Y == nil {
 				variadic = types.Any
@@ -111,7 +109,7 @@ func (check *Checker) resolveFuncSignature(
 				continue
 			}
 			variadic = types.SkipTypeDesc(variadic)
-		} else if tyParam = check.typeOf(param.Type); tyParam == nil {
+		} else if tyParam = check.typeOf(param.Decl.Type); tyParam == nil {
 			wasError = true
 			continue
 		}
@@ -119,7 +117,7 @@ func (check *Checker) resolveFuncSignature(
 		if variadic != nil {
 			if i != len(sig.Params.Nodes)-1 {
 				check.errorf(
-					param.Ident,
+					param.Decl.Name,
 					"parameter with ... can only be the last in the list",
 				)
 				wasError = true
@@ -147,7 +145,7 @@ func (check *Checker) resolveFuncSignature(
 		}
 
 		params = append(params, paramSym)
-		check.newDef(param.Ident, paramSym)
+		check.newDef(param.Decl.Name, paramSym)
 		report.TaggedDebugf("checker", "func: def param: %s", paramSym.Name())
 		report.TaggedDebugf("checker", "func: set param type: %s", tyParam)
 	}
@@ -167,7 +165,7 @@ func (check *Checker) resolveFuncSignature(
 }
 
 func (check *Checker) resolveFuncBody(
-	decl *ast.Decl,
+	decl *ast.LetDecl,
 	body ast.Node,
 	tyFunc *types.Func,
 	scope *Scope,
@@ -175,7 +173,7 @@ func (check *Checker) resolveFuncBody(
 ) *types.Func {
 	if body == nil {
 		if !hasResult {
-			check.errorf(decl.Ident, "cannot infer a type of the function result")
+			check.errorf(decl.Decl.Name, "cannot infer a type of the function result")
 		}
 		return nil
 	}
@@ -200,11 +198,11 @@ func (check *Checker) resolveFuncBody(
 			for i := range len(check.errors) - errorsLenBefore {
 				err, _ := check.errors[i+errorsLenBefore].(*Error)
 				if err != nil {
-					ident, _ := err.Node.(*ast.Ident)
-					if ident != nil && ident.Name == decl.Ident.Name {
+					ident, _ := err.Node.(*ast.Name)
+					if ident != nil && ident.Data == decl.Decl.Name.Ident() {
 						err.Notes = append(err.Notes, &Error{
 							Message: "cannot infer a type of the recursive definition",
-							Node:    decl.Ident,
+							Node:    decl.Decl.Name,
 						})
 					}
 				}

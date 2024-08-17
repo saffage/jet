@@ -9,35 +9,29 @@ import (
 type Var struct {
 	owner    *Scope
 	t        types.Type
-	decl     *ast.Decl
-	value    ast.Node // TODO move somewhere else.
+	node     *ast.LetDecl
 	isParam  bool
 	isField  bool
 	isGlobal bool
 }
 
-func NewVar(owner *Scope, t types.Type, decl *ast.Decl) *Var {
+func NewVar(owner *Scope, t types.Type, decl *ast.LetDecl) *Var {
 	assert(!types.IsUntyped(t))
-
-	return &Var{
-		owner: owner,
-		t:     t,
-		decl:  decl,
-	}
+	return &Var{owner: owner, t: t, node: decl}
 }
 
-func (v *Var) Owner() *Scope     { return v.owner }
-func (v *Var) Type() types.Type  { return v.t }
-func (v *Var) Name() string      { return v.decl.Ident.Name }
-func (v *Var) Ident() *ast.Ident { return v.decl.Ident }
-func (v *Var) Node() ast.Node    { return v.decl }
-func (v *Var) Value() ast.Node   { return v.value }
-func (v *Var) IsLocal() bool     { return !v.isParam && !v.isField && !v.isGlobal }
-func (v *Var) IsParam() bool     { return v.isParam }
-func (v *Var) IsField() bool     { return v.isField }
-func (v *Var) IsGlobal() bool    { return v.isGlobal }
+func (v *Var) Owner() *Scope    { return v.owner }
+func (v *Var) Type() types.Type { return v.t }
+func (v *Var) Name() string     { return v.Ident().Ident() }
+func (v *Var) Ident() ast.Ident { return v.node.Decl.Name }
+func (v *Var) Node() ast.Node   { return v.node }
+func (v *Var) Value() ast.Node  { return v.node.Value }
+func (v *Var) IsLocal() bool    { return !v.isParam && !v.isField && !v.isGlobal }
+func (v *Var) IsParam() bool    { return v.isParam }
+func (v *Var) IsField() bool    { return v.isField }
+func (v *Var) IsGlobal() bool   { return v.isGlobal }
 
-func (check *Checker) resolveVarDecl(node *ast.Decl) {
+func (check *Checker) resolveVarDecl(node *ast.LetDecl) {
 	// 'tValue' can be nil.
 	tValue, ok := check.resolveVarValue(node.Value)
 	if !ok {
@@ -45,7 +39,7 @@ func (check *Checker) resolveVarDecl(node *ast.Decl) {
 	}
 
 	// 'tType' cannot be nil.
-	tType := check.resolveVarType(node.Type, tValue)
+	tType := check.resolveVarType(node.Decl.Type, tValue)
 	if tType == nil {
 		return
 	}
@@ -77,7 +71,6 @@ func (check *Checker) resolveVarDecl(node *ast.Decl) {
 
 	report.TaggedDebugf("checker", "var type: %s", tType)
 	sym := NewVar(check.scope, tType, node)
-	sym.value = node.Value
 	sym.isGlobal = sym.owner == check.module.Scope
 
 	if defined := check.scope.Define(sym); defined != nil {
@@ -85,7 +78,7 @@ func (check *Checker) resolveVarDecl(node *ast.Decl) {
 		return
 	}
 
-	check.newDef(node.Ident, sym)
+	check.newDef(node.Decl.Name, sym)
 }
 
 func (check *Checker) resolveVarValue(value ast.Node) (types.Type, bool) {

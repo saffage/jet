@@ -72,20 +72,24 @@ func Run(args []string) error {
 		Version: "0.0.1",
 		Flags:   appFlags,
 		Before:  beforeCommand,
-		ExitErrHandler: nil,
 		Commands: []*cli.Command{
 			{
 				Name:            "build",
 				Args:            true,
-				ArgsUsage:       " <FILEPATH>",
+				ArgsUsage:       " <file path>",
 				HideHelpCommand: true,
 				Flags:           buildFlags,
 				Action:          actionBuild,
 				Before:          beforeBuild,
 			},
 			{
-				Name:   "parse-ast",
-				Action: actionParseAst,
+				Name:            "parse-ast",
+				Usage:           "parses program AST and prints it in YAML format",
+				ArgsUsage:       " <file path>",
+				Args:            true,
+				HideHelpCommand: true,
+				Action:          actionParseAst,
+				Before:          beforeParseAst,
 			},
 		},
 	}

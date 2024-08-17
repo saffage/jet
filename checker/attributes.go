@@ -11,7 +11,7 @@ func HasAttribute(sym Symbol, name string) bool {
 }
 
 func GetAttribute(sym Symbol, name string) ast.Node {
-	if decl, _ := sym.Node().(*ast.Decl); decl != nil {
+	if decl, _ := sym.Node().(*ast.LetDecl); decl != nil {
 		return FindAttr(decl.Attrs, name)
 	}
 	return nil
@@ -20,10 +20,10 @@ func GetAttribute(sym Symbol, name string) ast.Node {
 func FindAttr(attrList *ast.AttributeList, attr string) ast.Node {
 	if attrList != nil {
 		for _, expr := range attrList.List.Nodes {
-			if ident, _ := expr.(*ast.Ident); ident != nil && ident.Name == attr {
+			if ident, _ := expr.(*ast.Name); ident != nil && ident.Data == attr {
 				return expr
 			} else if call, _ := expr.(*ast.Call); call != nil {
-				if ident, _ := call.X.(*ast.Ident); ident != nil && ident.Name == attr {
+				if ident, _ := call.X.(*ast.Name); ident != nil && ident.Data == attr {
 					return expr
 				}
 			}
@@ -33,21 +33,21 @@ func FindAttr(attrList *ast.AttributeList, attr string) ast.Node {
 }
 
 func (check *Checker) resolveFuncAttrs(sym *Func) {
-	if sym.decl.Attrs == nil {
+	if sym.node.Attrs == nil {
 		return
 	}
 
-	for _, attr := range sym.decl.Attrs.List.Nodes {
+	for _, attr := range sym.node.Attrs.List.Nodes {
 		switch attr := attr.(type) {
 		case *ast.Call:
-			attrIdent, _ := attr.X.(*ast.Ident)
+			attrIdent, _ := attr.X.(*ast.Name)
 
 			if attrIdent == nil {
 				check.errorf(attr.X, "expected identifier")
 				continue
 			}
 
-			switch attrIdent.Name {
+			switch attrIdent.Data {
 			case "extern_c":
 				check.attrExternC(sym, attr)
 
@@ -58,8 +58,8 @@ func (check *Checker) resolveFuncAttrs(sym *Func) {
 				check.errorf(attrIdent, "unknown attribute")
 			}
 
-		case *ast.Ident:
-			switch attr.Name {
+		case *ast.Name:
+			switch attr.Data {
 			case "extern_c":
 				check.attrExternC(sym, attr)
 
@@ -78,22 +78,22 @@ func (check *Checker) resolveFuncAttrs(sym *Func) {
 	}
 
 	if sym.isExtern {
-		if sym.body != nil {
+		if sym.node.Value != nil {
 			check.errorf(
-				sym.decl.Ident,
+				sym.node.Decl.Name,
 				"functions with @[extern_c] attribute must have no definition",
 			)
 		}
 	} else {
-		if sym.body == nil {
+		if sym.node.Value == nil {
 			check.errorf(
-				sym.decl.Ident,
+				sym.node.Decl.Name,
 				"functions without body is not allowed",
 			)
 		}
 		if sym.ty.Variadic() != nil {
 			check.errorf(
-				sym.decl.Ident,
+				sym.node.Decl.Name,
 				"only a function with the attribute @[extern_c] can be variadic",
 			)
 		}

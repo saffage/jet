@@ -14,10 +14,10 @@ type Struct struct {
 	owner *Scope
 	body  *Scope
 	t     *types.TypeDesc
-	decl  *ast.Decl
+	node  *ast.LetDecl
 }
 
-func NewStruct(owner *Scope, body *Scope, t *types.TypeDesc, decl *ast.Decl) *Struct {
+func NewStruct(owner *Scope, body *Scope, t *types.TypeDesc, decl *ast.LetDecl) *Struct {
 	if !types.IsStruct(t.Base()) {
 		panic("expected struct type")
 	}
@@ -27,24 +27,24 @@ func NewStruct(owner *Scope, body *Scope, t *types.TypeDesc, decl *ast.Decl) *St
 	return &Struct{owner, body, t, decl}
 }
 
-func (sym *Struct) Owner() *Scope     { return sym.owner }
-func (sym *Struct) Type() types.Type  { return sym.t }
-func (sym *Struct) Name() string      { return sym.decl.Ident.Name }
-func (sym *Struct) Ident() *ast.Ident { return sym.decl.Ident }
-func (sym *Struct) Node() ast.Node    { return sym.decl }
+func (sym *Struct) Owner() *Scope    { return sym.owner }
+func (sym *Struct) Type() types.Type { return sym.t }
+func (sym *Struct) Name() string     { return sym.Ident().Ident() }
+func (sym *Struct) Ident() ast.Ident { return sym.node.Decl.Name }
+func (sym *Struct) Node() ast.Node   { return sym.node }
 
-func (check *Checker) resolveStructDecl(decl *ast.Decl, value *ast.StructType) {
+func (check *Checker) resolveStructDecl(decl *ast.LetDecl, value *ast.StructType) {
 	fields := make([]types.StructField, len(value.Fields))
-	local := NewScope(check.scope, "struct "+decl.Ident.Name)
+	local := NewScope(check.scope, "struct "+decl.Decl.Name.Ident())
 
 	for i, fieldDecl := range value.Fields {
-		tField := check.typeOf(fieldDecl.Type)
+		tField := check.typeOf(fieldDecl.Decl.Type)
 		if tField == nil {
 			return
 		}
 
 		if !types.IsTypeDesc(tField) {
-			check.errorf(fieldDecl.Type, "expected field type, got (%s) instead", tField)
+			check.errorf(fieldDecl.Decl.Type, "expected field type, got (%s) instead", tField)
 			return
 		}
 
@@ -55,7 +55,7 @@ func (check *Checker) resolveStructDecl(decl *ast.Decl, value *ast.StructType) {
 		t := types.AsTypeDesc(tField).Base()
 		fieldSym := NewVar(local, t, fieldDecl)
 		fieldSym.isField = true
-		fields[i] = types.StructField{fieldDecl.Ident.Name, t}
+		fields[i] = types.StructField{fieldDecl.Decl.Name.Ident(), t}
 
 		if defined := local.Define(fieldSym); defined != nil {
 			err := newErrorf(fieldSym.Ident(), "duplicate field '%s'", fieldSym.Name())
@@ -67,7 +67,7 @@ func (check *Checker) resolveStructDecl(decl *ast.Decl, value *ast.StructType) {
 			continue
 		}
 
-		check.newDef(fieldDecl.Ident, fieldSym)
+		check.newDef(fieldDecl.Decl.Name, fieldSym)
 	}
 
 	t := types.NewTypeDesc(types.NewStruct(fields...))
@@ -78,7 +78,7 @@ func (check *Checker) resolveStructDecl(decl *ast.Decl, value *ast.StructType) {
 		return
 	}
 
-	check.newDef(decl.Ident, sym)
+	check.newDef(decl.Decl.Name, sym)
 }
 
 func (check *Checker) structInit(initList *ast.ParenList, ty *types.Struct) {
@@ -96,12 +96,12 @@ func (check *Checker) structInit(initList *ast.ParenList, ty *types.Struct) {
 
 	initFields := map[string]types.Type{}
 	initFieldValues := map[string]ast.Node{}
-	initFieldNames := map[string]*ast.Ident{}
+	initFieldNames := map[string]*ast.Name{}
 
 	// Collect fields.
 	for _, init := range initList.Nodes {
 		switch init := init.(type) {
-		case *ast.Ident:
+		case *ast.Name:
 			panic("field initializer shortcut is not implemented")
 
 		case *ast.Op:
@@ -109,7 +109,7 @@ func (check *Checker) structInit(initList *ast.ParenList, ty *types.Struct) {
 				panic("expected assign expression in struct initializer")
 			}
 
-			fieldNameNode, _ := init.X.(*ast.Ident)
+			fieldNameNode, _ := init.X.(*ast.Name)
 			if fieldNameNode == nil {
 				panic("expected identifier for a field name")
 			}
@@ -119,14 +119,14 @@ func (check *Checker) structInit(initList *ast.ParenList, ty *types.Struct) {
 				return
 			}
 
-			if _, hasField := initFields[fieldNameNode.Name]; hasField {
+			if _, hasField := initFields[fieldNameNode.Data]; hasField {
 				// TODO point to the previous field assignment.
-				err := newErrorf(fieldNameNode, "field '%s' is already specified", fieldNameNode.Name)
+				err := newErrorf(fieldNameNode, "field '%s' is already specified", fieldNameNode.Data)
 				check.addError(err)
 			} else {
-				initFields[fieldNameNode.Name] = tFieldValue
-				initFieldValues[fieldNameNode.Name] = init.Y
-				initFieldNames[fieldNameNode.Name] = fieldNameNode
+				initFields[fieldNameNode.Data] = tFieldValue
+				initFieldValues[fieldNameNode.Data] = init.Y
+				initFieldNames[fieldNameNode.Data] = fieldNameNode
 			}
 
 			// TODO this doesn't catch all cases, so temporarily remove this
@@ -215,11 +215,11 @@ func (check *Checker) structMember(selector *ast.Dot, ty *types.Struct) types.Ty
 	}
 
 	fieldIndex := slices.IndexFunc(ty.Fields(), func(field types.StructField) bool {
-		return field.Name == selector.Y.Name
+		return field.Name == selector.Y.Data
 	})
 
 	if fieldIndex == -1 {
-		check.errorf(selector, "unknown field '%s'", selector.Y.Name)
+		check.errorf(selector, "unknown field '%s'", selector.Y.Data)
 		return nil
 	}
 

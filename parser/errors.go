@@ -3,21 +3,20 @@ package parser
 import (
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/saffage/jet/report"
 	"github.com/saffage/jet/token"
 )
 
 var (
-	ErrBracketIsNeverClosed   = errors.New("bracket is never closed")
+	ErrUnterminatedList       = errors.New("unterminated list, bracket is never closed")
 	ErrUnterminatedExpr       = errors.New("unterminated expression")
 	ErrUnexpectedToken        = errors.New("unexpected token")
 	ErrUnexpectedOperator     = errors.New("unexpected operator")
 	ErrExpectedExpr           = errors.New("expected expression")
 	ErrExpectedOperand        = errors.New("expected operand")
 	ErrExpectedBlock          = errors.New("expected block")
-	ErrExpectedBlockOrIf      = errors.New("expected block of 'if' clause")
+	ErrExpectedBlockOrIf      = errors.New("expected block or 'if' clause")
 	ErrExpectedType           = errors.New("expected type")
 	ErrExpectedTypeName       = errors.New("expected type name")
 	ErrExpectedTypeOrValue    = errors.New("expected type or value")
@@ -28,28 +27,46 @@ var (
 )
 
 type Error struct {
+	err error
+
+	Message string
 	Start   token.Pos
 	End     token.Pos
-	Message string
 
 	isWarn     bool
 	isInternal bool
-
-	err error
 }
 
-func (e Error) Error() string {
+func newError(err error, start, end token.Pos, args ...any) *Error {
+	return &Error{
+		err:     err,
+		Start:   start,
+		End:     end,
+		Message: fmt.Sprint(args...),
+	}
+}
+
+func newErrorf(err error, start, end token.Pos, format string, args ...any) *Error {
+	return &Error{
+		err:     err,
+		Start:   start,
+		End:     end,
+		Message: fmt.Sprintf(format, args...),
+	}
+}
+
+func (e *Error) Error() string {
 	if e.Message != "" {
 		return e.err.Error() + ": " + e.Message
 	}
 	return e.err.Error()
 }
 
-func (e Error) Unwrap() error {
+func (e *Error) Unwrap() error {
 	return e.err
 }
 
-func (e Error) Report() {
+func (e *Error) Report() {
 	err, ok := e.err.(report.Reporter)
 	if ok && err != nil {
 		err.Report()
@@ -71,66 +88,27 @@ func (e Error) Report() {
 	}
 }
 
-func (p *parser) lastErrorIs(err error) bool {
-	if len(p.errors) > 0 {
-		return errors.Is(p.errors[len(p.errors)-1], err)
-	}
-
-	return false
+func (parse *parser) error(err error, args ...any) error {
+	return newError(err, parse.tok.Start, parse.tok.End, args...)
 }
 
-func (p *parser) appendError(err error) {
-	if p.flags&Trace != 0 {
-		defer un(trace(p))
-	}
-
-	p.errors = append(p.errors, err)
+func (parse *parser) errorf(err error, format string, args ...any) error {
+	return newErrorf(err, parse.tok.Start, parse.tok.End, format, args...)
 }
 
-func (p *parser) error(err error) {
-	p.errorAt(err, p.tok.Start, p.tok.End)
-}
-
-func (p *parser) errorf(err error, format string, args ...any) {
-	p.errorfAt(err, p.tok.Start, p.tok.End, format, args...)
-}
-
-func (p *parser) errorExpectedToken(tokens ...token.Kind) {
-	p.errorExpectedTokenAt(p.tok.Start, p.tok.End, tokens...)
-}
-
-func (p *parser) errorAt(err error, start, end token.Pos) {
-	p.appendError(Error{
-		err:   err,
-		Start: start,
-		End:   end,
-	})
-}
-
-func (p *parser) errorfAt(err error, start, end token.Pos, format string, args ...any) {
-	p.appendError(Error{
-		err:     err,
-		Start:   start,
-		End:     end,
-		Message: fmt.Sprintf(format, args...),
-	})
-}
-
-func (p *parser) errorExpectedTokenAt(start, end token.Pos, tokens ...token.Kind) {
-	if len(tokens) < 1 {
-		panic("required at least 1 token")
-	}
-	buf := strings.Builder{}
-	for i, tok := range tokens {
-		if i != 0 {
-			buf.WriteString(" or ")
-		}
-		buf.WriteString(tok.UserString())
-	}
-	p.appendError(Error{
-		err:     ErrUnexpectedToken,
-		Start:   start,
-		End:     end,
-		Message: fmt.Sprintf("want %s, got %s instead", buf.String(), p.tok.Kind.UserString()),
-	})
-}
+// func (p *parser) errorExpectedTokenAt(start, end token.Pos, tokens ...token.Kind) {
+// 	if len(tokens) < 1 {
+// 		panic("required at least 1 token")
+// 	}
+// 	kinds := lo.Map(tokens, func(kind token.Kind, _ int) string { return kind.UserString() })
+// 	p.appendError(&Error{
+// 		err:   ErrUnexpectedToken,
+// 		Start: start,
+// 		End:   end,
+// 		Message: fmt.Sprintf(
+// 			"want %s, got %s instead",
+// 			strings.Join(kinds, " or "),
+// 			p.tok.Kind.UserString(),
+// 		),
+// 	})
+// }
