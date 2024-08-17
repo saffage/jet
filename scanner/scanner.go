@@ -59,7 +59,7 @@ func (s *Scanner) Next() token.Token {
 				return s.Next()
 			}
 
-		case ascii.IsAlnum(s.Peek()), s.Match('_'):
+		case ascii.IsLetter(s.Peek()), s.Match('_'):
 			ident := s.TakeWhile(token.IsIdentChar)
 
 			if kind := token.KindFromString(ident); kind != token.Illegal {
