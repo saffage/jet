@@ -65,16 +65,15 @@ func precedenceOf(kind token.Kind) int {
 	}
 }
 
-func (p *parser) skip(to ...token.Kind) (start, end token.Pos) {
-	if len(to) == 0 {
-		to = endOfExprKinds
+func (p *parser) skipUntil(kinds ...token.Kind) (start, end token.Pos) {
+	if len(kinds) == 0 {
+		panic("must be at least 1 token")
 	}
 
 	start = p.tok.Start
 
-	for p.tok.Kind != token.EOF && !slices.Contains(to, p.tok.Kind) {
-		end = p.tok.End
-		p.next()
+	for p.tok.Kind != token.EOF && !slices.Contains(kinds, p.tok.Kind) {
+		end = p.next().End
 	}
 
 	return start, end

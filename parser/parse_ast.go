@@ -650,7 +650,7 @@ func (parse *parser) listDelimiter(
 
 		// Something went wrong, advance to some delimiter and
 		// continue parsing elements until we find the 'closing' token.
-		parse.skip(sep, delim)
+		parse.skipUntil(sep, delim)
 		parse.take(sep)
 		errs = append(errs, err)
 		nodes = append(nodes, &ast.BadNode{DesiredPos: nodeStart})
