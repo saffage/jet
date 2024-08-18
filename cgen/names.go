@@ -55,13 +55,19 @@ func (gen *generator) namefInternal(w io.StringWriter, scope *checker.Scope) {
 
 		switch scopeName[:spaceIndex] {
 		case "module":
-			defer w.WriteString(scopeName[spaceIndex+1:] + "__")
+			defer func() {
+				_, _ = w.WriteString(scopeName[spaceIndex+1:] + "__")
+			}()
 
 		case "func":
-			defer w.WriteString(scopeName[spaceIndex+1:] + "__")
+			defer func() {
+				_, _ = w.WriteString(scopeName[spaceIndex+1:] + "__")
+			}()
 
 		case "enum":
-			defer w.WriteString(scopeName[spaceIndex+1:] + "__")
+			defer func() {
+				_, _ = w.WriteString(scopeName[spaceIndex+1:] + "__")
+			}()
 
 		case "block":
 			// There must be a block ID I think.
