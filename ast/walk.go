@@ -7,7 +7,9 @@ import "fmt"
 // The result must be the next action to be performed on each
 // of the child nodes. If no action is required for nodes of
 // this branch, the result must be nil.
-type Visitor func(Node) Visitor
+type Visitor interface {
+	Visit(Node) Visitor
+}
 
 // Preorder\top-down traversal.
 // Visit a parent node before visiting its children.
@@ -22,159 +24,189 @@ type Visitor func(Node) Visitor
 //   - - List(len: 0)
 //   - - List(nil)
 //   - List(nil)
-func (v Visitor) WalkTopDown(tree Node) {
+func WalkTopDown(tree Node, visitor Visitor) {
 	if tree == nil {
 		panic("can't walk a nil node")
 	}
 
-	if visitor := v(tree); visitor != nil {
-		v = visitor
-	} else {
+	if visitor = visitor.Visit(tree); visitor == nil {
 		return
 	}
 
 	switch n := tree.(type) {
-	case *BadNode, *Empty, *Name, *Literal, *Comment, *CommentGroup:
+	case *BadNode, *Empty, *Name, *Type, *Underscore, *Literal, *Comment, *CommentGroup:
 		// Nothing to walk
 
 	case *AttributeList:
 		assert(n.List != nil)
 
-		v.walkList(n.List.List)
+		walkList(n.List.List, visitor)
 
 	case *LetDecl:
 		assert(n.Decl.Name != nil)
 		assert(n.Value != nil)
 
 		if n.Attrs != nil {
-			v.WalkTopDown(n.Attrs)
+			WalkTopDown(n.Attrs, visitor)
 		}
 
-		v.WalkTopDown(n.Decl.Name)
+		WalkTopDown(n.Decl.Name, visitor)
 
 		if n.Decl.Type != nil {
-			v.WalkTopDown(n.Decl.Type)
+			WalkTopDown(n.Decl.Type, visitor)
 		}
 
-		v.WalkTopDown(n.Value)
+		WalkTopDown(n.Value, visitor)
+
+	case *TypeDecl:
+		assert(n.Type != nil)
+		assert(n.Expr != nil)
+
+		if n.Attrs != nil {
+			WalkTopDown(n.Attrs, visitor)
+		}
+
+		WalkTopDown(n.Type, visitor)
+
+		if n.Args != nil {
+			walkList(n.Args.List, visitor)
+		}
+
+		WalkTopDown(n.Expr, visitor)
+
+	case *Decl:
+		assert(n.Name != nil)
+
+		WalkTopDown(n.Name, visitor)
+
+		if n.Type != nil {
+			WalkTopDown(n.Type, visitor)
+		}
+
+	case *Label:
+		assert(n.Label != nil)
+		assert(n.X != nil)
+
+		WalkTopDown(n.Label, visitor)
+		WalkTopDown(n.X, visitor)
 
 	case *ArrayType:
 		assert(n.X != nil)
 		assert(n.Args != nil)
 
-		v.WalkTopDown(n.X)
-		v.walkList(n.Args.List)
+		WalkTopDown(n.X, visitor)
+		walkList(n.Args.List, visitor)
 
 	case *StructType:
 		for _, field := range n.Fields {
 			assert(field != nil)
 
-			v.WalkTopDown(field)
+			WalkTopDown(field, visitor)
 		}
 
 	case *EnumType:
 		for _, field := range n.Fields {
 			assert(field != nil)
 
-			v.WalkTopDown(field)
+			WalkTopDown(field, visitor)
 		}
 
 	case *Signature:
 		assert(n.Params != nil)
 
-		v.walkList(n.Params.List)
+		walkList(n.Params.List, visitor)
 
 		if n.Result != nil {
-			v.WalkTopDown(n.Result)
+			WalkTopDown(n.Result, visitor)
 		}
 
 	case *BuiltIn:
 		assert(n.Name != nil)
 
-		v.WalkTopDown(n.Name)
+		WalkTopDown(n.Name, visitor)
 
 	case *Call:
 		assert(n.X != nil)
 		assert(n.Args != nil)
 
-		v.WalkTopDown(n.X)
-		v.walkList(n.Args.List)
+		WalkTopDown(n.X, visitor)
+		walkList(n.Args.List, visitor)
 
 	case *Index:
 		assert(n.X != nil)
 		assert(n.Args != nil)
 
-		v.WalkTopDown(n.X)
-		v.walkList(n.Args.List)
+		WalkTopDown(n.X, visitor)
+		walkList(n.Args.List, visitor)
 
 	case *Function:
 		assert(n.Signature != nil)
 		assert(n.Body != nil)
 
-		v.WalkTopDown(n.Signature)
-		v.WalkTopDown(n.Body)
+		WalkTopDown(n.Signature, visitor)
+		WalkTopDown(n.Body, visitor)
 
 	case *Dot:
 		assert(n.X != nil)
 		assert(n.Y != nil)
 
-		v.WalkTopDown(n.X)
-		v.WalkTopDown(n.Y)
+		WalkTopDown(n.X, visitor)
+		WalkTopDown(n.Y, visitor)
 
 	case *Deref:
 		assert(n.X != nil)
 
-		v.WalkTopDown(n.X)
+		WalkTopDown(n.X, visitor)
 
 	case *Op:
 		assert(n.X != nil)
 		assert(n.Y != nil)
 
 		if n.X != nil {
-			v.WalkTopDown(n.X)
+			WalkTopDown(n.X, visitor)
 		}
 
 		if n.Y != nil {
-			v.WalkTopDown(n.Y)
+			WalkTopDown(n.Y, visitor)
 		}
 
 	case *List:
-		v.walkList(n)
+		walkList(n, visitor)
 
 	case *StmtList:
-		v.walkStmtList(n)
+		walkStmtList(n, visitor)
 
 	case *BracketList:
-		v.walkList(n.List)
+		walkList(n.List, visitor)
 
 	case *ParenList:
-		v.walkList(n.List)
+		walkList(n.List, visitor)
 
 	case *CurlyList:
-		v.walkStmtList(n.StmtList)
+		walkStmtList(n.StmtList, visitor)
 
 	case *If:
 		assert(n.Cond != nil)
 		assert(n.Body != nil)
 
-		v.WalkTopDown(n.Cond)
-		v.WalkTopDown(n.Body)
+		WalkTopDown(n.Cond, visitor)
+		WalkTopDown(n.Body, visitor)
 
 		if n.Else != nil {
-			v.WalkTopDown(n.Else)
+			WalkTopDown(n.Else, visitor)
 		}
 
 	case *Else:
 		assert(n.Body != nil)
 
-		v.WalkTopDown(n.Body)
+		WalkTopDown(n.Body, visitor)
 
 	case *While:
 		assert(n.Cond != nil)
 		assert(n.Body != nil)
 
-		v.WalkTopDown(n.Cond)
-		v.WalkTopDown(n.Body)
+		WalkTopDown(n.Cond, visitor)
+		WalkTopDown(n.Body, visitor)
 
 	case *For:
 		assert(n.Decls != nil)
@@ -182,55 +214,62 @@ func (v Visitor) WalkTopDown(tree Node) {
 		assert(n.IterExpr != nil)
 		assert(n.Body != nil)
 
-		v.walkList(n.Decls)
-		v.WalkTopDown(n.IterExpr)
-		v.WalkTopDown(n.Body)
+		walkList(n.Decls, visitor)
+		WalkTopDown(n.IterExpr, visitor)
+		WalkTopDown(n.Body, visitor)
+
+	case *When:
+		assert(n.Expr != nil)
+		assert(n.Body != nil)
+
+		WalkTopDown(n.Expr, visitor)
+		walkStmtList(n.Body.StmtList, visitor)
 
 	case *Defer:
 		assert(n.X != nil)
 
-		v.WalkTopDown(n.X)
+		WalkTopDown(n.X, visitor)
 
 	case *Return:
 		if n.X != nil {
-			v.WalkTopDown(n.X)
+			WalkTopDown(n.X, visitor)
 		}
 
 	case *Break:
 		if n.Label != nil {
-			v.WalkTopDown(n.Label)
+			WalkTopDown(n.Label, visitor)
 		}
 
 	case *Continue:
 		if n.Label != nil {
-			v.WalkTopDown(n.Label)
+			WalkTopDown(n.Label, visitor)
 		}
 
 	case *Import:
 		assert(n.Module != nil)
 
-		v.WalkTopDown(n.Module)
+		WalkTopDown(n.Module, visitor)
 
 	default:
 		// Should not happen.
 		panic(fmt.Sprintf("unknown node type '%T'", n))
 	}
 
-	v(nil)
+	visitor.Visit(nil)
 }
 
-func (v Visitor) walkList(list *List) {
+func walkList(list *List, visitor Visitor) {
 	if list != nil {
 		for _, node := range list.Nodes {
-			v.WalkTopDown(node)
+			WalkTopDown(node, visitor)
 		}
 	}
 }
 
-func (v Visitor) walkStmtList(list *StmtList) {
+func walkStmtList(list *StmtList, visitor Visitor) {
 	if list != nil {
 		for _, node := range list.Nodes {
-			v.WalkTopDown(node)
+			WalkTopDown(node, visitor)
 		}
 	}
 }

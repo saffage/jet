@@ -8,33 +8,32 @@ import (
 )
 
 type Block struct {
+	check *Checker
 	scope *Scope
 	t     types.Type
 }
 
-func NewBlock(scope *Scope) *Block {
-	return &Block{scope, types.Unit}
+func NewBlock(check *Checker, scope *Scope) *Block {
+	return &Block{check, scope, types.Unit}
 }
 
-func (check *Checker) visitBlock(expr *Block) ast.Visitor {
-	return func(node ast.Node) ast.Visitor {
-		if decl, _ := node.(*ast.LetDecl); decl != nil {
-			if unicode.IsUpper([]rune(decl.Decl.Name.Ident())[0]) || FindAttr(decl.Attrs, "comptime") != nil {
-				check.errorf(decl, "local constants are not supported")
-				return nil
-			}
-
-			check.resolveVarDecl(decl)
-			expr.t = types.Unit
+func (block *Block) Visit(node ast.Node) ast.Visitor {
+	if decl, _ := node.(*ast.LetDecl); decl != nil {
+		if unicode.IsUpper([]rune(decl.Decl.Name.Ident())[0]) || FindAttr(decl.Attrs, "comptime") != nil {
+			block.check.errorf(decl, "local constants are not supported")
 			return nil
 		}
 
-		t := check.typeOf(node)
-		if t == nil {
-			return nil
-		}
-
-		expr.t = t
+		block.check.resolveVarDecl(decl)
+		block.t = types.Unit
 		return nil
 	}
+
+	t := block.check.typeOf(node)
+	if t == nil {
+		return nil
+	}
+
+	block.t = t
+	return nil
 }

@@ -489,16 +489,14 @@ func (check *Checker) typeOfParenList(node *ast.ParenList) types.Type {
 
 func (check *Checker) typeOfCurlyList(node *ast.CurlyList) types.Type {
 	local := NewScope(check.scope, "block")
-	block := NewBlock(local)
+	block := NewBlock(check, local)
 
 	defer check.setScope(check.scope)
 	check.scope = local
 	report.TaggedDebugf("checker", "push %s", local.name)
 
-	visitor := ast.Visitor(check.visitBlock(block))
-
 	for _, node := range node.Nodes {
-		visitor.WalkTopDown(node)
+		ast.WalkTopDown(node, block)
 	}
 
 	report.TaggedDebugf("checker", "pop %s", local.name)
@@ -663,16 +661,14 @@ func (check *Checker) typeOfFor(node *ast.For) (ty types.Type) {
 
 	var tyBody types.Type
 	{
-		block := NewBlock(bodyScope)
+		block := NewBlock(check, bodyScope)
 
 		defer check.setScope(check.scope)
 		check.scope = bodyScope
 		report.TaggedDebugf("checker", "push %s", bodyScope.name)
 
-		visitor := ast.Visitor(check.visitBlock(block))
-
 		for _, node := range node.Body.Nodes {
-			visitor.WalkTopDown(node)
+			ast.WalkTopDown(node, block)
 		}
 
 		report.TaggedDebugf("checker", "pop %s", bodyScope.name)

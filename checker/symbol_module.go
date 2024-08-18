@@ -77,7 +77,7 @@ func (m *Module) SymbolOf(ident ast.Ident) Symbol {
 	return nil
 }
 
-func (check *Checker) visit(node ast.Node) ast.Visitor {
+func (check *Checker) Visit(node ast.Node) ast.Visitor {
 	if decl, _ := node.(*ast.LetDecl); decl != nil {
 		check.resolveDecl(decl)
 		return nil

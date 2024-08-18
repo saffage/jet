@@ -30,10 +30,8 @@ func Check(cfg *config.Config, fileID config.FileID, stmts *ast.StmtList) (*Modu
 		fileID: fileID,
 	}
 
-	visitor := ast.Visitor(check.visit)
-
 	for _, node := range stmts.Nodes {
-		visitor.WalkTopDown(node)
+		ast.WalkTopDown(node, check)
 	}
 
 	module.completed = true
