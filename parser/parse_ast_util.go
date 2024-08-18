@@ -81,21 +81,6 @@ func (p *parser) skip(to ...token.Kind) (start, end token.Pos) {
 }
 
 var (
-	endOfExprKinds = []token.Kind{
-		token.EOF,
-		token.Comma,
-		token.RParen,
-		token.RCurly,
-		token.RBracket,
-	}
-
-	exprStartKinds = []token.Kind{
-		token.KwDefer,
-		token.KwReturn,
-		token.KwBreak,
-		token.KwContinue,
-	}
-
 	operators = map[token.Kind]ast.OperatorKind{
 		token.Plus:       ast.OperatorAdd,
 		token.Minus:      ast.OperatorSub,

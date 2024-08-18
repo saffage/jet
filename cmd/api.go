@@ -120,10 +120,6 @@ func beforeCommand(ctx *cli.Context) error {
 	return nil
 }
 
-func onError(_ *cli.Context, err error) {
-	report.Error("%s", err)
-}
-
 func readFileToConcig(ctx *cli.Context, cfg *config.Config, fileID config.FileID) error {
 	if !ctx.Args().Present() {
 		return errors.New("expected path to a file")
