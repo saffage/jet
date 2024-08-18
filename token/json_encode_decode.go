@@ -5,6 +5,10 @@ import (
 	"fmt"
 )
 
+func (kind Kind) MarshalJSON() ([]byte, error) {
+	return json.Marshal(kind.String())
+}
+
 func (kind *Kind) UnmarshalJSON(data []byte) error {
 	name := string(data)
 	k := KindFromString(name)
@@ -15,8 +19,4 @@ func (kind *Kind) UnmarshalJSON(data []byte) error {
 
 	*kind = k
 	return nil
-}
-
-func (kind Kind) MarshalJSON() ([]byte, error) {
-	return json.Marshal(kind.String())
 }
