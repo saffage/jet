@@ -26,6 +26,7 @@ func (n *Call) MarshalYAML() (any, error)       { return wrap(n, "Call"), nil }
 func (n *Index) MarshalYAML() (any, error)      { return wrap(n, "Index"), nil }
 func (n *Function) MarshalYAML() (any, error)   { return wrap(n, "Function"), nil }
 func (n *Dot) MarshalYAML() (any, error)        { return wrap(n, "Dot"), nil }
+func (n *Deref) MarshalYAML() (any, error)      { return wrap(n, "Deref"), nil }
 func (n *Op) MarshalYAML() (any, error)         { return wrap(n, "Op"), nil }
 
 func (n *List) MarshalYAML() (any, error)        { return wrap(n, "List"), nil }
