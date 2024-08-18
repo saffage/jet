@@ -15,7 +15,7 @@ func (sym *Var) debug() string {
 	if sym.isParam {
 		mods = append(mods, "param")
 	}
-	if sym.isParam {
+	if sym.isField {
 		mods = append(mods, "field")
 	}
 	if len(mods) != 0 {
