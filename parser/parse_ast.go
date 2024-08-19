@@ -610,11 +610,13 @@ func (parse *parser) listOpenClose(
 		return nil, err
 	}
 
-	if _, ok = parse.take(closing); !ok {
+	closeTok, ok := parse.take(closing)
+
+	if !ok {
 		panic("unreachable")
 	}
 
-	return &list{nodes, openTok.Start, openTok.End}, nil
+	return &list{nodes, openTok.Start, closeTok.End}, nil
 }
 
 func (parse *parser) listDelimiter(
