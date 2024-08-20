@@ -17,7 +17,7 @@ var (
 func Parse(tokens []token.Token, flags Flags) (*ast.StmtList, error) {
 	p, err := New(tokens, flags)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	return p.Parse()
 }
@@ -33,7 +33,7 @@ func MustParse(tokens []token.Token, flags Flags) *ast.StmtList {
 func ParseExpr(tokens []token.Token, flags Flags) (ast.Node, error) {
 	p, err := New(tokens, flags)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	return p.ParseExpr()
 }
@@ -57,7 +57,12 @@ func New(tokens []token.Token, flags Flags) (*parser, error) {
 	if len(tokens) == 0 {
 		return nil, ErrEmptyStream
 	}
-	if !slices.ContainsFunc(tokens, isEOFToken) {
+	if !slices.ContainsFunc(
+		tokens,
+		func(tok token.Token) bool {
+			return tok.Kind == token.EOF
+		},
+	) {
 		return nil, ErrMissingEOFToken
 	}
 	return &parser{tokens: tokens, flags: flags, tok: tokens[0]}, nil
@@ -97,7 +102,3 @@ const (
 	NoFlags      = Flags(0)
 	DefaultFlags = NoFlags
 )
-
-func isEOFToken(tok token.Token) bool {
-	return tok.Kind == token.EOF
-}
