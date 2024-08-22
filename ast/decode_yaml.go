@@ -1,4 +1,4 @@
-//go:build false
+//go:build ignore
 
 package ast
 
