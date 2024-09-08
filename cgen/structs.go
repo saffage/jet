@@ -23,7 +23,7 @@ func (gen *generator) structDecl(sym *checker.Struct) {
 
 func (gen *generator) structInit(prefix string, value ast.Node, ty *types.Struct) {
 	if call, _ := value.(*ast.Call); call != nil {
-		gen.structInitList(prefix, call.Args.List, ty)
+		gen.structInitList(prefix, call.Args.Nodes, ty)
 	} else {
 		gen.linef("%s = %s;\n", prefix, gen.exprString(value))
 	}
@@ -56,8 +56,8 @@ func (gen *generator) structInit(prefix string, value ast.Node, ty *types.Struct
 	// }
 }
 
-func (gen *generator) structInitList(prefix string, initList *ast.List, _ *types.Struct) {
-	for _, expr := range initList.Nodes {
+func (gen *generator) structInitList(prefix string, initList []ast.Node, _ *types.Struct) {
+	for _, expr := range initList {
 		switch expr := expr.(type) {
 		case *ast.Op:
 			if expr.X == nil || expr.Y == nil {

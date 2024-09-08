@@ -101,13 +101,13 @@ func TestExprs(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			tokens := scanner.MustScan(([]byte)(c.input), 1, c.scannerFlags)
 
-			var stmts *ast.StmtList
+			var stmts *ast.Stmts
 			var err error
 
 			if c.isExpr {
 				var node ast.Node
 				node, err = ParseExpr(tokens, c.parserFlags)
-				stmts = &ast.StmtList{Nodes: []ast.Node{node}}
+				stmts = &ast.Stmts{Nodes: []ast.Node{node}}
 			} else {
 				stmts, err = Parse(tokens, c.parserFlags)
 			}

@@ -18,7 +18,6 @@ type Flags struct {
 	Debug            bool // Enable debug information.
 	NoHints          bool // Disable compiler hints.
 	DumpCheckerState bool // Dump the checker state after checking a specified module.
-	ParseAst         bool // Display program AST of the specified module and exit.
 	NoCoreLib        bool // Disable the language core library.
 }
 

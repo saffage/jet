@@ -41,11 +41,11 @@ func (err *Error) Report() {
 	}
 }
 
-func (check *Checker) errorf(node ast.Node, format string, args ...any) {
+func (check *checker) errorf(node ast.Node, format string, args ...any) {
 	err := newErrorf(node, format, args...)
 	check.addError(err)
 }
 
-func (check *Checker) addError(err error) {
-	check.errors = append(check.errors, err)
+func (check *checker) addError(err error) {
+	check.errs = append(check.errs, err)
 }

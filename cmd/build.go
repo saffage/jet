@@ -1,9 +1,6 @@
 package cmd
 
 import (
-	"bytes"
-	"errors"
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,7 +11,6 @@ import (
 	"github.com/saffage/jet/checker"
 	"github.com/saffage/jet/config"
 	"github.com/saffage/jet/report"
-	"github.com/saffage/jet/token"
 	"github.com/urfave/cli/v2"
 )
 
@@ -24,11 +20,11 @@ func Build(cfg *config.Config) error {
 
 	report.Debugf("set file '%s' as main module", path)
 
-	if err := internalBuild(cfg, config.MainFileID); err != nil {
+	if err := buildFile(cfg, config.MainFileID); err != nil {
 		return err
 	}
 
-	if err := compileToC(cfg, filepath.Dir(path), name); err != nil {
+	if err := compileC(cfg, filepath.Dir(path), name); err != nil {
 		return err
 	}
 
@@ -59,7 +55,6 @@ func Build(cfg *config.Config) error {
 func beforeBuild(ctx *cli.Context) error {
 	config.Global.Flags.Run = ctx.Bool("run")
 	config.Global.Flags.DumpCheckerState = ctx.Bool("dump-checker-state")
-	config.Global.Flags.ParseAst = ctx.Bool("parse-ast")
 	config.Global.Options.CC = ctx.String("cc")
 	config.Global.Options.CCFlags = ctx.String("cc-flags")
 	config.Global.Options.LDFlags = ctx.String("ld-flags")
@@ -67,30 +62,14 @@ func beforeBuild(ctx *cli.Context) error {
 }
 
 func actionBuild(ctx *cli.Context) error {
-	if !ctx.Args().Present() {
-		return errors.New("expected path to a file")
-	}
-
-	if ctx.Args().Len() != 1 {
-		return errors.New("invalid arguments count (expected 1)")
-	}
-
-	path := filepath.Clean(ctx.Args().Get(0))
-	name, data, err := readFile(path)
+	err := readFileToConfig(ctx, config.Global, config.MainFileID)
 	if err != nil {
 		return err
 	}
-
-	config.Global.Files[config.MainFileID] = config.FileInfo{
-		Name: name,
-		Path: path,
-		Buf:  bytes.NewBuffer(data),
-	}
-
 	return Build(config.Global)
 }
 
-func internalBuild(cfg *config.Config, fileID config.FileID) error {
+func buildFile(cfg *config.Config, fileID config.FileID) error {
 	if err := checker.CheckBuiltInPkgs(cfg); err != nil {
 		return err
 	}
@@ -126,48 +105,10 @@ func genModule(m *checker.Module, dir string) error {
 
 	report.Hintf("generating module '%s'", m.Name())
 	report.TaggedDebugf("gen", "module file is '%s'", filename)
-
-	if err := cgen.Generate(f, m); err != nil {
-		return err
-	}
-
-	return nil
+	return cgen.Generate(f, m)
 }
 
-func readFile(path string) (name string, data []byte, err error) {
-	stat, err := os.Stat(path)
-	if err != nil {
-		return
-	}
-
-	if !stat.Mode().IsRegular() {
-		err = fmt.Errorf("'%s' is not a file", path)
-		return
-	}
-
-	fileExt := filepath.Ext(path)
-
-	if fileExt != ".jet" {
-		err = fmt.Errorf("expected file extension '.jet', got '%s' instead", fileExt)
-		return
-	}
-
-	name = filepath.Base(path[:len(path)-len(fileExt)])
-	if _, err = token.IsValidIdent(name); err != nil {
-		err = errors.Join(fmt.Errorf("filename is not a valid identifier"), err)
-		return
-	}
-
-	data, err = os.ReadFile(path)
-	if err != nil {
-		err = errors.Join(fmt.Errorf("while reading file '%s'", path), err)
-		return
-	}
-
-	return
-}
-
-func compileToC(cfg *config.Config, dir, moduleName string) error {
+func compileC(cfg *config.Config, dir, moduleName string) error {
 	file := filepath.Join(dir, cfg.Options.CacheDir, moduleName+".c")
 	args := []string{"-o", moduleName, file}
 
@@ -178,11 +119,7 @@ func compileToC(cfg *config.Config, dir, moduleName string) error {
 	cmd := exec.Command(cfg.Options.CC, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+
 	report.TaggedHint("cc", cmd.String())
-
-	if err := cmd.Run(); err != nil {
-		return err
-	}
-
-	return nil
+	return cmd.Run()
 }

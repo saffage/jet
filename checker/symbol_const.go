@@ -20,11 +20,11 @@ func NewConst(owner *Scope, value *TypedValue, ident ast.Ident) *Const {
 func (v *Const) Owner() *Scope         { return v.owner }
 func (v *Const) Type() types.Type      { return v.value.Type }
 func (v *Const) Value() constant.Value { return v.value.Value }
-func (v *Const) Name() string          { return v.ident.Ident() }
+func (v *Const) Name() string          { return v.ident.String() }
 func (v *Const) Ident() ast.Ident      { return v.ident }
 func (v *Const) Node() ast.Node        { return nil }
 
-func (check *Checker) resolveConstDecl(decl *ast.LetDecl) {
+func (check *checker) resolveConstDecl(decl *ast.LetDecl) {
 	value := check.valueOf(decl.Value)
 	if value == nil {
 		check.errorf(decl.Value, "value is not a constant expression")

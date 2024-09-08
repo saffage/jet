@@ -6,9 +6,9 @@ import (
 )
 
 type Symbol interface {
-	Owner() *Scope    // Scope where a symbol was defined.
-	Type() types.Type // Type of a symbol.
-	Name() string     // Identifier or name of a symbol.
-	Ident() ast.Ident // Identifier node.
+	Type() types.Type // Type of the symbol.
+	Name() string     // Name of the symbol.
 	Node() ast.Node   // Related AST node.
+	Ident() ast.Ident // Identifier node.
+	Owner() *Scope    // Scope where the symbol was defined.
 }

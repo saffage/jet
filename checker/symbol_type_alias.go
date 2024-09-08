@@ -17,18 +17,18 @@ func NewTypeAlias(owner *Scope, t *types.TypeDesc, decl *ast.LetDecl) *TypeAlias
 
 	return &TypeAlias{
 		owner: owner,
-		t:     types.NewAlias(t.Base(), decl.Decl.Name.Ident()),
+		t:     types.NewAlias(t.Base(), decl.Decl.Name.String()),
 		decl:  decl,
 	}
 }
 
 func (sym *TypeAlias) Owner() *Scope    { return sym.owner }
 func (sym *TypeAlias) Type() types.Type { return types.NewTypeDesc(sym.t) }
-func (sym *TypeAlias) Name() string     { return sym.Ident().Ident() }
+func (sym *TypeAlias) Name() string     { return sym.Ident().String() }
 func (sym *TypeAlias) Ident() ast.Ident { return sym.decl.Decl.Name }
 func (sym *TypeAlias) Node() ast.Node   { return sym.decl }
 
-func (check *Checker) resolveTypeAliasDecl(decl *ast.LetDecl) {
+func (check *checker) resolveTypeAliasDecl(decl *ast.LetDecl) {
 	t := check.typeOf(decl.Value)
 	if t == nil {
 		return

@@ -5,38 +5,37 @@ import (
 
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/constant"
-	"github.com/saffage/jet/report"
 	"github.com/saffage/jet/types"
 )
 
-func (gen *generator) BuiltInCall(node *ast.BuiltIn, call *ast.Call) string {
-	switch node.Data {
-	case "print":
-		return gen.builtInPrint(call)
+// func (gen *generator) BuiltInCall(node *ast.BuiltIn, call *ast.Call) string {
+// 	switch node.Data {
+// 	case "print":
+// 		return gen.builtInPrint(call)
 
-	case "println":
-		return gen.builtInPrintln(call)
+// 	case "println":
+// 		return gen.builtInPrintln(call)
 
-	case "assert":
-		return gen.builtInAssert(call)
+// 	case "assert":
+// 		return gen.builtInAssert(call)
 
-	case "as_ptr":
-		return gen.builtInAsPtr(call)
+// 	case "as_ptr":
+// 		return gen.builtInAsPtr(call)
 
-	case "cast":
-		return gen.builtInCast(call)
+// 	case "cast":
+// 		return gen.builtInCast(call)
 
-	case "size_of":
-		return gen.builtInSizeOf(call)
+// 	case "size_of":
+// 		return gen.builtInSizeOf(call)
 
-	case "emit":
-		return gen.builtInEmit(call)
+// 	case "emit":
+// 		return gen.builtInEmit(call)
 
-	default:
-		report.Warningf("unknown built-in function '%s'", node.Repr())
-		return "ERROR_CGEN"
-	}
-}
+// 	default:
+// 		report.Warningf("unknown built-in function '%s'", node.Repr())
+// 		return "ERROR_CGEN"
+// 	}
+// }
 
 func (gen *generator) builtInPrint(call *ast.Call) string {
 	value := gen.Types[call.Args.Nodes[0]]

@@ -6,9 +6,9 @@ import (
 	"strconv"
 )
 
+//go:generate stringer -type=Kind
 type Kind byte
 
-//go:generate stringer -type=Kind
 const (
 	Int Kind = iota
 	Float

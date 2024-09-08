@@ -11,7 +11,7 @@ import (
 type Func struct {
 	owner      *Scope
 	local      *Scope
-	params     []*Var
+	params     []*Binding
 	ty         *types.Func
 	node       *ast.LetDecl
 	isExtern   bool
@@ -28,15 +28,15 @@ func (sym *Func) Name() string         { return ast.Data(sym.node.Decl.Name) }
 func (sym *Func) Ident() ast.Ident     { return sym.node.Decl.Name }
 func (sym *Func) Node() ast.Node       { return sym.node }
 func (sym *Func) Local() *Scope        { return sym.local }
-func (sym *Func) Params() []*Var       { return sym.params }
+func (sym *Func) Params() []*Binding   { return sym.params }
 func (sym *Func) IsExtern() bool       { return sym.isExtern }
 func (sym *Func) ExternName() string   { return sym.externName }
 func (sym *Func) Variadic() types.Type { return sym.ty.Variadic() }
 
-func (check *Checker) resolveFuncDecl(decl *ast.LetDecl, value *ast.Function) {
+func (check *checker) resolveFuncDecl(decl *ast.LetDecl, value *ast.Function) {
 	var (
 		isDefined                = false
-		local                    = NewScope(check.scope, "func "+decl.Decl.Name.Ident())
+		local                    = NewScope(check.scope, "func "+decl.Decl.Name.String())
 		ty, params, hasResult, _ = check.resolveFuncSignature(value.Signature, local)
 		sym                      = NewFunc(check.scope, local, ty, decl)
 	)
@@ -47,7 +47,7 @@ func (check *Checker) resolveFuncDecl(decl *ast.LetDecl, value *ast.Function) {
 		isDefined = true
 		if defined := check.scope.Define(sym); defined != nil {
 			err := errorAlreadyDefined(sym.Ident(), defined.Ident())
-			check.errors = append(check.errors, err)
+			check.errs = append(check.errs, err)
 		}
 	}
 
@@ -64,7 +64,7 @@ func (check *Checker) resolveFuncDecl(decl *ast.LetDecl, value *ast.Function) {
 	if !isDefined {
 		if defined := check.scope.Define(sym); defined != nil {
 			err := errorAlreadyDefined(sym.Ident(), defined.Ident())
-			check.errors = append(check.errors, err)
+			check.errs = append(check.errs, err)
 		}
 	}
 
@@ -72,11 +72,11 @@ func (check *Checker) resolveFuncDecl(decl *ast.LetDecl, value *ast.Function) {
 	check.newDef(decl.Decl.Name, sym)
 }
 
-func (check *Checker) resolveFuncSignature(
+func (check *checker) resolveFuncSignature(
 	sig *ast.Signature,
 	scope *Scope,
-) (ty *types.Func, params []*Var, hasResult, wasError bool) {
-	params = make([]*Var, 0, len(sig.Params.Nodes))
+) (ty *types.Func, params []*Binding, hasResult, wasError bool) {
+	params = make([]*Binding, 0, len(sig.Params.Nodes))
 
 	tyParams := make([]types.Type, 0, len(sig.Params.Nodes))
 	tyResult := types.Unit
@@ -132,7 +132,7 @@ func (check *Checker) resolveFuncSignature(
 		tyParam = types.SkipTypeDesc(tyParam)
 		tyParams = append(tyParams, tyParam)
 
-		paramSym := NewVar(scope, tyParam, param)
+		paramSym := NewBinding(scope, tyParam, param.Decl, param)
 		paramSym.isParam = true
 
 		if defined := scope.Define(paramSym); defined != nil {
@@ -164,7 +164,7 @@ func (check *Checker) resolveFuncSignature(
 	return
 }
 
-func (check *Checker) resolveFuncBody(
+func (check *checker) resolveFuncBody(
 	decl *ast.LetDecl,
 	body ast.Node,
 	tyFunc *types.Func,
@@ -185,7 +185,7 @@ func (check *Checker) resolveFuncBody(
 	check.scope = scope
 
 	// For a note about recursion
-	errorsLenBefore := len(check.errors)
+	errorsLenBefore := len(check.errs)
 
 	if tyBodyActual := check.typeOf(body); tyBodyActual != nil {
 		tyBody = types.AsTuple(tyBodyActual)
@@ -194,12 +194,12 @@ func (check *Checker) resolveFuncBody(
 			tyBody = types.NewTuple(types.SkipUntyped(tyBodyActual))
 		}
 	} else {
-		if len(check.errors) > errorsLenBefore {
-			for i := range len(check.errors) - errorsLenBefore {
-				err, _ := check.errors[i+errorsLenBefore].(*Error)
+		if len(check.errs) > errorsLenBefore {
+			for i := range len(check.errs) - errorsLenBefore {
+				err, _ := check.errs[i+errorsLenBefore].(*Error)
 				if err != nil {
 					ident, _ := err.Node.(*ast.Name)
-					if ident != nil && ident.Data == decl.Decl.Name.Ident() {
+					if ident != nil && ident.Data == decl.Decl.Name.String() {
 						err.Notes = append(err.Notes, &Error{
 							Message: "cannot infer a type of the recursive definition",
 							Node:    decl.Decl.Name,
@@ -218,7 +218,7 @@ func (check *Checker) resolveFuncBody(
 	if !tyBody.Equals(tyFunc.Result()) {
 		var resultNode ast.Node
 
-		if list, _ := body.(*ast.CurlyList); list != nil {
+		if list, _ := body.(*ast.Stmts); list != nil {
 			if len(list.Nodes) == 0 {
 				resultNode = list
 			} else {

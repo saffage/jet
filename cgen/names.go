@@ -21,7 +21,7 @@ func (gen *generator) name(sym checker.Symbol) string {
 	}
 
 	switch sym := sym.(type) {
-	case *checker.Var:
+	case *checker.Binding:
 		if sym.IsGlobal() {
 			buf.WriteString("g_")
 		}

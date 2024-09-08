@@ -2,12 +2,10 @@ package checker
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/fatih/color"
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/config"
 	"github.com/saffage/jet/parser"
@@ -15,27 +13,31 @@ import (
 	"github.com/saffage/jet/scanner"
 )
 
-var ErrorEmptyFileBuf = errors.New("empty file buffer or invalid file ID")
+var ErrEmptyFileBuf = errors.New("empty file buffer or invalid file ID")
 
-func Check(cfg *config.Config, fileID config.FileID, stmts *ast.StmtList) (*Module, error) {
-	moduleName := cfg.Files[fileID].Name
+func Check(cfg *config.Config, fileID config.FileID, stmts *ast.Stmts) (*Module, error) {
+	var (
+		moduleName = cfg.Files[fileID].Name
+		scope      = NewScope(Global, "module "+moduleName)
+		module     = NewModule(scope, moduleName, stmts)
+		check      = &checker{
+			module: module,
+			scope:  scope,
+			errs:   make([]error, 0),
+			cfg:    cfg,
+			fileID: fileID,
+		}
+	)
+
 	report.Hintf("checking module '%s'", moduleName)
 
-	module := NewModule(NewScope(Global, "module "+moduleName), moduleName, stmts)
-	check := &Checker{
-		module: module,
-		scope:  module.Scope,
-		errors: make([]error, 0),
-		cfg:    cfg,
-		fileID: fileID,
-	}
-
-	for _, node := range stmts.Nodes {
-		ast.WalkTopDown(node, check)
+	for _, stmt := range stmts.Nodes {
+		ast.WalkTopDown(stmt, check)
 	}
 
 	module.completed = true
 
+	// TODO: remove it?
 	if cfg.Flags.DumpCheckerState {
 		err := os.Mkdir(cfg.Options.CacheDir, os.ModePerm)
 		if err != nil && !os.IsExist(err) {
@@ -52,7 +54,7 @@ func Check(cfg *config.Config, fileID config.FileID, stmts *ast.StmtList) (*Modu
 		spew.Fdump(f, check)
 	}
 
-	return check.module, errors.Join(check.errors...)
+	return check.module, errors.Join(check.errs...)
 }
 
 func CheckFile(cfg *config.Config, fileID config.FileID) (*Module, error) {
@@ -61,7 +63,7 @@ func CheckFile(cfg *config.Config, fileID config.FileID) (*Module, error) {
 
 	fi := cfg.Files[fileID]
 	if fi.Buf == nil {
-		return nil, ErrorEmptyFileBuf
+		return nil, ErrEmptyFileBuf
 	}
 
 	tokens, err := scanner.Scan(fi.Buf.Bytes(), fileID, scannerFlags)
@@ -78,20 +80,5 @@ func CheckFile(cfg *config.Config, fileID config.FileID) (*Module, error) {
 		return NewModule(NewScope(nil, "module "+fi.Name), fi.Name, nil), nil
 	}
 
-	if cfg.Flags.ParseAst {
-		printRecreatedAST(stmts)
-		return NewModule(NewScope(nil, "module "+fi.Name), fi.Name, nil), nil
-	}
-
 	return Check(cfg, fileID, stmts)
-}
-
-func printRecreatedAST(nodeList *ast.StmtList) {
-	fmt.Println("recreated AST:")
-
-	for i, node := range nodeList.Nodes {
-		if _, isEmpty := node.(*ast.Empty); i < len(nodeList.Nodes)-1 || !isEmpty {
-			fmt.Println(color.HiGreenString(node.Repr()))
-		}
-	}
 }

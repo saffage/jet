@@ -5,7 +5,7 @@ import (
 	"github.com/saffage/jet/checker"
 )
 
-func (gen *generator) block(list *ast.StmtList, result *checker.Var) {
+func (gen *generator) block(stmts *ast.Stmts, result *checker.Binding) {
 	gen.line("{\n")
 	gen.indent++
 
@@ -23,25 +23,25 @@ func (gen *generator) block(list *ast.StmtList, result *checker.Var) {
 
 	var deferNodes []*ast.Defer
 
-	if len(list.Nodes) > 0 {
-		lastIdx := len(list.Nodes) - 1
-		lastNode := list.Nodes[lastIdx]
+	if len(stmts.Nodes) > 0 {
+		lastIdx := len(stmts.Nodes) - 1
+		lastNode := stmts.Nodes[lastIdx]
 
-		for _, stmt := range list.Nodes[:lastIdx] {
-			if deferNode, _ := stmt.(*ast.Defer); deferNode != nil {
-				println("deferred node: " + deferNode.Repr())
-				deferNodes = append(deferNodes, deferNode)
-				continue
-			}
+		for _, stmt := range stmts.Nodes[:lastIdx] {
+			// if deferNode, _ := stmt.(*ast.Defer); deferNode != nil {
+			// 	println("deferred node: " + deferNode.Repr())
+			// 	deferNodes = append(deferNodes, deferNode)
+			// 	continue
+			// }
 
 			gen.stmt(stmt)
 		}
 
 		if result != nil {
 			gen.assign(gen.name(result), lastNode)
-		} else if deferNode, _ := lastNode.(*ast.Defer); deferNode != nil {
-			println("deferred node: " + deferNode.Repr())
-			deferNodes = append(deferNodes, deferNode)
+		// } else if deferNode, _ := lastNode.(*ast.Defer); deferNode != nil {
+		// 	println("deferred node: " + deferNode.Repr())
+		// 	deferNodes = append(deferNodes, deferNode)
 		} else {
 			gen.stmt(lastNode)
 		}

@@ -29,13 +29,13 @@ func NewStruct(owner *Scope, body *Scope, t *types.TypeDesc, decl *ast.LetDecl) 
 
 func (sym *Struct) Owner() *Scope    { return sym.owner }
 func (sym *Struct) Type() types.Type { return sym.t }
-func (sym *Struct) Name() string     { return sym.Ident().Ident() }
+func (sym *Struct) Name() string     { return sym.Ident().String() }
 func (sym *Struct) Ident() ast.Ident { return sym.node.Decl.Name }
 func (sym *Struct) Node() ast.Node   { return sym.node }
 
-func (check *Checker) resolveStructDecl(decl *ast.LetDecl, value *ast.StructType) {
+func (check *checker) resolveStructDecl(decl *ast.LetDecl, value *ast.StructType) {
 	fields := make([]types.StructField, len(value.Fields))
-	local := NewScope(check.scope, "struct "+decl.Decl.Name.Ident())
+	local := NewScope(check.scope, "struct "+decl.Decl.Name.String())
 
 	for i, fieldDecl := range value.Fields {
 		tField := check.typeOf(fieldDecl.Decl.Type)
@@ -53,10 +53,10 @@ func (check *Checker) resolveStructDecl(decl *ast.LetDecl, value *ast.StructType
 		}
 
 		t := types.AsTypeDesc(tField).Base()
-		fieldSym := NewVar(local, t, fieldDecl)
+		fieldSym := NewBinding(local, t, fieldDecl.Decl, fieldDecl)
 		fieldSym.isField = true
 		fields[i] = types.StructField{
-			Name: fieldDecl.Decl.Name.Ident(),
+			Name: fieldDecl.Decl.Name.String(),
 			Type: t,
 		}
 
@@ -84,7 +84,7 @@ func (check *Checker) resolveStructDecl(decl *ast.LetDecl, value *ast.StructType
 	check.newDef(decl.Decl.Name, sym)
 }
 
-func (check *Checker) structInit(initList *ast.ParenList, ty *types.Struct) {
+func (check *checker) structInit(initList *ast.Parens, ty *types.Struct) {
 	// tTypeStruct := types.AsStruct(typedesc.Base())
 	// if tTypeStruct == nil {
 	// 	check.errorf(node.X, "type (%s) is not a struct", typedesc)
@@ -211,7 +211,7 @@ func (check *Checker) structInit(initList *ast.ParenList, ty *types.Struct) {
 	}
 }
 
-func (check *Checker) structMember(selector *ast.Dot, ty *types.Struct) types.Type {
+func (check *checker) structMember(selector *ast.Dot, ty *types.Struct) types.Type {
 	if ty == types.String {
 		check.errorf(selector.X, "member access on string type is not implemented")
 		return nil

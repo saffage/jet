@@ -9,7 +9,7 @@ type debugPrinter interface {
 	debug() string
 }
 
-func (sym *Var) debug() string {
+func (sym *Binding) debug() string {
 	result := symbolTypeNoQualifier(sym)
 	mods := make([]string, 0, 2)
 	if sym.isParam {

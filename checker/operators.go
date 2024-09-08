@@ -8,7 +8,7 @@ import (
 	"github.com/saffage/jet/types"
 )
 
-func (check *Checker) prefix(node *ast.Op, tyOperand types.Type) types.Type {
+func (check *checker) prefix(node *ast.Op, tyOperand types.Type) types.Type {
 	switch node.Kind {
 	case ast.OperatorNot:
 		if p := types.AsPrimitive(tyOperand); p != nil {
@@ -33,7 +33,7 @@ func (check *Checker) prefix(node *ast.Op, tyOperand types.Type) types.Type {
 	case ast.OperatorAddrOf, ast.OperatorMutAddrOf:
 		switch operand := node.Y.(type) {
 		case *ast.Name:
-			if sym, _ := check.symbolOf(operand).(*Var); sym != nil {
+			if sym, _ := check.symbolOf(operand).(*Binding); sym != nil {
 				return types.NewRef(tyOperand)
 			}
 
@@ -46,9 +46,6 @@ func (check *Checker) prefix(node *ast.Op, tyOperand types.Type) types.Type {
 			if tArray := types.AsArray(check.typeOf(operand.X)); tArray != nil {
 				return types.NewRef(tArray.ElemType())
 			}
-
-		case *ast.Deref:
-			return types.NewRef(tyOperand)
 		}
 
 		check.errorf(node.Y, "expression is not an addressable location")
@@ -75,7 +72,7 @@ func (check *Checker) prefix(node *ast.Op, tyOperand types.Type) types.Type {
 	return nil
 }
 
-func (check *Checker) infix(node *ast.Op, tOperandX, tOperandY types.Type) types.Type {
+func (check *checker) infix(node *ast.Op, tOperandX, tOperandY types.Type) types.Type {
 	if node.Kind == ast.OperatorAs {
 		return check.infixAs(node, tOperandX, tOperandY)
 	}
@@ -114,7 +111,7 @@ func (check *Checker) infix(node *ast.Op, tOperandX, tOperandY types.Type) types
 	return nil
 }
 
-func (check *Checker) infixAs(node *ast.Op, _, tyY types.Type) types.Type {
+func (check *checker) infixAs(node *ast.Op, _, tyY types.Type) types.Type {
 	typedesc := types.AsTypeDesc(tyY)
 	if typedesc == nil {
 		check.errorf(node.Y, "expected type, got '%s' instead", tyY)
@@ -124,7 +121,7 @@ func (check *Checker) infixAs(node *ast.Op, _, tyY types.Type) types.Type {
 	return types.SkipTypeDesc(typedesc)
 }
 
-func (check *Checker) infixPrimitive(
+func (check *checker) infixPrimitive(
 	node *ast.Op,
 	tOperandX *types.Primitive,
 	_ types.Type, // tOperandY
@@ -266,7 +263,7 @@ func (check *Checker) infixPrimitive(
 	return nil
 }
 
-func (check *Checker) postfix(node *ast.Op, tyOperand types.Type) types.Type {
+func (check *checker) postfix(node *ast.Op, tyOperand types.Type) types.Type {
 	panic("unreachable")
 
 	// switch node.Kind {
@@ -319,11 +316,11 @@ func (check *Checker) postfix(node *ast.Op, tyOperand types.Type) types.Type {
 	// }
 }
 
-func (check *Checker) assignable(node ast.Node) bool {
+func (check *checker) assignable(node ast.Node) bool {
 	switch operand := node.(type) {
 	case *ast.Name:
 		if operand != nil {
-			varSym, ok := check.symbolOf(operand).(*Var)
+			varSym, ok := check.symbolOf(operand).(*Binding)
 			if !ok || varSym == nil {
 				check.errorf(operand, "identifier is not a variable")
 				return false
@@ -373,10 +370,6 @@ func (check *Checker) assignable(node ast.Node) bool {
 			// check.newUse(operandName, varSym)
 			// return true
 		}
-
-	case *ast.Deref:
-		// TODO allow only if the pointer points to a mutable location.
-		return true
 	}
 
 	return false

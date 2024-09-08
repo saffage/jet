@@ -26,9 +26,8 @@ func NewScope(parent *Scope, name string) *Scope {
 	return scope
 }
 
-// Returns a name of the scope. Used in code generator.
+// Returns a name of the scope. Used in code generator. Name can be next:
 //
-// Name can be next:
 //   - module <name>
 //   - func <name>
 //   - struct <name>
@@ -98,7 +97,7 @@ func (scope *Scope) LookupLocal(name string) Symbol {
 }
 
 func errorAlreadyDefined(name, previous ast.Ident) *Error {
-	err := newErrorf(name, "name '%s' is already defined in this scope", name.Ident())
+	err := newErrorf(name, "name '%s' is already defined in this scope", name.String())
 
 	if previous != nil && previous.Pos().Line > 0 {
 		err.Notes = append(err.Notes, &Error{

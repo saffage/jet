@@ -9,14 +9,15 @@ import (
 
 type parseFunc func() (ast.Node, error)
 
-func (parse *parser) decls() (ast.Node, error) {
+func (parse *parser) decls() (*ast.Stmts, error) {
+	start := parse.tok.Start
 	decls, err := parse.listDelimiter(parse.decl, token.EOF, token.Illegal)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return &ast.StmtList{Nodes: decls}, nil
+	return &ast.Stmts{Nodes: decls, Start: start}, nil
 }
 
 func (parse *parser) decl() (ast.Node, error) {
@@ -133,7 +134,7 @@ func (parse *parser) typeDecl() (ast.Node, error) {
 	var (
 		typeTok token.Token
 		name    ast.Ident
-		args    *ast.ParenList
+		args    *ast.Parens
 		expr    ast.Node
 		err     error
 	)
@@ -153,7 +154,7 @@ func (parse *parser) typeDecl() (ast.Node, error) {
 			return nil, err
 		}
 
-		args = parenList.(*ast.ParenList)
+		args = parenList.(*ast.Parens)
 	}
 
 	switch parse.tok.Kind {
@@ -165,7 +166,7 @@ func (parse *parser) typeDecl() (ast.Node, error) {
 		}
 
 	case token.LCurly:
-		if expr, err = parse.curlies(parse.typeVariant); err != nil {
+		if expr, err = parse.blockFunc(parse.typeVariant); err != nil {
 			return nil, err
 		}
 
@@ -175,7 +176,7 @@ func (parse *parser) typeDecl() (ast.Node, error) {
 
 	return &ast.TypeDecl{
 		TypeTok: typeTok.Start,
-		Type:    name.(*ast.Type),
+		Name:    name.(*ast.Type),
 		Args:    args,
 		Expr:    expr,
 	}, nil
@@ -249,10 +250,10 @@ func (parse *parser) ident() (ast.Ident, error) {
 }
 
 func (parse *parser) block() (ast.Node, error) {
-	return parse.curlies(parse.expr)
+	return parse.blockFunc(parse.expr)
 }
 
-func (parse *parser) curlies(f parseFunc) (*ast.CurlyList, error) {
+func (parse *parser) blockFunc(f parseFunc) (*ast.Block, error) {
 	if !parse.match(token.LCurly) {
 		return nil, parse.error(ErrExpectedBlock)
 	}
@@ -263,14 +264,14 @@ func (parse *parser) curlies(f parseFunc) (*ast.CurlyList, error) {
 		return nil, err
 	}
 
-	return &ast.CurlyList{
-		StmtList: &ast.StmtList{Nodes: list.nodes},
-		Open:     list.open,
-		Close:    list.close,
+	return &ast.Block{
+		Stmts: &ast.Stmts{Nodes: list.nodes},
+		Open:  list.open,
+		Close: list.close,
 	}, nil
 }
 
-func (parse *parser) parens(f parseFunc) (*ast.ParenList, error) {
+func (parse *parser) parens(f parseFunc) (*ast.Parens, error) {
 	list, err := parse.listOpenClose(
 		f,
 		token.LParen,
@@ -282,14 +283,14 @@ func (parse *parser) parens(f parseFunc) (*ast.ParenList, error) {
 		return nil, err
 	}
 
-	return &ast.ParenList{
-		List:  &ast.List{Nodes: list.nodes},
+	return &ast.Parens{
+		Nodes: list.nodes,
 		Open:  list.open,
 		Close: list.close,
 	}, nil
 }
 
-func (parse *parser) brackets(f parseFunc) (*ast.BracketList, error) {
+func (parse *parser) brackets(f parseFunc) (*ast.List, error) {
 	list, err := parse.listOpenClose(
 		f,
 		token.LBracket,
@@ -301,8 +302,8 @@ func (parse *parser) brackets(f parseFunc) (*ast.BracketList, error) {
 		return nil, err
 	}
 
-	return &ast.BracketList{
-		List:  &ast.List{Nodes: list.nodes},
+	return &ast.List{
+		Nodes: list.nodes,
 		Open:  list.open,
 		Close: list.close,
 	}, nil
@@ -330,7 +331,7 @@ func (parse *parser) typeExpr() (ast.Node, error) {
 				return nil, err
 			}
 
-			node = &ast.Call{X: node, Args: typeArgs.(*ast.ParenList)}
+			node = &ast.Call{X: node, Args: typeArgs.(*ast.Parens)}
 		}
 
 	case token.Name:
@@ -396,14 +397,14 @@ func (parse *parser) whenExpr() (ast.Node, error) {
 		return nil, err
 	}
 
-	if body, err = parse.curlies(parse.whenCase); err != nil {
+	if body, err = parse.blockFunc(parse.whenCase); err != nil {
 		return nil, err
 	}
 
 	return &ast.When{
 		TokPos: whenTok.Start,
 		Expr:   expr,
-		Body:   body.(*ast.CurlyList),
+		Body:   body.(*ast.Block),
 	}, nil
 }
 
@@ -472,10 +473,10 @@ func (parse *parser) binaryExpr(x ast.Node, precedence int) (ast.Node, error) {
 	}
 
 	for oprKind, ok := operators[parse.tok.Kind]; ok &&
-		precedenceOf(parse.tok.Kind) >= precedence; {
+		precedences[parse.tok.Kind] >= precedence; {
 
 		oprTok := parse.next()
-		y, err := parse.binaryExpr(nil, precedenceOf(oprTok.Kind)+1)
+		y, err := parse.binaryExpr(nil, precedences[oprTok.Kind]+1)
 
 		if err != nil {
 			return nil, err
@@ -522,7 +523,7 @@ func (parse *parser) primary(x ast.Node) (ast.Node, error) {
 				return nil, err
 			}
 
-			x = &ast.Call{X: x, Args: args.(*ast.ParenList)}
+			x = &ast.Call{X: x, Args: args.(*ast.Parens)}
 
 		default:
 			return x, nil

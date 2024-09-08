@@ -128,8 +128,8 @@ func (gen *generator) fnDef(sym *checker.Func, tyResult types.Type) {
 		gen.linef("init%s();\n", gen.Module.Name())
 	}
 
-	if list, _ := value.Body.(*ast.CurlyList); list != nil {
-		gen.block(list.StmtList, resultVar)
+	if list, _ := value.Body.(*ast.Stmts); list != nil {
+		gen.block(list, resultVar)
 	} else if resultVar != nil {
 		gen.assign("__result", value.Body)
 	}

@@ -7,7 +7,7 @@ import (
 	"github.com/saffage/jet/types"
 )
 
-func (gen *generator) arrayInit(prefix string, node *ast.BracketList, _ *types.Array) {
+func (gen *generator) arrayInit(prefix string, node *ast.List, _ *types.Array) {
 	for i, expr := range node.Nodes {
 		gen.linef("%s[%d] = %s;\n", prefix, i, gen.exprString(expr))
 	}
@@ -17,7 +17,7 @@ func (gen *generator) arrayAssign(dest string, src ast.Node, ty *types.Array) {
 	if _, ok := src.(*ast.Call); ok {
 		expr := gen.exprString(src)
 		gen.linef("%s;\n", strings.Replace(expr, "/*RESULT*/", dest, -1))
-	} else if lit, ok := src.(*ast.BracketList); ok {
+	} else if lit, ok := src.(*ast.List); ok {
 		gen.arrayInit(dest, lit, ty)
 	} else {
 		gen.linef(

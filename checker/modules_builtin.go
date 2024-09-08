@@ -12,6 +12,8 @@ import (
 	"github.com/saffage/jet/report"
 )
 
+var ErrInvalidPkgPath = errors.New("invalid path to the package")
+
 // This module contains the declaration of the Jet built-in types.
 var ModuleBuiltin *Module = NewModule(NewScope(nil, "module builtin"), "builtin", nil)
 
@@ -123,5 +125,3 @@ func checkBuiltInPkgsAux(cfg *config.Config) error {
 
 	return nil
 }
-
-var ErrorInvalidPkgPath = errors.New("invalid path to the package")

@@ -54,7 +54,7 @@ func (gen *generator) defs(
 		}
 
 		switch sym := def.(type) {
-		case *checker.Var:
+		case *checker.Binding:
 			gen.globalVarDecl(sym)
 
 		case *checker.Const:

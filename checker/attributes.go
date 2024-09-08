@@ -32,7 +32,7 @@ func FindAttr(attrList *ast.AttributeList, attr string) ast.Node {
 	return nil
 }
 
-func (check *Checker) resolveFuncAttrs(sym *Func) {
+func (check *checker) resolveFuncAttrs(sym *Func) {
 	if sym.node.Attrs == nil {
 		return
 	}
@@ -100,7 +100,7 @@ func (check *Checker) resolveFuncAttrs(sym *Func) {
 	}
 }
 
-func (check *Checker) attrExternC(sym Symbol, node ast.Node) {
+func (check *checker) attrExternC(sym Symbol, node ast.Node) {
 	externName := ""
 
 	switch node := node.(type) {

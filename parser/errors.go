@@ -18,12 +18,9 @@ var (
 	ErrExpectedBlock          = errors.New("expected block")
 	ErrExpectedBlockOrIf      = errors.New("expected block or 'if' clause")
 	ErrExpectedType           = errors.New("expected type")
-	ErrExpectedTypeName       = errors.New("expected type name")
-	ErrExpectedTypeOrValue    = errors.New("expected type or value")
 	ErrExpectedDecl           = errors.New("expected declaration")
 	ErrExpectedDeclAfterAttrs = errors.New("expected declaration after attribute list")
 	ErrExpectedIdent          = errors.New("expected identifier")
-	ErrExpectedIdentAfterMut  = errors.New("expected identifier after 'mut'")
 )
 
 type Error struct {
@@ -57,9 +54,9 @@ func newErrorf(err error, start, end token.Pos, format string, args ...any) *Err
 
 func (e *Error) Error() string {
 	if e.Message != "" {
-		return e.err.Error() + ": " + e.Message
+		return "invalid syntax: " + e.err.Error() + ": " + e.Message
 	}
-	return e.err.Error()
+	return "invalid syntax: " + e.err.Error()
 }
 
 func (e *Error) Unwrap() error {

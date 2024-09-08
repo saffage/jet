@@ -6,32 +6,40 @@ import (
 	"github.com/saffage/jet/types"
 )
 
-type Var struct {
+type Binding struct {
 	owner    *Scope
 	t        types.Type
-	node     *ast.LetDecl
+	node     *ast.Decl
+	letNode  *ast.LetDecl // May be nil.
+	label    *ast.Name    // May be nil.
 	isParam  bool
 	isField  bool
 	isGlobal bool
 }
 
-func NewVar(owner *Scope, t types.Type, decl *ast.LetDecl) *Var {
+func NewBinding(owner *Scope, t types.Type, decl *ast.Decl, letNode *ast.LetDecl) *Binding {
 	assert(!types.IsUntyped(t))
-	return &Var{owner: owner, t: t, node: decl}
+	return &Binding{owner: owner, t: t, node: decl, letNode: letNode}
 }
 
-func (v *Var) Owner() *Scope    { return v.owner }
-func (v *Var) Type() types.Type { return v.t }
-func (v *Var) Name() string     { return v.Ident().Ident() }
-func (v *Var) Ident() ast.Ident { return v.node.Decl.Name }
-func (v *Var) Node() ast.Node   { return v.node }
-func (v *Var) Value() ast.Node  { return v.node.Value }
-func (v *Var) IsLocal() bool    { return !v.isParam && !v.isField && !v.isGlobal }
-func (v *Var) IsParam() bool    { return v.isParam }
-func (v *Var) IsField() bool    { return v.isField }
-func (v *Var) IsGlobal() bool   { return v.isGlobal }
+func (v *Binding) Owner() *Scope    { return v.owner }
+func (v *Binding) Type() types.Type { return v.t }
+func (v *Binding) Name() string     { return v.Ident().String() }
+func (v *Binding) Ident() ast.Ident { return v.node.Name }
+func (v *Binding) Node() ast.Node   { return v.node }
+func (v *Binding) IsLocal() bool    { return !v.isParam && !v.isField && !v.isGlobal }
+func (v *Binding) IsParam() bool    { return v.isParam }
+func (v *Binding) IsField() bool    { return v.isField }
+func (v *Binding) IsGlobal() bool   { return v.isGlobal }
 
-func (check *Checker) resolveVarDecl(node *ast.LetDecl) {
+func (v *Binding) Value() ast.Node {
+	if v.letNode != nil {
+		return v.letNode.Value
+	}
+	return nil
+}
+
+func (check *checker) resolveVarDecl(node *ast.LetDecl) {
 	// 'tValue' can be nil.
 	tValue, ok := check.resolveVarValue(node.Value)
 	if !ok {
@@ -70,7 +78,7 @@ func (check *Checker) resolveVarDecl(node *ast.LetDecl) {
 	}
 
 	report.TaggedDebugf("checker", "var type: %s", tType)
-	sym := NewVar(check.scope, tType, node)
+	sym := NewBinding(check.scope, tType, node.Decl, node)
 	sym.isGlobal = sym.owner == check.module.Scope
 
 	if defined := check.scope.Define(sym); defined != nil {
@@ -81,7 +89,7 @@ func (check *Checker) resolveVarDecl(node *ast.LetDecl) {
 	check.newDef(node.Decl.Name, sym)
 }
 
-func (check *Checker) resolveVarValue(value ast.Node) (types.Type, bool) {
+func (check *checker) resolveVarValue(value ast.Node) (types.Type, bool) {
 	if value != nil {
 		t := check.typeOf(value)
 		if t == nil {
@@ -99,7 +107,7 @@ func (check *Checker) resolveVarValue(value ast.Node) (types.Type, bool) {
 	return nil, true
 }
 
-func (check *Checker) resolveVarType(typeExpr ast.Node, value types.Type) types.Type {
+func (check *checker) resolveVarType(typeExpr ast.Node, value types.Type) types.Type {
 	if typeExpr == nil {
 		return value
 	}

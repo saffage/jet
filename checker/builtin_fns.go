@@ -6,7 +6,7 @@ import (
 	"github.com/saffage/jet/types"
 )
 
-func builtInBuiltin(node *ast.ParenList, args []*TypedValue) (*TypedValue, error) {
+func builtInBuiltin(node *ast.Parens, args []*TypedValue) (*TypedValue, error) {
 	strval := constant.AsString(args[0].Value)
 	if strval == nil {
 		panic("unreachable")
@@ -60,34 +60,34 @@ func builtInBuiltin(node *ast.ParenList, args []*TypedValue) (*TypedValue, error
 	}
 }
 
-func builtInTypeOf(node *ast.ParenList, args []*TypedValue) (*TypedValue, error) {
+func builtInTypeOf(node *ast.Parens, args []*TypedValue) (*TypedValue, error) {
 	return &TypedValue{
 		Type:  types.NewTypeDesc(types.SkipUntyped(args[0].Type)),
 		Value: nil,
 	}, nil
 }
 
-func builtInPrint(node *ast.ParenList, args []*TypedValue) (*TypedValue, error) {
+func builtInPrint(node *ast.Parens, args []*TypedValue) (*TypedValue, error) {
 	return &TypedValue{types.Unit, nil}, nil
 }
 
-func builtInAssert(node *ast.ParenList, args []*TypedValue) (*TypedValue, error) {
+func builtInAssert(node *ast.Parens, args []*TypedValue) (*TypedValue, error) {
 	return &TypedValue{types.Unit, nil}, nil
 }
 
-func builtInAsPtr(node *ast.ParenList, args []*TypedValue) (*TypedValue, error) {
+func builtInAsPtr(node *ast.Parens, args []*TypedValue) (*TypedValue, error) {
 	return &TypedValue{types.NewRef(types.U8), nil}, nil
 }
 
-func builtInCast(node *ast.ParenList, args []*TypedValue) (*TypedValue, error) {
+func builtInCast(node *ast.Parens, args []*TypedValue) (*TypedValue, error) {
 	// TODO some additional checks
 	return &TypedValue{types.SkipTypeDesc(args[0].Type), nil}, nil
 }
 
-func builtInSizeOf(node *ast.ParenList, args []*TypedValue) (*TypedValue, error) {
+func builtInSizeOf(node *ast.Parens, args []*TypedValue) (*TypedValue, error) {
 	return &TypedValue{types.U64, nil}, nil
 }
 
-func builtInEmit(node *ast.ParenList, args []*TypedValue) (*TypedValue, error) {
+func builtInEmit(node *ast.Parens, args []*TypedValue) (*TypedValue, error) {
 	return &TypedValue{types.Unit, nil}, nil
 }

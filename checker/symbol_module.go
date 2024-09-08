@@ -12,11 +12,11 @@ type Module struct {
 	Imports []*Module
 
 	name      string
-	stmts     *ast.StmtList
+	stmts     *ast.Stmts
 	completed bool
 }
 
-func NewModule(scope *Scope, name string, stmts *ast.StmtList) *Module {
+func NewModule(scope *Scope, name string, stmts *ast.Stmts) *Module {
 	return &Module{
 		TypeInfo: &TypeInfo{
 			Defs:     orderedmap.NewOrderedMap[ast.Ident, Symbol](),
@@ -66,22 +66,26 @@ func (m *Module) ValueOf(expr ast.Node) *TypedValue {
 }
 
 func (m *Module) SymbolOf(ident ast.Ident) Symbol {
-	if ident != nil {
-		if sym := m.TypeInfo.SymbolOf(ident); sym != nil {
-			return sym
-		}
-		if sym, _ := m.Scope.Lookup(ast.Data(ident)); sym != nil {
-			return sym
-		}
+	if sym := m.TypeInfo.SymbolOf(ident); sym != nil {
+		return sym
+	}
+	if sym, _ := m.Scope.Lookup(ast.Data(ident)); sym != nil {
+		return sym
 	}
 	return nil
 }
 
-func (check *Checker) Visit(node ast.Node) ast.Visitor {
-	if decl, _ := node.(*ast.LetDecl); decl != nil {
-		check.resolveDecl(decl)
-		return nil
+func (check *checker) Visit(node ast.Node) ast.Visitor {
+	switch node := node.(type) {
+	case *ast.LetDecl:
+		check.resolveLetDecl(node)
+
+	case *ast.TypeDecl:
+		check.resolveTypeDecl(node)
+
+	default:
+		panic("ill-formed AST")
 	}
 
-	panic("ill-formed AST")
+	return nil
 }

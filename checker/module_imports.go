@@ -11,7 +11,7 @@ import (
 	"github.com/saffage/jet/report"
 )
 
-func (check *Checker) resolveImport(node *ast.Import) {
+func (check *checker) resolveImport(node *ast.Import) {
 	path := check.resolveImportPath(node.Module)
 	if path == "" {
 		check.errorf(node.Module, "cannot find module named '%s'", node.Module)
@@ -44,7 +44,7 @@ func (check *Checker) resolveImport(node *ast.Import) {
 	check.newDef(node.Module, m)
 }
 
-func (check *Checker) resolveImportPath(ident *ast.Name) string {
+func (check *checker) resolveImportPath(ident *ast.Name) string {
 	modulePath := ""
 	dir := filepath.Dir(check.cfg.Files[check.fileID].Path)
 	err := filepath.Walk(dir, makeWalkFunc(dir, ident.Data, &modulePath))

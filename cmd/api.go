@@ -3,10 +3,13 @@ package cmd
 import (
 	"bytes"
 	"errors"
+	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/saffage/jet/config"
 	"github.com/saffage/jet/report"
+	"github.com/saffage/jet/token"
 	"github.com/urfave/cli/v2"
 )
 
@@ -83,6 +86,14 @@ func Run(args []string) error {
 				Before:          beforeBuild,
 			},
 			{
+				Name:            "check",
+				Usage:           "perform check of the specified file",
+				ArgsUsage:       " <file path>",
+				Args:            true,
+				HideHelpCommand: true,
+				Action:          actionCheck,
+			},
+			{
 				Name:            "parse-ast",
 				Usage:           "parses program AST and prints it in YAML format",
 				ArgsUsage:       " <file path>",
@@ -120,7 +131,7 @@ func beforeCommand(ctx *cli.Context) error {
 	return nil
 }
 
-func readFileToConcig(ctx *cli.Context, cfg *config.Config, fileID config.FileID) error {
+func readFileToConfig(ctx *cli.Context, cfg *config.Config, fileID config.FileID) error {
 	if !ctx.Args().Present() {
 		return errors.New("expected path to a file")
 	}
@@ -141,4 +152,37 @@ func readFileToConcig(ctx *cli.Context, cfg *config.Config, fileID config.FileID
 		Buf:  bytes.NewBuffer(data),
 	}
 	return nil
+}
+
+func readFile(path string) (name string, data []byte, err error) {
+	stat, err := os.Stat(path)
+	if err != nil {
+		return
+	}
+
+	if !stat.Mode().IsRegular() {
+		err = fmt.Errorf("'%s' is not a file", path)
+		return
+	}
+
+	fileExt := filepath.Ext(path)
+
+	if fileExt != ".jet" {
+		err = fmt.Errorf("expected file extension '.jet', got '%s' instead", fileExt)
+		return
+	}
+
+	name = filepath.Base(path[:len(path)-len(fileExt)])
+	if _, err = token.IsValidIdent(name); err != nil {
+		err = errors.Join(fmt.Errorf("filename is not a valid identifier"), err)
+		return
+	}
+
+	data, err = os.ReadFile(path)
+	if err != nil {
+		err = errors.Join(fmt.Errorf("while reading file '%s'", path), err)
+		return
+	}
+
+	return
 }

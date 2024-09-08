@@ -14,7 +14,7 @@ var (
 	ErrDuplicateEOFToken = errors.New("duplicate EOF token")
 )
 
-func Parse(tokens []token.Token, flags Flags) (*ast.StmtList, error) {
+func Parse(tokens []token.Token, flags Flags) (*ast.Stmts, error) {
 	p, err := New(tokens, flags)
 	if err != nil {
 		return nil, err
@@ -22,7 +22,7 @@ func Parse(tokens []token.Token, flags Flags) (*ast.StmtList, error) {
 	return p.Parse()
 }
 
-func MustParse(tokens []token.Token, flags Flags) *ast.StmtList {
+func MustParse(tokens []token.Token, flags Flags) *ast.Stmts {
 	p, err := New(tokens, flags)
 	if err != nil {
 		panic(err)
@@ -68,17 +68,15 @@ func New(tokens []token.Token, flags Flags) (*parser, error) {
 	return &parser{tokens: tokens, flags: flags, tok: tokens[0]}, nil
 }
 
-func (parse *parser) Parse() (*ast.StmtList, error) {
-	decls, err := parse.decls()
-	stmts, _ := decls.(*ast.StmtList)
-	return stmts, err
+func (parse *parser) Parse() (*ast.Stmts, error) {
+	return parse.decls()
 }
 
 func (parse *parser) ParseExpr() (ast.Node, error) {
 	return parse.expr()
 }
 
-func (parse *parser) MustParse() *ast.StmtList {
+func (parse *parser) MustParse() *ast.Stmts {
 	decls, err := parse.Parse()
 	if err != nil {
 		panic(err)

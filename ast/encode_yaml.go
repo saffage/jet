@@ -35,6 +35,7 @@ func (n *Deref) MarshalYAML() (any, error)      { return wrap(n), nil }
 func (n *Op) MarshalYAML() (any, error)         { return wrap(n), nil }
 
 func (n *List) MarshalYAML() (any, error)   { return wrap(n), nil }
+func (n *Block) MarshalYAML() (any, error)  { return wrap(n), nil }
 func (n *Parens) MarshalYAML() (any, error) { return wrap(n), nil }
 func (n *Stmts) MarshalYAML() (any, error)  { return wrap(n), nil }
 

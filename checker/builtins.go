@@ -5,7 +5,7 @@ import (
 	"github.com/saffage/jet/types"
 )
 
-type BuiltInFunc func(node *ast.ParenList, args []*TypedValue) (*TypedValue, error)
+type BuiltInFunc func(node *ast.Parens, args []*TypedValue) (*TypedValue, error)
 
 type BuiltIn struct {
 	name string

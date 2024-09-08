@@ -49,7 +49,7 @@ func ParseAst(cfg *config.Config) error {
 }
 
 func actionParseAst(ctx *cli.Context) error {
-	err := readFileToConcig(ctx, config.Global, config.MainFileID)
+	err := readFileToConfig(ctx, config.Global, config.MainFileID)
 	if err != nil {
 		return err
 	}

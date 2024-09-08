@@ -3,7 +3,6 @@ package checker
 import (
 	"fmt"
 	"math/big"
-	"slices"
 	"strings"
 
 	"github.com/saffage/jet/ast"
@@ -64,13 +63,8 @@ func constantFromNode(node *ast.Literal) constant.Value {
 	}
 }
 
-func (check *Checker) valueOfInternal(expr ast.Node) *TypedValue {
+func (check *checker) valueOfInternal(expr ast.Node) *TypedValue {
 	switch node := expr.(type) {
-	case *ast.Call:
-		if builtIn, _ := node.X.(*ast.BuiltIn); builtIn != nil {
-			return check.resolveBuiltInCall(builtIn, node)
-		}
-
 	case *ast.Literal:
 		value := constantFromNode(node)
 
@@ -137,55 +131,55 @@ func (check *Checker) valueOfInternal(expr ast.Node) *TypedValue {
 	return nil
 }
 
-func (check *Checker) resolveBuiltInCall(node *ast.BuiltIn, call *ast.Call) *TypedValue {
-	idx := slices.IndexFunc(builtIns, func(b *BuiltIn) bool {
-		return b.name == node.Data
-	})
-	if idx == -1 {
-		check.errorf(node, "unknown built-in function '%s'", node.Repr())
-		return nil
-	}
+// func (check *checker) resolveBuiltInCall(node *ast.BuiltIn, call *ast.Call) *TypedValue {
+// 	idx := slices.IndexFunc(builtIns, func(b *BuiltIn) bool {
+// 		return b.name == node.Data
+// 	})
+// 	if idx == -1 {
+// 		check.errorf(node, "unknown built-in function '%s'", node.Repr())
+// 		return nil
+// 	}
 
-	builtIn := builtIns[idx]
+// 	builtIn := builtIns[idx]
 
-	tyArgList := check.typeOfParenList(call.Args)
-	if tyArgList == nil {
-		return nil
-	}
+// 	tyArgList := check.typeOfParenList(call.Args)
+// 	if tyArgList == nil {
+// 		return nil
+// 	}
 
-	tyArgs, _ := tyArgList.(*types.Tuple)
-	if tyArgs == nil {
-		return nil
-	}
+// 	tyArgs, _ := tyArgList.(*types.Tuple)
+// 	if tyArgs == nil {
+// 		return nil
+// 	}
 
-	if idx, err := builtIn.t.CheckArgs(tyArgs); err != nil {
-		n := ast.Node(call.Args)
+// 	if idx, err := builtIn.t.CheckArgs(tyArgs); err != nil {
+// 		n := ast.Node(call.Args)
 
-		if idx < len(call.Args.Nodes) {
-			n = call.Args.Nodes[idx]
-		}
+// 		if idx < len(call.Args.Nodes) {
+// 			n = call.Args.Nodes[idx]
+// 		}
 
-		check.errorf(n, err.Error())
-		return nil
-	}
+// 		check.errorf(n, err.Error())
+// 		return nil
+// 	}
 
-	vArgs := make([]*TypedValue, tyArgs.Len())
+// 	vArgs := make([]*TypedValue, tyArgs.Len())
 
-	for i := range len(vArgs) {
-		vArgs[i] = check.module.Types[call.Args.Nodes[i]]
-	}
+// 	for i := range len(vArgs) {
+// 		vArgs[i] = check.module.Types[call.Args.Nodes[i]]
+// 	}
 
-	value, err := builtIn.f(call.Args, vArgs)
-	if err != nil {
-		check.addError(err)
-		return nil
-	}
-	if value == nil {
-		return nil
-	}
+// 	value, err := builtIn.f(call.Args, vArgs)
+// 	if err != nil {
+// 		check.addError(err)
+// 		return nil
+// 	}
+// 	if value == nil {
+// 		return nil
+// 	}
 
-	return value
-}
+// 	return value
+// }
 
 func comptimeBinaryOp(x, y constant.Value, opKind ast.OperatorKind) constant.Value {
 	assert(x.Kind() == y.Kind())

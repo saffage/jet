@@ -26,12 +26,12 @@ func NewEnum(owner *Scope, body *Scope, t *types.TypeDesc, decl *ast.LetDecl) *E
 
 func (sym *Enum) Owner() *Scope    { return sym.owner }
 func (sym *Enum) Type() types.Type { return sym.t }
-func (sym *Enum) Name() string     { return sym.Ident().Ident() }
+func (sym *Enum) Name() string     { return sym.Ident().String() }
 func (sym *Enum) Ident() ast.Ident { return sym.decl.Decl.Name }
 func (sym *Enum) Node() ast.Node   { return sym.decl }
 
-func (check *Checker) resolveEnumDecl(decl *ast.LetDecl, value *ast.EnumType) {
-	bodyScope := NewScope(check.scope, "enum "+decl.Decl.Name.Ident())
+func (check *checker) resolveEnumDecl(decl *ast.LetDecl, value *ast.EnumType) {
+	bodyScope := NewScope(check.scope, "enum "+decl.Decl.Name.String())
 	fields := make([]string, 0, len(value.Fields))
 
 	for _, ident := range value.Fields {
@@ -48,7 +48,7 @@ func (check *Checker) resolveEnumDecl(decl *ast.LetDecl, value *ast.EnumType) {
 	check.newDef(decl.Decl.Name, sym)
 }
 
-func (check *Checker) enumMember(node *ast.Dot, t *types.Enum) types.Type {
+func (check *checker) enumMember(node *ast.Dot, t *types.Enum) types.Type {
 	idx := slices.Index(t.Fields(), node.Y.Data)
 	if idx == -1 {
 		check.errorf(node.Y, "type has no member named '%s'", node.Y.Data)

@@ -25,7 +25,7 @@ func (gen *generator) exprString(expr ast.Node) string {
 
 	case *ast.Name:
 		switch sym := gen.SymbolOf(node).(type) {
-		case *checker.Var, *checker.Func:
+		case *checker.Binding, *checker.Func:
 			return gen.name(sym)
 
 		case *checker.Const:
@@ -72,8 +72,8 @@ func (gen *generator) exprString(expr ast.Node) string {
 
 		return gen.exprString(node.X) + "." + node.Y.Data
 
-	case *ast.Deref:
-		return fmt.Sprintf("(*%s)", gen.exprString(node.X))
+	// case *ast.Deref:
+	// 	return fmt.Sprintf("(*%s)", gen.exprString(node.X))
 
 	// case *ast.PrefixOp:
 	// 	typedValue := gen.Types[node]
@@ -109,9 +109,9 @@ func (gen *generator) exprString(expr ast.Node) string {
 		return gen.binary(node.X, node.Y, tv.Type, node.Kind)
 
 	case *ast.Call:
-		if builtIn, _ := node.X.(*ast.BuiltIn); builtIn != nil {
-			return gen.BuiltInCall(builtIn, node)
-		}
+		// if builtIn, _ := node.X.(*ast.BuiltIn); builtIn != nil {
+		// 	return gen.BuiltInCall(builtIn, node)
+		// }
 
 		tv := gen.Types[node.X]
 		if tv == nil {
@@ -162,7 +162,7 @@ func (gen *generator) exprString(expr ast.Node) string {
 		buf.WriteByte(']')
 		return "(" + buf.String() + ")"
 
-	case *ast.BracketList:
+	case *ast.List:
 		// NOTE when array is used not in assignment they
 		// must be prefixes with the type.
 		tv := gen.Types[expr]
@@ -177,33 +177,33 @@ func (gen *generator) exprString(expr ast.Node) string {
 		}
 		return gen.name(tmpVar)
 
-	case *ast.If:
+	// case *ast.If:
+	// 	ty := gen.TypeOf(expr)
+	// 	if ty == nil {
+	// 		panic("if expression have no type")
+	// 	}
+
+	// 	tmpVar := gen.tempVar(types.SkipUntyped(ty))
+	// 	gen.ifExpr(node, tmpVar)
+	// 	if tmpVar == nil {
+	// 		return ""
+	// 	}
+	// 	return gen.name(tmpVar)
+
+	case *ast.Stmts:
 		ty := gen.TypeOf(expr)
 		if ty == nil {
 			panic("if expression have no type")
 		}
-
 		tmpVar := gen.tempVar(types.SkipUntyped(ty))
-		gen.ifExpr(node, tmpVar)
+		gen.block(node, tmpVar)
 		if tmpVar == nil {
 			return ""
 		}
 		return gen.name(tmpVar)
 
-	case *ast.CurlyList:
-		ty := gen.TypeOf(expr)
-		if ty == nil {
-			panic("if expression have no type")
-		}
-		tmpVar := gen.tempVar(types.SkipUntyped(ty))
-		gen.block(node.StmtList, tmpVar)
-		if tmpVar == nil {
-			return ""
-		}
-		return gen.name(tmpVar)
-
-	case *ast.Defer:
-		return ""
+	// case *ast.Defer:
+	// 	return ""
 
 	default:
 		report.TaggedErrorf(
@@ -419,28 +419,28 @@ func (gen *generator) constant(value constant.Value) string {
 	}
 }
 
-func (gen *generator) ifExpr(node *ast.If, result *checker.Var) {
+func (gen *generator) ifExpr(node *ast.If, result *checker.Binding) {
 	gen.linef("if (%s)\n", gen.exprString(node.Cond))
-	gen.block(node.Body.StmtList, result)
+	gen.block(node.Body, result)
 
 	if node.Else != nil {
 		gen.elseExpr(node.Else, result)
 	}
 }
 
-func (gen *generator) elseExpr(node *ast.Else, result *checker.Var) {
+func (gen *generator) elseExpr(node *ast.Else, result *checker.Binding) {
 	switch body := node.Body.(type) {
-	case *ast.If:
-		gen.linef("else if (%s)\n", gen.exprString(body.Cond))
-		gen.block(body.Body.StmtList, result)
+	// case *ast.If:
+	// 	gen.linef("else if (%s)\n", gen.exprString(body.Cond))
+	// 	gen.block(body.Body.StmtList, result)
 
-		if body.Else != nil {
-			gen.elseExpr(body.Else, result)
-		}
+	// 	if body.Else != nil {
+	// 		gen.elseExpr(body.Else, result)
+	// 	}
 
-	case *ast.CurlyList:
+	case *ast.Stmts:
 		gen.line("else\n")
-		gen.block(body.StmtList, result)
+		gen.block(body, result)
 
 	default:
 		panic("unreachable")
