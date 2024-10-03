@@ -3,7 +3,7 @@ package parser
 import (
 	"slices"
 
-	"github.com/saffage/jet/token"
+	"github.com/saffage/jet/parser/token"
 )
 
 func (parse *parser) next() (prev token.Token) {

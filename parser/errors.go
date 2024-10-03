@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/saffage/jet/parser/token"
 	"github.com/saffage/jet/report"
-	"github.com/saffage/jet/token"
 )
 
 var (
@@ -18,6 +18,8 @@ var (
 	ErrExpectedBlock          = errors.New("expected block")
 	ErrExpectedBlockOrIf      = errors.New("expected block or 'if' clause")
 	ErrExpectedType           = errors.New("expected type")
+	ErrExpectedTypeVar        = errors.New("expected type variable")
+	ErrExpectedTypeOrBlock    = errors.New("expected type or block")
 	ErrExpectedDecl           = errors.New("expected declaration")
 	ErrExpectedDeclAfterAttrs = errors.New("expected declaration after attribute list")
 	ErrExpectedIdent          = errors.New("expected identifier")
@@ -27,27 +29,24 @@ type Error struct {
 	err error
 
 	Message string
-	Start   token.Pos
-	End     token.Pos
+	Range   token.Range
 
 	isWarn     bool
 	isInternal bool
 }
 
-func newError(err error, start, end token.Pos, args ...any) *Error {
+func newError(err error, rng token.Range, args ...any) *Error {
 	return &Error{
 		err:     err,
-		Start:   start,
-		End:     end,
+		Range:   rng,
 		Message: fmt.Sprint(args...),
 	}
 }
 
-func newErrorf(err error, start, end token.Pos, format string, args ...any) *Error {
+func newErrorf(err error, rng token.Range, format string, args ...any) *Error {
 	return &Error{
 		err:     err,
-		Start:   start,
-		End:     end,
+		Range:   rng,
 		Message: fmt.Sprintf(format, args...),
 	}
 }
@@ -63,34 +62,38 @@ func (e *Error) Unwrap() error {
 	return e.err
 }
 
-func (e *Error) Report() {
-	err, ok := e.err.(report.Reporter)
-	if ok && err != nil {
-		err.Report()
+func (e *Error) Info() *report.Info {
+	if p, ok := e.err.(report.Problem); ok {
+		return p.Info()
 	}
-	if !ok || e.Message != "" {
-		tag := "parser"
-		if e.isInternal {
-			tag = "internal: " + tag
-		}
-		message := e.err.Error()
-		if e.Message != "" {
-			message += ": " + e.Message
-		}
-		if e.isWarn {
-			report.TaggedWarningAt(tag, e.Start, e.End, message)
-		} else {
-			report.TaggedErrorAt(tag, e.Start, e.End, message)
-		}
+
+	info := &report.Info{
+		Tag:   "parser",
+		Title: e.err.Error(),
+		Range: e.Range,
 	}
+
+	if e.Message != "" {
+		info.Title += ": " + e.Message
+	}
+
+	if e.isInternal {
+		info.Tag += ", internal"
+	}
+
+	if e.isWarn {
+		info.Kind = report.KindWarning
+	}
+
+	return info
 }
 
 func (parse *parser) error(err error, args ...any) error {
-	return newError(err, parse.tok.Start, parse.tok.End, args...)
+	return newError(err, parse.tok.Range, args...)
 }
 
 func (parse *parser) errorf(err error, format string, args ...any) error {
-	return newErrorf(err, parse.tok.Start, parse.tok.End, format, args...)
+	return newErrorf(err, parse.tok.Range, format, args...)
 }
 
 // func (p *parser) errorExpectedTokenAt(start, end token.Pos, tokens ...token.Kind) {

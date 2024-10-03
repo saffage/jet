@@ -1,7 +1,5 @@
 package ast
 
-import "fmt"
-
 // Applies some action to a node.
 //
 // The result must be the next action to be performed on each
@@ -11,8 +9,8 @@ type Visitor interface {
 	Visit(Node) Visitor
 }
 
-// Preorder\top-down traversal.
-// Visit a parent node before visiting its children.
+// Top-down traversal. Visit a parent node before visiting its children.
+//
 // Each node is terminated by a call with 'nil' argument.
 //
 // Example:
@@ -24,156 +22,174 @@ type Visitor interface {
 //   - - List(len: 0)
 //   - - List(nil)
 //   - List(nil)
-func WalkTopDown(tree Node, visitor Visitor) {
-	if tree == nil {
+func WalkTopDown(n Node, v Visitor) {
+	if n == nil {
 		panic("can't walk a nil node")
 	}
-
-	if visitor = visitor.Visit(tree); visitor == nil {
+	if v = v.Visit(n); v == nil {
 		return
 	}
-
-	switch n := tree.(type) {
-	case *BadNode, *Empty, *Name, *Type, *Underscore, *Literal:
-		// Nothing to walk
-
-	case *AttributeList:
-		assert(n.List != nil)
-
-		walkList(n.List.Nodes, visitor)
-
-	case *LetDecl:
-		assert(n.Decl.Name != nil)
-		assert(n.Value != nil)
-
-		if n.Attrs != nil {
-			WalkTopDown(n.Attrs, visitor)
-		}
-
-		WalkTopDown(n.Decl.Name, visitor)
-
-		if n.Decl.Type != nil {
-			WalkTopDown(n.Decl.Type, visitor)
-		}
-
-		WalkTopDown(n.Value, visitor)
-
-	case *TypeDecl:
-		assert(n.Name != nil)
-		assert(n.Expr != nil)
-
-		if n.Attrs != nil {
-			WalkTopDown(n.Attrs, visitor)
-		}
-
-		WalkTopDown(n.Name, visitor)
-
-		if n.Args != nil {
-			walkList(n.Args.Nodes, visitor)
-		}
-
-		WalkTopDown(n.Expr, visitor)
-
-	case *Decl:
-		assert(n.Name != nil)
-
-		WalkTopDown(n.Name, visitor)
-
-		if n.Type != nil {
-			WalkTopDown(n.Type, visitor)
-		}
-
-	case *Label:
-		assert(n.Label != nil)
-		assert(n.X != nil)
-
-		WalkTopDown(n.Label, visitor)
-		WalkTopDown(n.X, visitor)
-
-	case *Signature:
-		assert(n.Params != nil)
-
-		walkList(n.Params.Nodes, visitor)
-
-		if n.Result != nil {
-			WalkTopDown(n.Result, visitor)
-		}
-
-	case *Call:
-		assert(n.X != nil)
-		assert(n.Args != nil)
-
-		WalkTopDown(n.X, visitor)
-		walkList(n.Args.Nodes, visitor)
-
-	case *Index:
-		assert(n.X != nil)
-		assert(n.Args != nil)
-
-		WalkTopDown(n.X, visitor)
-		walkList(n.Args.Nodes, visitor)
-
-	case *Function:
-		assert(n.Signature != nil)
-		assert(n.Body != nil)
-
-		WalkTopDown(n.Signature, visitor)
-		WalkTopDown(n.Body, visitor)
-
-	case *Dot:
-		assert(n.X != nil)
-		assert(n.Y != nil)
-
-		WalkTopDown(n.X, visitor)
-		WalkTopDown(n.Y, visitor)
-
-	case *Op:
-		assert(n.X != nil)
-		assert(n.Y != nil)
-
-		if n.X != nil {
-			WalkTopDown(n.X, visitor)
-		}
-
-		if n.Y != nil {
-			WalkTopDown(n.Y, visitor)
-		}
-
-	case *Stmts:
-		walkList(n.Nodes, visitor)
-
-	case *Block:
-		walkList(n.Stmts.Nodes, visitor)
-
-	case *List:
-		walkList(n.Nodes, visitor)
-
-	case *Parens:
-		walkList(n.Nodes, visitor)
-
-	case *When:
-		assert(n.Expr != nil)
-		assert(n.Body != nil)
-
-		WalkTopDown(n.Expr, visitor)
-		walkList(n.Body.Stmts.Nodes, visitor)
-
-	default:
-		// Should not happen.
-		panic(fmt.Sprintf("unknown node type '%T'", n))
-	}
-
-	visitor.Visit(nil)
+	n.walk(v)
+	v.Visit(nil)
 }
 
-func walkList(nodes []Node, visitor Visitor) {
+func walkList(nodes []Node, v Visitor) {
 	for _, node := range nodes {
-		WalkTopDown(node, visitor)
+		WalkTopDown(node, v)
 	}
 }
 
 func assert(ok bool) {
 	if !ok {
 		panic("assertion failed")
+	}
+}
+
+type walkable interface {
+	walk(Visitor)
+}
+
+func (node *BadNode) walk(Visitor)    {}
+func (node *Empty) walk(Visitor)      {}
+func (node *Lower) walk(Visitor)      {}
+func (node *Upper) walk(Visitor)      {}
+func (node *TypeVar) walk(Visitor)    {}
+func (node *Underscore) walk(Visitor) {}
+func (node *Literal) walk(Visitor)    {}
+
+func (node *AttributeList) walk(v Visitor) {
+	assert(node.List != nil)
+
+	walkList(node.List.Nodes, v)
+}
+
+func (node *LetDecl) walk(v Visitor) {
+	assert(node.Decl.Name != nil)
+	assert(node.Value != nil)
+
+	if node.Attrs != nil {
+		WalkTopDown(node.Attrs, v)
+	}
+
+	WalkTopDown(node.Decl.Name, v)
+
+	if node.Decl.Type != nil {
+		WalkTopDown(node.Decl.Type, v)
+	}
+
+	WalkTopDown(node.Value, v)
+}
+
+func (node *TypeDecl) walk(v Visitor) {
+	assert(node.Name != nil)
+	assert(node.Expr != nil)
+
+	if node.Attrs != nil {
+		WalkTopDown(node.Attrs, v)
+	}
+
+	WalkTopDown(node.Name, v)
+
+	if node.Args != nil {
+		walkList(node.Args.Nodes, v)
+	}
+
+	WalkTopDown(node.Expr, v)
+}
+
+func (node *Decl) walk(v Visitor) {
+	assert(node.Name != nil)
+
+	WalkTopDown(node.Name, v)
+
+	if node.Type != nil {
+		WalkTopDown(node.Type, v)
+	}
+}
+
+func (node *Variant) walk(v Visitor) {
+	assert(node.Name != nil)
+
+	WalkTopDown(node.Name, v)
+
+	if node.Params != nil {
+		walkList(node.Params.Nodes, v)
+	}
+}
+
+func (node *Label) walk(v Visitor) {
+	assert(node.Name != nil)
+	assert(node.X != nil)
+
+	WalkTopDown(node.Name, v)
+	WalkTopDown(node.X, v)
+}
+
+func (node *Signature) walk(v Visitor) {
+	assert(node.Params != nil)
+
+	walkList(node.Params.Nodes, v)
+
+	if node.Result != nil {
+		WalkTopDown(node.Result, v)
+	}
+}
+
+func (node *Call) walk(v Visitor) {
+	assert(node.X != nil)
+	assert(node.Args != nil)
+
+	WalkTopDown(node.X, v)
+	walkList(node.Args.Nodes, v)
+}
+
+func (node *Dot) walk(v Visitor) {
+	assert(node.X != nil)
+	assert(node.Y != nil)
+
+	WalkTopDown(node.X, v)
+	WalkTopDown(node.Y, v)
+}
+
+func (node *Op) walk(v Visitor) {
+	assert(node.X != nil)
+	assert(node.Y != nil)
+
+	if node.X != nil {
+		WalkTopDown(node.X, v)
+	}
+
+	if node.Y != nil {
+		WalkTopDown(node.Y, v)
+	}
+}
+
+func (node *Stmts) walk(v Visitor) {
+	walkList(node.Nodes, v)
+}
+
+func (node *Block) walk(v Visitor) {
+	walkList(node.Stmts.Nodes, v)
+}
+
+func (node *List) walk(v Visitor) {
+	walkList(node.Nodes, v)
+}
+
+func (node *Parens) walk(v Visitor) {
+	walkList(node.Nodes, v)
+}
+
+func (node *When) walk(v Visitor) {
+	assert(node.Expr != nil)
+	assert(node.Body != nil)
+
+	WalkTopDown(node.Expr, v)
+	walkList(node.Body.Stmts.Nodes, v)
+}
+
+func (node *Extern) walk(v Visitor) {
+	if node.Args != nil {
+		walkList(node.Args.Nodes, v)
 	}
 }

@@ -13,34 +13,35 @@ const (
 	Int Kind = iota
 	Float
 	String
+
+	// TODO remove this
 	Bool
 	Array
 )
 
 type Value interface {
 	Kind() Kind
-	implValue()
 }
 
-func NewBigInt(value *big.Int) Value {
+func NewBigInt(value *big.Int) *intValue {
 	if value == nil {
 		panic("nil argument")
 	}
 	return &intValue{value}
 }
 
-func NewBigFloat(value *big.Float) Value {
+func NewBigFloat(value *big.Float) *floatValue {
 	if value == nil {
 		panic("nil argument")
 	}
 	return &floatValue{value}
 }
 
-func NewBool(value bool) Value     { return &boolValue{value} }
-func NewInt(value int64) Value     { return &intValue{big.NewInt(value)} }
-func NewFloat(value float64) Value { return &floatValue{big.NewFloat(value)} }
-func NewString(value string) Value { return &stringValue{value} }
-func NewArray(value []Value) Value { return &arrayValue{value} }
+func NewBool(value bool) *boolValue       { return &boolValue{value} }
+func NewInt(value int64) *intValue        { return &intValue{big.NewInt(value)} }
+func NewFloat(value float64) *floatValue  { return &floatValue{big.NewFloat(value)} }
+func NewString(value string) *stringValue { return &stringValue{value} }
+func NewArray(value []Value) *arrayValue  { return &arrayValue{value} }
 
 func IsInt(value Value) bool    { return value.Kind() == Int }
 func IsFloat(value Value) bool  { return value.Kind() == Float }
@@ -64,24 +65,21 @@ func AsFloat(value Value) *big.Float {
 
 func AsString(value Value) *string {
 	if IsString(value) {
-		val := value.(*stringValue).val
-		return &val
+		return &value.(*stringValue).val
 	}
 	return nil
 }
 
 func AsBool(value Value) *bool {
 	if IsBool(value) {
-		val := value.(*boolValue).val
-		return &val
+		return &value.(*boolValue).val
 	}
 	return nil
 }
 
 func AsArray(value Value) *[]Value {
 	if IsArray(value) {
-		val := value.(*arrayValue).val
-		return &val
+		return &value.(*arrayValue).val
 	}
 	return nil
 }
@@ -109,9 +107,3 @@ func (v *floatValue) Kind() Kind  { return Float }
 func (v *stringValue) Kind() Kind { return String }
 func (v *boolValue) Kind() Kind   { return Bool }
 func (v *arrayValue) Kind() Kind  { return Array }
-
-func (intValue) implValue()    {}
-func (floatValue) implValue()  {}
-func (stringValue) implValue() {}
-func (boolValue) implValue()   {}
-func (arrayValue) implValue()  {}

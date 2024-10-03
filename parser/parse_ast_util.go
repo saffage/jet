@@ -4,21 +4,21 @@ import (
 	"slices"
 
 	"github.com/saffage/jet/ast"
-	"github.com/saffage/jet/token"
+	"github.com/saffage/jet/parser/token"
 )
 
-func (p *parser) skipUntil(kinds ...token.Kind) (start, end token.Pos) {
+func (p *parser) skipUntil(kinds ...token.Kind) token.Range {
 	if len(kinds) == 0 {
 		panic("must be at least 1 token")
 	}
 
-	start = p.tok.Start
+	rng := p.tok.Range
 
 	for p.tok.Kind != token.EOF && !slices.Contains(kinds, p.tok.Kind) {
-		end = p.next().End
+		rng.End = p.next().End
 	}
 
-	return start, end
+	return rng
 }
 
 var precedences = map[token.Kind]int{
@@ -64,7 +64,7 @@ var operators = map[token.Kind]ast.OperatorKind{
 	token.Eq:         ast.OperatorAssign,
 	token.PlusEq:     ast.OperatorAddAssign,
 	token.MinusEq:    ast.OperatorSubAssign,
-	token.AsteriskEq: ast.OperatorMultAssign,
+	token.AsteriskEq: ast.OperatorMulAssign,
 	token.SlashEq:    ast.OperatorDivAssign,
 	token.PercentEq:  ast.OperatorModAssign,
 	token.EqOp:       ast.OperatorEq,

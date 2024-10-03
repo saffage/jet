@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	"github.com/saffage/jet/ast"
+	"github.com/saffage/jet/parser/scanner"
+	"github.com/saffage/jet/parser/token"
 	"github.com/saffage/jet/report"
-	"github.com/saffage/jet/scanner"
-	"github.com/saffage/jet/token"
 	"gopkg.in/yaml.v3"
 )
 
@@ -162,12 +162,12 @@ func checkError(t *testing.T, got, want error) bool {
 
 	if want == nil {
 		if got != nil {
-			report.Errors(got)
+			report.Error(got)
 			t.Errorf("parsing failed with unexpected error: '%s'", got.Error())
 			return false
 		}
 	} else if got == nil {
-		report.Errors(want)
+		report.Error(want)
 		t.Errorf("expected an error: '%s', got nothing", want.Error())
 		return false
 	}

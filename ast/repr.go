@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-type Representable interface {
+type representable interface {
 	// Representation of the node tree. Result must be equal to the
 	// code from which this tree can be parsed.
 	Repr() string
@@ -16,34 +16,38 @@ type Representable interface {
 // Atoms
 //------------------------------------------------
 
-func (n *BadNode) Repr() string {
+func (node *BadNode) Repr() string {
 	return "__bad_node__"
 }
 
-func (n *Empty) Repr() string {
+func (node *Empty) Repr() string {
 	return ";"
 }
 
-func (n *Name) Repr() string {
-	return n.Data
+func (node *Lower) Repr() string {
+	return node.Data
 }
 
-func (n *Type) Repr() string {
-	return n.Data
+func (node *Upper) Repr() string {
+	return node.Data
 }
 
-func (n *Underscore) Repr() string {
-	return n.Data
+func (node *TypeVar) Repr() string {
+	return node.Data
 }
 
-func (n *Literal) Repr() string {
-	switch n.Kind {
+func (node *Underscore) Repr() string {
+	return node.Data
+}
+
+func (node *Literal) Repr() string {
+	switch node.Kind {
 	case IntLiteral, FloatLiteral:
-		return n.Data
+		return node.Data
 
 	case StringLiteral:
 		// TODO replace [strconv.Quote].
-		return strconv.Quote(n.Data)
+		return strconv.Quote(node.Data[1 : len(node.Data)-1])
 
 	default:
 		panic("unreachable")
@@ -54,153 +58,163 @@ func (n *Literal) Repr() string {
 // Declaration
 //------------------------------------------------
 
-func (n *LetDecl) Repr() string {
-	if n.Attrs != nil {
+func (node *LetDecl) Repr() string {
+	if node.Attrs != nil {
 		return fmt.Sprintf(
 			"%s let %s = %s",
-			n.Attrs.Repr(),
-			n.Decl.Repr(),
-			n.Value.Repr(),
+			node.Attrs.Repr(),
+			node.Decl.Repr(),
+			node.Value.Repr(),
 		)
 	}
 
 	return fmt.Sprintf(
 		"let %s = %s",
-		n.Decl.Repr(),
-		n.Value.Repr(),
+		node.Decl.Repr(),
+		node.Value.Repr(),
 	)
 }
 
-func (n *TypeDecl) Repr() string {
+func (node *TypeDecl) Repr() string {
 	buf := strings.Builder{}
 
-	if n.Attrs != nil {
-		buf.WriteString(n.Attrs.Repr())
+	if node.Attrs != nil {
+		buf.WriteString(node.Attrs.Repr())
 		buf.WriteByte(' ')
 	}
 
-	buf.WriteString("type " + n.Name.Repr())
+	buf.WriteString("type " + node.Name.Repr())
 
-	if n.Args != nil {
-		buf.WriteString(n.Args.Repr())
+	if node.Args != nil {
+		buf.WriteString(node.Args.Repr())
 	}
 
-	buf.WriteString(" = " + n.Expr.Repr())
+	if _, ok := node.Expr.(*Block); ok {
+		buf.WriteString(" " + node.Expr.Repr())
+	} else {
+		buf.WriteString(" = " + node.Expr.Repr())
+	}
+
 	return buf.String()
 }
 
-func (n *Decl) Repr() string {
-	if n.Type != nil {
-		if _, ok := n.Type.(*Parens); ok {
-			return n.Name.Repr() + n.Type.Repr()
+func (node *Decl) Repr() string {
+	switch node.Type.(type) {
+	case *Signature, *Parens:
+		if node.Name == nil {
+			return node.Type.Repr()
 		}
-		return n.Name.Repr() + " " + n.Type.Repr()
+		return node.Name.Repr() + node.Type.Repr()
+
+	default:
+		if node.TypeTok.IsValid() {
+			if node.Name == nil {
+				panic("ast.(*Decl).Repr: type declaration should have name")
+			}
+			if node.Type == nil {
+				return "type " + node.Name.Repr()
+			}
+			return "type " + node.Name.Repr() + " " + node.Type.Repr()
+		}
+		if node.Name == nil {
+			if node.Type == nil {
+				panic("ast.(*Decl).Repr: declaration must have name, type or both")
+			}
+			return node.Type.Repr()
+		}
+		if node.Type == nil {
+			return node.Name.Repr()
+		}
+		return node.Name.Repr() + " " + node.Type.Repr()
 	}
-	return n.Name.Repr()
 }
 
-func (n *AttributeList) Repr() string {
-	return "@" + n.List.Repr()
+func (node *Variant) Repr() string {
+	if node.Params != nil {
+		return node.Name.Repr() + node.Params.Repr()
+	}
+
+	return node.Name.Repr()
 }
 
-// func (n *Comment) Repr() string {
-// 	return "##" + n.Value
-// }
-
-// func (n *CommentGroup) Repr() string {
-// 	buf := strings.Builder{}
-
-// 	for _, comment := range n.Comments {
-// 		buf.WriteString(comment.Repr())
-// 		buf.WriteByte('\n')
-// 	}
-
-// 	return buf.String()
-// }
+func (node *AttributeList) Repr() string {
+	return "@" + node.List.Repr()
+}
 
 //------------------------------------------------
 // Composite nodes
 //------------------------------------------------
 
-func (n *Label) Repr() string {
-	return n.Label.Repr() + ": " + n.X.Repr()
-}
-
-func (n *Signature) Repr() string {
-	if n.Result == nil {
-		return n.Params.Repr()
+func (node *Label) Repr() string {
+	if node.Name != nil {
+		return node.Name.Repr() + ": " + node.X.Repr()
 	}
-	return fmt.Sprintf("%s %s", n.Params.Repr(), n.Result.Repr())
+	return ":" + node.X.Repr()
 }
 
-func (n *Call) Repr() string {
-	return n.X.Repr() + n.Args.Repr()
+func (node *Signature) Repr() string {
+	if node.Result == nil {
+		return node.Params.Repr()
+	}
+	return fmt.Sprintf("%s %s", node.Params.Repr(), node.Result.Repr())
 }
 
-func (n *Index) Repr() string {
-	return n.X.Repr() + n.Args.Repr()
+func (node *Call) Repr() string {
+	return node.X.Repr() + node.Args.Repr()
 }
 
-func (n *Function) Repr() string {
-	return fmt.Sprintf("%s => %s", n.Signature.Repr(), n.Body.Repr())
+func (node *Dot) Repr() string {
+	return node.X.Repr() + "." + node.Y.Repr()
 }
 
-func (n *Dot) Repr() string {
-	return n.X.Repr() + "." + n.Y.Repr()
-}
-
-// func (n *Deref) Repr() string {
-// 	return n.X.Repr() + ".*"
-// }
-
-func (n *Op) Repr() string {
-	if n.X != nil {
-		if n.Y != nil {
+func (node *Op) Repr() string {
+	if node.X != nil {
+		if node.Y != nil {
 			return fmt.Sprintf(
 				"%s %s %s",
-				n.X.Repr(),
-				n.Kind.String(),
-				n.Y.Repr(),
+				node.X.Repr(),
+				node.Kind.String(),
+				node.Y.Repr(),
 			)
 		}
-		return n.X.Repr() + n.Kind.String()
+		return node.X.Repr() + node.Kind.String()
 	}
-	if n.Y != nil {
-		return n.Kind.String() + n.Y.Repr()
+	if node.Y != nil {
+		return node.Kind.String() + node.Y.Repr()
 	}
-	return n.Kind.String()
+	return node.Kind.String()
 }
 
 //------------------------------------------------
 // Lists
 //------------------------------------------------
 
-func (n *Stmts) Repr() string {
-	return printList(n.Nodes, "; ")
+func (node *Stmts) Repr() string {
+	return printList(node.Nodes, "; ")
 }
 
-func (n *Block) Repr() string {
-	if n.Stmts == nil || len(n.Stmts.Nodes) == 0 {
+func (node *Block) Repr() string {
+	if node.Stmts == nil || len(node.Stmts.Nodes) == 0 {
 		return "{}"
 	}
-	return fmt.Sprintf("{ %s }", n.Stmts.Repr())
+	return fmt.Sprintf("{ %s }", node.Stmts.Repr())
 }
 
-func (n *List) Repr() string {
-	return fmt.Sprintf("[%s]", printList(n.Nodes, ", "))
+func (node *List) Repr() string {
+	return fmt.Sprintf("[%s]", printList(node.Nodes, ", "))
 }
 
-func (n *Parens) Repr() string {
-	return fmt.Sprintf("(%s)", printList(n.Nodes, ", "))
+func (node *Parens) Repr() string {
+	return fmt.Sprintf("(%s)", printList(node.Nodes, ", "))
 }
 
 func printList[T Node](nodes []T, separator string) string {
 	buf := strings.Builder{}
-	for i, n := range nodes {
+	for i, node := range nodes {
 		if i > 0 {
 			buf.WriteString(separator)
 		}
-		buf.WriteString(n.Repr())
+		buf.WriteString(node.Repr())
 	}
 	return buf.String()
 }
@@ -209,54 +223,13 @@ func printList[T Node](nodes []T, separator string) string {
 // Language constructions
 //------------------------------------------------
 
-// func (n *If) Repr() string {
-// 	if n.Else != nil {
-// 		return fmt.Sprintf("if %s %s %s", n.Cond.Repr(), n.Body.Repr(), n.Else.Repr())
-// 	}
-// 	return fmt.Sprintf("if %s %s", n.Cond.Repr(), n.Body.Repr())
-// }
-
-// func (n *Else) Repr() string {
-// 	return fmt.Sprintf("else %s", n.Body.Repr())
-// }
-
-// func (n *While) Repr() string {
-// 	return fmt.Sprintf("while %s %s", n.Cond.Repr(), n.Body.Repr())
-// }
-
-// func (n *For) Repr() string {
-// 	return fmt.Sprintf("for %s in %s %s", n.Decls.Repr(), n.IterExpr.Repr(), n.Body.Repr())
-// }
-
-func (n *When) Repr() string {
-	return fmt.Sprintf("when %s %s", n.Expr.Repr(), n.Body.Repr())
+func (node *When) Repr() string {
+	return fmt.Sprintf("when %s %s", node.Expr.Repr(), node.Body.Repr())
 }
 
-// func (n *Defer) Repr() string {
-// 	return fmt.Sprintf("defer %s", n.X.Repr())
-// }
-
-// func (n *Return) Repr() string {
-// 	if n.X != nil {
-// 		return fmt.Sprintf("return %s", n.X.Repr())
-// 	}
-// 	return "return"
-// }
-
-// func (n *Break) Repr() string {
-// 	if n.Label != nil {
-// 		return fmt.Sprintf("break %s", n.Label.Repr())
-// 	}
-// 	return "break"
-// }
-
-// func (n *Continue) Repr() string {
-// 	if n.Label != nil {
-// 		return fmt.Sprintf("continue %s", n.Label.Repr())
-// 	}
-// 	return "continue"
-// }
-
-// func (n *Import) Repr() string {
-// 	return fmt.Sprintf("import %s", n.Module)
-// }
+func (node *Extern) Repr() string {
+	if node.Args != nil {
+		return "extern" + node.Args.Repr()
+	}
+	return "extern"
+}

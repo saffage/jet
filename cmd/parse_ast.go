@@ -7,7 +7,7 @@ import (
 
 	"github.com/saffage/jet/config"
 	"github.com/saffage/jet/parser"
-	"github.com/saffage/jet/scanner"
+	"github.com/saffage/jet/parser/scanner"
 	"github.com/urfave/cli/v2"
 	"gopkg.in/yaml.v3"
 )
@@ -48,25 +48,31 @@ func ParseAst(cfg *config.Config) error {
 	return nil
 }
 
-func actionParseAst(ctx *cli.Context) error {
-	err := readFileToConfig(ctx, config.Global, config.MainFileID)
-	if err != nil {
-		return err
+func actionParseAst(cfg *config.Config) cli.ActionFunc {
+	return func(ctx *cli.Context) error {
+		err := readFileToConfig(ctx, cfg, config.MainFileID)
+		if err != nil {
+			return err
+		}
+		return ParseAst(cfg)
 	}
-	return ParseAst(config.Global)
 }
 
-func beforeParseAst(ctx *cli.Context) error {
-	if !ctx.Args().Present() {
-		return errors.New("expected file path")
+func beforeParseAst(cfg *config.Config) cli.BeforeFunc {
+	return func(ctx *cli.Context) error {
+		if !ctx.Args().Present() {
+			return errors.New("missing input file(s)")
+		}
+		for i := range ctx.Args().Len() {
+			path := ctx.Args().Get(i)
+			stat, err := os.Stat(path)
+			if err != nil {
+				return err
+			}
+			if !stat.Mode().IsRegular() {
+				return fmt.Errorf("'%s' is not a file", path)
+			}
+		}
+		return nil
 	}
-	path := ctx.Args().Get(0)
-	stat, err := os.Stat(path)
-	if err != nil {
-		return err
-	}
-	if !stat.Mode().IsRegular() {
-		return fmt.Errorf("'%s' is not a file", path)
-	}
-	return nil
 }

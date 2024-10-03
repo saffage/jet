@@ -12,6 +12,7 @@ func (n *BadNode) UnmarshalYAML(v *yaml.Node) error    { return check(n, "BadNod
 func (n *Empty) UnmarshalYAML(v *yaml.Node) error      { return check(n, "Empty", v) }
 func (n *Ident) UnmarshalYAML(v *yaml.Node) error      { return check(n, "Ident", v) }
 func (n *Type) UnmarshalYAML(v *yaml.Node) error       { return check(n, "Type", v) }
+func (n *TypeVar) UnmarshalYAML(v *yaml.Node) error    { return check(n, "TypeVar", v) }
 func (n *Underscore) UnmarshalYAML(v *yaml.Node) error { return check(n, "Underscore", v) }
 func (n *Literal) UnmarshalYAML(v *yaml.Node) error    { return check(n, "Literal", v) }
 
@@ -42,6 +43,8 @@ func (n *If) UnmarshalYAML(v *yaml.Node) error       { return check(n, "If", v) 
 func (n *Else) UnmarshalYAML(v *yaml.Node) error     { return check(n, "Else", v) }
 func (n *While) UnmarshalYAML(v *yaml.Node) error    { return check(n, "While", v) }
 func (n *For) UnmarshalYAML(v *yaml.Node) error      { return check(n, "For", v) }
+func (n *When) UnmarshalYAML(v *yaml.Node) error     { return check(n, "When", v) }
+func (n *Extern) UnmarshalYAML(v *yaml.Node) error   { return check(n, "Extern", v) }
 func (n *Defer) UnmarshalYAML(v *yaml.Node) error    { return check(n, "Defer", v) }
 func (n *Return) UnmarshalYAML(v *yaml.Node) error   { return check(n, "Return", v) }
 func (n *Break) UnmarshalYAML(v *yaml.Node) error    { return check(n, "Break", v) }

@@ -1,29 +1,22 @@
 package cmd
 
 import (
-	"github.com/saffage/jet/checker"
+	"github.com/saffage/jet/types"
 	"github.com/saffage/jet/config"
 	"github.com/urfave/cli/v2"
 )
 
 func Check(cfg *config.Config) error {
-	if err := checker.CheckBuiltInPkgs(cfg); err != nil {
-		return err
-	}
-
-	m, err := checker.CheckFile(cfg, config.MainFileID)
-	if err != nil {
-		return err
-	}
-
-	_ = m
-	return nil
+	_, err := types.CheckFile(cfg, config.MainFileID)
+	return err
 }
 
-func actionCheck(ctx *cli.Context) error {
-	err := readFileToConfig(ctx, config.Global, config.MainFileID)
-	if err != nil {
-		return err
+func actionCheck(cfg *config.Config) cli.ActionFunc {
+	return func(ctx *cli.Context) error {
+		err := readFileToConfig(ctx, cfg, config.MainFileID)
+		if err != nil {
+			return err
+		}
+		return Check(cfg)
 	}
-	return Check(config.Global)
 }

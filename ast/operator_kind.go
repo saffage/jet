@@ -2,28 +2,21 @@ package ast
 
 import "encoding/json"
 
-//go:generate stringer -type=OperatorKind -linecomment -output=operator_kind_string.go
-type OperatorKind byte
-
 const (
 	UnknownOperator OperatorKind = iota
 
 	// Prefix.
 
-	OperatorNot       // !
-	OperatorNeg       // -
-	OperatorAddrOf    // &
-	OperatorMutAddrOf // &mut
-	OperatorPtr       // *
-	OperatorMutPtr    // *mut
-	OperatorEllipsis  // ...
+	OperatorNot      // !
+	OperatorNeg      // -
+	OperatorEllipsis // ...
 
 	// Infix.
 
 	OperatorAssign         // =
 	OperatorAddAssign      // +=
 	OperatorSubAssign      // -=
-	OperatorMultAssign     // *=
+	OperatorMulAssign      // *=
 	OperatorDivAssign      // /=
 	OperatorModAssign      // %=
 	OperatorBitAndAssign   // &=
@@ -59,6 +52,10 @@ const (
 	// OperatorTry    // ?
 	// OperatorUnwrap // !
 )
+
+//go:generate stringer -type=OperatorKind -linecomment -output=operator_kind_string.go
+
+type OperatorKind byte
 
 func (kind OperatorKind) MarshalJSON() ([]byte, error) {
 	return json.Marshal(kind.String())

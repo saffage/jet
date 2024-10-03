@@ -7,10 +7,9 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/saffage/jet/cgen"
-	"github.com/saffage/jet/checker"
 	"github.com/saffage/jet/config"
 	"github.com/saffage/jet/report"
+	"github.com/saffage/jet/types"
 	"github.com/urfave/cli/v2"
 )
 
@@ -18,7 +17,7 @@ func Build(cfg *config.Config) error {
 	name := cfg.Files[config.MainFileID].Name
 	path := cfg.Files[config.MainFileID].Path
 
-	report.Debugf("set file '%s' as main module", path)
+	report.Debug("set file '%s' as main module", path)
 
 	if err := buildFile(cfg, config.MainFileID); err != nil {
 		return err
@@ -35,7 +34,7 @@ func Build(cfg *config.Config) error {
 			exePath += ".exe"
 		}
 
-		report.Hintf("running: '%s'", exePath)
+		report.Hint("running: '%s'", exePath)
 
 		cmd := exec.Command(exePath)
 		cmd.Stdout = os.Stdout
@@ -44,43 +43,44 @@ func Build(cfg *config.Config) error {
 
 		if err := cmd.Run(); err != nil {
 			wd, _ := os.Getwd()
-			report.Hint(wd)
-			report.TaggedError("run", err.Error())
+			report.Hint("%s", wd)
+			report.ErrorX("run", "%s", err.Error())
 		}
 	}
 
 	return nil
 }
 
-func beforeBuild(ctx *cli.Context) error {
-	config.Global.Flags.Run = ctx.Bool("run")
-	config.Global.Flags.DumpCheckerState = ctx.Bool("dump-checker-state")
-	config.Global.Options.CC = ctx.String("cc")
-	config.Global.Options.CCFlags = ctx.String("cc-flags")
-	config.Global.Options.LDFlags = ctx.String("ld-flags")
-	return nil
+func beforeBuild(cfg *config.Config) cli.BeforeFunc {
+	return func(ctx *cli.Context) error {
+		cfg.Flags.Run = ctx.Bool("run")
+		cfg.Options.CC = ctx.String("cc")
+		cfg.Options.CCFlags = ctx.String("cc-flags")
+		cfg.Options.LDFlags = ctx.String("ld-flags")
+		return nil
+	}
 }
 
-func actionBuild(ctx *cli.Context) error {
-	err := readFileToConfig(ctx, config.Global, config.MainFileID)
-	if err != nil {
-		return err
+func actionBuild(cfg *config.Config) cli.ActionFunc {
+	return func(ctx *cli.Context) error {
+		err := readFileToConfig(ctx, cfg, config.MainFileID)
+		if err != nil {
+			return err
+		}
+		return Build(cfg)
 	}
-	return Build(config.Global)
 }
 
 func buildFile(cfg *config.Config, fileID config.FileID) error {
-	if err := checker.CheckBuiltInPkgs(cfg); err != nil {
-		return err
-	}
+	types.InitModuleCore(cfg)
 
-	m, err := checker.CheckFile(cfg, fileID)
+	m, err := types.CheckFile(cfg, fileID)
 	if err != nil {
 		return err
 	}
 
-	finfo := cfg.Files[fileID]
-	dir := filepath.Join(filepath.Dir(finfo.Path), cfg.Options.CacheDir)
+	fileInfo := cfg.Files[fileID]
+	dir := filepath.Join(filepath.Dir(fileInfo.Path), cfg.Options.CacheDir)
 	err = os.Mkdir(dir, os.ModePerm)
 	if err != nil && !os.IsExist(err) {
 		return err
@@ -95,7 +95,7 @@ func buildFile(cfg *config.Config, fileID config.FileID) error {
 	return genModule(m, dir)
 }
 
-func genModule(m *checker.Module, dir string) error {
+func genModule(m *types.Module, dir string) error {
 	filename := filepath.Join(dir, m.Name()+".c")
 	f, err := os.Create(filename)
 	if err != nil {
@@ -103,9 +103,10 @@ func genModule(m *checker.Module, dir string) error {
 	}
 	defer f.Close()
 
-	report.Hintf("generating module '%s'", m.Name())
-	report.TaggedDebugf("gen", "module file is '%s'", filename)
-	return cgen.Generate(f, m)
+	report.Hint("generating module '%s'", m.Name())
+	report.DebugX("gen", "module file is '%s'", filename)
+	// return cgen.Generate(f, m)
+	return nil
 }
 
 func compileC(cfg *config.Config, dir, moduleName string) error {
@@ -120,6 +121,6 @@ func compileC(cfg *config.Config, dir, moduleName string) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	report.TaggedHint("cc", cmd.String())
+	report.HintX("cc", cmd.String())
 	return cmd.Run()
 }
