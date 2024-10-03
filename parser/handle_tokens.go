@@ -66,7 +66,7 @@ func (parse *parser) consumeAny(kinds ...token.Kind) bool {
 	return ok
 }
 
-// Consumes a specified token or returns nil without emitting error.
+// Consumes a specified token or returns false without emitting error.
 func (parse *parser) take(kind token.Kind) (token.Token, bool) {
 	if parse.match(kind) {
 		return parse.next(), true
@@ -84,7 +84,7 @@ func (parse *parser) takeAny(kinds ...token.Kind) (token.Token, bool) {
 	return token.Token{}, false
 }
 
-// Cunsumes a specified token or returns nil and emits error.
+// Consumes a specified token or returns nil and emits error.
 func (parse *parser) expect(kind token.Kind) (token.Token, error) {
 	if tok, ok := parse.take(kind); ok {
 		return tok, nil
