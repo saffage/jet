@@ -14,11 +14,10 @@ type Config struct {
 }
 
 type Flags struct {
-	Run              bool // Run a compiled executable.
-	Debug            bool // Enable debug information.
-	NoHints          bool // Disable compiler hints.
-	DumpCheckerState bool // Dump the checker state after checking a specified module.
-	NoCoreLib        bool // Disable the language core library.
+	Run       bool // Run a compiled executable.
+	Debug     bool // Enable debug information.
+	NoHints   bool // Disable compiler hints.
+	NoCoreLib bool // Disable the language core library.
 }
 
 type Options struct {
