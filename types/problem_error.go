@@ -11,36 +11,44 @@ type (
 	errorIllFormedAst struct {
 		node ast.Node
 	}
+
 	errorUndefinedIdent struct {
 		name ast.Ident
 	}
+
 	errorDefinedAsType struct {
 		node ast.Ident
 		t    ast.Ident
 	}
+
 	errorAlreadyDefined struct {
 		name ast.Ident
 		prev ast.Ident
 	}
+
 	errorParamAlreadyDefined struct {
 		name ast.Ident
 		prev ast.Ident
 	}
+
 	errorUnknownExtern struct {
 		extern     *ast.Extern
 		externName string
 	}
+
 	errorTypeMismatch struct {
 		node  ast.Node
 		dest  ast.Node
 		tNode Type
 		tDest Type
 	}
+
 	errorValueCannotBeStoredAsX struct {
 		node  ast.Node
 		tNode Type
 		tDest Type
 	}
+
 	errorNotAssignable struct {
 		node ast.Node
 	}

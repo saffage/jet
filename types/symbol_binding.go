@@ -19,7 +19,13 @@ type Binding struct {
 	isGlobal   bool
 }
 
-func NewBinding(owner, local *Env, value *Value, decl *ast.Decl, letNode *ast.LetDecl) *Binding {
+func NewBinding(
+	owner *Env,
+	local *Env,
+	value *Value,
+	decl *ast.Decl,
+	letNode *ast.LetDecl,
+) *Binding {
 	assert(!IsUntyped(value.T), "untyped binding is illegal")
 	// assert(decl != nil)
 
