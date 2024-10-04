@@ -9,8 +9,9 @@ import (
 
 func handlePanic() {
 	if err := recover(); err != nil {
-		report.TaggedErrorf("internal", "%s", err)
-		// repanic for a stack trace
+		if err, _ := err.(error); err != nil {
+			report.Error(err)
+		}
 
 		if config.Global.Flags.Debug {
 			panic("internal error")
