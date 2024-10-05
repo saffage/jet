@@ -63,7 +63,7 @@ func (err *Problem) Info() *report.Info {
 	}
 
 	for _, note := range err.notes {
-		description := report.Description{Description: note.Message}
+		description := report.Description{Message: note.Message}
 
 		if note.Node != nil {
 			if note.Node.Range().IsValid() {

@@ -24,9 +24,9 @@ type Info struct {
 
 // Note is used in [Info] for a more flexible output.
 type Description struct {
-	Description string
-	Ast         ast.Node // unused
-	Range       token.Range
+	Message string
+	Ast     ast.Node // unused
+	Range   token.Range
 }
 
 //go:generate stringer -type=ProblemKind -linecomment -output=problem_kind_string.go
@@ -38,37 +38,37 @@ const (
 	KindWarning                    // warning
 )
 
-func (p *Info) Error() string {
+func (info *Info) Error() string {
 	buf := strings.Builder{}
 
-	if p.Tag != "" {
-		buf.WriteString(p.Tag)
+	if info.Tag != "" {
+		buf.WriteString(info.Tag)
 		buf.WriteByte(' ')
-		buf.WriteString(p.Kind.String())
+		buf.WriteString(info.Kind.String())
 		buf.WriteString(": ")
 	}
 
-	if p.Title != "" {
-		buf.WriteString(p.Title)
+	if info.Title != "" {
+		buf.WriteString(info.Title)
 	} else {
 		buf.WriteString("unknown problem")
 	}
 
-	if p.Hint != "" {
+	if info.Hint != "" {
 		buf.WriteString(": ")
-		buf.WriteString(p.Hint)
+		buf.WriteString(info.Hint)
 	}
 
 	return buf.String()
 }
 
-func (p *Info) Report() {
-	switch p.Kind {
+func (info *Info) Report() {
+	switch info.Kind {
 	case KindError:
-		reportWithCodeSnapshot(LevelError, *p)
+		info.reportWithCodeSnapshot(LevelError)
 
 	case KindWarning:
-		reportWithCodeSnapshot(LevelWarning, *p)
+		info.reportWithCodeSnapshot(LevelWarning)
 
 	default:
 		panic("unreachable")
@@ -84,53 +84,72 @@ func report(level Level, tag, message string) {
 		message = "(no message provided)"
 	}
 
-	_, err := fmt.Fprintln(os.Stderr, level.Label(tag)+message)
-	if err != nil {
-		panic(err)
+	if UseColors {
+		message = messageStyle.Sprint(message)
 	}
+
+	fmt.Fprintln(os.Stderr, level.Label(tag), message)
 }
 
-func reportWithCodeSnapshot(level Level, info Info) {
+func (info *Info) reportWithCodeSnapshot(level Level) {
 	if level < MinDisplayLevel {
 		return
 	}
 
 	// We do it here because the message will not be empty if range is specified.
 	if strings.TrimSpace(info.Title) == "" {
-		info.Title = "(no title provided)"
+		info.Title = "(no message provided)"
 	}
 
-	line := strings.Builder{}
-	line.WriteByte('\n')
-	line.WriteString(formatPos(info.Range.StartPos()))
+	buf := strings.Builder{}
+	buf.WriteByte('\n')
 
 	fileInfo, ok := config.Global.Files[info.Range.FileID]
 
-	if ok && ShowCodeSnapshot {
-		line.WriteString(genCodeSnapshot(level, info.Hint, info.Range, fileInfo))
-		line.WriteByte('\n')
+	if ok {
+		buf.WriteString(genCodeSnapshot(level, info.Hint, info.Range, fileInfo))
 	}
 
-	for _, desc := range info.Descriptions {
-		line.WriteString("\n  ")
-		line.WriteString(descriptionStyle.Sprint(desc.Description))
+	buf.WriteString(genDescription(info.Descriptions, fileInfo))
+
+	if UseColors {
+		report(level, info.Tag, info.Title+buf.String())
+	} else {
+		report(level, info.Tag, info.Title+buf.String())
+	}
+}
+
+func genDescription(
+	descriptions []Description,
+	fileInfo config.FileInfo,
+) string {
+	buf := strings.Builder{}
+
+	for _, desc := range descriptions {
+		buf.WriteByte('\n')
+		buf.WriteString(LevelHint.Label(""))
+		buf.WriteByte(' ')
+
+		if UseColors {
+			buf.WriteString(messageStyle.Sprint(desc.Message))
+		} else {
+			buf.WriteString(desc.Message)
+		}
 
 		if desc.Range.IsValid() {
-			line.WriteByte('\n')
-			line.WriteString(genCodeSnapshot(LevelHint, "", desc.Range, fileInfo))
+			codeSnapshot := genCodeSnapshot(LevelHint, "", desc.Range, fileInfo)
+
+			buf.WriteByte('\n')
+			buf.WriteString(codeSnapshot)
 		}
 	}
 
-	if UseColors {
-		report(level, info.Tag, info.Title+line.String())
-	} else {
-		report(level, info.Tag, info.Title+line.String())
-	}
+	return buf.String()
 }
 
 func genCodeSnapshot(
 	level Level,
-	description string,
+	hint string,
 	rng token.Range,
 	fileInfo config.FileInfo,
 ) string {
@@ -151,93 +170,109 @@ func genCodeSnapshot(
 		rightBound = len(codeSnapshot)
 	}
 
+	buf.WriteString(formatPos(rng.StartPos()))
 	buf.WriteByte('\n')
-	buf.WriteString(genLineNum(lineNumStr))
-	buf.WriteString(applyColorInRange(
-		level.Color(),
-		codeSnapshot,
-		int(leftBound),
-		int(rightBound),
-	))
-	buf.WriteByte('\n')
+
+	if ShowCodeSnapshot {
+		codeSnapshot := applyColorInRange(
+			level.Color(),
+			codeSnapshot,
+			int(leftBound),
+			int(rightBound),
+		)
+
+		buf.WriteString(genLineNum(lineNumStr))
+		buf.WriteString(codeSnapshot)
+		buf.WriteByte('\n')
+	} else {
+		return buf.String()
+	}
 
 	// Tabulation has a variable length, so we need to
 	// keep them in a string there.
 	underlineLen := max(1, rightBound-leftBound+1)
-	underlineLine := strings.Builder{}
-	underlineLine.Grow(leftBound + underlineLen)
+	underlineStr := "^" + strings.Repeat("~", underlineLen-1)
+	underlineBuf := strings.Builder{}
+	underlineBuf.Grow(leftBound + underlineLen)
+
 	for _, c := range codeSnapshot[:leftBound] {
 		if c == '\t' {
 			// TODO fix line shift
-			underlineLine.WriteRune(c)
+			underlineBuf.WriteRune(c)
 		} else {
-			underlineLine.WriteByte(' ')
+			underlineBuf.WriteByte(' ')
 		}
 	}
 
-	underline := "^" + strings.Repeat("~", underlineLen-1)
-
 	if UseColors {
-		underlineLine.WriteString(level.Color().Sprint(underline))
+		underlineBuf.WriteString(level.Color().Sprint(underlineStr))
 	} else {
-		underlineLine.WriteString(underline)
+		underlineBuf.WriteString(underlineStr)
 	}
 
 	buf.WriteString(emptyLineNum)
-	buf.WriteString(underlineLine.String())
+	buf.WriteString(underlineBuf.String())
 
-	if description != "" {
+	if hint != "" {
 		buf.WriteByte(' ')
 
 		if UseColors {
-			buf.WriteString(level.Color().Sprint(description))
+			buf.WriteString(level.Color().Sprint(hint))
 		} else {
-			buf.WriteString(description)
+			buf.WriteString(hint)
 		}
 	}
 
+	buf.WriteByte('\n')
 	return buf.String()
 }
 
 func genLineNum(text string) string {
 	if UseColors {
-		return lineNumStyle.Sprintf("%s |", text)
+		return lineNumStyle.Sprintf("%s │", text)
 	}
-	return text + " |"
+	return text + " │"
 }
 
-func applyColorInRange(color *color.Color, text string, a, b int) string {
+func applyColorInRange(color *color.Color, text string, i, j int) string {
 	if !UseColors {
 		return text
 	}
-	if len(text) == 0 {
+
+	if text == "" {
 		return ""
 	}
-	maxIdx := len(text) - 1
-	textBefore, textAfter := text[:max(0, min(a-1, maxIdx)+1)], ""
-	if b < maxIdx {
-		textAfter = text[b+1:]
+
+	n := len(text) - 1
+	textBefore := text[:max(0, min(i-1, n)+1)]
+	textAfter := ""
+
+	if j < n {
+		textAfter = text[j+1:]
 	}
-	tmp := text[a : min(b, maxIdx)+1]
-	return textBefore + color.Sprint(tmp) + textAfter
+
+	return textBefore + color.Sprint(text[i:min(j, n)+1]) + textAfter
 }
 
 func formatPos(pos token.Pos) string {
 	space := strings.Repeat(" ", util.NumLen(pos.Line))
+	s := " ┌─ "
 
-	if UseColors {
-		return fmt.Sprintf("%s%s %s",
-			space,
-			lineNumStyle.Sprint("-->"),
-			filepathStyle.Sprint(pos.String()),
-		)
+	if !ShowCodeSnapshot {
+		s = " ↪ "
 	}
 
-	return fmt.Sprintf("%s--> %s", space, pos.String())
+	if UseColors {
+		return space +
+			lineNumStyle.Sprint(s) +
+			filepathStyle.Sprint(pos.String())
+	}
+
+	return space + s + pos.String()
 }
 
 var (
-	lineNumStyle     = color.New(color.FgHiCyan, color.Bold)
-	filepathStyle    = color.New(color.FgCyan)
-	descriptionStyle = color.New(color.FgWhite, color.Bold)
+	lineNumStyle  = color.New(color.FgHiCyan, color.Bold)
+	filepathStyle = color.New(color.FgCyan)
+	messageStyle  = color.New(color.FgWhite, color.Bold)
 )

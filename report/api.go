@@ -73,17 +73,19 @@ func HintX(tag, format string, args ...any) {
 }
 
 func WarningRangeX(tag string, rng token.Range, format string, args ...any) {
-	reportWithCodeSnapshot(LevelWarning, Info{
+	info := Info{
 		Tag:   tag,
 		Title: fmt.Sprintf(format, args...),
 		Range: rng,
-	})
+	}
+	info.reportWithCodeSnapshot(LevelWarning)
 }
 
 func ErrorRangeX(tag string, rng token.Range, format string, args ...any) {
-	reportWithCodeSnapshot(LevelError, Info{
+	info := Info{
 		Tag:   tag,
 		Title: fmt.Sprintf(format, args...),
 		Range: rng,
-	})
+	}
+	info.reportWithCodeSnapshot(LevelError)
 }

@@ -93,8 +93,8 @@ func (err *errorDefinedAsType) Info() *report.Info {
 
 	if err.t != nil && err.t.Range().IsValid() {
 		info.Descriptions = append(info.Descriptions, report.Description{
-			Range:       err.t.Range(),
-			Description: "this type is defined here",
+			Message: "this type is defined here",
+			Range:   err.t.Range(),
 		})
 	}
 
@@ -109,8 +109,8 @@ func (err *errorAlreadyDefined) Info() *report.Info {
 
 	if err.prev != nil && err.prev.Range().IsValid() {
 		info.Descriptions = append(info.Descriptions, report.Description{
-			Range:       err.prev.Range(),
-			Description: "this name is defined here",
+			Message: "this name is defined here",
+			Range:   err.prev.Range(),
 		})
 	}
 
@@ -123,8 +123,8 @@ func (err *errorParamAlreadyDefined) Info() *report.Info {
 		Title: "parameter with the same name is already defined",
 		Descriptions: []report.Description{
 			{
-				Range:       err.prev.Range(),
-				Description: "previous parameter was defined here",
+				Message: "previous parameter was defined here",
+				Range:   err.prev.Range(),
 			},
 		},
 	}
@@ -147,8 +147,8 @@ func (err *errorTypeMismatch) Info() *report.Info {
 
 	if err.dest != nil && err.dest.Range().IsValid() {
 		info.Descriptions = append(info.Descriptions, report.Description{
-			Description: "expected because of this type constraint",
-			Range:       err.dest.Range(),
+			Message: "expected because of this type constraint",
+			Range:   err.dest.Range(),
 		})
 	}
 
@@ -189,8 +189,8 @@ func (err *errorPositionalParamAfterNamed) Info() *report.Info {
 	if err.named != nil && err.named.Range().IsValid() {
 		info.Descriptions = []report.Description{
 			{
-				Description: "named parameter was here",
-				Range:       err.named.Range(),
+				Message: "named parameter was here",
+				Range:   err.named.Range(),
 			},
 		}
 	}

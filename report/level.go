@@ -23,14 +23,14 @@ const align = "%s" // "%7s"
 func (l Level) Label(tag string) string {
 	if tag != "" {
 		if UseColors {
-			return l.Color().Sprintf(align+"(%s): ", l.String(), tag)
+			return l.Color().Sprintf(align+"(%s):", l.String(), tag)
 		}
-		return fmt.Sprintf(align+"(%s): ", l.String(), tag)
+		return fmt.Sprintf(align+"(%s):", l.String(), tag)
 	}
 	if UseColors {
-		return l.Color().Sprintf(align+": ", l.String())
+		return l.Color().Sprintf(align+":", l.String())
 	}
-	return fmt.Sprintf(align+": ", l.String())
+	return fmt.Sprintf(align+":", l.String())
 }
 
 func (l Level) Color() *color.Color {
