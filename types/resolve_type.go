@@ -1,6 +1,8 @@
 package types
 
 import (
+	"strconv"
+
 	"github.com/saffage/jet/ast"
 )
 
@@ -26,33 +28,27 @@ func (check *checker) typeSymOf(expr ast.Node) (t *TypeDef, err error) {
 	return
 }
 
-func (check *checker) resolveTypeDecl(node *ast.TypeDecl) {
-	if node.Args != nil {
-		check.errorf(node.Args, "type parameters are not implemented")
-		return
+func (check *checker) resolveTypeDecl(decl *ast.TypeDecl) {
+	if decl.Args != nil {
+		check.errorf(decl.Args, "type parameters are not implemented")
 	}
 
-	// t := NewNamed(node.Name.String(), nil)
+	t := NewCustom(decl.Name.String(), nil, nil)
+	env := NewNamedEnv(check.env, "type "+decl.Name.String())
+	def := NewTypeDef(check.env, env, t, decl)
 
-	switch expr := node.Expr.(type) {
+	switch expr := decl.Expr.(type) {
 	case *ast.Extern:
-		check.resolveExternTypeDecl(expr, node)
+		check.resolveExternTypeDecl(expr, decl)
 
 	case *ast.Upper, *ast.TypeVar, *ast.Signature:
 		panic("unimplemented")
 
 	case *ast.Block:
-		// for _, variant := range ty.Stmts.Nodes {
-		// 	decl := variant.(*ast.Variant)
-		// 	if decl.Params != nil {
-		// 		panic("unimplemented")
-		// 	}
-		// 	check.newDef(decl.Name, newConstructor(check.env, t, decl))
-		// }
-		panic("unimplemented")
+		check.resolveTypeDeclBody(def, expr)
 
 	default:
-		panic(&errorIllFormedAst{node})
+		panic(&errorIllFormedAst{decl})
 	}
 }
 
@@ -64,7 +60,7 @@ func (check *checker) resolveTypeAlias(decl *ast.TypeDecl, t Type) {
 		return
 	}
 
-	sym := NewTypeDef(check.env, typedesc, decl)
+	sym := NewTypeDef(check.env, nil, typedesc, decl)
 
 	if defined := check.env.Define(sym); defined != nil {
 		check.problem(&errorAlreadyDefined{sym.Ident(), defined.Ident()})
@@ -73,4 +69,100 @@ func (check *checker) resolveTypeAlias(decl *ast.TypeDecl, t Type) {
 
 	check.newDef(decl.Name, sym)
 	check.setType(decl, typedesc)
+}
+
+func (check *checker) resolveTypeDeclBody(def *TypeDef, body *ast.Block) {
+	fields := make([]Field, len(body.Stmts.Nodes))
+	variants := make([]Variant, len(body.Stmts.Nodes))
+
+	for _, node := range body.Stmts.Nodes {
+		publicName := (*ast.Lower)(nil)
+
+		if label, _ := node.(*ast.Label); label != nil {
+			publicName = label.Label()
+			node = label.X
+		}
+
+		switch node := node.(type) {
+		case *ast.Decl:
+			t, err := check.typeOf(node.Type)
+			check.problem(err)
+
+			field := NewBinding(def.local, nil, &Value{T: t}, node, nil)
+			field.isField = true
+			field.label = publicName
+
+			if defined := def.local.Define(field); defined != nil {
+				check.problem(&errorAlreadyDefined{
+					name: node.Name,
+					prev: defined.Ident(),
+				})
+			}
+
+		case *ast.Variant:
+			env := (*Env)(nil)
+			params := ([]*Binding)(nil)
+
+			if node.Params != nil {
+				err := error(nil)
+
+				env = NewNamedEnv(def.local, "type "+def.Name()+"."+node.Name.String())
+				params = make([]*Binding, len(node.Params.Nodes))
+
+				for i, param := range node.Params.Nodes {
+					paramName := (*ast.Lower)(nil)
+					decl := &ast.Decl{Type: param}
+
+					if label, _ := param.(*ast.Label); label != nil {
+						paramName = label.Label()
+
+						if paramName == nil {
+							panic(&errorIllFormedAst{param})
+						}
+
+						decl.Name = paramName
+						param = label.X
+					} else {
+						if err == nil && i > 0 && params[i-1].label != nil {
+							err = &errorPositionalParamAfterNamed{node: param}
+						}
+
+						decl.Name = &ast.Underscore{Data: "_" + strconv.Itoa(i)}
+					}
+
+					t, err := check.typeOf(param)
+					check.problem(err)
+
+					sym := NewBinding(env, nil, &Value{T: t}, decl, nil)
+					sym.label = paramName
+					sym.isParam = true
+
+					params[i] = sym
+
+					if defined := env.Define(sym); defined != nil {
+						check.problem(&errorAlreadyDefined{
+							name: node.Name,
+							prev: defined.Ident(),
+						})
+					}
+				}
+
+				check.problem(err)
+			}
+
+			variant := NewVariant(def.local, env, params, def, node)
+
+			if defined := def.local.Define(variant); defined != nil {
+				check.problem(&errorAlreadyDefined{
+					name: node.Name,
+					prev: defined.Ident(),
+				})
+			}
+
+		default:
+			panic(&errorIllFormedAst{node})
+		}
+	}
+
+	def.typedesc.base = NewCustom(def.Name(), fields, variants)
 }

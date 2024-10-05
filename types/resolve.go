@@ -36,7 +36,7 @@ func (check *checker) typeOfInternal(expr ast.Node) (t Type, err error) {
 
 	case *ast.Upper:
 		if sym := check.typeSymbolOf(node); sym != nil {
-			if sym.t != nil {
+			if sym.typedesc != nil {
 				check.newUse(node, sym)
 				t = sym.Type()
 			} else {
@@ -273,7 +273,6 @@ func (check *checker) typeOfWhen(node *ast.When) (Type, error) {
 		if !ok || op.Kind != ast.OperatorFatArrow || op.X == nil || op.Y == nil {
 			panic(&errorIllFormedAst{case_})
 		}
-
 	}
 
 	return nil, nil

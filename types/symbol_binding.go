@@ -8,14 +8,17 @@ type Binding struct {
 	owner      *Env
 	local      *Env
 	value      *Value
+	parent     *TypeDef
 	decl       *ast.Decl
 	node       *ast.LetDecl // May be nil.
 	label      *ast.Lower   // May be nil.
+	variant    *ast.Variant // May be nil.
 	externName string
 	params     []*Binding
 	isExtern   bool
 	isParam    bool
 	isField    bool
+	isVariant  bool
 	isGlobal   bool
 }
 
@@ -35,6 +38,31 @@ func NewBinding(
 		value: value,
 		decl:  decl,
 		node:  letNode,
+	}
+}
+
+func NewVariant(
+	owner *Env,
+	local *Env,
+	params []*Binding,
+	parent *TypeDef,
+	node *ast.Variant,
+) *Binding {
+	tParams := make(Params, len(params))
+
+	for i, param := range params {
+		tParams[i] = param.Type()
+	}
+
+	return &Binding{
+		owner:     owner,
+		local:     local,
+		parent:    parent,
+		value:     &Value{T: NewFunction(tParams, parent.typedesc.base, nil)},
+		decl:      &ast.Decl{Name: node.Name},
+		variant:   node,
+		params:    params,
+		isVariant: true,
 	}
 }
 

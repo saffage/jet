@@ -36,10 +36,10 @@ func initModuleCore() {
 	})
 
 	var (
-		IntDef    = NewTypeDef(ModuleCore.Env, NewTypeDesc(IntType), IntNode)
-		FloatDef  = NewTypeDef(ModuleCore.Env, NewTypeDesc(FloatType), FloatNode)
-		StringDef = NewTypeDef(ModuleCore.Env, NewTypeDesc(StringType), StringNode)
-		NoneDef   = NewTypeDef(ModuleCore.Env, NewTypeDesc(NoneType), NoneNode)
+		IntDef    = NewTypeDef(ModuleCore.Env, nil, IntType, IntNode)
+		FloatDef  = NewTypeDef(ModuleCore.Env, nil, FloatType, FloatNode)
+		StringDef = NewTypeDef(ModuleCore.Env, nil, StringType, StringNode)
+		NoneDef   = NewTypeDef(ModuleCore.Env, nil, NoneType, NoneNode)
 	)
 
 	ModuleCore.Env.types = make(map[string]*TypeDef)
@@ -48,10 +48,11 @@ func initModuleCore() {
 	ModuleCore.Env.types["String"] = StringDef
 	ModuleCore.Env.types["None"] = NoneDef
 
-	var NoneVariant = newConstructor(
+	var NoneVariant = NewVariant(
 		ModuleCore.Env,
+		nil,
+		nil,
 		NoneDef,
-		&Value{T: NoneDef.t},
 		&ast.Variant{Name: &ast.Upper{Data: "None"}},
 	)
 

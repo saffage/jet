@@ -26,6 +26,6 @@ func (check *checker) resolveExternTypeDecl(extern *ast.Extern, node *ast.TypeDe
 		return
 	}
 
-	sym := NewTypeDef(check.env, typedesc, node)
+	sym := NewTypeDef(check.env, nil, typedesc, node)
 	check.newDef(node.Name, sym)
 }

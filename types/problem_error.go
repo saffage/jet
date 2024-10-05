@@ -52,17 +52,22 @@ type (
 	errorNotAssignable struct {
 		node ast.Node
 	}
+
+	errorPositionalParamAfterNamed struct {
+		node ast.Node
+	}
 )
 
-func (err *errorIllFormedAst) Error() string           { return err.Info().Error() }
-func (err *errorUndefinedIdent) Error() string         { return err.Info().Error() }
-func (err *errorDefinedAsType) Error() string          { return err.Info().Error() }
-func (err *errorAlreadyDefined) Error() string         { return err.Info().Error() }
-func (err *errorParamAlreadyDefined) Error() string    { return err.Info().Error() }
-func (err *errorUnknownExtern) Error() string          { return err.Info().Error() }
-func (err *errorTypeMismatch) Error() string           { return err.Info().Error() }
-func (err *errorValueCannotBeStoredAsX) Error() string { return err.Info().Error() }
-func (err *errorNotAssignable) Error() string          { return err.Info().Error() }
+func (err *errorIllFormedAst) Error() string              { return err.Info().Error() }
+func (err *errorUndefinedIdent) Error() string            { return err.Info().Error() }
+func (err *errorDefinedAsType) Error() string             { return err.Info().Error() }
+func (err *errorAlreadyDefined) Error() string            { return err.Info().Error() }
+func (err *errorParamAlreadyDefined) Error() string       { return err.Info().Error() }
+func (err *errorUnknownExtern) Error() string             { return err.Info().Error() }
+func (err *errorTypeMismatch) Error() string              { return err.Info().Error() }
+func (err *errorValueCannotBeStoredAsX) Error() string    { return err.Info().Error() }
+func (err *errorNotAssignable) Error() string             { return err.Info().Error() }
+func (err *errorPositionalParamAfterNamed) Error() string { return err.Info().Error() }
 
 func (err *errorIllFormedAst) Info() *report.Info {
 	return &report.Info{
@@ -170,5 +175,12 @@ func (err *errorNotAssignable) Info() *report.Info {
 	return &report.Info{
 		Range: err.node.Range(),
 		Title: "expression cannot be assigned to",
+	}
+}
+
+func (err *errorPositionalParamAfterNamed) Info() *report.Info {
+	return &report.Info{
+		Range: err.node.Range(),
+		Title: "positional parameter after named one",
 	}
 }

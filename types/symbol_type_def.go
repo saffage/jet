@@ -6,20 +6,20 @@ import (
 
 type TypeDef struct {
 	owner    *Env
-	t        *Alias
+	local    *Env
 	typedesc *TypeDesc
 	decl     *ast.TypeDecl
 	opaque   bool
 	unique   bool
 }
 
-func NewTypeDef(owner *Env, t *TypeDesc, decl *ast.TypeDecl) *TypeDef {
-	assert(!IsUntyped(SkipTypeDesc(t)), "cannot use untyped typedesc for type definition")
+func NewTypeDef(owner, local *Env, t Type, decl *ast.TypeDecl) *TypeDef {
+	assert(!Is[*TypeDesc](t))
 
 	return &TypeDef{
 		owner:    owner,
-		t:        NewAlias(t.base, decl.Name.String()),
-		typedesc: t,
+		local:    local,
+		typedesc: NewTypeDesc(t),
 		decl:     decl,
 	}
 }
