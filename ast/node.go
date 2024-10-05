@@ -221,6 +221,10 @@ func (node *Label) Range() token.Range { return node.Pos().WithEnd(node.PosEnd()
 func (node *Label) Pos() token.Pos     { return node.Name.Pos() }
 func (node *Label) PosEnd() token.Pos  { return node.X.PosEnd() }
 func (node *Label) Label() *Lower {
+	if node.Name != nil {
+		return node.Name
+	}
+
 	switch x := node.X.(type) {
 	case *Lower:
 		return x
@@ -229,6 +233,7 @@ func (node *Label) Label() *Lower {
 			return name
 		}
 	}
+
 	return nil
 }
 
