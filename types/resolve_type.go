@@ -124,7 +124,10 @@ func (check *checker) resolveTypeDeclBody(def *TypeDef, body *ast.Block) {
 						param = label.X
 					} else {
 						if err == nil && i > 0 && params[i-1].label != nil {
-							err = &errorPositionalParamAfterNamed{node: param}
+							err = &errorPositionalParamAfterNamed{
+								node:  param,
+								named: params[i-1].Node(),
+							}
 						}
 
 						decl.Name = &ast.Underscore{Data: "_" + strconv.Itoa(i)}
@@ -137,14 +140,14 @@ func (check *checker) resolveTypeDeclBody(def *TypeDef, body *ast.Block) {
 					sym.label = paramName
 					sym.isParam = true
 
-					params[i] = sym
-
 					if defined := env.Define(sym); defined != nil {
 						check.problem(&errorAlreadyDefined{
 							name: node.Name,
 							prev: defined.Ident(),
 						})
 					}
+
+					params[i] = sym
 				}
 
 				check.problem(err)

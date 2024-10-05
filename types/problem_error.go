@@ -54,7 +54,8 @@ type (
 	}
 
 	errorPositionalParamAfterNamed struct {
-		node ast.Node
+		node  ast.Node
+		named ast.Node
 	}
 )
 
@@ -179,8 +180,20 @@ func (err *errorNotAssignable) Info() *report.Info {
 }
 
 func (err *errorPositionalParamAfterNamed) Info() *report.Info {
-	return &report.Info{
+	info := &report.Info{
 		Range: err.node.Range(),
 		Title: "positional parameter after named one",
+		Hint:  "this parameter must follow before any named parameter",
 	}
+
+	if err.named != nil && err.named.Range().IsValid() {
+		info.Descriptions = []report.Description{
+			{
+				Description: "named parameter was here",
+				Range:       err.named.Range(),
+			},
+		}
+	}
+
+	return info
 }
