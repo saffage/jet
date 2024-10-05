@@ -100,7 +100,7 @@ func (parse *parser) variant() (ast.Node, error) {
 	}
 
 	if parse.match(token.LParen) {
-		if params, err = parse.parens(parse.typeExprOrSignature); err != nil {
+		if params, err = parse.parens(parse.labeledExpr(parse.typeExprOrSignature)); err != nil {
 			return nil, err
 		}
 	}
