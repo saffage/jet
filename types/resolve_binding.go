@@ -52,7 +52,7 @@ func (check *checker) resolveLetDecl(node *ast.LetDecl) {
 	}
 
 	_, discarded := node.Decl.Name.(*ast.Underscore)
-	if discarded && Is[*Func](t) {
+	if discarded && Is[*Function](t) {
 		check.problem(&warnDiscardedFuncDef{node.Decl.Name})
 	}
 

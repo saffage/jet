@@ -95,7 +95,7 @@ func (check *checker) typeOfCall(node *ast.Call) (Type, error) {
 		return nil, err
 	}
 
-	if fn := As[*Func](tOperand); fn != nil {
+	if fn := As[*Function](tOperand); fn != nil {
 		tParens, err := check.typeOfParens(node.Args)
 
 		if err != nil || tParens == nil {

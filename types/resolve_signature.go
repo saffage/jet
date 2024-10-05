@@ -6,7 +6,7 @@ import (
 	"github.com/saffage/jet/ast"
 )
 
-func (check *checker) resolveSignature(sig *ast.Signature) *Func {
+func (check *checker) resolveSignature(sig *ast.Signature) *Function {
 	tParams := make([]Type, len(sig.Params.Nodes))
 	tResult := Type(nil)
 
@@ -49,7 +49,7 @@ func (check *checker) resolveSignature(sig *ast.Signature) *Func {
 		}
 	}
 
-	return NewFunc(tParams, tResult, nil)
+	return NewFunction(tParams, tResult, nil)
 }
 
 func (check *checker) resolveParam(

@@ -39,18 +39,18 @@ func (params Params) String() string {
 	return buf.String()
 }
 
-type Func struct {
+type Function struct {
 	params   Params
 	result   Type
 	variadic Type
 }
 
-func NewFunc(params Params, result, variadic Type) *Func {
-	return &Func{params, result, variadic}
+func NewFunction(params Params, result, variadic Type) *Function {
+	return &Function{params, result, variadic}
 }
 
-func (t *Func) Equal(expected Type) bool {
-	if expected := As[*Func](expected); expected != nil {
+func (t *Function) Equal(expected Type) bool {
+	if expected := As[*Function](expected); expected != nil {
 		return (t.variadic != nil && t.variadic.Equal(expected.variadic) ||
 			t.variadic == nil && expected.variadic == nil) &&
 			t.result.Equal(expected.result) && t.params.Equal(expected.params)
@@ -59,30 +59,30 @@ func (t *Func) Equal(expected Type) bool {
 	return false
 }
 
-func (t *Func) Underlying() Type {
+func (t *Function) Underlying() Type {
 	return t
 }
 
-func (t *Func) String() string {
+func (t *Function) String() string {
 	if t.result != nil {
 		return t.params.String() + " " + t.result.String()
 	}
 	return t.params.String() + " '_"
 }
 
-func (t *Func) Result() Type {
+func (t *Function) Result() Type {
 	return t.result
 }
 
-func (t *Func) Params() Params {
+func (t *Function) Params() Params {
 	return t.params
 }
 
-func (t *Func) Variadic() Type {
+func (t *Function) Variadic() Type {
 	return t.variadic
 }
 
-func (t *Func) CheckArgValues(values []*Value) (idx int, err error) {
+func (t *Function) CheckArgValues(values []*Value) (idx int, err error) {
 	args := make(Params, len(values))
 
 	for i := range args {
@@ -92,31 +92,28 @@ func (t *Func) CheckArgValues(values []*Value) (idx int, err error) {
 	return t.CheckArgs(args)
 }
 
-func (t *Func) CheckArgs(args Params) (idx int, err error) {
-	{
-		diff := len(t.params) - len(args)
+func (t *Function) CheckArgs(args Params) (idx int, err error) {
+	// params 	args 	diff 	idx
+	//      1      2      -1      1
+	//      2      1       1      1
+	//      0      3      -3      0
+	//      3      0       3      0
+	diff := len(t.params) - len(args)
 
-		// params 	args 	diff 	idx
-		//      1      2      -1      1
-		//      2      1       1      1
-		//      0      3      -3      0
-		//      3      0       3      0
+	if diff < 0 && t.variadic == nil {
+		return min(len(t.params), len(args)), fmt.Errorf(
+			"too many arguments (expected %d, got %d)",
+			len(t.params),
+			len(args),
+		)
+	}
 
-		if diff < 0 && t.variadic == nil {
-			return min(len(t.params), len(args)), fmt.Errorf(
-				"too many arguments (expected %d, got %d)",
-				len(t.params),
-				len(args),
-			)
-		}
-
-		if diff > 0 {
-			return min(len(t.params), len(args)), fmt.Errorf(
-				"not enough arguments (expected %d, got %d)",
-				len(t.params),
-				len(args),
-			)
-		}
+	if diff > 0 {
+		return min(len(t.params), len(args)), fmt.Errorf(
+			"not enough arguments (expected %d, got %d)",
+			len(t.params),
+			len(args),
+		)
 	}
 
 	for i := 0; i < len(t.params); i++ {

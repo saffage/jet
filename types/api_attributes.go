@@ -103,7 +103,7 @@ func (check *checker) attrExternC(sym Symbol, node ast.Node) {
 
 	switch node := node.(type) {
 	case *ast.Call:
-		tyExternCAttr := NewFunc(Params{UntypedStringType}, NoneType, nil)
+		tyExternCAttr := NewFunction(Params{UntypedStringType}, NoneType, nil)
 
 		tyArgs := make(Params, 0, len(node.Args.Nodes))
 		args := make([]*Value, 0, len(node.Args.Nodes))

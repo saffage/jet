@@ -58,7 +58,7 @@ func (sym *Binding) Params() []*Binding { return sym.params }
 func (sym *Binding) Local() *Env        { return sym.local }
 
 func (sym *Binding) Variadic() Type {
-	if fn := As[*Func](sym.value.T); fn != nil {
+	if fn := As[*Function](sym.value.T); fn != nil {
 		return fn.Variadic()
 	}
 	return nil
