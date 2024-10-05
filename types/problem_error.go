@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/saffage/jet/ast"
+	"github.com/saffage/jet/parser/token"
 	"github.com/saffage/jet/report"
 )
 
@@ -13,6 +14,7 @@ type (
 	}
 
 	errorUnimplementedFeature struct {
+		rng     token.Range
 		node    ast.Node
 		feature string
 		reason  string
@@ -94,7 +96,11 @@ func (err *errorUndefinedIdent) Info() *report.Info {
 func (err *errorUnimplementedFeature) Info() *report.Info {
 	info := &report.Info{
 		Title: err.feature + " is not implemented",
-		Range: err.node.Range(),
+		Range: err.rng,
+	}
+
+	if err.node != nil && err.node.Range().IsValid() {
+		info.Range = err.node.Range()
 	}
 
 	if err.reason != "" {

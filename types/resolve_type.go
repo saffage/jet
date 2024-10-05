@@ -45,7 +45,10 @@ func (check *checker) resolveTypeDecl(decl *ast.TypeDecl) {
 		check.resolveExternTypeDecl(expr, decl)
 
 	case *ast.Upper, *ast.TypeVar, *ast.Signature:
-		panic("unimplemented")
+		check.problem(&errorUnimplementedFeature{
+			rng:     decl.EqTok.WithEnd(expr.PosEnd()),
+			feature: "type aliases",
+		})
 
 	case *ast.Block:
 		check.resolveTypeDeclBody(def, expr)

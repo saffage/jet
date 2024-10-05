@@ -283,6 +283,7 @@ func (parse *parser) letDecl() (ast.Node, error) {
 func (parse *parser) typeDecl() (ast.Node, error) {
 	var (
 		typeTok token.Token
+		eqTok   token.Token
 		name    ast.Ident
 		args    *ast.Parens
 		expr    ast.Node
@@ -309,7 +310,7 @@ func (parse *parser) typeDecl() (ast.Node, error) {
 
 	switch parse.tok.Kind {
 	case token.Eq:
-		parse.next()
+		eqTok = parse.next()
 
 		if expr, err = parse.externOr(parse.typeExprOrSignature)(); err != nil {
 			return nil, err
@@ -326,6 +327,7 @@ func (parse *parser) typeDecl() (ast.Node, error) {
 
 	return &ast.TypeDecl{
 		TypeTok: typeTok.StartPos(),
+		EqTok:   eqTok.StartPos(),
 		Name:    name.(*ast.Upper),
 		Args:    args,
 		Expr:    expr,

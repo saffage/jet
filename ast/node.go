@@ -114,6 +114,7 @@ type (
 		Args    *Parens        `yaml:",omitempty"`
 		Expr    Node           `yaml:",omitempty"`
 		TypeTok token.Pos      ``
+		EqTok   token.Pos      ``
 	}
 
 	// Represents `name T`, `name`, `type 'name T`, `type 'name`.
