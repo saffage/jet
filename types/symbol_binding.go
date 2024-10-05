@@ -66,6 +66,25 @@ func NewVariant(
 	}
 }
 
+func NewField(
+	owner *Env,
+	parent *TypeDef,
+	t Type,
+	node *ast.Decl,
+	label *ast.Lower,
+) *Binding {
+	assert(!IsUntyped(t), "field cannot be untyped")
+
+	return &Binding{
+		owner:   owner,
+		parent:  parent,
+		value:   &Value{T: t},
+		decl:    node,
+		label:   label,
+		isField: true,
+	}
+}
+
 func (sym *Binding) Type() Type { return sym.value.T }
 func (sym *Binding) Name() string {
 	if sym.decl.Name == nil {
@@ -76,6 +95,7 @@ func (sym *Binding) Name() string {
 func (sym *Binding) Node() ast.Node     { return sym.decl }
 func (sym *Binding) Ident() ast.Ident   { return sym.decl.Name }
 func (sym *Binding) Owner() *Env        { return sym.owner }
+func (sym *Binding) Local() *Env        { return sym.local }
 func (sym *Binding) IsParam() bool      { return sym.isParam }
 func (sym *Binding) IsField() bool      { return sym.isField }
 func (sym *Binding) IsGlobal() bool     { return sym.isGlobal }
@@ -83,7 +103,16 @@ func (sym *Binding) IsLocal() bool      { return !sym.isParam && !sym.isField &&
 func (sym *Binding) IsExtern() bool     { return sym.isExtern }
 func (sym *Binding) ExternName() string { return sym.externName }
 func (sym *Binding) Params() []*Binding { return sym.params }
-func (sym *Binding) Local() *Env        { return sym.local }
+
+func (sym *Binding) ParamTypes() Params {
+	params := make(Params, len(sym.params))
+
+	for i, param := range sym.params {
+		params[i] = param.Type()
+	}
+
+	return params
+}
 
 func (sym *Binding) Variadic() Type {
 	if fn := As[*Function](sym.value.T); fn != nil {

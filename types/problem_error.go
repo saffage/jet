@@ -12,6 +12,12 @@ type (
 		node ast.Node
 	}
 
+	errorUnimplementedFeature struct {
+		node    ast.Node
+		feature string
+		reason  string
+	}
+
 	errorUndefinedIdent struct {
 		name ast.Ident
 	}
@@ -60,6 +66,7 @@ type (
 )
 
 func (err *errorIllFormedAst) Error() string              { return err.Info().Error() }
+func (err *errorUnimplementedFeature) Error() string      { return err.Info().Error() }
 func (err *errorUndefinedIdent) Error() string            { return err.Info().Error() }
 func (err *errorDefinedAsType) Error() string             { return err.Info().Error() }
 func (err *errorAlreadyDefined) Error() string            { return err.Info().Error() }
@@ -82,6 +89,23 @@ func (err *errorUndefinedIdent) Info() *report.Info {
 		Title: "identifier is undefined",
 		Range: err.name.Range(),
 	}
+}
+
+func (err *errorUnimplementedFeature) Info() *report.Info {
+	info := &report.Info{
+		Title: err.feature + " is not implemented",
+		Range: err.node.Range(),
+	}
+
+	if err.reason != "" {
+		info.Descriptions = []report.Description{
+			{
+				Message: err.reason,
+			},
+		}
+	}
+
+	return info
 }
 
 func (err *errorDefinedAsType) Info() *report.Info {

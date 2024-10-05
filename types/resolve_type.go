@@ -30,7 +30,10 @@ func (check *checker) typeSymOf(expr ast.Node) (t *TypeDef, err error) {
 
 func (check *checker) resolveTypeDecl(decl *ast.TypeDecl) {
 	if decl.Args != nil {
-		check.errorf(decl.Args, "type parameters are not implemented")
+		check.problem(&errorUnimplementedFeature{
+			node:    decl.Args,
+			feature: "type parameters",
+		})
 	}
 
 	t := NewCustom(decl.Name.String(), nil, nil)
@@ -72,100 +75,122 @@ func (check *checker) resolveTypeAlias(decl *ast.TypeDecl, t Type) {
 }
 
 func (check *checker) resolveTypeDeclBody(def *TypeDef, body *ast.Block) {
-	fields := make([]Field, len(body.Stmts.Nodes))
-	variants := make([]Variant, len(body.Stmts.Nodes))
+	fields := make([]Field, 0, len(body.Stmts.Nodes))
+	variants := make([]Variant, 0, len(body.Stmts.Nodes))
 
 	for _, node := range body.Stmts.Nodes {
-		publicName := (*ast.Lower)(nil)
-
-		if label, _ := node.(*ast.Label); label != nil {
-			publicName = label.Label()
-			node = label.X
-		}
+		sym := Symbol(nil)
 
 		switch node := node.(type) {
-		case *ast.Decl:
-			t, err := check.typeOf(node.Type)
-			check.problem(err)
+		case *ast.Label:
+			decl, isDecl := node.X.(*ast.Decl)
 
-			field := NewBinding(def.local, nil, &Value{T: t}, node, nil)
-			field.isField = true
-			field.label = publicName
-
-			if defined := def.local.Define(field); defined != nil {
-				check.problem(&errorAlreadyDefined{
-					name: node.Name,
-					prev: defined.Ident(),
-				})
+			if !isDecl {
+				panic(&errorIllFormedAst{node})
 			}
+
+			field := check.resolveTypeField(def, decl, node.Label())
+			fields = append(fields, Field{
+				Name: field.Name(),
+				T:    field.Type(),
+			})
+			sym = field
+
+		case *ast.Decl:
+			field := check.resolveTypeField(def, node, nil)
+			fields = append(fields, Field{
+				Name: field.Name(),
+				T:    field.Type(),
+			})
+			sym = field
 
 		case *ast.Variant:
-			env := (*Env)(nil)
-			params := ([]*Binding)(nil)
-
-			if node.Params != nil {
-				err := error(nil)
-
-				env = NewNamedEnv(def.local, "type "+def.Name()+"."+node.Name.String())
-				params = make([]*Binding, len(node.Params.Nodes))
-
-				for i, param := range node.Params.Nodes {
-					paramName := (*ast.Lower)(nil)
-					decl := &ast.Decl{Type: param}
-
-					if label, _ := param.(*ast.Label); label != nil {
-						paramName = label.Label()
-
-						if paramName == nil {
-							panic(&errorIllFormedAst{param})
-						}
-
-						decl.Name = paramName
-						param = label.X
-					} else {
-						if err == nil && i > 0 && params[i-1].label != nil {
-							err = &errorPositionalParamAfterNamed{
-								node:  param,
-								named: params[i-1].Node(),
-							}
-						}
-
-						decl.Name = &ast.Underscore{Data: "_" + strconv.Itoa(i)}
-					}
-
-					t, err := check.typeOf(param)
-					check.problem(err)
-
-					sym := NewBinding(env, nil, &Value{T: t}, decl, nil)
-					sym.label = paramName
-					sym.isParam = true
-
-					if defined := env.Define(sym); defined != nil {
-						check.problem(&errorAlreadyDefined{
-							name: node.Name,
-							prev: defined.Ident(),
-						})
-					}
-
-					params[i] = sym
-				}
-
-				check.problem(err)
-			}
-
-			variant := NewVariant(def.local, env, params, def, node)
-
-			if defined := def.local.Define(variant); defined != nil {
-				check.problem(&errorAlreadyDefined{
-					name: node.Name,
-					prev: defined.Ident(),
-				})
-			}
+			variant := check.resolveTypeVariant(def, node)
+			variants = append(variants, Variant{
+				Name:   variant.Name(),
+				Params: variant.ParamTypes(),
+			})
+			sym = variant
 
 		default:
 			panic(&errorIllFormedAst{node})
 		}
+
+		if defined := def.local.Define(sym); defined != nil {
+			check.problem(&errorAlreadyDefined{
+				name: sym.Ident(),
+				prev: defined.Ident(),
+			})
+		}
 	}
 
 	def.typedesc.base = NewCustom(def.Name(), fields, variants)
+}
+
+func (check *checker) resolveTypeField(
+	def *TypeDef,
+	node *ast.Decl,
+	label *ast.Lower,
+) *Binding {
+	t, err := check.typeOf(node.Type)
+	check.problem(err)
+
+	return NewField(def.local, def, t, node, label)
+}
+
+func (check *checker) resolveTypeVariant(
+	def *TypeDef,
+	node *ast.Variant,
+) *Binding {
+	if node.Params == nil {
+		return NewVariant(def.local, nil, nil, def, node)
+	}
+
+	err := error(nil)
+	env := NewNamedEnv(def.local, "type "+def.Name()+"."+node.Name.String())
+	params := make([]*Binding, len(node.Params.Nodes))
+
+	for i, param := range node.Params.Nodes {
+		paramName := (*ast.Lower)(nil)
+		decl := &ast.Decl{Type: param}
+
+		if label, _ := param.(*ast.Label); label != nil {
+			paramName = label.Label()
+
+			if paramName == nil {
+				panic(&errorIllFormedAst{param})
+			}
+
+			decl.Name = paramName
+			param = label.X
+		} else {
+			if err == nil && i > 0 && params[i-1].label != nil {
+				err = &errorPositionalParamAfterNamed{
+					node:  param,
+					named: params[i-1].Node(),
+				}
+			}
+
+			decl.Name = &ast.Underscore{Data: "_" + strconv.Itoa(i)}
+		}
+
+		t, err := check.typeOf(param)
+		check.problem(err)
+
+		sym := NewBinding(env, nil, &Value{T: t}, decl, nil)
+		sym.label = paramName
+		sym.isParam = true
+
+		if defined := env.Define(sym); defined != nil {
+			check.problem(&errorAlreadyDefined{
+				name: node.Name,
+				prev: defined.Ident(),
+			})
+		}
+
+		params[i] = sym
+	}
+
+	check.problem(err)
+	return NewVariant(def.local, env, params, def, node)
 }
