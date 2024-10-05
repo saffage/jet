@@ -78,7 +78,7 @@ func (env *Env) Define(symbol Symbol) Symbol {
 	}
 
 	env.symbols[symbol.Name()] = symbol
-	report.DebugX("env", "defined symbol `%s` in the env \"%s\"", symbol.Name(), env.name)
+	report.Debug("defined symbol `%s` in the env \"%s\"", symbol.Name(), env.name)
 	return nil
 }
 
