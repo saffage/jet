@@ -16,3 +16,6 @@ go.work
 
 # Jet
 .jet-cache/
+
+# Temp files
+*.*~
