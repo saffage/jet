@@ -275,64 +275,6 @@ func (check *checker) typeOfWhen(node *ast.When) (Type, error) {
 	return nil, nil
 }
 
-// func (check *checker) typeOfIf(node *ast.If) Type {
-// 	tCondition := check.typeOf(node.Cond)
-// 	// Don't return if 'tCondition == nil', check the body.
-
-// 	if tCondition != nil && !tCondition.Equals(Bool) {
-// 		check.errorf(
-// 			node.Cond,
-// 			"expected type 'bool' for condition, got '%s' instead",
-// 			tCondition,
-// 		)
-// 		// Don't return, check the body.
-// 	}
-
-// 	tBody := check.typeOf(node.Body)
-// 	if tBody == nil {
-// 		return nil
-// 	}
-
-// 	if node.Else != nil {
-// 		if !check.typeOfElse(node.Else, tBody) {
-// 			return nil
-// 		}
-// 	}
-
-// 	return tBody
-// }
-
-// func (check *checker) typeOfElse(node *ast.Else, tExpected Type) bool {
-// 	tBody := check.typeOf(node.Body)
-// 	if tBody == nil {
-// 		return false
-// 	}
-
-// 	tTypedBody := SkipUntyped(tBody)
-// 	if !tBody.Equals(tExpected) && !tTypedBody.Equals(tExpected) {
-// 		// Find the last node in the body for better error message.
-// 		lastNode := ast.Node(node.Body)
-
-// 		switch body := node.Body.(type) {
-// 		case *ast.CurlyList:
-// 			lastNode = body.Nodes[len(body.Nodes)-1]
-
-// 		case *ast.If:
-// 			lastNode = body.Body.Nodes[len(body.Body.Nodes)-1]
-// 		}
-
-// 		check.errorf(
-// 			lastNode,
-// 			"all branches must have the same type with first branch (%s), got (%s) instead",
-// 			tExpected,
-// 			tBody,
-// 		)
-// 		return false
-// 	}
-
-// 	return true
-// }
-
 func (check *checker) typeOfParens(node *ast.Parens) (Params, error) {
 	if len(node.Nodes) == 0 {
 		return nil, nil

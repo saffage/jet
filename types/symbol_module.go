@@ -47,11 +47,6 @@ func (m *Module) ValueOf(expr ast.Node) *Value {
 		if t := m.TypeInfo.ValueOf(expr); t != nil {
 			return t
 		}
-		// if ident, _ := expr.(*ast.Name); ident != nil {
-		// 	if _const, _ := m.SymbolOf(ident).(*Const); _const != nil {
-		// 		return _const.value
-		// 	}
-		// }
 	}
 	return nil
 }

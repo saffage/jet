@@ -19,7 +19,7 @@ type Value struct {
 
 func (v *Value) Type() Type            { return v.T }
 func (v *Value) Value() constant.Value { return v.V }
-func (v *Value) Index() int            { return 0 } // implements [pattern.constructor].
+func (v *Value) Index() int            { return 0 }
 
 func constantFromNode(node *ast.Literal) constant.Value {
 	switch node.Kind {
@@ -156,56 +156,6 @@ func (check *checker) valueOfInternal(expr ast.Node) (*Value, error) {
 
 	return nil, nil
 }
-
-// func (check *checker) resolveBuiltInCall(node *ast.BuiltIn, call *ast.Call) *TypedValue {
-// 	idx := slices.IndexFunc(builtIns, func(b *BuiltIn) bool {
-// 		return b.name == node.Data
-// 	})
-// 	if idx == -1 {
-// 		check.errorf(node, "unknown built-in function '%s'", node.Repr())
-// 		return nil
-// 	}
-
-// 	builtIn := builtIns[idx]
-
-// 	tyArgList := check.typeOfParenList(call.Args)
-// 	if tyArgList == nil {
-// 		return nil
-// 	}
-
-// 	tyArgs, _ := tyArgList.(*Tuple)
-// 	if tyArgs == nil {
-// 		return nil
-// 	}
-
-// 	if idx, err := builtIn.t.CheckArgs(tyArgs); err != nil {
-// 		n := ast.Node(call.Args)
-
-// 		if idx < len(call.Args.Nodes) {
-// 			n = call.Args.Nodes[idx]
-// 		}
-
-// 		check.errorf(n, err.Error())
-// 		return nil
-// 	}
-
-// 	vArgs := make([]*TypedValue, tyArgs.Len())
-
-// 	for i := range len(vArgs) {
-// 		vArgs[i] = check.module.Types[call.Args.Nodes[i]]
-// 	}
-
-// 	value, err := builtIn.f(call.Args, vArgs)
-// 	if err != nil {
-// 		check.addError(err)
-// 		return nil
-// 	}
-// 	if value == nil {
-// 		return nil
-// 	}
-
-// 	return value
-// }
 
 func comptimeBinaryOp(x, y constant.Value, opKind ast.OperatorKind) constant.Value {
 	assert(x.Kind() == y.Kind())

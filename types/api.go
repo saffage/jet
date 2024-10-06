@@ -51,10 +51,6 @@ func CheckFile(cfg *config.Config, fileID config.FileID) (*Module, error) {
 		return nil, err
 	}
 
-	// for _, tok := range tokens {
-	// 	fmt.Printf("%s\n", tok.String())
-	// }
-
 	stmts, err := parser.Parse(tokens, parser.DefaultFlags)
 
 	if err != nil {
