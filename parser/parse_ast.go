@@ -31,17 +31,6 @@ func (parse *parser) or(a, b parseFunc) parseFunc {
 	}
 }
 
-func (parse *parser) anonFunc() (ast.Node, error) {
-	parse.consume(token.LCurly)
-
-	parse.signature()
-	parse.match(token.Arrow)
-	parse.listDelimiter(parse.expr, token.RCurly, 0)
-
-	parse.consume(token.RCurly)
-	return nil, nil
-}
-
 func (parse *parser) decls() (*ast.Stmts, error) {
 	start := parse.tok.StartPos()
 	decls, err := parse.listDelimiter(parse.decl, token.EOF, token.Illegal)
