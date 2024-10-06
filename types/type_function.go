@@ -1,11 +1,6 @@
 package types
 
-import (
-	"fmt"
-	"strings"
-
-	"github.com/saffage/jet/util"
-)
+import "strings"
 
 type Params []Type
 
@@ -92,7 +87,7 @@ func (t *Function) CheckArgValues(values []*Value) (idx int, err error) {
 	return t.CheckArgs(args)
 }
 
-func (t *Function) CheckArgs(args Params) (idx int, err error) {
+func (t *Function) CheckArgs(args Params) (int, error) {
 	// params 	args 	diff 	idx
 	//      1      2      -1      1
 	//      2      1       1      1
@@ -101,42 +96,50 @@ func (t *Function) CheckArgs(args Params) (idx int, err error) {
 	diff := len(t.params) - len(args)
 
 	if diff < 0 && t.variadic == nil {
-		return min(len(t.params), len(args)), fmt.Errorf(
-			"too many arguments (expected %d, got %d)",
-			len(t.params),
-			len(args),
-		)
+		return min(
+				len(t.params),
+				len(args),
+			), &errorIncorrectArity{
+				node:     nil,
+				expected: len(t.params),
+				got:      len(args),
+			}
 	}
 
 	if diff > 0 {
-		return min(len(t.params), len(args)), fmt.Errorf(
-			"not enough arguments (expected %d, got %d)",
-			len(t.params),
-			len(args),
-		)
+		return min(
+				len(t.params),
+				len(args),
+			), &errorIncorrectArity{
+				node:     nil,
+				expected: len(t.params),
+				got:      len(args),
+			}
 	}
 
 	for i := 0; i < len(t.params); i++ {
 		expected, actual := t.params[i], args[i]
 
 		if !actual.Equal(expected) {
-			return i, fmt.Errorf(
-				"expected '%s' for %s argument, got '%s' instead",
-				expected,
-				util.OrdinalSuffix(i+1),
-				actual,
-			)
+			return i, &errorArgTypeMismatch{
+				node:      nil,
+				tExpected: expected,
+				tArg:      actual,
+				index:     i,
+			}
 		}
 	}
 
 	// Check variadic.
 	for i, arg := range args[len(t.params):] {
 		if !arg.Equal(t.variadic) {
-			return i + len(t.params), fmt.Errorf(
-				"expected '%s', got '%s' instead",
-				t.variadic,
-				arg,
-			)
+			return i + len(t.params), &errorArgTypeMismatch{
+				node:      nil,
+				tExpected: t.variadic,
+				tArg:      arg,
+				index:     i + len(t.params),
+				variadic:  true,
+			}
 		}
 	}
 

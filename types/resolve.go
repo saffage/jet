@@ -117,7 +117,15 @@ func (check *checker) typeOfCall(node *ast.Call) (Type, error) {
 				n = node.Args.Nodes[idx]
 			}
 
-			return nil, internalErrorf(n, "%s", err.Error())
+			switch err := err.(type) {
+			case *errorArgTypeMismatch:
+				err.node = n
+
+			case *errorIncorrectArity:
+				err.node = n
+			}
+
+			return nil, err
 		}
 
 		return fn.Result(), nil
@@ -125,7 +133,7 @@ func (check *checker) typeOfCall(node *ast.Call) (Type, error) {
 
 	return nil, internalErrorf(
 		node.X,
-		"expression is not a function or a constructor: %s", // "expression is neither a function nor a constructor: `%s`",
+		"expression is not a function or a constructor: %s",
 		tOperand,
 	)
 }

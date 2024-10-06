@@ -6,6 +6,7 @@ import (
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/parser/token"
 	"github.com/saffage/jet/report"
+	"github.com/saffage/jet/util"
 )
 
 type (
@@ -51,6 +52,27 @@ type (
 		tDest Type
 	}
 
+	errorElemTypeMismatch struct {
+		elem      ast.Node
+		reason    ast.Node
+		tElem     Type
+		tExpected Type
+	}
+
+	errorArgTypeMismatch struct {
+		node      ast.Node
+		tArg      Type
+		tExpected Type
+		index     int
+		variadic  bool
+	}
+
+	errorIncorrectArity struct {
+		node     ast.Node
+		expected int
+		got      int
+	}
+
 	errorValueCannotBeStoredAsX struct {
 		node  ast.Node
 		tNode Type
@@ -65,13 +87,6 @@ type (
 		node  ast.Node
 		named ast.Node
 	}
-
-	errorElemTypeMismatch struct {
-		elem      ast.Node
-		reason    ast.Node
-		tElem     Type
-		tExpected Type
-	}
 )
 
 func (err *errorIllFormedAst) Error() string              { return err.Info().Error() }
@@ -82,10 +97,12 @@ func (err *errorAlreadyDefined) Error() string            { return err.Info().Er
 func (err *errorParamAlreadyDefined) Error() string       { return err.Info().Error() }
 func (err *errorUnknownExtern) Error() string             { return err.Info().Error() }
 func (err *errorTypeMismatch) Error() string              { return err.Info().Error() }
+func (err *errorElemTypeMismatch) Error() string          { return err.Info().Error() }
+func (err *errorArgTypeMismatch) Error() string           { return err.Info().Error() }
+func (err *errorIncorrectArity) Error() string            { return err.Info().Error() }
 func (err *errorValueCannotBeStoredAsX) Error() string    { return err.Info().Error() }
 func (err *errorNotAssignable) Error() string             { return err.Info().Error() }
 func (err *errorPositionalParamAfterNamed) Error() string { return err.Info().Error() }
-func (err *errorElemTypeMismatch) Error() string          { return err.Info().Error() }
 
 func (err *errorIllFormedAst) Info() *report.Info {
 	return &report.Info{
@@ -193,6 +210,78 @@ func (err *errorTypeMismatch) Info() *report.Info {
 	return info
 }
 
+func (err *errorElemTypeMismatch) Info() *report.Info {
+	info := &report.Info{
+		Range: err.elem.Range(),
+		Title: "element type mismatch",
+		Hint: fmt.Sprintf(
+			"expected `%s` here, got `%s`",
+			err.tExpected,
+			err.tElem,
+		),
+	}
+
+	if err.reason != nil && err.reason.Range().IsValid() {
+		info.Descriptions = []report.Description{
+			{
+				Message: "because of this",
+				Range:   err.reason.Range(),
+			},
+		}
+	}
+
+	return info
+}
+
+func (err *errorArgTypeMismatch) Info() *report.Info {
+	info := &report.Info{Title: "argument type mismatch"}
+
+	if err.variadic {
+		info.Hint = fmt.Sprintf(
+			"expected `%s` for variadic argument, got `%s`",
+			err.tExpected,
+			err.tArg,
+		)
+	} else {
+		info.Hint = fmt.Sprintf(
+			"expected `%s` for %d-%s argument, got `%s`",
+			err.tExpected,
+			err.index+1,
+			util.OrdinalSuffix(err.index+1),
+			err.tArg,
+		)
+	}
+
+	if err.node != nil && err.node.Range().IsValid() {
+		info.Range = err.node.Range()
+	}
+
+	return info
+}
+
+func (err *errorIncorrectArity) Info() *report.Info {
+	info := &report.Info{
+		Title: "incorrect arity",
+		Hint: fmt.Sprintf(
+			"expected %d arguments, got %d",
+			err.expected,
+			err.got,
+		),
+	}
+
+	if err.node != nil && err.node.Range().IsValid() {
+		info.Range = err.node.Range()
+	}
+
+	if err.expected > err.got {
+		info.Title += ", not enough arguments"
+	} else {
+		info.Title += ", too many arguments"
+	}
+
+	return info
+}
+
 func (err *errorValueCannotBeStoredAsX) Info() *report.Info {
 	info := &report.Info{
 		Range: err.node.Range(),
@@ -229,29 +318,6 @@ func (err *errorPositionalParamAfterNamed) Info() *report.Info {
 			{
 				Message: "named parameter was here",
 				Range:   err.named.Range(),
-			},
-		}
-	}
-
-	return info
-}
-
-func (err *errorElemTypeMismatch) Info() *report.Info {
-	info := &report.Info{
-		Range: err.elem.Range(),
-		Title: "element type mismatch",
-		Hint: fmt.Sprintf(
-			"expected `%s` here, not `%s`",
-			err.tExpected,
-			err.tElem,
-		),
-	}
-
-	if err.reason != nil && err.reason.Range().IsValid() {
-		info.Descriptions = []report.Description{
-			{
-				Message: "because of this",
-				Range:   err.reason.Range(),
 			},
 		}
 	}
