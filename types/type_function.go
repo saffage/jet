@@ -45,7 +45,7 @@ func NewFunction(params Params, result, variadic Type) *Function {
 }
 
 func (t *Function) Equal(expected Type) bool {
-	if expected := As[*Function](expected); expected != nil {
+	if expected, _ := As[*Function](expected); expected != nil {
 		return (t.variadic != nil && t.variadic.Equal(expected.variadic) ||
 			t.variadic == nil && expected.variadic == nil) &&
 			t.result.Equal(expected.result) && t.params.Equal(expected.params)

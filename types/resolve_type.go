@@ -59,7 +59,7 @@ func (check *checker) resolveTypeDecl(decl *ast.TypeDecl) {
 }
 
 func (check *checker) resolveTypeAlias(decl *ast.TypeDecl, t Type) {
-	typedesc := As[*TypeDesc](t)
+	typedesc, _ := As[*TypeDesc](t)
 
 	if typedesc == nil {
 		check.internalErrorf(decl.Expr, "expression is not a type")

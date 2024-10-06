@@ -19,7 +19,7 @@ func NewTypeDesc(t Type) *TypeDesc {
 }
 
 func (t *TypeDesc) Equal(other Type) bool {
-	if t2 := As[*TypeDesc](other); t2 != nil {
+	if t2, _ := As[*TypeDesc](other); t2 != nil {
 		return t.base.Equal(t2.base)
 	}
 

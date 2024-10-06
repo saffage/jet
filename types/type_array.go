@@ -16,7 +16,7 @@ func NewFixedArray(size int, t Type) *Array {
 }
 
 func (t *Array) Equal(expected Type) bool {
-	if expected := As[*Array](expected); expected != nil {
+	if expected, _ := As[*Array](expected); expected != nil {
 		return t.size == expected.size && t.elem.Equal(expected.elem)
 	}
 

@@ -95,7 +95,7 @@ func (check *checker) typeOfCall(node *ast.Call) (Type, error) {
 		return nil, err
 	}
 
-	if fn := As[*Function](tOperand); fn != nil {
+	if fn, _ := As[*Function](tOperand); fn != nil {
 		tParens, err := check.typeOfParens(node.Args)
 
 		if err != nil || tParens == nil {
@@ -164,7 +164,7 @@ func (check *checker) typeOfDot(node *ast.Dot) (Type, error) {
 	}
 
 	// TODO get symbol of the type.
-	if typedesc := As[*TypeDesc](tOperand); typedesc != nil {
+	if typedesc, _ := As[*TypeDesc](tOperand); typedesc != nil {
 		switch typedesc.Base().Underlying().(type) {
 		// case *Struct:
 		// 	return check.structInit(node.Args, typedesc)

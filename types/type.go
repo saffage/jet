@@ -17,21 +17,20 @@ type comparableType interface {
 }
 
 func Is[T comparableType](t Type) bool {
-	var zero T
-	return As[T](t) != zero
+	_, ok := As[T](t)
+	return ok
 }
 
-func As[T comparableType](t Type) T {
-	var zero T
+func As[T comparableType](t Type) (_ T, ok bool) {
 	if t != nil {
-		if t, ok := t.(T); ok && t != zero {
-			return t
+		if t, ok := t.(T); ok {
+			return t, true
 		}
-		if t, ok := t.Underlying().(T); ok && t != zero {
-			return t
+		if t, ok := SkipAlias(t).(T); ok {
+			return t, true
 		}
 	}
-	return zero
+	return
 }
 
 //-----------------------------------------------
@@ -51,15 +50,15 @@ var (
 
 func (UntypedInt) String() string         { return "untyped Int" }
 func (UntypedInt) Underlying() Type       { return UntypedIntType }
-func (UntypedInt) Equal(target Type) bool { return Is[UntypedInt](SkipAlias(target)) }
+func (UntypedInt) Equal(target Type) bool { return Is[UntypedInt](target) }
 
 func (UntypedFloat) String() string         { return "untyped Float" }
 func (UntypedFloat) Underlying() Type       { return UntypedFloatType }
-func (UntypedFloat) Equal(target Type) bool { return Is[UntypedFloat](SkipAlias(target)) }
+func (UntypedFloat) Equal(target Type) bool { return Is[UntypedFloat](target) }
 
 func (UntypedString) String() string         { return "untyped String" }
 func (UntypedString) Underlying() Type       { return UntypedStringType }
-func (UntypedString) Equal(target Type) bool { return Is[UntypedString](SkipAlias(target)) }
+func (UntypedString) Equal(target Type) bool { return Is[UntypedString](target) }
 
 //-----------------------------------------------
 // Primitive types
@@ -82,7 +81,7 @@ var (
 
 func (None) String() string         { return "None" }
 func (None) Underlying() Type       { return NoneType }
-func (None) Equal(target Type) bool { return Is[None](SkipAlias(target)) }
+func (None) Equal(target Type) bool { return Is[None](target) }
 
 func (Never) String() string         { return "Never" }
 func (Never) Underlying() Type       { return NeverType }
@@ -91,19 +90,19 @@ func (Never) Equal(target Type) bool { return true }
 func (Int) String() string   { return "Int" }
 func (Int) Underlying() Type { return IntType }
 func (Int) Equal(target Type) bool {
-	return Is[Int](SkipAlias(target)) || Is[UntypedInt](SkipAlias(target))
+	return Is[Int](target) || Is[UntypedInt](target)
 }
 
 func (Float) String() string   { return "Float" }
 func (Float) Underlying() Type { return FloatType }
 func (Float) Equal(target Type) bool {
-	return Is[Float](SkipAlias(target)) || Is[UntypedFloat](SkipAlias(target))
+	return Is[Float](target) || Is[UntypedFloat](target)
 }
 
 func (String) String() string   { return "String" }
 func (String) Underlying() Type { return StringType }
 func (String) Equal(target Type) bool {
-	return Is[String](SkipAlias(target)) || Is[UntypedString](SkipAlias(target))
+	return Is[String](target) || Is[UntypedString](target)
 }
 
 //-----------------------------------------------

@@ -115,7 +115,7 @@ func (sym *Binding) ParamTypes() Params {
 }
 
 func (sym *Binding) Variadic() Type {
-	if fn := As[*Function](sym.value.T); fn != nil {
+	if fn, _ := As[*Function](sym.value.T); fn != nil {
 		return fn.Variadic()
 	}
 	return nil
