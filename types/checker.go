@@ -33,7 +33,7 @@ func (check *checker) Visit(node ast.Node) ast.Visitor {
 // will check if expr is of type 'dest', otherwise returns nil.
 //
 // Also, the value of the expression will also be evaluated (if it's possible)
-// and stored in the [TypeInfo.Types] field.
+// and stored in the [TypeInfo.Values] field.
 //
 // If error was occurred, result is undefined.
 func (check *checker) typeOf(expr ast.Node, dest ...Type) (Type, error) {
