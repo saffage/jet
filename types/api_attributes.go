@@ -42,7 +42,7 @@ func (check *checker) resolveFuncAttrs(sym *Binding) {
 			attrIdent, _ := attr.X.(*ast.Lower)
 
 			if attrIdent == nil {
-				check.errorf(attr.X, "expected identifier")
+				check.internalErrorf(attr.X, "expected identifier")
 				continue
 			}
 
@@ -54,7 +54,7 @@ func (check *checker) resolveFuncAttrs(sym *Binding) {
 				// Unchecked attribute
 
 			default:
-				check.errorf(attrIdent, "unknown attribute")
+				check.internalErrorf(attrIdent, "unknown attribute")
 			}
 
 		case *ast.Lower:
@@ -63,11 +63,11 @@ func (check *checker) resolveFuncAttrs(sym *Binding) {
 				check.attrExternC(sym, attr)
 
 			default:
-				check.errorf(attr, "unknown attribute")
+				check.internalErrorf(attr, "unknown attribute")
 			}
 
 		default:
-			panic(errorf(
+			panic(internalErrorf(
 				attr,
 				"unexpected node type %T is attribute list",
 				attr,
@@ -77,20 +77,20 @@ func (check *checker) resolveFuncAttrs(sym *Binding) {
 
 	if sym.isExtern {
 		if sym.node.Value != nil {
-			check.errorf(
+			check.internalErrorf(
 				sym.node.Decl.Name,
 				"functions with @[extern_c] attribute must have no definition",
 			)
 		}
 	} else {
 		if sym.node.Value == nil {
-			check.errorf(
+			check.internalErrorf(
 				sym.node.Decl.Name,
 				"functions without body is not allowed",
 			)
 		}
 		if sym.Variadic() != nil {
-			check.errorf(
+			check.internalErrorf(
 				sym.node.Decl.Name,
 				"only a function with the attribute @[extern_c] can be variadic",
 			)
@@ -112,7 +112,7 @@ func (check *checker) attrExternC(sym Symbol, node ast.Node) {
 			value, err := check.valueOf(arg)
 
 			if err != nil || value == nil {
-				check.problem(err)
+				check.error(err)
 				continue
 			}
 
@@ -125,7 +125,7 @@ func (check *checker) attrExternC(sym Symbol, node ast.Node) {
 			if idx < len(node.Args.Nodes) {
 				n = node.Args.Nodes[idx]
 			}
-			check.errorf(n, "%s", err.Error())
+			check.internalErrorf(n, "%s", err.Error())
 			return
 		}
 
@@ -138,7 +138,7 @@ func (check *checker) attrExternC(sym Symbol, node ast.Node) {
 		sym.isExtern = true
 
 	default:
-		check.errorf(
+		check.internalErrorf(
 			sym.Ident(),
 			"expected function for @[extern_c] attribute",
 		)

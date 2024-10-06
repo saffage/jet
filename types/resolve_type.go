@@ -14,7 +14,7 @@ func (check *checker) typeSymOf(expr ast.Node) (t *TypeDef, err error) {
 				check.newUse(node, typedef)
 				t = typedef
 			} else {
-				err = errorf(node, "expression has no type")
+				err = internalErrorf(node, "expression has no type")
 			}
 		}
 
@@ -22,7 +22,7 @@ func (check *checker) typeSymOf(expr ast.Node) (t *TypeDef, err error) {
 		panic("unimplemented")
 
 	default:
-		panic(errorf(expr, "ill-formed AST: expected type, got %T instead", expr))
+		panic(internalErrorf(expr, "ill-formed AST: expected type, got %T instead", expr))
 	}
 
 	return
@@ -30,7 +30,7 @@ func (check *checker) typeSymOf(expr ast.Node) (t *TypeDef, err error) {
 
 func (check *checker) resolveTypeDecl(decl *ast.TypeDecl) {
 	if decl.Args != nil {
-		check.problem(&errorUnimplementedFeature{
+		check.error(&errorUnimplementedFeature{
 			node:    decl.Args,
 			feature: "type parameters",
 		})
@@ -45,7 +45,7 @@ func (check *checker) resolveTypeDecl(decl *ast.TypeDecl) {
 		check.resolveExternTypeDecl(expr, decl)
 
 	case *ast.Upper, *ast.TypeVar, *ast.Signature:
-		check.problem(&errorUnimplementedFeature{
+		check.error(&errorUnimplementedFeature{
 			rng:     decl.EqTok.WithEnd(expr.PosEnd()),
 			feature: "type aliases",
 		})
@@ -62,14 +62,14 @@ func (check *checker) resolveTypeAlias(decl *ast.TypeDecl, t Type) {
 	typedesc := As[*TypeDesc](t)
 
 	if typedesc == nil {
-		check.errorf(decl.Expr, "expression is not a type")
+		check.internalErrorf(decl.Expr, "expression is not a type")
 		return
 	}
 
 	sym := NewTypeDef(check.env, nil, typedesc, decl)
 
 	if defined := check.env.Define(sym); defined != nil {
-		check.problem(&errorAlreadyDefined{sym.Ident(), defined.Ident()})
+		check.error(&errorAlreadyDefined{sym.Ident(), defined.Ident()})
 		return
 	}
 
@@ -120,7 +120,7 @@ func (check *checker) resolveTypeDeclBody(def *TypeDef, body *ast.Block) {
 		}
 
 		if defined := def.local.Define(sym); defined != nil {
-			check.problem(&errorAlreadyDefined{
+			check.error(&errorAlreadyDefined{
 				name: sym.Ident(),
 				prev: defined.Ident(),
 			})
@@ -136,7 +136,7 @@ func (check *checker) resolveTypeField(
 	label *ast.Lower,
 ) *Binding {
 	t, err := check.typeOf(node.Type)
-	check.problem(err)
+	check.error(err)
 
 	return NewField(def.local, def, t, node, label)
 }
@@ -178,14 +178,14 @@ func (check *checker) resolveTypeVariant(
 		}
 
 		t, err := check.typeOf(param)
-		check.problem(err)
+		check.error(err)
 
 		sym := NewBinding(env, nil, &Value{T: t}, decl, nil)
 		sym.label = paramName
 		sym.isParam = true
 
 		if defined := env.Define(sym); defined != nil {
-			check.problem(&errorAlreadyDefined{
+			check.error(&errorAlreadyDefined{
 				name: node.Name,
 				prev: defined.Ident(),
 			})
@@ -194,6 +194,6 @@ func (check *checker) resolveTypeVariant(
 		params[i] = sym
 	}
 
-	check.problem(err)
+	check.error(err)
 	return NewVariant(def.local, env, params, def, node)
 }

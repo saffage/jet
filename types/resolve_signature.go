@@ -24,11 +24,11 @@ func (check *checker) resolveSignature(sig *ast.Signature) *Function {
 		}
 
 		sym, err := check.resolveParam(decl, label)
-		check.problem(err)
+		check.error(err)
 		tParams[i] = sym.Type()
 
 		if prev := check.env.Define(sym); prev != nil {
-			check.problem(&errorParamAlreadyDefined{decl.Name, prev.Ident()})
+			check.error(&errorParamAlreadyDefined{decl.Name, prev.Ident()})
 			continue
 		}
 
@@ -37,7 +37,7 @@ func (check *checker) resolveSignature(sig *ast.Signature) *Function {
 
 	if sig.Result != nil {
 		t, err := check.typeOf(sig.Result)
-		check.problem(err)
+		check.error(err)
 
 		if err == nil {
 			assert(t != nil)
@@ -63,12 +63,12 @@ func (check *checker) resolveParam(
 	sym.isParam = true
 
 	if param.TypeTok.IsValid() {
-		err = errorf(param, "type parameters is not implemented")
+		err = internalErrorf(param, "type parameters is not implemented")
 		return
 	}
 
 	if param.Type == nil {
-		err = errorf(param, "parameter type inference is not implemented")
+		err = internalErrorf(param, "parameter type inference is not implemented")
 		return
 	}
 

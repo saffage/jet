@@ -13,13 +13,13 @@ import (
 func (check *checker) typeOfInternal(expr ast.Node) (t Type, err error) {
 	switch node := expr.(type) {
 	case nil:
-		panic(errorf(nil, "got nil node for expr"))
+		panic(internalErrorf(nil, "got nil node for expr"))
 
 	case *ast.LetDecl, *ast.TypeDecl:
-		panic(errorf(expr, "unhandled declaration"))
+		panic(internalErrorf(expr, "unhandled declaration"))
 
 	case *ast.BadNode, *ast.Stmts, *ast.AttributeList:
-		panic(errorf(expr, "ill-formed AST"))
+		panic(internalErrorf(expr, "ill-formed AST"))
 
 	case *ast.Empty:
 		return NoneType, nil
@@ -30,7 +30,7 @@ func (check *checker) typeOfInternal(expr ast.Node) (t Type, err error) {
 				check.newUse(node, sym)
 				t = sym.Type()
 			} else {
-				err = errorf(node, "symbols `%s` is not yet resolved", sym.Name())
+				err = internalErrorf(node, "symbols `%s` is not yet resolved", sym.Name())
 			}
 		}
 
@@ -40,7 +40,7 @@ func (check *checker) typeOfInternal(expr ast.Node) (t Type, err error) {
 				check.newUse(node, sym)
 				t = sym.Type()
 			} else {
-				err = errorf(node, "symbols `%s` is not yet resolved", sym.Name())
+				err = internalErrorf(node, "symbols `%s` is not yet resolved", sym.Name())
 			}
 		}
 
@@ -117,13 +117,13 @@ func (check *checker) typeOfCall(node *ast.Call) (Type, error) {
 				n = node.Args.Nodes[idx]
 			}
 
-			return nil, errorf(n, "%s", err.Error())
+			return nil, internalErrorf(n, "%s", err.Error())
 		}
 
 		return fn.Result(), nil
 	}
 
-	return nil, errorf(
+	return nil, internalErrorf(
 		node.X,
 		"expression is not a function or a constructor: %s", // "expression is neither a function nor a constructor: `%s`",
 		tOperand,
@@ -170,7 +170,7 @@ func (check *checker) typeOfDot(node *ast.Dot) (Type, error) {
 	// 	return check.structMember(node, tyStruct)
 	// }
 
-	return nil, errorf(
+	return nil, internalErrorf(
 		node.X,
 		"expected module or struct variable, got `%s` instead",
 		tOperand,
@@ -227,15 +227,12 @@ func (check *checker) typeOfList(node *ast.List) (Type, error) {
 		}
 
 		if !tElem.Equal(tListElem) {
-			return nil, problem(
-				errorf(
-					elem,
-					"expected type `%s` for this element, got `%s` instead",
-					tListElem,
-					tElem,
-				),
-				notef(node.Nodes[0], "because of this"),
-			)
+			return nil, &errorElemTypeMismatch{
+				elem:      elem,
+				reason:    node.Nodes[0],
+				tElem:     tElem,
+				tExpected: tListElem,
+			}
 		}
 	}
 
@@ -364,11 +361,11 @@ func (check *checker) typeOfParens(node *ast.Parens) (Params, error) {
 
 		if isTypeDesc {
 			if !Is[*TypeDesc](t) {
-				errs = append(errs, errorf(expr, "expected type, got value of type '%s' instead", t))
+				errs = append(errs, internalErrorf(expr, "expected type, got value of type '%s' instead", t))
 				continue
 			}
 		} else if Is[*TypeDesc](t) {
-			errs = append(errs, errorf(expr, "expected expression, got type '%s' instead", t))
+			errs = append(errs, internalErrorf(expr, "expected expression, got type '%s' instead", t))
 			continue
 		}
 

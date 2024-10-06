@@ -22,7 +22,7 @@ func (check *checker) resolveExternTypeDecl(extern *ast.Extern, node *ast.TypeDe
 		typedesc = NewTypeDesc(StringType)
 
 	default:
-		check.problem(&errorUnknownExtern{extern, externName})
+		check.error(&errorUnknownExtern{extern, externName})
 		return
 	}
 

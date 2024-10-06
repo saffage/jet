@@ -16,7 +16,7 @@ func (block *block) Visit(node ast.Node) ast.Visitor {
 		if t, err := block.typeOf(node); err == nil && t != nil {
 			block.t = t
 		} else {
-			block.problem(err)
+			block.error(err)
 		}
 	}
 

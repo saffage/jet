@@ -14,11 +14,11 @@ func (check *checker) resolveLetDecl(node *ast.LetDecl) {
 	case nil:
 		var err error
 		t, err = check.typeOf(node.Value)
-		check.problem(err)
+		check.error(err)
 
 	case *ast.Upper, *ast.TypeVar:
 		tDecl, err := check.typeOf(node.Decl.Type)
-		check.problem(err)
+		check.error(err)
 		report.Debug("%T - %s", tDecl, tDecl)
 
 		t, err = check.typeOf(node.Value, SkipTypeDesc(tDecl))
@@ -28,7 +28,7 @@ func (check *checker) resolveLetDecl(node *ast.LetDecl) {
 			err.dest = node.Decl.Type
 		}
 
-		check.problem(err)
+		check.error(err)
 
 	case *ast.Signature:
 		check.env = NewNamedEnv(check.env, node.Decl.Name.String()+" parameters")
@@ -36,7 +36,7 @@ func (check *checker) resolveLetDecl(node *ast.LetDecl) {
 		tDecl := check.resolveSignature(ty)
 		_, err := check.typeOf(node.Value, tDecl.result)
 		check.env = check.env.parent
-		check.problem(err)
+		check.error(err)
 
 		t = tDecl
 
@@ -47,13 +47,13 @@ func (check *checker) resolveLetDecl(node *ast.LetDecl) {
 	t = IntoTyped(t)
 
 	if t == nil {
-		check.errorf(node.Value, "cannot get a type of the expression")
+		check.internalErrorf(node.Value, "cannot get a type of the expression")
 		return
 	}
 
 	_, discarded := node.Decl.Name.(*ast.Underscore)
 	if discarded && Is[*Function](t) {
-		check.problem(&warnDiscardedFuncDef{node.Decl.Name})
+		check.error(&warnDiscardedFuncDef{node.Decl.Name})
 	}
 
 	sym := NewBinding(check.env, nil, &Value{t, nil}, node.Decl, node)

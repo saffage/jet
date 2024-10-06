@@ -24,7 +24,7 @@ func (check *checker) prefix(node *ast.Op, tOperand Type) Type {
 		panic(fmt.Sprintf("unknown prefix operator: '%s'", node.Kind))
 	}
 
-	check.errorf(
+	check.internalErrorf(
 		node,
 		"operator %s is not defined for the type `%s`",
 		node.Kind,
@@ -43,7 +43,7 @@ func (check *checker) infix(node *ast.Op, x, y Type) (Type, error) {
 		errs := []error{}
 
 		if !check.assignable(node.X) {
-			errs = append(errs, errorf(node.X, "expression cannot be assigned to"))
+			errs = append(errs, internalErrorf(node.X, "expression cannot be assigned to"))
 		}
 
 		// TODO invalid type will be inferred if one of them is untyped
@@ -60,7 +60,7 @@ func (check *checker) infix(node *ast.Op, x, y Type) (Type, error) {
 		if x.Equal(opTypes.x) && y.Equal(opTypes.y) {
 			_, isAssignOp := operatorTypesAssign[node.Kind]
 			if isAssignOp && !check.assignable(node.X) {
-				check.problem(&errorNotAssignable{node.X})
+				check.error(&errorNotAssignable{node.X})
 				// check.errorf(node.X, "expression cannot be assigned to")
 			}
 
@@ -69,7 +69,7 @@ func (check *checker) infix(node *ast.Op, x, y Type) (Type, error) {
 	}
 
 	// TODO: add help message for possible operator types
-	return nil, errorf(
+	return nil, internalErrorf(
 		node,
 		"type mismatch for operator `%s`, got `%s` and `%s`",
 		node.Kind,
@@ -147,7 +147,7 @@ func (check *checker) assignable(node ast.Node) bool {
 		if operand != nil {
 			varSym, ok := check.symbolOf(operand).(*Binding)
 			if !ok || varSym == nil {
-				check.errorf(operand, "identifier is not a variable")
+				check.internalErrorf(operand, "identifier is not a variable")
 				return false
 			}
 

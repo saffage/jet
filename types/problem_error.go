@@ -65,6 +65,13 @@ type (
 		node  ast.Node
 		named ast.Node
 	}
+
+	errorElemTypeMismatch struct {
+		elem      ast.Node
+		reason    ast.Node
+		tElem     Type
+		tExpected Type
+	}
 )
 
 func (err *errorIllFormedAst) Error() string              { return err.Info().Error() }
@@ -78,6 +85,7 @@ func (err *errorTypeMismatch) Error() string              { return err.Info().Er
 func (err *errorValueCannotBeStoredAsX) Error() string    { return err.Info().Error() }
 func (err *errorNotAssignable) Error() string             { return err.Info().Error() }
 func (err *errorPositionalParamAfterNamed) Error() string { return err.Info().Error() }
+func (err *errorElemTypeMismatch) Error() string          { return err.Info().Error() }
 
 func (err *errorIllFormedAst) Info() *report.Info {
 	return &report.Info{
@@ -221,6 +229,29 @@ func (err *errorPositionalParamAfterNamed) Info() *report.Info {
 			{
 				Message: "named parameter was here",
 				Range:   err.named.Range(),
+			},
+		}
+	}
+
+	return info
+}
+
+func (err *errorElemTypeMismatch) Info() *report.Info {
+	info := &report.Info{
+		Range: err.elem.Range(),
+		Title: "element type mismatch",
+		Hint: fmt.Sprintf(
+			"expected `%s` here, not `%s`",
+			err.tExpected,
+			err.tElem,
+		),
+	}
+
+	if err.reason != nil && err.reason.Range().IsValid() {
+		info.Descriptions = []report.Description{
+			{
+				Message: "because of this",
+				Range:   err.reason.Range(),
 			},
 		}
 	}
