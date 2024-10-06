@@ -55,8 +55,9 @@ func (info *Info) Error() string {
 	}
 
 	if info.Hint != "" {
-		buf.WriteString(": ")
+		buf.WriteString(" (")
 		buf.WriteString(info.Hint)
+		buf.WriteString(")")
 	}
 
 	return buf.String()
