@@ -7,6 +7,13 @@ import (
 )
 
 func (check *checker) resolveSignature(sig *ast.Signature) *Function {
+	if sig.WithTok.IsValid() {
+		check.error(&errorUnimplementedFeature{
+			rng:     sig.WithTok.WithEnd(sig.PosEnd()),
+			feature: "function effects",
+		})
+	}
+
 	tParams := make([]Type, len(sig.Params.Nodes))
 	tResult := Type(nil)
 

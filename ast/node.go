@@ -186,6 +186,7 @@ type (
 		Params  *Parens
 		Result  Node `yaml:",omitempty"` // can be nil in some cases
 		Effects Node `yaml:",omitempty"` // can be nil in some cases
+		WithTok token.Pos
 	}
 
 	// Represents 'x(...args)'.

@@ -506,6 +506,7 @@ func (parse *parser) signature() (ast.Node, error) {
 	}
 
 	var result, effects ast.Node
+	var withToken token.Pos
 
 	if parse.matchAny(token.Type, token.TypeVar, token.LParen) {
 		if result, err = parse.typeExprOrSignature(); err != nil {
@@ -513,7 +514,9 @@ func (parse *parser) signature() (ast.Node, error) {
 		}
 	}
 
-	if parse.consume(token.KwWith) {
+	if tok, ok := parse.take(token.KwWith); ok {
+		withToken = tok.StartPos()
+
 		if effects, err = parse.binaryExpr(nil, 2); err != nil {
 			return nil, err
 		}
@@ -523,6 +526,7 @@ func (parse *parser) signature() (ast.Node, error) {
 		Params:  params,
 		Result:  result,
 		Effects: effects,
+		WithTok: withToken,
 	}, nil
 }
 
