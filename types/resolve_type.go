@@ -69,7 +69,10 @@ func (check *checker) resolveTypeAlias(decl *ast.TypeDecl, t Type) {
 	sym := NewTypeDef(check.env, nil, typedesc, decl)
 
 	if defined := check.env.Define(sym); defined != nil {
-		check.error(&errorAlreadyDefined{sym.Ident(), defined.Ident()})
+		check.error(&errorAlreadyDefined{
+			name: sym.Ident(),
+			prev: defined.Ident(),
+		})
 		return
 	}
 
@@ -109,6 +112,11 @@ func (check *checker) resolveTypeDeclBody(def *TypeDef, body *ast.Block) {
 
 		case *ast.Variant:
 			variant := check.resolveTypeVariant(def, node)
+
+			if variant == nil {
+				continue
+			}
+
 			variants = append(variants, Variant{
 				Name:   variant.Name(),
 				Params: variant.ParamTypes(),
@@ -145,6 +153,15 @@ func (check *checker) resolveTypeVariant(
 	def *TypeDef,
 	node *ast.Variant,
 ) *Binding {
+	if node.Name.String() == def.Name() {
+		check.error(&errorAlreadyDefined{
+			name: node.Name,
+			prev: def.Ident(),
+			hint: "The variant type cannot be named the same as the type in which it's defined",
+		})
+		return nil
+	}
+
 	if node.Params == nil {
 		return NewVariant(def.local, nil, nil, def, node)
 	}

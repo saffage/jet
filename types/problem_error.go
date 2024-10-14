@@ -33,6 +33,7 @@ type (
 	errorAlreadyDefined struct {
 		name ast.Ident
 		prev ast.Ident
+		hint string
 	}
 
 	errorParamAlreadyDefined struct {
@@ -160,6 +161,7 @@ func (err *errorAlreadyDefined) Info() *report.Info {
 	info := &report.Info{
 		Range: err.name.Range(),
 		Title: "name is already defined in the current environment",
+		Hint:  err.hint,
 	}
 
 	if err.prev != nil && err.prev.Range().IsValid() {
