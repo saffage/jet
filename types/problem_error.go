@@ -88,6 +88,11 @@ type (
 		node  ast.Node
 		named ast.Node
 	}
+
+	errorExprIsNotCallable struct {
+		node ast.Node
+		ty   Type
+	}
 )
 
 func (err *errorIllFormedAst) Error() string              { return err.Info().Error() }
@@ -104,6 +109,7 @@ func (err *errorIncorrectArity) Error() string            { return err.Info().Er
 func (err *errorValueCannotBeStoredAsX) Error() string    { return err.Info().Error() }
 func (err *errorNotAssignable) Error() string             { return err.Info().Error() }
 func (err *errorPositionalParamAfterNamed) Error() string { return err.Info().Error() }
+func (err *errorExprIsNotCallable) Error() string         { return err.Info().Error() }
 
 func (err *errorIllFormedAst) Info() *report.Info {
 	return &report.Info{
@@ -322,6 +328,16 @@ func (err *errorPositionalParamAfterNamed) Info() *report.Info {
 				Range:   err.named.Range(),
 			},
 		}
+	}
+
+	return info
+}
+
+func (err *errorExprIsNotCallable) Info() *report.Info {
+	info := &report.Info{
+		Range: err.node.Range(),
+		Title: "expression is not a function or a constructor",
+		Hint:  fmt.Sprintf("Type `%s` is not callable", err.ty),
 	}
 
 	return info

@@ -131,11 +131,7 @@ func (check *checker) typeOfCall(node *ast.Call) (Type, error) {
 		return fn.Result(), nil
 	}
 
-	return nil, internalErrorf(
-		node.X,
-		"expression is not a function or a constructor: %s",
-		tOperand,
-	)
+	return nil, &errorExprIsNotCallable{node: node.X, ty: tOperand}
 }
 
 func (check *checker) typeOfDot(node *ast.Dot) (Type, error) {

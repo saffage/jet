@@ -60,7 +60,7 @@ func (check *checker) typeOf(expr ast.Node, dest ...Type) (Type, error) {
 	}
 
 	if t == nil {
-		panic("unreachable")
+		panic(internalErrorf(expr, "unresolved type of the expression"))
 	}
 
 	if expected != nil && !check.convertible(&Value{t, nil}, expected) {
