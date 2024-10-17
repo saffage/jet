@@ -517,7 +517,7 @@ func (parse *parser) signature() (ast.Node, error) {
 	if tok, ok := parse.take(token.KwWith); ok {
 		withToken = tok.StartPos()
 
-		if effects, err = parse.binaryExpr(nil, 2); err != nil {
+		if effects, err = parse.binaryExpr(2); err != nil {
 			return nil, err
 		}
 	}
@@ -554,7 +554,7 @@ func (parse *parser) expr() (ast.Node, error) {
 		return parse.whenExpr()
 
 	default:
-		return parse.binaryExpr(nil, 2)
+		return parse.binaryExpr(2)
 	}
 }
 
@@ -646,7 +646,7 @@ func (parse *parser) pattern() (ast.Node, error) {
 		return list, nil
 
 	default:
-		return parse.expr()
+		return nil, ErrExpectedPattern
 	}
 }
 
@@ -672,20 +672,19 @@ func (parse *parser) dot2() (ast.Node, error) {
 	return nil, parse.error(ErrUnexpectedToken)
 }
 
-func (parse *parser) binaryExpr(x ast.Node, precedence int) (ast.Node, error) {
+func (parse *parser) binaryExpr(precedence int) (ast.Node, error) {
 	var err error
+	var x ast.Node
 
-	if x == nil {
-		if x, err = parse.prefix(); err != nil {
-			return nil, err
-		}
+	if x, err = parse.prefix(); err != nil {
+		return nil, err
 	}
 
 	for oprKind, ok := operators[parse.tok.Kind]; ok &&
 		precedences[parse.tok.Kind] >= precedence; {
 
 		oprTok := parse.next()
-		y, err := parse.binaryExpr(nil, precedences[oprTok.Kind]+1)
+		y, err := parse.binaryExpr(precedences[oprTok.Kind] + 1)
 
 		if err != nil {
 			return nil, err
