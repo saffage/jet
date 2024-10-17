@@ -23,6 +23,7 @@ var (
 	ErrExpectedDecl           = errors.New("expected declaration")
 	ErrExpectedDeclAfterAttrs = errors.New("expected declaration after attribute list")
 	ErrExpectedIdent          = errors.New("expected identifier")
+	ErrExpectedPattern        = errors.New("expected pattern (identifier, type or type variant)")
 )
 
 type Error struct {
