@@ -49,6 +49,10 @@ type walkable interface {
 	walk(Visitor)
 }
 
+func (stmts Stmts) walk(v Visitor) {
+	walkList([]Node(stmts), v)
+}
+
 func (node *BadNode) walk(Visitor)    {}
 func (node *Empty) walk(Visitor)      {}
 func (node *Lower) walk(Visitor)      {}
@@ -57,19 +61,9 @@ func (node *TypeVar) walk(Visitor)    {}
 func (node *Underscore) walk(Visitor) {}
 func (node *Literal) walk(Visitor)    {}
 
-func (node *AttributeList) walk(v Visitor) {
-	assert(node.List != nil)
-
-	walkList(node.List.Nodes, v)
-}
-
 func (node *LetDecl) walk(v Visitor) {
 	assert(node.Decl.Name != nil)
 	assert(node.Value != nil)
-
-	if node.Attrs != nil {
-		WalkTopDown(node.Attrs, v)
-	}
 
 	WalkTopDown(node.Decl.Name, v)
 
@@ -83,10 +77,6 @@ func (node *LetDecl) walk(v Visitor) {
 func (node *TypeDecl) walk(v Visitor) {
 	assert(node.Name != nil)
 	assert(node.Expr != nil)
-
-	if node.Attrs != nil {
-		WalkTopDown(node.Attrs, v)
-	}
 
 	WalkTopDown(node.Name, v)
 
@@ -164,12 +154,8 @@ func (node *Op) walk(v Visitor) {
 	}
 }
 
-func (node *Stmts) walk(v Visitor) {
-	walkList(node.Nodes, v)
-}
-
 func (node *Block) walk(v Visitor) {
-	walkList(node.Stmts.Nodes, v)
+	walkList(node.Nodes, v)
 }
 
 func (node *List) walk(v Visitor) {
@@ -185,7 +171,7 @@ func (node *When) walk(v Visitor) {
 	assert(node.Body != nil)
 
 	WalkTopDown(node.Expr, v)
-	walkList(node.Body.Stmts.Nodes, v)
+	walkList(node.Body.Nodes, v)
 }
 
 func (node *Extern) walk(v Visitor) {

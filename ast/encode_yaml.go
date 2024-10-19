@@ -7,6 +7,8 @@ import (
 
 // TODO: fix a bug when 'UnmarshalYAML' method broke marshaling.
 
+func (stmts *Stmts) MarshalYAML() (any, error) { return wrap(stmts), nil }
+
 func (node *BadNode) MarshalYAML() (any, error)    { return wrap(node), nil }
 func (node *Empty) MarshalYAML() (any, error)      { return wrap(node), nil }
 func (node *Lower) MarshalYAML() (any, error)      { return wrap(node), nil }
@@ -15,7 +17,6 @@ func (node *TypeVar) MarshalYAML() (any, error)    { return wrap(node), nil }
 func (node *Underscore) MarshalYAML() (any, error) { return wrap(node), nil }
 func (node *Literal) MarshalYAML() (any, error)    { return wrap(node), nil }
 
-func (node *AttributeList) MarshalYAML() (any, error) { return wrap(node), nil }
 func (node *LetDecl) MarshalYAML() (any, error)       { return wrap(node), nil }
 func (node *TypeDecl) MarshalYAML() (any, error)      { return wrap(node), nil }
 func (node *Decl) MarshalYAML() (any, error)          { return wrap(node), nil }
@@ -30,10 +31,9 @@ func (node *Op) MarshalYAML() (any, error)         { return wrap(node), nil }
 func (node *List) MarshalYAML() (any, error)   { return wrap(node), nil }
 func (node *Block) MarshalYAML() (any, error)  { return wrap(node), nil }
 func (node *Parens) MarshalYAML() (any, error) { return wrap(node), nil }
-func (node *Stmts) MarshalYAML() (any, error)  { return wrap(node), nil }
 
-func (node *When) MarshalYAML() (any, error)     { return wrap(node), nil }
-func (node *Extern) MarshalYAML() (any, error)   { return wrap(node), nil }
+func (node *When) MarshalYAML() (any, error)   { return wrap(node), nil }
+func (node *Extern) MarshalYAML() (any, error) { return wrap(node), nil }
 
 func wrap[T any](node *T) any {
 	return struct {

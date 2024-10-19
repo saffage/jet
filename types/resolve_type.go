@@ -81,10 +81,10 @@ func (check *checker) resolveTypeAlias(decl *ast.TypeDecl, t Type) {
 }
 
 func (check *checker) resolveTypeDeclBody(def *TypeDef, body *ast.Block) {
-	fields := make([]Field, 0, len(body.Stmts.Nodes))
-	variants := make([]Variant, 0, len(body.Stmts.Nodes))
+	fields := make([]Field, 0, len(body.Nodes))
+	variants := make([]Variant, 0, len(body.Nodes))
 
-	for _, node := range body.Stmts.Nodes {
+	for _, node := range body.Nodes {
 		sym := Symbol(nil)
 
 		switch node := node.(type) {

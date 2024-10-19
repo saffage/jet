@@ -22,7 +22,7 @@ const (
 	DefaultFlags = NoFlags
 )
 
-func Parse(tokens []token.Token, flags Flags) (*ast.Stmts, error) {
+func Parse(tokens []token.Token, flags Flags) (ast.Stmts, error) {
 	p, err := New(tokens, flags)
 	if err != nil {
 		return nil, err
@@ -30,7 +30,7 @@ func Parse(tokens []token.Token, flags Flags) (*ast.Stmts, error) {
 	return p.Parse()
 }
 
-func MustParse(tokens []token.Token, flags Flags) *ast.Stmts {
+func MustParse(tokens []token.Token, flags Flags) ast.Stmts {
 	p, err := New(tokens, flags)
 	if err != nil {
 		panic(err)

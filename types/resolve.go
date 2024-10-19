@@ -18,7 +18,7 @@ func (check *checker) typeOfInternal(expr ast.Node) (t Type, err error) {
 	case *ast.LetDecl, *ast.TypeDecl:
 		panic(internalErrorf(expr, "unhandled declaration"))
 
-	case *ast.BadNode, *ast.Stmts, *ast.AttributeList:
+	case *ast.BadNode, *ast.Stmts:
 		panic(internalErrorf(expr, "ill-formed AST"))
 
 	case *ast.Empty:
@@ -251,7 +251,7 @@ func (check *checker) typeOfBlock(node *ast.Block) Type {
 	check.env = NewNamedEnv(check.env, "block")
 	report.Debug("push %s", check.env.name)
 
-	for _, node := range node.Stmts.Nodes {
+	for _, node := range node.Nodes {
 		ast.WalkTopDown(node, block)
 	}
 
@@ -268,7 +268,7 @@ func (check *checker) typeOfWhen(node *ast.When) (Type, error) {
 
 	assert(tExpr != nil)
 
-	for _, case_ := range node.Body.Stmts.Nodes {
+	for _, case_ := range node.Body.Nodes {
 		op, ok := case_.(*ast.Op)
 
 		if !ok || op.Kind != ast.OperatorFatArrow || op.X == nil || op.Y == nil {

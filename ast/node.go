@@ -17,6 +17,33 @@ type Ident interface {
 }
 
 //------------------------------------------------
+// Statements
+//------------------------------------------------
+
+type Stmts []Node
+
+func (stmts Stmts) Range() token.Range {
+	if len(stmts) == 0 {
+		return token.Range{}
+	}
+	return stmts.Pos().WithEnd(stmts.PosEnd())
+}
+
+func (stmts Stmts) Pos() token.Pos {
+	if len(stmts) == 0 {
+		return token.Pos{}
+	}
+	return stmts[0].Pos()
+}
+
+func (stmts Stmts) PosEnd() token.Pos {
+	if len(stmts) == 0 {
+		return token.Pos{}
+	}
+	return stmts[len(stmts)-1].PosEnd()
+}
+
+//------------------------------------------------
 // Atoms
 //------------------------------------------------
 
@@ -93,15 +120,8 @@ func (n *Literal) PosEnd() token.Pos  { return n.Rng.EndPos() }
 //------------------------------------------------
 
 type (
-	// Represents '@[...attributes]'.
-	AttributeList struct {
-		List   *List
-		TokPos token.Pos // '@' token.
-	}
-
 	// Represents 'let name Type = value'.
 	LetDecl struct {
-		Attrs  *AttributeList `yaml:",omitempty"`
 		LetTok token.Pos
 		Decl   *Decl
 		Value  Node
@@ -109,12 +129,11 @@ type (
 
 	// Represents 'type Name = Type' or 'type Name(args) { variants }'.
 	TypeDecl struct {
-		Attrs   *AttributeList `yaml:",omitempty"`
-		Name    *Upper         ``
-		Args    *Parens        `yaml:",omitempty"`
-		Expr    Node           `yaml:",omitempty"`
-		TypeTok token.Pos      ``
-		EqTok   token.Pos      ``
+		Name    *Upper    ``
+		Args    *Parens   `yaml:",omitempty"`
+		Expr    Node      `yaml:",omitempty"`
+		TypeTok token.Pos ``
+		EqTok   token.Pos ``
 	}
 
 	// Represents `name T`, `name`, `type 'name T`, `type 'name`.
@@ -130,10 +149,6 @@ type (
 		Params *Parens `yaml:",omitempty"` // Optional.
 	}
 )
-
-func (node *AttributeList) Range() token.Range { return node.TokPos.WithEnd(node.TokPos) }
-func (node *AttributeList) Pos() token.Pos     { return node.TokPos }
-func (node *AttributeList) PosEnd() token.Pos  { return node.List.PosEnd() }
 
 func (node *LetDecl) Range() token.Range { return node.Pos().WithEnd(node.PosEnd()) }
 func (node *LetDecl) Pos() token.Pos     { return node.LetTok }
@@ -283,15 +298,9 @@ func (n *Op) IsName() bool    { return n.X == nil && n.Y == nil }
 //------------------------------------------------
 
 type (
-	// Represents 'a; b; c'.
-	Stmts struct {
-		Nodes []Node
-		Start token.Pos // Beginning of the statement list.
-	}
-
 	// Represents '{ a; b; c }'.
 	Block struct {
-		Stmts *Stmts // Can be nil.
+		Nodes []Node
 		Rng   token.Range
 	}
 
@@ -307,15 +316,6 @@ type (
 		Rng   token.Range
 	}
 )
-
-func (node *Stmts) Range() token.Range { return token.RangeFrom(node.Start, node.PosEnd()) }
-func (node *Stmts) Pos() token.Pos     { return node.Start }
-func (node *Stmts) PosEnd() token.Pos {
-	if len(node.Nodes) > 0 {
-		return node.Nodes[len(node.Nodes)-1].PosEnd()
-	}
-	return node.Start
-}
 
 func (node *Block) Range() token.Range { return node.Pos().WithEnd(node.PosEnd()) }
 func (node *Block) Pos() token.Pos     { return node.Rng.StartPos() }
@@ -364,6 +364,8 @@ func (node *Extern) PosEnd() token.Pos {
 }
 
 var (
+	_ Node = Stmts(nil)
+
 	_ Node = (*BadNode)(nil)
 	_ Node = (*Empty)(nil)
 	_ Node = (*Lower)(nil)
@@ -372,7 +374,6 @@ var (
 	_ Node = (*Underscore)(nil)
 	_ Node = (*Literal)(nil)
 
-	_ Node = (*AttributeList)(nil)
 	_ Node = (*LetDecl)(nil)
 	_ Node = (*TypeDecl)(nil)
 	_ Node = (*Decl)(nil)
@@ -384,7 +385,6 @@ var (
 	_ Node = (*Dot)(nil)
 	_ Node = (*Op)(nil)
 
-	_ Node = (*Stmts)(nil)
 	_ Node = (*Block)(nil)
 	_ Node = (*List)(nil)
 	_ Node = (*Parens)(nil)

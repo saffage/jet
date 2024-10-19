@@ -30,9 +30,7 @@ func initModuleCore() {
 	)
 
 	ModuleCore = NewModule(NewNamedEnv(nil, "core"), "core", ast.File{
-		Ast: &ast.Stmts{
-			Nodes: []ast.Node{IntNode, FloatNode, StringNode, NoneNode},
-		},
+		Ast: ast.Stmts{IntNode, FloatNode, StringNode, NoneNode},
 	})
 
 	var (

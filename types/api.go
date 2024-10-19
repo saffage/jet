@@ -30,7 +30,7 @@ func Check(cfg *config.Config, file ast.File) (*Module, error) {
 	_ = scope.UseTypes(ModuleCore.Env)
 
 	report.Hint("checking module '%s'", moduleName)
-	for _, stmt := range module.file.Ast.Nodes {
+	for _, stmt := range module.file.Ast {
 		ast.WalkTopDown(stmt, check)
 	}
 

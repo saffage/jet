@@ -31,17 +31,6 @@ func (parse *parser) or(a, b parseFunc) parseFunc {
 	}
 }
 
-func (parse *parser) decls() (*ast.Stmts, error) {
-	start := parse.tok.StartPos()
-	decls, err := parse.listDelimiter(parse.decl, token.EOF, token.Illegal)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &ast.Stmts{Nodes: decls, Start: start}, nil
-}
-
 func (parse *parser) decl() (ast.Node, error) {
 	switch parse.tok.Kind {
 	case token.KwLet:
@@ -410,10 +399,7 @@ func (parse *parser) blockFunc(f parseFunc) (*ast.Block, error) {
 		return nil, err
 	}
 
-	return &ast.Block{
-		Stmts: &ast.Stmts{Nodes: list.nodes},
-		Rng:   list.rng,
-	}, nil
+	return &ast.Block{Nodes: list.nodes, Rng: list.rng}, nil
 }
 
 func (parse *parser) parens(f parseFunc) (*ast.Parens, error) {
@@ -830,8 +816,8 @@ func (parse *parser) listDelimiter(
 	f parseFunc,
 	delim, sep token.Kind,
 ) ([]ast.Node, error) {
-	nodes := []ast.Node{}
-	errs := ([]error)(nil)
+	var nodes []ast.Node
+	var errs []error
 
 	// list(f) = f {separator f} [separator]
 	for parse.tok.Kind != delim {
@@ -862,6 +848,7 @@ func (parse *parser) listDelimiter(
 		// continue parsing elements until we find the 'closing' token.
 		parse.skipUntil(sep, delim)
 		parse.take(sep)
+
 		errs = append(errs, err)
 		nodes = append(nodes, &ast.BadNode{DesiredRange: tok.Range})
 	}

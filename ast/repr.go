@@ -12,6 +12,10 @@ type representable interface {
 	Repr() string
 }
 
+func (stmts Stmts) Repr() string {
+	return printList([]Node(stmts), "; ")
+}
+
 //------------------------------------------------
 // Atoms
 //------------------------------------------------
@@ -59,15 +63,6 @@ func (node *Literal) Repr() string {
 //------------------------------------------------
 
 func (node *LetDecl) Repr() string {
-	if node.Attrs != nil {
-		return fmt.Sprintf(
-			"%s let %s = %s",
-			node.Attrs.Repr(),
-			node.Decl.Repr(),
-			node.Value.Repr(),
-		)
-	}
-
 	return fmt.Sprintf(
 		"let %s = %s",
 		node.Decl.Repr(),
@@ -77,12 +72,6 @@ func (node *LetDecl) Repr() string {
 
 func (node *TypeDecl) Repr() string {
 	buf := strings.Builder{}
-
-	if node.Attrs != nil {
-		buf.WriteString(node.Attrs.Repr())
-		buf.WriteByte(' ')
-	}
-
 	buf.WriteString("type " + node.Name.Repr())
 
 	if node.Args != nil {
@@ -137,10 +126,6 @@ func (node *Variant) Repr() string {
 	return node.Name.Repr()
 }
 
-func (node *AttributeList) Repr() string {
-	return "@" + node.List.Repr()
-}
-
 //------------------------------------------------
 // Composite nodes
 //------------------------------------------------
@@ -189,15 +174,11 @@ func (node *Op) Repr() string {
 // Lists
 //------------------------------------------------
 
-func (node *Stmts) Repr() string {
-	return printList(node.Nodes, "; ")
-}
-
 func (node *Block) Repr() string {
-	if node.Stmts == nil || len(node.Stmts.Nodes) == 0 {
+	if len(node.Nodes) == 0 {
 		return "{}"
 	}
-	return fmt.Sprintf("{ %s }", node.Stmts.Repr())
+	return fmt.Sprintf("{ %s }", printList(node.Nodes, "; "))
 }
 
 func (node *List) Repr() string {
