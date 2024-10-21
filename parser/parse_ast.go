@@ -555,6 +555,7 @@ func (parse *parser) typeExprOrSignature() (ast.Node, error) {
 func (parse *parser) function() (ast.Node, error) {
 	var (
 		params *ast.Parens
+		result ast.Node
 		body   ast.Node
 		eq     token.Range
 		err    error
@@ -570,18 +571,37 @@ func (parse *parser) function() (ast.Node, error) {
 		params = x
 	}
 
-	if eqTok, err := parse.expect(token.Eq); err != nil {
-		return nil, err
-	} else {
-		eq = eqTok.Range
-	}
+outer:
+	switch parse.match(token.Eq) {
+	case false:
+		switch parse.tok.Kind {
+		case token.Type, token.TypeVar:
+			if result, err = parse.typeExpr(); err != nil {
+				return nil, err
+			}
 
-	if body, err = parse.expr(); err != nil {
-		return nil, err
+		default:
+			break outer
+		}
+
+		if !parse.match(token.Eq) {
+			break
+		}
+
+		fallthrough
+
+	case true:
+		eq = parse.next().Range
+
+		if body, err = parse.expr(); err != nil {
+			return nil, err
+		}
+
 	}
 
 	return &ast.Function{
 		Params: params,
+		Result: result,
 		Body:   body,
 		EqTok:  eq,
 	}, nil

@@ -145,10 +145,21 @@ func (node *Signature) Repr() string {
 }
 
 func (node *Function) Repr() string {
-	if node.Body != nil {
-		return fmt.Sprintf("fn%s = %s", node.Params.Repr(), node.Body.Repr())
+	buf := strings.Builder{}
+	buf.WriteString("fn")
+	buf.WriteString(node.Params.Repr())
+
+	if node.Result != nil {
+		buf.WriteString(" ")
+		buf.WriteString(node.Result.Repr())
 	}
-	return fmt.Sprintf("fn%s", node.Params.Repr())
+
+	if node.Body != nil {
+		buf.WriteString(" = ")
+		buf.WriteString(node.Body.Repr())
+	}
+
+	return buf.String()
 }
 
 func (node *Call) Repr() string {

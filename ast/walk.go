@@ -129,6 +129,11 @@ func (node *Function) walk(v Visitor) {
 	assert(node.Params != nil)
 
 	walkList(node.Params.Nodes, v)
+
+	if node.Result != nil {
+		WalkTopDown(node.Result, v)
+	}
+
 	WalkTopDown(node.Body, v)
 }
 

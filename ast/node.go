@@ -206,6 +206,7 @@ type (
 
 	Function struct {
 		Params *Parens
+		Result Node
 		Body   Node
 		EqTok  token.Range
 	}
