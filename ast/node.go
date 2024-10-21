@@ -204,6 +204,12 @@ type (
 		WithTok token.Pos
 	}
 
+	Function struct {
+		Params *Parens
+		Body   Node
+		EqTok  token.Range
+	}
+
 	// Represents 'x(...args)'.
 	Call struct {
 		X    Node
@@ -213,7 +219,7 @@ type (
 	// Represents 'x.y'.
 	Dot struct {
 		X      Node
-		Y      *Lower
+		Y      Node
 		DotPos token.Pos
 	}
 
@@ -265,6 +271,10 @@ func (node *Signature) PosEnd() token.Pos {
 	}
 	return node.Result.PosEnd()
 }
+
+func (node *Function) Range() token.Range { return node.Pos().WithEnd(node.PosEnd()) }
+func (node *Function) Pos() token.Pos     { return node.Params.Pos() }
+func (node *Function) PosEnd() token.Pos  { return node.Body.PosEnd() }
 
 func (node *Call) Range() token.Range { return node.Pos().WithEnd(node.PosEnd()) }
 func (node *Call) Pos() token.Pos     { return node.X.Pos() }
@@ -381,6 +391,7 @@ var (
 
 	_ Node = (*Label)(nil)
 	_ Node = (*Signature)(nil)
+	_ Node = (*Function)(nil)
 	_ Node = (*Call)(nil)
 	_ Node = (*Dot)(nil)
 	_ Node = (*Op)(nil)

@@ -23,7 +23,7 @@ var (
 	ErrExpectedDecl           = errors.New("expected declaration")
 	ErrExpectedDeclAfterAttrs = errors.New("expected declaration after attribute list")
 	ErrExpectedIdent          = errors.New("expected identifier")
-	ErrExpectedPattern        = errors.New("expected pattern (identifier, type or type variant)")
+	ErrExpectedPattern        = errors.New("expected pattern (identifier, list, tuple, type or variant)")
 )
 
 type Error struct {
@@ -90,11 +90,19 @@ func (e *Error) Info() *report.Info {
 }
 
 func (parse *parser) error(err error, args ...any) error {
-	return newError(err, parse.tok.Range, args...)
+	return &Error{
+		err:     err,
+		Range:   parse.tok.Range,
+		Message: fmt.Sprint(args...),
+	}
 }
 
 func (parse *parser) errorf(err error, format string, args ...any) error {
-	return newErrorf(err, parse.tok.Range, format, args...)
+	return &Error{
+		err:     err,
+		Range:   parse.tok.Range,
+		Message: fmt.Sprintf(format, args...),
+	}
 }
 
 // func (p *parser) errorExpectedTokenAt(start, end token.Pos, tokens ...token.Kind) {

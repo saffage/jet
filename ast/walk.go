@@ -125,6 +125,13 @@ func (node *Signature) walk(v Visitor) {
 	}
 }
 
+func (node *Function) walk(v Visitor) {
+	assert(node.Params != nil)
+
+	walkList(node.Params.Nodes, v)
+	WalkTopDown(node.Body, v)
+}
+
 func (node *Call) walk(v Visitor) {
 	assert(node.X != nil)
 	assert(node.Args != nil)

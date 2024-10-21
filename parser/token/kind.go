@@ -78,6 +78,7 @@ const (
 	Dot2     // operator '..'
 
 	KwLet      // keyword 'let'
+	KwFn       // keyword 'fn'
 	KwType     // keyword 'type'
 	KwExtern   // keyword 'extern'
 	KwWith     // keyword 'with'
@@ -242,6 +243,7 @@ var representableKinds = map[Kind]string{
 	Dot:        ".",
 	Dot2:       "..",
 	KwLet:      "let",
+	KwFn:       "fn",
 	KwType:     "type",
 	KwExtern:   "extern",
 	KwWith:     "with",

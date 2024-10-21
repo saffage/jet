@@ -63,23 +63,24 @@ func _() {
 	_ = x[Dot-52]
 	_ = x[Dot2-53]
 	_ = x[KwLet-54]
-	_ = x[KwType-55]
-	_ = x[KwExtern-56]
-	_ = x[KwWith-57]
-	_ = x[KwWhen-58]
-	_ = x[KwIf-59]
-	_ = x[KwElse-60]
-	_ = x[KwIn-61]
-	_ = x[KwAs-62]
-	_ = x[KwDefer-63]
-	_ = x[KwBreak-64]
-	_ = x[KwReturn-65]
-	_ = x[KwContinue-66]
+	_ = x[KwFn-55]
+	_ = x[KwType-56]
+	_ = x[KwExtern-57]
+	_ = x[KwWith-58]
+	_ = x[KwWhen-59]
+	_ = x[KwIf-60]
+	_ = x[KwElse-61]
+	_ = x[KwIn-62]
+	_ = x[KwAs-63]
+	_ = x[KwDefer-64]
+	_ = x[KwBreak-65]
+	_ = x[KwReturn-66]
+	_ = x[KwContinue-67]
 }
 
-const _Kind_name = "IllegalEOFCommentTypeTypeVarNameUnderscoreIntFloatStringLParenRParenLCurlyRCurlyLBracketRBracketColonCommaEqEqOpBangNeOpLtOpLeOpGtOpGeOpShlShlEqShrShrEqPlusPlusEqMinusMinusEqAsteriskAsteriskEqSlashSlashEqPercentPercentEqCaretCaretEqAmpAmpEqAndAndEqPipePipeEqOrOrEqArrowFatArrowDotDot2KwLetKwTypeKwExternKwWithKwWhenKwIfKwElseKwInKwAsKwDeferKwBreakKwReturnKwContinue"
+const _Kind_name = "IllegalEOFCommentTypeTypeVarNameUnderscoreIntFloatStringLParenRParenLCurlyRCurlyLBracketRBracketColonCommaEqEqOpBangNeOpLtOpLeOpGtOpGeOpShlShlEqShrShrEqPlusPlusEqMinusMinusEqAsteriskAsteriskEqSlashSlashEqPercentPercentEqCaretCaretEqAmpAmpEqAndAndEqPipePipeEqOrOrEqArrowFatArrowDotDot2KwLetKwFnKwTypeKwExternKwWithKwWhenKwIfKwElseKwInKwAsKwDeferKwBreakKwReturnKwContinue"
 
-var _Kind_index = [...]uint16{0, 7, 10, 17, 21, 28, 32, 42, 45, 50, 56, 62, 68, 74, 80, 88, 96, 101, 106, 108, 112, 116, 120, 124, 128, 132, 136, 139, 144, 147, 152, 156, 162, 167, 174, 182, 192, 197, 204, 211, 220, 225, 232, 235, 240, 243, 248, 252, 258, 260, 264, 269, 277, 280, 284, 289, 295, 303, 309, 315, 319, 325, 329, 333, 340, 347, 355, 365}
+var _Kind_index = [...]uint16{0, 7, 10, 17, 21, 28, 32, 42, 45, 50, 56, 62, 68, 74, 80, 88, 96, 101, 106, 108, 112, 116, 120, 124, 128, 132, 136, 139, 144, 147, 152, 156, 162, 167, 174, 182, 192, 197, 204, 211, 220, 225, 232, 235, 240, 243, 248, 252, 258, 260, 264, 269, 277, 280, 284, 289, 293, 299, 307, 313, 319, 323, 329, 333, 337, 344, 351, 359, 369}
 
 func (i Kind) String() string {
 	if i >= Kind(len(_Kind_index)-1) {

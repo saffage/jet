@@ -22,11 +22,12 @@ func (node *TypeDecl) MarshalYAML() (any, error)      { return wrap(node), nil }
 func (node *Decl) MarshalYAML() (any, error)          { return wrap(node), nil }
 func (node *Variant) MarshalYAML() (any, error)       { return wrap(node), nil }
 
-func (node *Label) MarshalYAML() (any, error)      { return wrap(node), nil }
-func (node *Signature) MarshalYAML() (any, error)  { return wrap(node), nil }
-func (node *Call) MarshalYAML() (any, error)       { return wrap(node), nil }
-func (node *Dot) MarshalYAML() (any, error)        { return wrap(node), nil }
-func (node *Op) MarshalYAML() (any, error)         { return wrap(node), nil }
+func (node *Label) MarshalYAML() (any, error)     { return wrap(node), nil }
+func (node *Signature) MarshalYAML() (any, error) { return wrap(node), nil }
+func (node *Function) MarshalYAML() (any, error)  { return wrap(node), nil }
+func (node *Call) MarshalYAML() (any, error)      { return wrap(node), nil }
+func (node *Dot) MarshalYAML() (any, error)       { return wrap(node), nil }
+func (node *Op) MarshalYAML() (any, error)        { return wrap(node), nil }
 
 func (node *List) MarshalYAML() (any, error)   { return wrap(node), nil }
 func (node *Block) MarshalYAML() (any, error)  { return wrap(node), nil }

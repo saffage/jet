@@ -63,23 +63,24 @@ func _() {
 	_ = x[Dot-52]
 	_ = x[Dot2-53]
 	_ = x[KwLet-54]
-	_ = x[KwType-55]
-	_ = x[KwExtern-56]
-	_ = x[KwWith-57]
-	_ = x[KwWhen-58]
-	_ = x[KwIf-59]
-	_ = x[KwElse-60]
-	_ = x[KwIn-61]
-	_ = x[KwAs-62]
-	_ = x[KwDefer-63]
-	_ = x[KwBreak-64]
-	_ = x[KwReturn-65]
-	_ = x[KwContinue-66]
+	_ = x[KwFn-55]
+	_ = x[KwType-56]
+	_ = x[KwExtern-57]
+	_ = x[KwWith-58]
+	_ = x[KwWhen-59]
+	_ = x[KwIf-60]
+	_ = x[KwElse-61]
+	_ = x[KwIn-62]
+	_ = x[KwAs-63]
+	_ = x[KwDefer-64]
+	_ = x[KwBreak-65]
+	_ = x[KwReturn-66]
+	_ = x[KwContinue-67]
 }
 
-const _Kind_user_name = "illegal characterend of filecommenttypetype varnameunderscoreuntyped intuntyped floatuntyped string'('')''{''}''['']'':'','operator '='operator '=='operator '!'operator '!='operator '<'operator '<='operator '>'operator '>='operator '<<'operator '<<='operator '>>'operator '>>='operator '+'operator '+='operator '-'operator '-='operator '*'operator '*='operator '/'operator '/='operator '%'operator '%='operator '^'operator '^='operator '&'operator '&='operator '&&'operator '&&='operator '|'operator '|='operator '||'operator '||='operator '->'operator '=>'operator '.'operator '..'keyword 'let'keyword 'type'keyword 'extern'keyword 'with'keyword 'when'keyword 'if'keyword 'else'keyword 'in'keyword 'as'keyword 'defer'keyword 'break'keyword 'return'keyword 'continue'"
+const _Kind_user_name = "illegal characterend of filecommenttypetype varnameunderscoreuntyped intuntyped floatuntyped string'('')''{''}''['']'':'','operator '='operator '=='operator '!'operator '!='operator '<'operator '<='operator '>'operator '>='operator '<<'operator '<<='operator '>>'operator '>>='operator '+'operator '+='operator '-'operator '-='operator '*'operator '*='operator '/'operator '/='operator '%'operator '%='operator '^'operator '^='operator '&'operator '&='operator '&&'operator '&&='operator '|'operator '|='operator '||'operator '||='operator '->'operator '=>'operator '.'operator '..'keyword 'let'keyword 'fn'keyword 'type'keyword 'extern'keyword 'with'keyword 'when'keyword 'if'keyword 'else'keyword 'in'keyword 'as'keyword 'defer'keyword 'break'keyword 'return'keyword 'continue'"
 
-var _Kind_user_index = [...]uint16{0, 17, 28, 35, 39, 47, 51, 61, 72, 85, 99, 102, 105, 108, 111, 114, 117, 120, 123, 135, 148, 160, 173, 185, 198, 210, 223, 236, 250, 263, 277, 289, 302, 314, 327, 339, 352, 364, 377, 389, 402, 414, 427, 439, 452, 465, 479, 491, 504, 517, 531, 544, 557, 569, 582, 595, 609, 625, 639, 653, 665, 679, 691, 703, 718, 733, 749, 767}
+var _Kind_user_index = [...]uint16{0, 17, 28, 35, 39, 47, 51, 61, 72, 85, 99, 102, 105, 108, 111, 114, 117, 120, 123, 135, 148, 160, 173, 185, 198, 210, 223, 236, 250, 263, 277, 289, 302, 314, 327, 339, 352, 364, 377, 389, 402, 414, 427, 439, 452, 465, 479, 491, 504, 517, 531, 544, 557, 569, 582, 595, 607, 621, 637, 651, 665, 677, 691, 703, 715, 730, 745, 761, 779}
 
 func (i Kind) UserString() string {
 	if i >= Kind(len(_Kind_user_index)-1) {

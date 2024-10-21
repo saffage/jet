@@ -144,6 +144,13 @@ func (node *Signature) Repr() string {
 	return fmt.Sprintf("%s %s", node.Params.Repr(), node.Result.Repr())
 }
 
+func (node *Function) Repr() string {
+	if node.Body != nil {
+		return fmt.Sprintf("fn%s = %s", node.Params.Repr(), node.Body.Repr())
+	}
+	return fmt.Sprintf("fn%s", node.Params.Repr())
+}
+
 func (node *Call) Repr() string {
 	return node.X.Repr() + node.Args.Repr()
 }

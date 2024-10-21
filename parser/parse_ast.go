@@ -9,6 +9,7 @@ import (
 
 type parseFunc func() (ast.Node, error)
 
+// TODO this method must be removed because it makes parser overcomplicated
 func (parse *parser) or(a, b parseFunc) parseFunc {
 	return func() (ast.Node, error) {
 		tok, current := parse.tok, parse.current
@@ -385,7 +386,24 @@ func (parse *parser) ident() (ast.Ident, error) {
 }
 
 func (parse *parser) block() (ast.Node, error) {
-	return parse.blockFunc(parse.or(parse.expr, parse.decl))
+	return parse.blockFunc(parse.exprOrDecl)
+}
+
+func (parse *parser) exprOrDecl() (ast.Node, error) {
+	switch parse.tok.Kind {
+	case token.KwLet:
+		return parse.letDecl()
+
+	case token.KwType:
+		return parse.typeDecl()
+
+	case token.KwWhen:
+		return parse.whenExpr()
+
+	default:
+		binary := func() (ast.Node, error) { return parse.binaryExpr(2) }
+		return parse.or(parse.function, binary)()
+	}
 }
 
 func (parse *parser) blockFunc(f parseFunc) (*ast.Block, error) {
@@ -534,10 +552,48 @@ func (parse *parser) typeExprOrSignature() (ast.Node, error) {
 	}
 }
 
+func (parse *parser) function() (ast.Node, error) {
+	var (
+		params *ast.Parens
+		body   ast.Node
+		eq     token.Range
+		err    error
+	)
+
+	if _, err := parse.expect(token.KwFn); err != nil {
+		return nil, err
+	}
+
+	if x, err := parse.parens(parse.parameter); err != nil {
+		return nil, err
+	} else {
+		params = x
+	}
+
+	if eqTok, err := parse.expect(token.Eq); err != nil {
+		return nil, err
+	} else {
+		eq = eqTok.Range
+	}
+
+	if body, err = parse.expr(); err != nil {
+		return nil, err
+	}
+
+	return &ast.Function{
+		Params: params,
+		Body:   body,
+		EqTok:  eq,
+	}, nil
+}
+
 func (parse *parser) expr() (ast.Node, error) {
 	switch {
 	case parse.match(token.KwWhen):
 		return parse.whenExpr()
+
+	case parse.match(token.KwFn):
+		return parse.function()
 
 	default:
 		return parse.binaryExpr(2)
@@ -611,7 +667,7 @@ func (parse *parser) pattern() (ast.Node, error) {
 		ty, _ := parse.upper()
 
 		if parse.match(token.LParen) {
-			dot2OrLabeledExpr := parse.or(parse.dot2, parse.labeledExpr(parse.pattern))
+			dot2OrLabeledExpr := parse.dot2(parse.labeledExpr(parse.pattern))
 
 			if list, err := parse.parens(dot2OrLabeledExpr); err != nil {
 				return nil, err
@@ -623,39 +679,38 @@ func (parse *parser) pattern() (ast.Node, error) {
 		return ty, nil
 
 	case parse.match(token.LBracket):
-		list, err := parse.brackets(parse.or(parse.dot2, parse.pattern))
+		return parse.brackets(parse.dot2(parse.pattern))
 
-		if err != nil {
-			return nil, err
-		}
-
-		return list, nil
+	case parse.match(token.LParen):
+		return parse.parens(parse.pattern)
 
 	default:
 		return nil, ErrExpectedPattern
 	}
 }
 
-func (parse *parser) dot2() (ast.Node, error) {
-	if tok, ok := parse.take(token.Dot2); ok {
-		var ident ast.Ident
+func (parse *parser) dot2(fallback parseFunc) parseFunc {
+	return func() (ast.Node, error) {
+		if tok, ok := parse.take(token.Dot2); ok {
+			var ident ast.Ident
 
-		if parse.matchAny(token.Name, token.Underscore) {
-			var err error
+			if parse.matchAny(token.Name, token.Underscore) {
+				var err error
 
-			if ident, err = parse.ident(); err != nil {
-				return nil, err
+				if ident, err = parse.ident(); err != nil {
+					return nil, err
+				}
 			}
+
+			return &ast.Op{
+				Y:    ident,
+				Rng:  tok.Range,
+				Kind: ast.OperatorRangeInclusive,
+			}, nil
 		}
 
-		return &ast.Op{
-			Y:    ident,
-			Rng:  tok.Range,
-			Kind: ast.OperatorRangeInclusive,
-		}, nil
+		return fallback()
 	}
-
-	return nil, parse.error(ErrUnexpectedToken)
 }
 
 func (parse *parser) binaryExpr(precedence int) (ast.Node, error) {
@@ -688,16 +743,28 @@ func (parse *parser) binaryExpr(precedence int) (ast.Node, error) {
 }
 
 func (parse *parser) prefix() (ast.Node, error) {
-	return parse.primary(nil)
-}
+	if tok, ok := parse.take(token.Minus); ok {
+		operand, err := parse.primary()
 
-func (parse *parser) primary(x ast.Node) (ast.Node, error) {
-	var err error
-
-	if x == nil {
-		if x, err = parse.operand(); err != nil {
+		if err != nil {
 			return nil, err
 		}
+
+		return &ast.Op{
+			Y:    operand,
+			Rng:  tok.Range,
+			Kind: ast.OperatorNeg,
+		}, nil
+	}
+
+	return parse.primary()
+}
+
+func (parse *parser) primary() (ast.Node, error) {
+	x, err := parse.operand()
+
+	if err != nil {
+		return nil, err
 	}
 
 	for {
@@ -757,15 +824,34 @@ func (parse *parser) dotExpr(x ast.Node) (ast.Node, error) {
 		return nil, err
 	}
 
-	label, err := parse.ident()
+	var selector ast.Node
 
-	if err != nil {
-		return nil, parse.error(ErrExpectedIdent)
+	switch {
+	case parse.match(token.Name):
+		selector, _ = parse.lower()
+
+	case parse.match(token.LCurly):
+		if selector, err = parse.block(); err != nil {
+			return nil, err
+		}
+
+	case parse.match(token.LParen):
+		if selector, err = parse.parens(parse.expr); err != nil {
+			return nil, err
+		}
+
+	case parse.match(token.LBracket):
+		if selector, err = parse.brackets(parse.expr); err != nil {
+			return nil, err
+		}
+
+	default:
+		return nil, parse.error(ErrExpectedIdent, "expected identifier, parenthesis, brackets or braces")
 	}
 
 	return &ast.Dot{
 		X:      x,
-		Y:      label.(*ast.Lower),
+		Y:      selector,
 		DotPos: dotTok.StartPos(),
 	}, nil
 }
@@ -826,7 +912,7 @@ func (parse *parser) listDelimiter(
 		//  - trailing separator `{x,}`
 		//  - unterminated list `{`
 		if parse.tok.Kind == token.EOF {
-			return nil, ErrUnterminatedList
+			return nodes, ErrUnterminatedList
 		}
 
 		tok := parse.tok
