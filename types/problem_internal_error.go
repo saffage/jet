@@ -35,7 +35,7 @@ func (err *internalError) Unwrap() error {
 }
 
 func (err *internalError) Info() *report.Info {
-	info := &report.Info{Title: err.err.Error()}
+	info := &report.Info{Tag: "internal", Title: err.err.Error()}
 
 	if err.node != nil && err.node.Range().IsValid() {
 		info.Range = err.node.Range()
