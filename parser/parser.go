@@ -18,14 +18,11 @@ func New(tokens []token.Token, flags Flags) (*parser, error) {
 	if len(tokens) == 0 {
 		return nil, ErrEmptyStream
 	}
-	if !slices.ContainsFunc(
-		tokens,
-		func(tok token.Token) bool {
-			return tok.Kind == token.EOF
-		},
-	) {
+
+	if !containsEOF(tokens) {
 		return nil, ErrMissingEOFToken
 	}
+
 	return &parser{tokens: tokens, flags: flags, tok: tokens[0]}, nil
 }
 
@@ -51,4 +48,13 @@ func (parse *parser) MustParseExpr() ast.Node {
 		panic(err)
 	}
 	return expr
+}
+
+func containsEOF(tokens []token.Token) bool {
+	return slices.ContainsFunc(
+		tokens,
+		func(tok token.Token) bool {
+			return tok.Kind == token.EOF
+		},
+	)
 }
