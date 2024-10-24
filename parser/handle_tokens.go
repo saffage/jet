@@ -7,28 +7,28 @@ import (
 )
 
 func (parse *parser) next() (prev token.Token) {
-	if parse.current >= len(parse.tokens) {
-		panic("EOF token was skipped or missing in the token stream")
-	}
+	if len(parse.tokens) == 1 {
+		if !parse.match(token.EOF) {
+			panic("EOF token was skipped or missing in the token stream")
+		}
 
-	if parse.tok.Kind == token.EOF {
 		return parse.tok
 	}
 
 	prev = parse.tok
-	parse.current++
+	parse.tokens = parse.tokens[1:]
 
-	for parse.tok.Kind == token.Comment {
-		parse.current++
+	for parse.match(token.Comment) {
+		parse.tokens = parse.tokens[1:]
 	}
 
 	if parse.flags&SkipIllegal != 0 {
-		for parse.tok.Kind == token.Illegal {
-			parse.current++
+		for parse.match(token.Illegal) {
+			parse.tokens = parse.tokens[1:]
 		}
 	}
 
-	parse.tok = parse.tokens[parse.current]
+	parse.tok = parse.tokens[0]
 	return prev
 }
 
@@ -41,12 +41,12 @@ func (parse *parser) matchAny(kinds ...token.Kind) bool {
 }
 
 func (parse *parser) matchSequence(kinds ...token.Kind) bool {
-	if len(kinds)+parse.current-1 >= len(parse.tokens) {
+	if len(kinds) > len(parse.tokens) {
 		return false
 	}
 
 	for i, kind := range kinds {
-		if parse.tokens[parse.current+i].Kind != kind {
+		if parse.tokens[i].Kind != kind {
 			return false
 		}
 	}

@@ -27,39 +27,39 @@ func TestMatchSequence(t *testing.T) {
 	if !p.matchSequence(kinds...) {
 		t.Errorf("expected `matchSequence(%v)` to return true, got false", kinds)
 	}
-	p.current += 2
+	p.tokens = p.tokens[2:]
 	if !p.matchSequence(kinds...) {
 		t.Errorf("expected `matchSequence(%v)` to return true, got false", kinds)
 	}
-	p.current += 2
+	p.tokens = p.tokens[2:]
 	if !p.matchSequence(kinds...) {
 		t.Errorf("expected `matchSequence(%v)` to return true, got false", kinds)
 	}
 
-	p.current = 0
+	p.tokens = tokens
 	kinds = []token.Kind{token.Name}
 	if !p.matchSequence(kinds...) {
 		t.Errorf("expected `matchSequence(%v)` to return true, got false", kinds)
 	}
-	p.current += 2
+	p.tokens = p.tokens[2:]
 	if !p.matchSequence(kinds...) {
 		t.Errorf("expected `matchSequence(%v)` to return true, got false", kinds)
 	}
-	p.current += 2
+	p.tokens = p.tokens[2:]
 	if !p.matchSequence(kinds...) {
 		t.Errorf("expected `matchSequence(%v)` to return true, got false", kinds)
 	}
 
-	p.current = 0
+	p.tokens = tokens
 	kinds = []token.Kind{token.Name, token.Name}
 	if p.matchSequence(kinds...) {
 		t.Errorf("expected `matchSequence(%v)` to return false, got true", kinds)
 	}
-	p.current += 2
+	p.tokens = p.tokens[2:]
 	if p.matchSequence(kinds...) {
 		t.Errorf("expected `matchSequence(%v)` to return false, got true", kinds)
 	}
-	p.current += 2
+	p.tokens = p.tokens[2:]
 	if p.matchSequence(kinds...) {
 		t.Errorf("expected `matchSequence(%v)` to return false, got true", kinds)
 	}

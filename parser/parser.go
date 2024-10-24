@@ -8,10 +8,9 @@ import (
 )
 
 type parser struct {
-	tokens  []token.Token
-	tok     token.Token // For quick access.
-	flags   Flags
-	current int
+	tokens []token.Token
+	tok    token.Token // For quick access.
+	flags  Flags
 }
 
 func New(tokens []token.Token, flags Flags) (*parser, error) {
