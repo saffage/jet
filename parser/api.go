@@ -8,9 +8,8 @@ import (
 )
 
 var (
-	ErrEmptyStream       = errors.New("token stream is empty")
-	ErrMissingEOFToken   = errors.New("missing EOF token at the end")
-	ErrDuplicateEOFToken = errors.New("duplicate EOF token")
+	ErrEmptyStream     = errors.New("token stream is empty")
+	ErrMissingEOFToken = errors.New("missing EOF token in the token stream")
 )
 
 type Flags int

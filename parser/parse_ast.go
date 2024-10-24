@@ -677,7 +677,7 @@ func (parse *parser) pattern() (ast.Node, error) {
 		return parse.parens(parse.pattern)
 
 	default:
-		return nil, ErrExpectedPattern
+		return nil, parse.error(ErrExpectedPattern)
 	}
 }
 
@@ -875,7 +875,7 @@ func (parse *parser) listOpenClose(
 
 	if err != nil {
 		if err == ErrUnterminatedList {
-			return nil, newError(err, openTok.Range)
+			return nil, &Error{err: err, Range: openTok.Range}
 		}
 
 		return nil, err
@@ -919,7 +919,7 @@ func (parse *parser) listDelimiter(
 			// The node is correct, but no separator\delimiter
 			// was found. Report it and assign [ast.BadNode] instead.
 			rng := token.RangeFrom(node.Pos(), node.PosEnd())
-			err = newError(ErrUnterminatedExpr, rng)
+			err = &Error{err: ErrUnterminatedExpr, Range: rng}
 		}
 
 		// Something went wrong, advance to some delimiter and

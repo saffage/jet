@@ -23,7 +23,7 @@ var (
 	ErrExpectedDecl           = errors.New("expected declaration")
 	ErrExpectedDeclAfterAttrs = errors.New("expected declaration after attribute list")
 	ErrExpectedIdent          = errors.New("expected identifier")
-	ErrExpectedPattern        = errors.New("expected pattern (identifier, list, tuple, type or variant)")
+	ErrExpectedPattern        = errors.New("expected pattern")
 )
 
 type Error struct {
@@ -34,22 +34,6 @@ type Error struct {
 
 	isWarn     bool
 	isInternal bool
-}
-
-func newError(err error, rng token.Range, args ...any) *Error {
-	return &Error{
-		err:     err,
-		Range:   rng,
-		Message: fmt.Sprint(args...),
-	}
-}
-
-func newErrorf(err error, rng token.Range, format string, args ...any) *Error {
-	return &Error{
-		err:     err,
-		Range:   rng,
-		Message: fmt.Sprintf(format, args...),
-	}
 }
 
 func (e *Error) Error() string {
@@ -69,7 +53,7 @@ func (e *Error) Info() *report.Info {
 	}
 
 	info := &report.Info{
-		Tag:   "parser",
+		Tag:   "syntax",
 		Title: e.err.Error(),
 		Range: e.Range,
 	}
@@ -104,20 +88,3 @@ func (parse *parser) errorf(err error, format string, args ...any) error {
 		Message: fmt.Sprintf(format, args...),
 	}
 }
-
-// func (p *parser) errorExpectedTokenAt(start, end token.Pos, tokens ...token.Kind) {
-// 	if len(tokens) < 1 {
-// 		panic("required at least 1 token")
-// 	}
-// 	kinds := lo.Map(tokens, func(kind token.Kind, _ int) string { return kind.UserString() })
-// 	p.appendError(&Error{
-// 		err:   ErrUnexpectedToken,
-// 		Start: start,
-// 		End:   end,
-// 		Message: fmt.Sprintf(
-// 			"want %s, got %s instead",
-// 			strings.Join(kinds, " or "),
-// 			p.tok.Kind.UserString(),
-// 		),
-// 	})
-// }
