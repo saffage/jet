@@ -9,29 +9,6 @@ import (
 
 type parseFunc func() (ast.Node, error)
 
-// TODO this method must be removed because it makes parser overcomplicated
-func (parse *parser) or(a, b parseFunc) parseFunc {
-	return func() (ast.Node, error) {
-		tok, current := parse.tok, parse.current
-
-		var nodeA, nodeB ast.Node
-		var errA, errB error
-
-		if nodeA, errA = a(); errA == nil {
-			return nodeA, nil
-		}
-
-		parse.tok, parse.current = tok, current
-
-		if nodeB, errB = b(); errB == nil {
-			return nodeB, nil
-		}
-
-		parse.tok, parse.current = tok, current
-		return nil, errors.Join(errA, errB)
-	}
-}
-
 func (parse *parser) decl() (ast.Node, error) {
 	switch parse.tok.Kind {
 	case token.KwLet:
@@ -397,12 +374,8 @@ func (parse *parser) exprOrDecl() (ast.Node, error) {
 	case token.KwType:
 		return parse.typeDecl()
 
-	case token.KwWhen:
-		return parse.whenExpr()
-
 	default:
-		binary := func() (ast.Node, error) { return parse.binaryExpr(2) }
-		return parse.or(parse.function, binary)()
+		return parse.expr()
 	}
 }
 
@@ -596,7 +569,6 @@ outer:
 		if body, err = parse.expr(); err != nil {
 			return nil, err
 		}
-
 	}
 
 	return &ast.Function{
