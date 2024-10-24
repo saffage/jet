@@ -33,7 +33,7 @@ func (parse *parser) variable() (ast.Node, error) {
 		return nil, err
 	}
 
-	if parse.matchAny(token.Type, token.TypeVar, token.LParen) {
+	if parse.isTypeExprStartOrSignature() {
 		if ty, err = parse.typeExprOrSignature(); err != nil {
 			return nil, err
 		}
@@ -56,7 +56,7 @@ func (parse *parser) variant() (ast.Node, error) {
 	}
 
 	if parse.match(token.LParen) {
-		if params, err = parse.parens(parse.labeledExpr(parse.typeExprOrSignature)); err != nil {
+		if params, err = parse.parens(parse.labeledExpr(parse.typeExpr)); err != nil {
 			return nil, err
 		}
 	}
@@ -72,7 +72,7 @@ func (parse *parser) parameter() (ast.Node, error) {
 		err     error
 	)
 
-	if parse.matchAny(token.Type, token.TypeVar, token.LParen) {
+	if parse.isTypeExprStartOrSignature() {
 		if ty, err = parse.typeExprOrSignature(); err != nil {
 			return nil, err
 		}
@@ -84,7 +84,7 @@ func (parse *parser) parameter() (ast.Node, error) {
 				return nil, parse.error(ErrExpectedTypeVar)
 			}
 
-			if parse.matchAny(token.Type, token.TypeVar) {
+			if parse.isTypeExprStart() {
 				if ty, err = parse.typeExpr(); err != nil {
 					return nil, err
 				}
@@ -108,7 +108,7 @@ func (parse *parser) typeVariable() (ast.Node, error) {
 		return nil, err
 	}
 
-	if parse.matchAny(token.Type, token.TypeVar, token.LParen) {
+	if parse.isTypeExprStart() {
 		// type constraint
 		if ty, err = parse.typeExpr(); err != nil {
 			return nil, err
@@ -437,6 +437,14 @@ func (parse *parser) typeArgs() (ast.Node, error) {
 	return parse.parens(parse.typeExprOrSignature)
 }
 
+func (parse *parser) isTypeExprStart() bool {
+	return parse.matchAny(token.Type, token.TypeVar, token.KwFn)
+}
+
+func (parse *parser) isTypeExprStartOrSignature() bool {
+	return parse.matchAny(token.Type, token.TypeVar, token.KwFn, token.LParen)
+}
+
 func (parse *parser) typeExpr() (ast.Node, error) {
 	switch parse.tok.Kind {
 	case token.Type:
@@ -465,12 +473,16 @@ func (parse *parser) typeExpr() (ast.Node, error) {
 			Rng:  tok.Range,
 		}, nil
 
+	case token.KwFn:
+		return parse.functionType()
+
 	default:
 		return nil, parse.errorf(
 			ErrUnexpectedToken,
-			"expected %s or %s",
+			"expected %s, %s or %s",
 			token.Type.UserString(),
 			token.TypeVar.UserString(),
+			token.KwFn.UserString(),
 		)
 	}
 }
@@ -485,7 +497,7 @@ func (parse *parser) signature() (ast.Node, error) {
 	var result, effects ast.Node
 	var withToken token.Pos
 
-	if parse.matchAny(token.Type, token.TypeVar, token.LParen) {
+	if parse.isTypeExprStartOrSignature() {
 		if result, err = parse.typeExprOrSignature(); err != nil {
 			return nil, err
 		}
@@ -508,11 +520,11 @@ func (parse *parser) signature() (ast.Node, error) {
 }
 
 func (parse *parser) typeExprOrSignature() (ast.Node, error) {
-	switch parse.tok.Kind {
-	case token.LParen:
+	switch {
+	case parse.match(token.LParen):
 		return parse.signature()
 
-	case token.Type, token.TypeVar:
+	case parse.isTypeExprStart():
 		return parse.typeExpr()
 
 	default:
@@ -525,14 +537,9 @@ func (parse *parser) typeExprOrSignature() (ast.Node, error) {
 	}
 }
 
-func (parse *parser) function() (ast.Node, error) {
-	var (
-		params *ast.Parens
-		result ast.Node
-		body   ast.Node
-		eq     token.Range
-		err    error
-	)
+func (parse *parser) functionType() (ast.Node, error) {
+	var params *ast.Parens
+	var result ast.Node
 
 	if _, err := parse.expect(token.KwFn); err != nil {
 		return nil, err
@@ -544,39 +551,39 @@ func (parse *parser) function() (ast.Node, error) {
 		params = x
 	}
 
-outer:
-	switch parse.match(token.Eq) {
-	case false:
-		switch parse.tok.Kind {
-		case token.Type, token.TypeVar:
-			if result, err = parse.typeExpr(); err != nil {
-				return nil, err
-			}
-
-		default:
-			break outer
-		}
-
-		if !parse.match(token.Eq) {
-			break
-		}
-
-		fallthrough
-
-	case true:
-		eq = parse.next().Range
-
-		if body, err = parse.expr(); err != nil {
+	if parse.isTypeExprStart() {
+		if x, err := parse.typeExpr(); err != nil {
 			return nil, err
+		} else {
+			result = x
 		}
 	}
 
-	return &ast.Function{
-		Params: params,
-		Result: result,
-		Body:   body,
-		EqTok:  eq,
-	}, nil
+	return &ast.Function{Params: params, Result: result}, nil
+}
+
+func (parse *parser) function() (ast.Node, error) {
+	fnType, err := parse.functionType()
+
+	if err != nil {
+		return nil, err
+	}
+
+	tok, err := parse.expect(token.Eq)
+
+	if err != nil {
+		return nil, err
+	}
+
+	fn := fnType.(*ast.Function)
+	fn.EqTok = tok.Range
+	fn.Result, err = parse.expr()
+
+	if err != nil {
+		return nil, err
+	}
+
+	return fn, nil
 }
 
 func (parse *parser) expr() (ast.Node, error) {
@@ -648,15 +655,30 @@ func (parse *parser) whenClause() (ast.Node, error) {
 }
 
 func (parse *parser) pattern() (ast.Node, error) {
-	switch {
-	case parse.match(token.Name):
-		return parse.lower()
+	var node ast.Node
+	var err error
 
-	case parse.match(token.Underscore):
-		return parse.underscore()
+	switch {
+	case parse.matchAny(token.Int, token.Float, token.String):
+		node, _ = parse.literal()
+
+	case parse.matchAny(token.Name, token.Underscore):
+		name, _ := parse.ident()
+
+		if parse.isTypeExprStart() {
+			ty, err := parse.typeExpr()
+
+			if err != nil {
+				return nil, err
+			}
+
+			node = &ast.Decl{Name: name, Type: ty}
+		} else {
+			node = name
+		}
 
 	case parse.match(token.Type):
-		ty, _ := parse.upper()
+		node, _ = parse.upper()
 
 		if parse.match(token.LParen) {
 			dot2OrLabeledExpr := parse.dot2(parse.labeledExpr(parse.pattern))
@@ -664,21 +686,40 @@ func (parse *parser) pattern() (ast.Node, error) {
 			if list, err := parse.parens(dot2OrLabeledExpr); err != nil {
 				return nil, err
 			} else {
-				return &ast.Call{X: ty, Args: list}, nil
+				node = &ast.Call{X: node, Args: list}
 			}
 		}
 
-		return ty, nil
-
 	case parse.match(token.LBracket):
-		return parse.brackets(parse.dot2(parse.pattern))
+		node, err = parse.brackets(parse.dot2(parse.pattern))
 
 	case parse.match(token.LParen):
-		return parse.parens(parse.pattern)
+		node, err = parse.parens(parse.pattern)
 
 	default:
 		return nil, parse.error(ErrExpectedPattern)
 	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	if tok, ok := parse.take(token.KwAs); ok {
+		name, err := parse.lower()
+
+		if err != nil {
+			return nil, err
+		}
+
+		return &ast.Op{
+			X:    node,
+			Y:    name,
+			Kind: ast.OperatorAs,
+			Rng:  tok.Range,
+		}, nil
+	}
+
+	return node, nil
 }
 
 func (parse *parser) dot2(fallback parseFunc) parseFunc {
