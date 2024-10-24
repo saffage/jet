@@ -10,11 +10,11 @@ import (
 )
 
 var (
-	ErrorFirstIsNotLetter = errors.New("the first character must be an ASCII letter")
-	ErrorContainSpace     = errors.New("identifier cannot contain spaces")
-	ErrorContainPunct     = errors.New("identifier cannot contain a punctuation character")
-	ErrorUnsupportedUTF8  = errors.New("UTF-8 is not supported")
-	ErrorIllegalCharacter = errors.New("illegal character in the identifier")
+	ErrFirstIsNotLetter = errors.New("the first character must be an ASCII letter")
+	ErrContainSpace     = errors.New("identifier cannot contain spaces")
+	ErrContainPunct     = errors.New("identifier cannot contain a punctuation character")
+	ErrUnsupportedUTF8  = errors.New("UTF-8 is not supported")
+	ErrIllegalCharacter = errors.New("illegal character in the identifier")
 )
 
 type Token struct {
@@ -45,7 +45,7 @@ func IsIdentChar(char byte) bool {
 
 func IsValidIdent(s string) (int, error) {
 	if !ascii.IsLetter(s[0]) {
-		return 0, ErrorFirstIsNotLetter
+		return 0, ErrFirstIsNotLetter
 	}
 
 	for i := 1; i < len(s); i++ {
@@ -54,16 +54,16 @@ func IsValidIdent(s string) (int, error) {
 			// OK
 
 		case ascii.IsSpace(s[i]):
-			return i, ErrorContainSpace
+			return i, ErrContainSpace
 
 		case ascii.IsPunct(s[i]):
-			return i, ErrorContainPunct
+			return i, ErrContainPunct
 
 		case utf8.RuneStart(s[i]):
-			return i, ErrorUnsupportedUTF8
+			return i, ErrUnsupportedUTF8
 
 		default:
-			return i, ErrorIllegalCharacter
+			return i, ErrIllegalCharacter
 		}
 	}
 
