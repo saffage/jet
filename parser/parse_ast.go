@@ -268,7 +268,7 @@ func (parse *parser) typeDecl() (ast.Node, error) {
 	case token.Eq:
 		eqTok = parse.next()
 
-		if expr, err = parse.externOr(parse.typeExprOrSignature)(); err != nil {
+		if expr, err = parse.externOr(parse.typeExpr)(); err != nil {
 			return nil, err
 		}
 
