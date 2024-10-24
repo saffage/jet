@@ -631,7 +631,7 @@ func (parse *parser) whenClause() (ast.Node, error) {
 		return nil, err
 	}
 
-	if arrowTok, err = parse.expect(token.FatArrow); err != nil {
+	if arrowTok, err = parse.expect(token.Arrow); err != nil {
 		return nil, err
 	}
 
