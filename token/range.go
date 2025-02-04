@@ -6,6 +6,28 @@ import (
 	"github.com/saffage/jet/config"
 )
 
+func RangeFrom(start, end Pos) Range {
+	if start.FileID != end.FileID {
+		panic(fmt.Sprintf(
+			"start & end position have different file IDs (%d and %d)",
+			start.FileID,
+			end.FileID,
+		))
+	}
+
+	return Range{
+		FileID: start.FileID,
+		Start:  rangePos{Line: start.Line, Char: start.Char},
+		End:    rangePos{Line: end.Line, Char: end.Char},
+	}
+}
+
+type rangePos struct {
+	Offset uint64
+	Line   uint32
+	Char   uint32
+}
+
 type Range struct {
 	FileID     config.FileID
 	Start, End struct {
@@ -36,9 +58,8 @@ func (rng Range) EndPos() Pos {
 func (rng Range) String() string {
 	filepath, start, end := "", "", ""
 
-	if fileinfo, ok := config.Global.Files[rng.FileID]; ok &&
-		fileinfo.Path != "" {
-		filepath = fileinfo.Path
+	if rng.FileID != 0 {
+		filepath = config.Global.Files[rng.FileID].Path
 	}
 
 	if rng.Start.Line > 0 {

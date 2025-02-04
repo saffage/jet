@@ -50,5 +50,5 @@ func (check *Checker) resolveTypeAliasDecl(decl *ast.Decl) {
 
 	check.newDef(decl.Ident, sym)
 	check.setType(decl, typedesc)
-	report.TaggedDebugf("checker", "alias: set type: %s", typedesc)
+	report.DebugX("checker", "alias: set type: %s", typedesc)
 }

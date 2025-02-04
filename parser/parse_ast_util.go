@@ -70,14 +70,11 @@ func (p *parser) skip(to ...token.Kind) (start, end token.Pos) {
 
 	if p.flags&Trace != 0 && end.IsValid() {
 		// TODO must be removed
-		warn := Error{
-			Start:      start,
-			End:        end,
-			Message:    "tokens was skipped for some reason",
-			isWarn:     true,
-			isInternal: true,
-		}
-		p.errors = append(p.errors, warn)
+		panic(Error{
+			Selection: start.WithEnd(end),
+			Message:   "tokens was skipped for some reason",
+			Warning:   true,
+		})
 	}
 
 	return

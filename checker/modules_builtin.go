@@ -32,7 +32,7 @@ func checkBuiltInPkgsAux(cfg *config.Config) error {
 		return nil
 	}
 
-	report.TaggedHintf("checker", "checking package 'core'")
+	report.HintX("checker", "checking package 'core'")
 
 	var libDir string
 
@@ -91,23 +91,22 @@ func checkBuiltInPkgsAux(cfg *config.Config) error {
 		return err
 	}
 
-	builtinFileID := config.NextFileID()
-	cFileID := config.NextFileID()
-	cfg.Files[builtinFileID] = config.FileInfo{
-		Name: "Types",
-		Path: builtinModuleFilepath,
-		Buf:  bytes.NewBuffer(builtinModuleContent),
-	}
-	cfg.Files[cFileID] = config.FileInfo{
-		Name: "C",
-		Path: cModuleFilepath,
-		Buf:  bytes.NewBuffer(cModuleContent),
-	}
+	builtinFile := config.Global.NewFile()
+	builtinFile.Name = "Types"
+	builtinFile.Path = builtinModuleFilepath
+	builtinFile.Buf = bytes.NewBuffer(builtinModuleContent)
 
-	ModuleBuiltin, err = CheckFile(cfg, builtinFileID)
+	cFile := config.Global.NewFile()
+	cFile.Name = "C"
+	cFile.Path = cModuleFilepath
+	cFile.Buf = bytes.NewBuffer(cModuleContent)
+
+	ModuleBuiltin, err = CheckFile(cfg, builtinFile.ID)
 	if err != nil {
-		report.TaggedErrorf("internal", "while checking package 'builtin'")
-		return err
+		return &Error{
+			err:     err,
+			Message: "while checking package 'builtin'",
+		}
 	}
 
 	// ModuleC, err = CheckFile(config.Global, cFileID)

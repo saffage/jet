@@ -51,10 +51,10 @@ func (check *Checker) resolveVarDecl(node *ast.Decl) {
 	}
 
 	if tValue != nil {
-		report.TaggedDebugf("checker", "var value type: %s", tValue)
+		report.DebugX("checker", "var value type: %s", tValue)
 	}
 
-	report.TaggedDebugf("checker", "var specified type: %s", tType)
+	report.DebugX("checker", "var specified type: %s", tType)
 
 	if tValue != nil && !tValue.Equals(tType) {
 		check.errorf(
@@ -72,10 +72,10 @@ func (check *Checker) resolveVarDecl(node *ast.Decl) {
 	if tValue := types.AsArray(tValue); tValue != nil && types.IsUntyped(tValue.ElemType()) {
 		// TODO this causes codegen to generate two similar typedefs.
 		check.setType(node.Value, tType)
-		report.TaggedDebugf("checker", "var set value type: %s", tType)
+		report.DebugX("checker", "var set value type: %s", tType)
 	}
 
-	report.TaggedDebugf("checker", "var type: %s", tType)
+	report.DebugX("checker", "var type: %s", tType)
 	sym := NewVar(check.scope, tType, node)
 	sym.value = node.Value
 	sym.isGlobal = sym.owner == check.module.Scope

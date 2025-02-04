@@ -77,7 +77,7 @@ func (gen *generator) defs(
 			gen.defs(sym.Defs, sym.Scope)
 
 		default:
-			report.Warningf("not implemented (%T)", sym)
+			report.Warning("not implemented (%T)", sym)
 		}
 	}
 
@@ -85,7 +85,7 @@ func (gen *generator) defs(
 }
 
 func (gen *generator) setScope(scope *checker.Scope) {
-	report.TaggedDebugf("cgen", "set scope: %s", scopePath(scope))
+	report.DebugX("cgen", "set scope: %s", scopePath(scope))
 	gen.scope = scope
 }
 

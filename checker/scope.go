@@ -101,7 +101,7 @@ func errorAlreadyDefined(ident, previous *ast.Ident) *Error {
 	err := newErrorf(ident, "name '%s' is already defined in this scope", ident.Name)
 
 	if previous != nil && previous.Start.Line > 0 {
-		err.Notes = append(err.Notes, &Error{
+		err.Hints = append(err.Hints, &Error{
 			Message: "previous declaration was here",
 			Node:    previous,
 		})

@@ -17,8 +17,7 @@ func main() {
 
 	defer func() {
 		if err := recover(); err != nil {
-			report.TaggedErrorf("internal", "%s", err)
-			// repanic for a stack trace
+			report.ErrorX("internal", "%s", err)
 
 			if config.Global.Flags.Debug {
 				panic("internal error")
@@ -27,6 +26,6 @@ func main() {
 	}()
 
 	if err := cmd.Run(os.Args); err != nil {
-		report.Errors(err)
+		report.Report(config.Global, err)
 	}
 }

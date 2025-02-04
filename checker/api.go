@@ -19,7 +19,7 @@ var ErrorEmptyFileBuf = errors.New("empty file buffer or invalid file ID")
 
 func Check(cfg *config.Config, fileID config.FileID, stmts *ast.StmtList) (*Module, error) {
 	moduleName := cfg.Files[fileID].Name
-	report.Hintf("checking module '%s'", moduleName)
+	report.Hint("checking module '%s'", moduleName)
 
 	module := NewModule(NewScope(Global, "module "+moduleName), moduleName, stmts)
 	check := &Checker{
@@ -50,7 +50,7 @@ func Check(cfg *config.Config, fileID config.FileID, stmts *ast.StmtList) (*Modu
 		}
 
 		defer f.Close()
-		report.TaggedHintf("checker", "dumping checker state")
+		report.HintX("checker", "dumping checker state")
 		spew.Fdump(f, check)
 	}
 

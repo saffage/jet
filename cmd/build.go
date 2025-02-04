@@ -18,28 +18,25 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-func Build(cfg *config.Config) error {
-	name := cfg.Files[config.MainFileID].Name
-	path := cfg.Files[config.MainFileID].Path
+func Build(cfg *config.Config, file *config.File) error {
+	report.Debug("set file '%s' as main module", file.Path)
 
-	report.Debugf("set file '%s' as main module", path)
-
-	if err := internalBuild(cfg, config.MainFileID); err != nil {
+	if err := internalBuild(cfg, file); err != nil {
 		return err
 	}
 
-	if err := compileToC(cfg, filepath.Dir(path), name); err != nil {
+	if err := compileToC(cfg, filepath.Dir(file.Path), file.Name); err != nil {
 		return err
 	}
 
 	if cfg.Flags.Run {
-		exePath := "." + string(filepath.Separator) + name
+		exePath := "." + string(filepath.Separator) + file.Name
 
 		if runtime.GOOS == "windows" {
 			exePath += ".exe"
 		}
 
-		report.Hintf("running: '%s'", exePath)
+		report.Hint("running: '%s'", exePath)
 
 		cmd := exec.Command(exePath)
 		cmd.Stdout = os.Stdout
@@ -49,7 +46,7 @@ func Build(cfg *config.Config) error {
 		if err := cmd.Run(); err != nil {
 			wd, _ := os.Getwd()
 			report.Hint(wd)
-			report.TaggedError("run", err.Error())
+			report.ErrorX("run", "%s", err.Error())
 		}
 	}
 
@@ -82,27 +79,25 @@ func actionBuild(ctx *cli.Context) error {
 		return err
 	}
 
-	config.Global.Files[config.MainFileID] = config.FileInfo{
-		Name: name,
-		Path: path,
-		Buf:  bytes.NewBuffer(data),
-	}
+	mainFile := config.Global.NewFile()
+	mainFile.Name = name
+	mainFile.Path = path
+	mainFile.Buf = bytes.NewBuffer(data)
 
-	return Build(config.Global)
+	return Build(config.Global, mainFile)
 }
 
-func internalBuild(cfg *config.Config, fileID config.FileID) error {
+func internalBuild(cfg *config.Config, file *config.File) error {
 	if err := checker.CheckBuiltInPkgs(cfg); err != nil {
 		return err
 	}
 
-	m, err := checker.CheckFile(cfg, fileID)
+	m, err := checker.CheckFile(cfg, file.ID)
 	if err != nil {
 		return err
 	}
 
-	finfo := cfg.Files[fileID]
-	dir := filepath.Join(filepath.Dir(finfo.Path), cfg.Options.CacheDir)
+	dir := filepath.Join(filepath.Dir(file.Path), cfg.Options.CacheDir)
 	err = os.Mkdir(dir, os.ModePerm)
 	if err != nil && !os.IsExist(err) {
 		return err
@@ -125,8 +120,8 @@ func genModule(m *checker.Module, dir string) error {
 	}
 	defer f.Close()
 
-	report.Hintf("generating module '%s'", m.Name())
-	report.TaggedDebugf("gen", "module file is '%s'", filename)
+	report.Hint("generating module '%s'", m.Name())
+	report.DebugX("gen", "module file is '%s'", filename)
 
 	if err := cgen.Generate(f, m); err != nil {
 		return err
@@ -179,7 +174,7 @@ func compileToC(cfg *config.Config, dir, moduleName string) error {
 	cmd := exec.Command(cfg.Options.CC, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	report.TaggedHint("cc", cmd.String())
+	report.HintX("cc", "%s", cmd.String())
 
 	if err := cmd.Run(); err != nil {
 		return err

@@ -2,185 +2,177 @@ package report
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/fatih/color"
 	"github.com/saffage/jet/config"
-	"github.com/saffage/jet/scanner/base"
 	"github.com/saffage/jet/token"
 )
 
-func display(kind Kind, message string) {
-	err := error(nil)
+func genHint(
+	hints []HintInfo,
+	span token.Range,
+	file *config.File,
+	cfg *config.Config,
+) string {
+	buf := strings.Builder{}
 
-	switch kind {
-	case KindNote, KindHint, KindWarning:
-		_, err = fmt.Fprintln(os.Stdout, message)
+	for _, hint := range hints {
+		buf.WriteByte('\n')
+		buf.WriteString(hint.Message)
 
-	case KindDebug, KindError:
-		_, err = fmt.Fprintln(os.Stderr, message)
+		if hint.HintRange.IsValid() {
+			codeSnapshot := genCodeSnapshot(LevelHint, "", span, file, cfg)
 
-	default:
+			buf.WriteByte('\n')
+			buf.WriteString(codeSnapshot)
+		} else {
+			const hintIndent = "\t"
+
+			if hint.Suggestion != "" {
+				buf.WriteString(":\n\n")
+				buf.WriteString(hintIndent)
+				buf.WriteString(strings.ReplaceAll(hint.Suggestion, "\n", "\n"+hintIndent))
+				buf.WriteString("\n")
+			}
+		}
+	}
+
+	return buf.String()
+}
+
+func genCodeSnapshot(
+	level Level,
+	hint string,
+	span token.Range,
+	file *config.File,
+	cfg *config.Config,
+) string {
+	if !span.IsValid() {
+		return ""
+	}
+
+	var (
+		codeSnapshot = file.Line(int(span.Start.Line))
+		lineNumStr   = fmt.Sprintf("%d", span.Start.Line)
+		emptyLineNum = genLineNum(strings.Repeat(" ", numLen(span.Start.Line)))
+		leftBound    = int(span.Start.Char) - 1
+		rightBound   = int(span.End.Char) - 1
+		buf          = strings.Builder{}
+	)
+
+	if len(codeSnapshot) == 0 {
+		// Line info is corrupted
 		panic("unreachable")
 	}
 
-	if err != nil {
-		panic(err)
-	}
-}
-
-func reportInternal(kind Kind, tag, message string) {
-	if kind < Level {
-		return
+	if span.End.Line > span.Start.Line {
+		rightBound = len(codeSnapshot)
 	}
 
-	if strings.TrimSpace(message) == "" {
-		message = "<no message provided>"
+	buf.WriteString(formatPos(span.StartPos()))
+	// buf.WriteByte('\n')
+
+	if !ShowCodeSnapshot {
+		// Only line info will be shown
+		return buf.String()
 	}
-
-	display(kind, fmt.Sprintf("%s %s", kind.TaggedLabel(tag), message))
-}
-
-func reportAtInternal(kind Kind, tag string, start, end token.Pos, message string) {
-	if kind < Level {
-		return
-	}
-
-	if start.FileID != end.FileID {
-		panic(fmt.Sprintf("start & end position have different file IDs (%d and %d)", start.FileID, end.FileID))
-	}
-
-	// We do it here because the message will not be empty
-	// if the location is specified.
-	if strings.TrimSpace(message) == "" {
-		message = "<no message provided>"
-	}
-
-	line := "\n" + formatLoc(start)
-
-	if fileInfo, ok := config.Global.Files[start.FileID]; ok {
-		line += generateLine(kind, start, end, fileInfo.Buf.Bytes())
-	}
-
-	if UseColors {
-		reportInternal(kind, tag, message+line)
-	} else {
-		reportInternal(kind, tag, message+line)
-	}
-}
-
-func generateLine(kind Kind, start, end token.Pos, buffer []byte) string {
-	if !ShowLine || start.FileID == 0 || start.Line == 0 {
-		return ""
-	}
-	var (
-		lineContent  = base.New(buffer, start.FileID).GetLine(int(start.Line))
-		lineNumStr   = fmt.Sprintf("%d", start.Line)
-		emptyLineNum = lineNum(strings.Repeat(" ", numLen(int(start.Line))))
-		leftBound    = int(start.Char) - 1
-		rightBound   = int(end.Char) - 1
-		buf          = strings.Builder{}
-	)
-	if end.Line > start.Line {
-		// TODO capture more lines?
-		rightBound = len(lineContent)
-	}
-
-	kindColor := *kind.Color()
-	kindColor.Add(color.Underline)
 
 	buf.WriteByte('\n')
-	buf.WriteString(lineNum(lineNumStr))
+	buf.WriteString(genLineNum(lineNumStr))
 	buf.WriteString(applyColorInRange(
-		&kindColor,
-		lineContent,
+		level.Color(),
+		codeSnapshot,
 		int(leftBound),
 		int(rightBound),
 	))
-	buf.WriteByte('\n')
 
-	// Tabulation has a variable length, so you need to
+	// Tabulation has a variable length, so we need to
 	// keep them in a string there.
 	underlineLen := max(1, rightBound-leftBound+1)
-	underlineLine := strings.Builder{}
-	underlineLine.Grow(leftBound + underlineLen)
-	for _, c := range lineContent[:leftBound] {
+	underlineStr := "^" + strings.Repeat("~", underlineLen-1)
+	underlineBuf := strings.Builder{}
+	underlineBuf.Grow(leftBound + underlineLen)
+
+	for _, c := range codeSnapshot[:leftBound] {
 		if c == '\t' {
-			underlineLine.WriteRune(c)
+			// TODO fix line shift
+			underlineBuf.WriteRune(c)
 		} else {
-			underlineLine.WriteByte(' ')
+			underlineBuf.WriteByte(' ')
 		}
 	}
 
 	if UseColors {
-		underlineLine.WriteString(kind.Color().Sprintf(
-			strings.Repeat(string(underlineChar(kind)), underlineLen),
-		))
+		underlineBuf.WriteString(level.Color().Sprint(underlineStr))
 	} else {
-		underlineLine.WriteString(
-			strings.Repeat(string(underlineChar(kind)), underlineLen),
-		)
+		underlineBuf.WriteString(underlineStr)
 	}
 
+	buf.WriteByte('\n')
 	buf.WriteString(emptyLineNum)
-	buf.WriteString(underlineLine.String())
+	buf.WriteString(underlineBuf.String())
+
+	if hint != "" {
+		buf.WriteByte(' ')
+
+		if UseColors {
+			buf.WriteString(level.Color().Sprint(hint))
+		} else {
+			buf.WriteString(hint)
+		}
+	}
+
 	return buf.String()
 }
 
-func lineNum(text string) string {
+func genLineNum(text string) string {
 	if UseColors {
-		return lineNumStyle.Sprintf("%s |", text)
+		return lineNumStyle.Sprintf("%s │", text)
 	}
-	return text + " |"
+	return text + " │"
 }
 
-func applyColorInRange(color *color.Color, text string, a, b int) string {
+func applyColorInRange(color *color.Color, text string, i, j int) string {
 	if !UseColors {
 		return text
 	}
-	if len(text) == 0 {
+
+	if text == "" {
 		return ""
 	}
-	maxIdx := len(text) - 1
-	textBefore, textAfter := text[:max(0, min(a-1, maxIdx)+1)], ""
-	if b < maxIdx {
-		textAfter = text[b+1:]
+
+	n := len(text) - 1
+	textBefore := text[:max(0, min(i-1, n)+1)]
+	textAfter := ""
+
+	if j < n {
+		textAfter = text[j+1:]
 	}
-	return textBefore + color.Sprint(text[a:min(b, maxIdx)+1]) + textAfter
+
+	textBefore = codeStyle.Sprint(textBefore)
+	textAfter = codeStyle.Sprint(textAfter)
+	return textBefore + color.Sprint(text[i:min(j, n)+1]) + textAfter
 }
 
-func underlineChar(kind Kind) rune {
-	switch kind {
-	case KindDebug:
-		return '-'
+func formatPos(pos token.Pos) string {
+	space := strings.Repeat(" ", numLen(pos.Line))
+	s := " ┌─ "
 
-	case KindNote, KindHint, KindWarning:
-		return '^'
-
-	case KindError:
-		return '~'
-
-	default:
-		panic("unreachable")
+	if !ShowCodeSnapshot {
+		s = " ↪ "
 	}
-}
 
-func formatLoc(loc token.Pos) string {
 	if UseColors {
-		return fmt.Sprintf("%s%s %s",
-			strings.Repeat(" ", numLen(int(loc.Line))),
-			lineNumStyle.Sprint("-->"),
-			color.CyanString(loc.String()),
-		)
+		return space +
+			lineNumStyle.Sprint(s) +
+			filepathStyle.Sprint(pos.String())
 	}
-	return fmt.Sprintf("%s--> %s",
-		strings.Repeat(" ", numLen(int(loc.Line))),
-		color.CyanString(loc.String()),
-	)
+
+	return space + s + pos.String()
 }
 
-func numLen(num int) (len int) {
+func numLen(num uint32) (len int) {
 	if num <= 0 {
 		len = 1
 	}
@@ -191,4 +183,8 @@ func numLen(num int) (len int) {
 	return len
 }
 
-var lineNumStyle = color.New(color.Bold, color.FgHiGreen)
+var (
+	lineNumStyle  = color.New(color.FgHiCyan, color.Bold)
+	filepathStyle = color.New(color.FgCyan)
+	codeStyle     = color.New(color.FgHiMagenta)
+)

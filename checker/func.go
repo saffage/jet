@@ -43,7 +43,7 @@ func (check *Checker) resolveFuncDecl(decl *ast.Decl, value *ast.Function) {
 	)
 	sym.params = params
 	sym.body = value.Body
-	report.TaggedDebugf("checker", "func: set type: %s", ty)
+	report.DebugX("checker", "func: set type: %s", ty)
 
 	if ty.Result() != nil {
 		isDefined = true
@@ -57,7 +57,7 @@ func (check *Checker) resolveFuncDecl(decl *ast.Decl, value *ast.Function) {
 	if sym.ty == nil {
 		// TODO error message?
 		sym.ty = ty
-		report.TaggedDebugf("checker", "func: set type: %s", sym.ty)
+		report.DebugX("checker", "func: set type: %s", sym.ty)
 	}
 
 	assert(sym.ty != nil)
@@ -148,8 +148,8 @@ func (check *Checker) resolveFuncSignature(
 
 		params = append(params, paramSym)
 		check.newDef(param.Ident, paramSym)
-		report.TaggedDebugf("checker", "func: def param: %s", paramSym.Name())
-		report.TaggedDebugf("checker", "func: set param type: %s", tyParam)
+		report.DebugX("checker", "func: def param: %s", paramSym.Name())
+		report.DebugX("checker", "func: set param type: %s", tyParam)
 	}
 
 	if sig.Result != nil {
@@ -202,7 +202,7 @@ func (check *Checker) resolveFuncBody(
 				if err != nil {
 					ident, _ := err.Node.(*ast.Ident)
 					if ident != nil && ident.Name == decl.Ident.Name {
-						err.Notes = append(err.Notes, &Error{
+						err.Hints = append(err.Hints, &Error{
 							Message: "cannot infer a type of the recursive definition",
 							Node:    decl.Ident,
 						})

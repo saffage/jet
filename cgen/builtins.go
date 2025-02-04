@@ -33,7 +33,7 @@ func (gen *generator) BuiltInCall(node *ast.BuiltIn, call *ast.Call) string {
 		return gen.builtInEmit(call)
 
 	default:
-		report.Warningf("unknown built-in function '%s'", node.Repr())
+		report.Warning("unknown built-in function '%s'", node.Repr())
 		return "ERROR_CGEN"
 	}
 }

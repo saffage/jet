@@ -493,7 +493,7 @@ func (check *Checker) typeOfCurlyList(node *ast.CurlyList) types.Type {
 
 	defer check.setScope(check.scope)
 	check.scope = local
-	report.TaggedDebugf("checker", "push %s", local.name)
+	report.DebugX("checker", "push %s", local.name)
 
 	visitor := ast.Visitor(check.visitBlock(block))
 
@@ -501,7 +501,7 @@ func (check *Checker) typeOfCurlyList(node *ast.CurlyList) types.Type {
 		visitor.WalkTopDown(node)
 	}
 
-	report.TaggedDebugf("checker", "pop %s", local.name)
+	report.DebugX("checker", "pop %s", local.name)
 	return block.t
 }
 
@@ -667,7 +667,7 @@ func (check *Checker) typeOfFor(node *ast.For) (ty types.Type) {
 
 		defer check.setScope(check.scope)
 		check.scope = bodyScope
-		report.TaggedDebugf("checker", "push %s", bodyScope.name)
+		report.DebugX("checker", "push %s", bodyScope.name)
 
 		visitor := ast.Visitor(check.visitBlock(block))
 
@@ -675,7 +675,7 @@ func (check *Checker) typeOfFor(node *ast.For) (ty types.Type) {
 			visitor.WalkTopDown(node)
 		}
 
-		report.TaggedDebugf("checker", "pop %s", bodyScope.name)
+		report.DebugX("checker", "pop %s", bodyScope.name)
 		tyBody = block.t
 	}
 	if tyBody == nil {

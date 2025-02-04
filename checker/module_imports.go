@@ -23,16 +23,14 @@ func (check *Checker) resolveImport(node *ast.Import) {
 		check.errorf(node.Module, "while reading file: %s", err.Error())
 	}
 
-	fileID := config.NextFileID()
-	check.cfg.Files[fileID] = config.FileInfo{
-		Name: node.Module.Name,
-		Path: path,
-		Buf:  bytes.NewBuffer(fileContent),
-	}
+	file := config.Global.NewFile()
+	file.Name = node.Module.Name
+	file.Path = path
+	file.Buf = bytes.NewBuffer(fileContent)
 
-	m, err := CheckFile(check.cfg, fileID)
+	m, err := CheckFile(check.cfg, file.ID)
 	if err != nil {
-		report.Errors(err)
+		report.Report(config.Global, err)
 		check.errorf(node.Module, "the module check was finished with errors")
 	}
 
@@ -72,7 +70,7 @@ func makeWalkFunc(root string, expectedName string, result *string) filepath.Wal
 				*result = path
 			}
 
-			report.TaggedDebugf("importer", "found file: '%s'", path)
+			report.DebugX("importer", "found file: '%s'", path)
 			return filepath.SkipAll
 		}
 

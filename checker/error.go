@@ -9,9 +9,11 @@ import (
 )
 
 type Error struct {
+	err error
+
 	Message string
 	Node    ast.Node
-	Notes   []*Error // TODO make a distinct type for the notes.
+	Hints   []*Error // TODO make a distinct type for the notes.
 }
 
 func newErrorf(node ast.Node, format string, args ...any) *Error {
@@ -22,22 +24,40 @@ func newErrorf(node ast.Node, format string, args ...any) *Error {
 }
 
 func (err *Error) Error() string {
+	if err.err != nil {
+		return err.Message + ": " + err.err.Error()
+	}
+
 	return err.Message
 }
 
-func (err *Error) Report() {
-	var start, end token.Pos
-	if err.Node != nil {
-		start, end = err.Node.Pos(), err.Node.PosEnd()
-	}
-	report.TaggedErrorAt("checker", start, end, err.Message)
+func (err *Error) Info() *report.Info {
+	var span token.Range
 
-	for _, note := range err.Notes {
-		var start, end token.Pos
-		if note.Node != nil {
-			start, end = note.Node.Pos(), note.Node.PosEnd()
+	if err.Node != nil {
+		span = err.Node.Pos().WithEnd(err.Node.PosEnd())
+	}
+
+	var hints []report.HintInfo
+
+	for _, hint := range err.Hints {
+		var span token.Range
+
+		if hint.Node != nil {
+			span = hint.Node.Pos().WithEnd(hint.Node.PosEnd())
 		}
-		report.TaggedNoteAt("checker", start, end, note.Message)
+
+		hints = append(hints, report.HintInfo{
+			Message:   hint.Message,
+			HintRange: span,
+		})
+	}
+
+	return &report.Info{
+		Tag:            "checker",
+		Title:          err.Error(),
+		SelectionRange: span,
+		Hints:          hints,
 	}
 }
 

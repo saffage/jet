@@ -311,7 +311,7 @@ func (check *Checker) assignable(node ast.Node) bool {
 				return false
 			}
 
-			report.TaggedDebugf("checker", "assign '%s' at '%s'", varSym.Name(), operand)
+			report.DebugX("checker", "assign '%s' at '%s'", varSym.Name(), operand)
 			check.newUse(operand, varSym)
 			return true
 		}
@@ -351,7 +351,7 @@ func (check *Checker) assignable(node ast.Node) bool {
 			// 	return false
 			// }
 
-			// report.TaggedDebugf("checker", "assign '%s' at '%s'", varSym.name, operand)
+			// report.DebugX("checker", "assign '%s' at '%s'", varSym.name, operand)
 			// check.newUse(operandName, varSym)
 			// return true
 		}

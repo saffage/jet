@@ -41,10 +41,10 @@ func (check *Checker) resolveConstDecl(decl *ast.Decl) {
 	}
 
 	if value.Type != nil {
-		report.TaggedDebugf("checker", "const: value type: %s", value.Type)
+		report.DebugX("checker", "const: value type: %s", value.Type)
 	}
 
-	report.TaggedDebugf("checker", "const: specified type: %s", tType)
+	report.DebugX("checker", "const: specified type: %s", tType)
 
 	if value.Type != nil && !value.Type.Equals(tType) {
 		check.errorf(
@@ -58,7 +58,7 @@ func (check *Checker) resolveConstDecl(decl *ast.Decl) {
 
 	value.Type = tType
 
-	report.TaggedDebugf("checker", "const type: %s", tType)
+	report.DebugX("checker", "const type: %s", tType)
 	sym := NewConst(check.scope, value, decl.Ident)
 
 	if defined := check.scope.Define(sym); defined != nil {

@@ -72,7 +72,7 @@ func Run(args []string) error {
 		Name:    "jet",
 		Version: "0.0.1",
 		Flags:   appFlags,
-		Before:  beforeCommand,
+		Before:  beforeCommand(config.Global),
 		Commands: []*cli.Command{
 			{
 				Name:            "build",
@@ -90,28 +90,19 @@ func Run(args []string) error {
 		},
 	}
 
-	config.Global.MaxErrors = 3
-	config.Global.Files = map[config.FileID]config.FileInfo{}
 	return app.Run(args)
 }
 
-func beforeCommand(ctx *cli.Context) error {
-	config.Global.Flags.Debug = ctx.Bool("debug")
-	config.Global.Flags.NoHints = ctx.Bool("no-hints")
-	config.Global.Flags.NoCoreLib = ctx.Bool("no-core-lib")
-	config.Global.Options.CoreLibPath = ctx.Path("core-lib-path")
-	config.Global.Options.CacheDir = ctx.String("cache-dir")
+func beforeCommand(cfg *config.Config) func(ctx *cli.Context) error {
+	return func(ctx *cli.Context) error {
+		cfg.Flags.Debug = ctx.Bool("debug")
+		cfg.Flags.NoHints = ctx.Bool("no-hints")
+		cfg.Flags.NoCoreLib = ctx.Bool("no-core-lib")
+		cfg.Options.CoreLibPath = ctx.Path("core-lib-path")
+		cfg.Options.CacheDir = ctx.String("cache-dir")
 
-	switch {
-	case config.Global.Flags.Debug:
-		report.Level = report.KindDebug
+		report.MinDisplayLevel = report.ConfigLevel(cfg)
 
-	case config.Global.Flags.NoHints:
-		report.Level = report.KindWarning
-
-	default:
-		report.Level = report.KindHint
+		return nil
 	}
-
-	return nil
 }

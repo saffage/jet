@@ -82,13 +82,14 @@ func (check *Checker) newDef(ident *ast.Ident, sym Symbol) {
 	} else {
 		symStr = symbolTypeNoQualifier(sym)
 	}
-	report.TaggedDebugf(
-		"checker", "def %s `%s`",
+	report.DebugX(
+		"checker",
+		"def %s `%s`",
 		color.HiBlueString(symStr),
 		ident,
 	)
 	if !check.module.Defs.Set(ident, sym) {
-		report.TaggedWarningf("checker", "identifier '%s' was redefined", ident.Name)
+		report.WarningX("checker", "identifier '%s' was redefined", ident.Name)
 	}
 	// check.setType(ident, sym.Type())
 
@@ -111,8 +112,9 @@ func (check *Checker) newUse(ident *ast.Ident, sym Symbol) {
 	} else {
 		symStr = symbolTypeNoQualifier(sym)
 	}
-	report.TaggedDebugf(
-		"checker", "use %s `%s` of `%s`",
+	report.DebugX(
+		"checker",
+		"use %s `%s` of `%s`",
 		color.HiBlueString(symStr),
 		ident,
 		sym.Ident(),

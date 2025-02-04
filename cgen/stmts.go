@@ -7,7 +7,7 @@ import (
 )
 
 func (gen *generator) stmt(stmt ast.Node) {
-	report.Debugf("stmt = %s", stmt.Repr())
+	report.Debug("stmt = %s", stmt.Repr())
 	switch stmt := stmt.(type) {
 	case *ast.Empty:
 		gen.line("\n")

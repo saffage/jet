@@ -59,7 +59,7 @@ func (check *Checker) resolveStructDecl(decl *ast.Decl, value *ast.StructType) {
 
 		if defined := local.Define(fieldSym); defined != nil {
 			err := newErrorf(fieldSym.Ident(), "duplicate field '%s'", fieldSym.Name())
-			err.Notes = append(err.Notes, &Error{
+			err.Hints = append(err.Hints, &Error{
 				Message: "field was defined here",
 				Node:    defined.Ident(),
 			})
@@ -175,7 +175,7 @@ func (check *Checker) structInit(initList *ast.ParenList, ty *types.Struct) {
 		if tValue := types.AsArray(tInit); tValue != nil && types.IsUntyped(tValue.ElemType()) {
 			// TODO this causes codegen to generate two similar typedefs.
 			check.setType(initFieldValues[field.Name], field.Type)
-			report.TaggedDebugf("checker", "struct init set value type: %s", field.Type)
+			report.DebugX("checker", "struct init set value type: %s", field.Type)
 		}
 
 		// Delete this field so we can find extra fields later.

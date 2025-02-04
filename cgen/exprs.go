@@ -17,7 +17,7 @@ func (gen *generator) exprString(expr ast.Node) string {
 		return "ERROR_CGEN__EXPR_IS_DECL"
 	}
 
-	report.Debugf("expr = %s", expr.Repr())
+	report.Debug("expr = %s", expr.Repr())
 
 	switch node := expr.(type) {
 	case *ast.Empty:
@@ -41,7 +41,7 @@ func (gen *generator) exprString(expr ast.Node) string {
 	case *ast.Literal:
 		typedValue, ok := gen.Types[expr]
 		if !ok {
-			report.Warningf("literal without type '%[1]T': %[1]s", expr)
+			report.Warning("literal without type '%[1]T': %[1]s", expr)
 			return "ERROR_CGEN__EXPR"
 		}
 
@@ -206,14 +206,14 @@ func (gen *generator) exprString(expr ast.Node) string {
 		return ""
 
 	default:
-		report.TaggedErrorf(
+		report.ErrorX(
 			"internal: cgen",
 			"expression '%T' is not implemented",
 			node,
 		)
 	}
 
-	report.TaggedWarningf("internal: cgen", "empty expression was generated: '%T'", expr)
+	report.WarningX("internal: cgen", "empty expression was generated: '%T'", expr)
 	return "ERROR_CGEN__EXPR"
 }
 

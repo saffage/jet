@@ -28,14 +28,11 @@ var (
 )
 
 type Error struct {
-	Start   token.Pos
-	End     token.Pos
-	Message string
-
-	isWarn     bool
-	isInternal bool
-
 	err error
+
+	Message   string
+	Selection token.Range
+	Warning   bool
 }
 
 func (e Error) Error() string {
@@ -49,25 +46,18 @@ func (e Error) Unwrap() error {
 	return e.err
 }
 
-func (e Error) Report() {
-	err, ok := e.err.(report.Reporter)
-	if ok && err != nil {
-		err.Report()
+func (e Error) Info() *report.Info {
+	level := report.LevelError
+
+	if e.Warning {
+		level = report.LevelWarning
 	}
-	if !ok || e.Message != "" {
-		tag := "parser"
-		if e.isInternal {
-			tag = "internal: " + tag
-		}
-		message := e.err.Error()
-		if e.Message != "" {
-			message += ": " + e.Message
-		}
-		if e.isWarn {
-			report.TaggedWarningAt(tag, e.Start, e.End, message)
-		} else {
-			report.TaggedErrorAt(tag, e.Start, e.End, message)
-		}
+
+	return &report.Info{
+		Tag:            "parse",
+		Title:          "",
+		SelectionRange: e.Selection,
+		Level:          level,
 	}
 }
 
@@ -101,18 +91,16 @@ func (p *parser) errorExpectedToken(tokens ...token.Kind) {
 
 func (p *parser) errorAt(err error, start, end token.Pos) {
 	p.appendError(Error{
-		err:   err,
-		Start: start,
-		End:   end,
+		err:       err,
+		Selection: start.WithEnd(end),
 	})
 }
 
 func (p *parser) errorfAt(err error, start, end token.Pos, format string, args ...any) {
 	p.appendError(Error{
-		err:     err,
-		Start:   start,
-		End:     end,
-		Message: fmt.Sprintf(format, args...),
+		err:       err,
+		Selection: start.WithEnd(end),
+		Message:   fmt.Sprintf(format, args...),
 	})
 }
 
@@ -128,9 +116,8 @@ func (p *parser) errorExpectedTokenAt(start, end token.Pos, tokens ...token.Kind
 		buf.WriteString(tok.UserString())
 	}
 	p.appendError(Error{
-		err:     ErrorUnexpectedToken,
-		Start:   start,
-		End:     end,
-		Message: fmt.Sprintf("want %s, got %s instead", buf.String(), p.tok.Kind.UserString()),
+		err:       ErrorUnexpectedToken,
+		Selection: start.WithEnd(end),
+		Message:   fmt.Sprintf("want %s, got %s instead", buf.String(), p.tok.Kind.UserString()),
 	})
 }
