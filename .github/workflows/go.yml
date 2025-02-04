@@ -24,6 +24,9 @@ jobs:
     - name: Verify dependencies
       run: go mod verify
 
+    - name: Run 'go generate'
+      run: go generate -v -x ./...
+
     - name: Build
       run: go build -v ./...
 
