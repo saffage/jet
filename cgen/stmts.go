@@ -13,9 +13,6 @@ func (gen *generator) stmt(stmt ast.Node) {
 		gen.line("\n")
 
 	case *ast.Decl:
-		if !stmt.IsVar {
-			break
-		}
 		sym, _ := gen.Defs.Get(stmt.Ident)
 		if sym == nil {
 			panic("unreachable")

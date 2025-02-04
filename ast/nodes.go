@@ -85,7 +85,6 @@ type (
 		Mut   token.Pos // optional
 		Type  Node      // optional
 		Value Node      // optional
-		IsVar bool      // indicates whether '=' is used before the value instead of ':'
 	}
 )
 
