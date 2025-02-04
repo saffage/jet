@@ -1,6 +1,6 @@
-T :: struct { field: int }
+T := struct { field: int }
 
-main :: () {
+main := () {
     {
         t     := T(field = 2)
         t_ptr := &t

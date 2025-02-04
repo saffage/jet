@@ -1,22 +1,22 @@
 # Compilation for Windows utilizing MinGW64:
-#   $ jet c -run -lib "lib" -ldflags "-lraylib -lgdi32 -lwinmm" "./examples/tetris.jet"
+#   $ jet build -ld-flags "-lraylib -lgdi32 -lwinmm" "./examples/tetris.jet"
 
-Color :: struct {
+Color := struct {
     r: u8
     g: u8
     b: u8
     a: u8
 }
 
-Rectangle :: struct {
+Rectangle := struct {
     x:      f32
     y:      f32
     width:  f32
     height: f32
 }
 
-GRAY       := Color(r = 130, g = 130, b = 130, a = 255)
-LINE_COLOR := Color(r = 200, g = 200, b = 200, a = 255)
+gray       := Color(r = 130, g = 130, b = 130, a = 255)
+line_color := Color(r = 200, g = 200, b = 200, a = 255)
 
 @[extern_c("InitWindow")]
 init_window: (width: int, height: int, title: *char) -> ()
@@ -58,16 +58,16 @@ measure_text: (text: *char, font_size: int) -> int
 is_key_pressed: (key: int) -> bool
 
 
-KEY_SPACE :: 32
-KEY_W     :: 87
-KEY_A     :: 65
-KEY_S     :: 83
-KEY_D     :: 68
-KEY_R     :: 82
-KEY_DOWN  :: 264
-KEY_UP    :: 265
-KEY_LEFT  :: 263
-KEY_RIGHT :: 262
+KEY_SPACE := 32
+KEY_W     := 87
+KEY_A     := 65
+KEY_S     := 83
+KEY_D     := 68
+KEY_R     := 82
+KEY_DOWN  := 264
+KEY_UP    := 265
+KEY_LEFT  := 263
+KEY_RIGHT := 262
 
 
 @[extern_c("malloc")]
@@ -82,21 +82,21 @@ rand_int: () -> int
 @[extern_c]
 sprintf: (stream: *char, @[const_c] format: *char, args: ...) -> int
 
-CELL_SIZE             :: 30
-PLAYFIELD_HIDDEN_ROWS :: 40
-PLAYFIELD_ROWS        :: 20
-PLAYFIELD_COLS        :: 10
-PADDING_X             :: 12
-PADDING_Y             :: 22
-HEADER_HEIGHT         :: 60
+CELL_SIZE             := 30
+PLAYFIELD_HIDDEN_ROWS := 40
+PLAYFIELD_ROWS        := 20
+PLAYFIELD_COLS        := 10
+PADDING_X             := 12
+PADDING_Y             := 22
+HEADER_HEIGHT         := 60
 
-SCREEN_WIDTH  :: CELL_SIZE * PLAYFIELD_COLS + 2 * PADDING_X
-SCREEN_HEIGHT :: CELL_SIZE * PLAYFIELD_ROWS + 2 * PADDING_Y + HEADER_HEIGHT
+SCREEN_WIDTH  := CELL_SIZE * PLAYFIELD_COLS + 2 * PADDING_X
+SCREEN_HEIGHT := CELL_SIZE * PLAYFIELD_ROWS + 2 * PADDING_Y + HEADER_HEIGHT
 
-NUM_TETRAMINOES    :: 7
-AUTO_DROP_DURATION :: 0.5
+NUM_TETRAMINOES    := 7
+AUTO_DROP_DURATION := 0.5
 
-Cell_State :: enum {
+Cell_State := enum {
     Empty
     Cyan
     Blue
@@ -107,12 +107,12 @@ Cell_State :: enum {
     Purple
 }
 
-Game_State :: enum {
+Game_State := enum {
     Paused
     Playing
 }
 
-Action :: enum {
+Action := enum {
     Auto_Drop
     Drop
     Hard_Drop
@@ -123,30 +123,30 @@ Action :: enum {
     Restart
 }
 
-Tetramino :: struct {
+Tetramino := struct {
     rotations: [4]u32
     color:     Color
     index:     u8
 }
 
-Tetramino_Instance :: struct {
+Tetramino_Instance := struct {
     tetramino: Tetramino
     rotation:  int
     x:         int
     y:         int
 }
 
-Timer :: struct {
+Timer := struct {
     last_tick: f64
     duration:  f64
 }
 
-Shuffler :: struct {
+Shuffler := struct {
     index: u8
     order: [NUM_TETRAMINOES]u8
 }
 
-Game :: struct {
+Game := struct {
     current_tetramino: *Tetramino_Instance
     score:             u64
     state:             Game_State
@@ -156,22 +156,22 @@ Game :: struct {
 
 # Globals
 
-CYAN_COLOR   := Color(r = 0x06, g = 0xB6, b = 0xD4, a = 0xFF)
-BLUE_COLOR   := Color(r = 0x25, g = 0x63, b = 0xEB, a = 0xFF)
-ORANGE_COLOR := Color(r = 0xEA, g = 0x58, b = 0x0C, a = 0xFF)
-YELLOW_COLOR := Color(r = 0xFA, g = 0xCC, b = 0x15, a = 0xFF)
-GREEN_COLOR  := Color(r = 0x22, g = 0xC5, b = 0x5E, a = 0xFF)
-PURPLE_COLOR := Color(r = 0x93, g = 0x33, b = 0xEA, a = 0xFF)
-RED_COLOR    := Color(r = 0xDC, g = 0x26, b = 0x26, a = 0xFF)
+cyan_color   := Color(r = 0x06, g = 0xB6, b = 0xD4, a = 0xFF)
+blue_color   := Color(r = 0x25, g = 0x63, b = 0xEB, a = 0xFF)
+orange_color := Color(r = 0xEA, g = 0x58, b = 0x0C, a = 0xFF)
+yellow_color := Color(r = 0xFA, g = 0xCC, b = 0x15, a = 0xFF)
+green_color  := Color(r = 0x22, g = 0xC5, b = 0x5E, a = 0xFF)
+purple_color := Color(r = 0x93, g = 0x33, b = 0xEA, a = 0xFF)
+red_color    := Color(r = 0xDC, g = 0x26, b = 0x26, a = 0xFF)
 
 tetramino_colors: [NUM_TETRAMINOES]Color = [
-    CYAN_COLOR,
-    BLUE_COLOR,
-    RED_COLOR,
-    ORANGE_COLOR,
-    YELLOW_COLOR,
-    GREEN_COLOR,
-    PURPLE_COLOR,
+    cyan_color,
+    blue_color,
+    red_color,
+    orange_color,
+    yellow_color,
+    green_color,
+    purple_color,
 ]
 
 playfield: [PLAYFIELD_HIDDEN_ROWS][PLAYFIELD_COLS]Cell_State
@@ -179,42 +179,42 @@ playfield: [PLAYFIELD_HIDDEN_ROWS][PLAYFIELD_COLS]Cell_State
 tetraminoes: [NUM_TETRAMINOES]Tetramino = [
     Tetramino(
         rotations = [0x0F00, 0x2222, 0x00F0, 0x4444],
-        color = CYAN_COLOR,
+        color = cyan_color,
         index = 0,
     ),
     Tetramino(
         rotations = [0x0660, 0x0660, 0x0660, 0x0660],
-        color = YELLOW_COLOR,
+        color = yellow_color,
         index = 4,
     ),
     Tetramino(
         rotations = [0x0E40, 0x4C40, 0x4E00, 0x4640],
-        color = PURPLE_COLOR,
+        color = purple_color,
         index = 6,
     ),
     Tetramino(
         rotations = [0x06C0, 0x8C40, 0x06C0, 0x8C40],
-        color = GREEN_COLOR,
+        color = green_color,
         index = 5,
     ),
     Tetramino(
         rotations = [0x0C60, 0x4C80, 0x0C60, 0x4C80],
-        color = RED_COLOR,
+        color = red_color,
         index = 2,
     ),
     Tetramino(
         rotations = [0x44C0, 0x8E00, 0x6440, 0x0E20],
-        color = BLUE_COLOR,
+        color = blue_color,
         index = 1,
     ),
     Tetramino(
         rotations = [0x4460, 0x0E80, 0xC440, 0x2E00],
-        color = ORANGE_COLOR,
+        color = orange_color,
         index = 3,
     ),
 ]
 
-shuffle :: (shuffler: *Shuffler) {
+shuffle := (shuffler: *Shuffler) {
     for i in 0..<NUM_TETRAMINOES {
         shuffler.*.order[i] = i as u8
     }
@@ -228,7 +228,7 @@ shuffle :: (shuffler: *Shuffler) {
     }
 }
 
-next_tetramino :: (tetramino: *Tetramino_Instance, shuffler: *Shuffler) {
+next_tetramino := (tetramino: *Tetramino_Instance, shuffler: *Shuffler) {
     $assert(shuffler != { 0 as *Shuffler })
     if shuffler.*.index == NUM_TETRAMINOES {
         shuffle(shuffler)
@@ -243,14 +243,14 @@ next_tetramino :: (tetramino: *Tetramino_Instance, shuffler: *Shuffler) {
     shuffler.*.index     += 1
 }
 
-init_timer :: (duration: f64) -> Timer {
+init_timer := (duration: f64) -> Timer {
     Timer(
         last_tick = get_time(),
         duration  = duration,
     )
 }
 
-init_playfield :: () {
+init_playfield := () {
     for i in 0 ..< PLAYFIELD_HIDDEN_ROWS {
         for j in 0 ..< PLAYFIELD_COLS {
             playfield[i][j] = Cell_State.Empty
@@ -258,7 +258,7 @@ init_playfield :: () {
     }
 }
 
-init_game :: () -> Game {
+init_game := () -> Game {
     game := Game(
         current_tetramino = alloc($size_of(Tetramino_Instance)) as *Tetramino_Instance,
         score = 0,
@@ -276,12 +276,12 @@ init_game :: () -> Game {
     game
 }
 
-deinit_game :: (game: *Game) {
+deinit_game := (game: *Game) {
     free(game.*.current_tetramino)
     game.*.current_tetramino = 0 as *Tetramino_Instance
 }
 
-timer_has_elapsed :: (timer: *Timer) -> bool {
+timer_has_elapsed := (timer: *Timer) -> bool {
     now := get_time()
 
     if now - timer.*.last_tick >= timer.*.duration {
@@ -292,18 +292,18 @@ timer_has_elapsed :: (timer: *Timer) -> bool {
     }
 }
 
-render_score :: (score: u64) {
+render_score := (score: u64) {
     buf: [32]char
     format := "Score: %llu"
     sprintf(&buf[0], $as_ptr(format), score)
     text_width := measure_text(&buf[0], 24)
     x := { SCREEN_WIDTH - text_width } / 2
     y := PADDING_Y
-    draw_text(&buf[0], x, y, 24, GRAY)
+    draw_text(&buf[0], x, y, 24, gray)
     ;
 }
 
-render_cell :: (x: int, y: int, color: Color) {
+render_cell := (x: int, y: int, color: Color) {
     $assert(x >= 0 and x < PLAYFIELD_COLS)
     $assert(y >= 0 and y < PLAYFIELD_ROWS)
     cell_x := PADDING_X + x * CELL_SIZE
@@ -317,14 +317,14 @@ render_cell :: (x: int, y: int, color: Color) {
     draw_rectangle_rec(cell, color)
 }
 
-render_grid :: () {
+render_grid := () {
     for i in 0..PLAYFIELD_ROWS {
         y := SCREEN_HEIGHT - PADDING_Y - i*CELL_SIZE
-        draw_line(PADDING_X, y, SCREEN_WIDTH - PADDING_X, y, LINE_COLOR)
+        draw_line(PADDING_X, y, SCREEN_WIDTH - PADDING_X, y, line_color)
     }
     for i in 0..PLAYFIELD_COLS {
         x := PADDING_X + i*CELL_SIZE
-        draw_line(x, PADDING_Y + HEADER_HEIGHT, x, SCREEN_HEIGHT - PADDING_Y, LINE_COLOR)
+        draw_line(x, PADDING_Y + HEADER_HEIGHT, x, SCREEN_HEIGHT - PADDING_Y, line_color)
     }
     for i in 0..<PLAYFIELD_ROWS {
         for j in 0..<PLAYFIELD_COLS {
@@ -335,7 +335,7 @@ render_grid :: () {
     }
 }
 
-get_coords :: (instance: *Tetramino_Instance) -> [8]u8 {
+get_coords := (instance: *Tetramino_Instance) -> [8]u8 {
     $assert(instance != { 0 as *Tetramino_Instance })
     coords: [8]u8
 
@@ -359,7 +359,7 @@ get_coords :: (instance: *Tetramino_Instance) -> [8]u8 {
     coords
 }
 
-can_render_tetromino_instance :: (instance: *Tetramino_Instance) -> bool {
+can_render_tetromino_instance := (instance: *Tetramino_Instance) -> bool {
     render_coords := get_coords(instance)
     can_render := true
     i := 0
@@ -379,7 +379,7 @@ can_render_tetromino_instance :: (instance: *Tetramino_Instance) -> bool {
     can_render
 }
 
-resolve_clears :: (game: *Game) {
+resolve_clears := (game: *Game) {
     clear_count := 0
     for i in 0 ..< PLAYFIELD_ROWS {
         row_is_full := true
@@ -408,7 +408,7 @@ resolve_clears :: (game: *Game) {
     }
 }
 
-lock_tetramino_instance :: (instance: *Tetramino_Instance, game: *Game) {
+lock_tetramino_instance := (instance: *Tetramino_Instance, game: *Game) {
     if can_render_tetromino_instance(instance) {
         render_coords := get_coords(instance)
         i := 0
@@ -423,7 +423,7 @@ lock_tetramino_instance :: (instance: *Tetramino_Instance, game: *Game) {
     }
 }
 
-handle_input :: (game: *Game) -> Action {
+handle_input := (game: *Game) -> Action {
     action := Action.None
     if timer_has_elapsed(&game.*.auto_drop_timer) {
         action = Action.Auto_Drop
@@ -443,7 +443,7 @@ handle_input :: (game: *Game) -> Action {
     action
 }
 
-handle_action :: (action: Action, game: *Game) {
+handle_action := (action: Action, game: *Game) {
     if game.*.state == Game_State.Paused {
         if action == Action.Restart {
             game.* = init_game()
@@ -493,7 +493,7 @@ handle_action :: (action: Action, game: *Game) {
     }
 }
 
-render_tetromino_instance :: (instance: *Tetramino_Instance) -> bool {
+render_tetromino_instance := (instance: *Tetramino_Instance) -> bool {
     if can_render_tetromino_instance(instance) {
         i := 0
         while i < 8 {
@@ -509,7 +509,7 @@ render_tetromino_instance :: (instance: *Tetramino_Instance) -> bool {
     }
 }
 
-render_ghost_tetromino_instance :: (instance: *Tetramino_Instance) {
+render_ghost_tetromino_instance := (instance: *Tetramino_Instance) {
     if can_render_tetromino_instance(instance) {
         ghost := instance.*
         ghost.tetramino.color.a = 120
@@ -522,16 +522,16 @@ render_ghost_tetromino_instance :: (instance: *Tetramino_Instance) {
     }
 }
 
-draw_game_over :: () {
+draw_game_over := () {
     text_width := measure_text("Game Over", 48)
     x := { SCREEN_WIDTH - text_width } / 2
     y := SCREEN_HEIGHT / 2
-    draw_text("Game Over", x, y - 110, 48, GRAY)
-    draw_text("Press R to restart", x, y - 50, 24, GRAY)
+    draw_text("Game Over", x, y - 110, 48, gray)
+    draw_text("Press R to restart", x, y - 50, 24, gray)
     ;
 }
 
-check_game_over :: (game: *Game) {
+check_game_over := (game: *Game) {
     for i in 0..<PLAYFIELD_COLS {
         if playfield[PLAYFIELD_ROWS - 1][i] != Cell_State.Empty {
             draw_game_over()
@@ -540,7 +540,7 @@ check_game_over :: (game: *Game) {
     }
 }
 
-main :: () {
+main := () {
     init_window(SCREEN_WIDTH, SCREEN_HEIGHT, "Tetris")
     set_target_fps(60)
 

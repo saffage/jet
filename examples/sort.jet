@@ -1,6 +1,6 @@
-N :: 10
+N := 10
 
-qsort :: (array: [N]int, begin: int, end: int) {
+qsort := (array: [N]int, begin: int, end: int) {
     if end > begin {
         left := begin
         right := end
@@ -26,7 +26,7 @@ qsort :: (array: [N]int, begin: int, end: int) {
     }
 }
 
-sort :: (array: [N]int) {
+sort := (array: [N]int) {
     qsort(array, 0, N-1)
 }
 
@@ -36,9 +36,9 @@ rand: () -> int
 @[extern_c("srand")]
 rand_seed: (seed: u32) -> ()
 
-rand_int :: (min: int, max: int) rand() % { max + 1 - min } + min
+rand_int := (min: int, max: int) rand() % { max + 1 - min } + min
 
-make_array :: () -> [N]int {
+make_array := () -> [N]int {
     array: [N]int
     max := N * 10
     for i in 0..<N {
@@ -47,7 +47,7 @@ make_array :: () -> [N]int {
     array
 }
 
-show_array :: (array: [N]int) {
+show_array := (array: [N]int) {
     for i in 0..<N {
         $print(array[i])
         $print(" ")
@@ -55,7 +55,7 @@ show_array :: (array: [N]int) {
     $println("")
 }
 
-main :: () {
+main := () {
     rand_seed(0 as u32)
 
     array := make_array()

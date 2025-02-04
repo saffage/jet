@@ -1,11 +1,11 @@
-Direction :: enum {
+Direction := enum {
     South
     North
     West
     East
 }
 
-main :: () {
+main := () {
     d := Direction.South
     $println(d) # output: `0`
 

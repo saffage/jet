@@ -1,17 +1,24 @@
-X :: struct {
-    foo: int
+X := struct {
+    x: int
 }
 
-Foo :: struct {
+Foo := struct {
     field: X
     arr: [4]int
 }
 
-f :: (n: int) X(foo = n)
+x := (x: int) X(x = x)
 
-main :: () {
-    foo := Foo(field = f(10), arr = [1, 2, 3, 4])
-    foo  = Foo(field = X(foo = 10), arr = [1, 2, 3, 4])
+main := () {
+    foo := Foo(field = x(10), arr = [1, 2, 3, 4])
+    $assert(foo.field.x == 10)
+
+    # NOTE cannot compare 2 arrays
+    # $assert(foo.arr == [1 as int, 2, 3, 4])
+
+    foo = Foo(field = X(x = 10), arr = [1, 2, 3, 4])
+
+
 
     # TODO make it works
     # foo2 := Foo(X(0), [1, 2, 3, 4])

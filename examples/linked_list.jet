@@ -1,9 +1,9 @@
-Node :: struct {
+Node := struct {
     data: int
     next: pointer # because recursive definitions is not yet supported
 }
 
-print_tree :: (tree: *Node) {
+print_tree := (tree: *Node) {
     if tree != { 0 as *Node } {
         $print(tree.*.data)
         tree = tree.*.next as *Node
@@ -19,7 +19,7 @@ print_tree :: (tree: *Node) {
 @[extern_c("malloc")]
 alloc: (size: u64) -> pointer
 
-main :: () {
+main := () {
     tree := alloc($size_of(Node)) as *Node
     two  := alloc($size_of(Node)) as *Node
     one  := alloc($size_of(Node)) as *Node

@@ -10,9 +10,9 @@ rand_seed: (seed: u32) -> ()
 @[extern_c("time")]
 time_now: (dest: *i64) -> i64
 
-rand_int :: (min: int, max: int) -> int { rand() % { max + 1 - min } + min }
+rand_int := (min: int, max: int) -> int { rand() % { max + 1 - min } + min }
 
-main :: () {
+main := () {
     attempts := 0
     guess    := 0
     exit     := false

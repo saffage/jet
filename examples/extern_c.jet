@@ -4,9 +4,17 @@ malloc: (size: u64) -> pointer
 @[extern_c]
 free: (p: pointer) -> ()
 
-main :: () {
+main := () {
     x := malloc($size_of(int)) as *int
-    defer free(x)
+    defer {
+        $print("after free: ")
+        $println(x as u64)
+    }
+    defer {
+        free(x)
+        x = 0 as *int
+    }
 
+    $print("x: ")
     $println(x as u64)
 }

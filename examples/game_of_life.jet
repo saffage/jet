@@ -1,10 +1,10 @@
-WIDTH  :: 20
-HEIGHT :: 15
+WIDTH  := 20
+HEIGHT := 15
 
 field: [HEIGHT][WIDTH]bool
 hidden_field: [HEIGHT][WIDTH]bool
 
-init_field :: () {
+init_field := () {
     for row in 0 ..< HEIGHT {
         for col in 0 ..< WIDTH {
             field[row][col] = false
@@ -22,7 +22,7 @@ init_field :: () {
     field[2][2] = true
 }
 
-show_field :: () {
+show_field := () {
     for row in 0 ..< HEIGHT {
         for col in 0 ..< WIDTH {
             $print(if field[row][col] { "0" } else { "." })
@@ -32,7 +32,7 @@ show_field :: () {
     $print("\n")
 }
 
-count_neighbors :: (row0: int, col0: int) -> int {
+count_neighbors := (row0: int, col0: int) -> int {
     neighbors := 0
     for row in -1 .. 1 {
         for col in -1 .. 1 {
@@ -52,7 +52,7 @@ count_neighbors :: (row0: int, col0: int) -> int {
     neighbors
 }
 
-next_field :: () {
+next_field := () {
     for row in 0 ..< HEIGHT {
         for col in 0 ..< WIDTH {
             neighbors := count_neighbors(row, col)
@@ -65,7 +65,7 @@ next_field :: () {
     }
 }
 
-flip_field :: () {
+flip_field := () {
     for row in  0 ..< HEIGHT {
         for col in 0 ..< WIDTH {
             field[row][col] = hidden_field[row][col]
@@ -73,9 +73,9 @@ flip_field :: () {
     }
 }
 
-GENERATIONS :: 60
+GENERATIONS := 60
 
-main :: () {
+main := () {
     init_field()
     show_field()
     for _ in 0 .. GENERATIONS {

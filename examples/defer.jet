@@ -1,8 +1,8 @@
 i := 0
 
-ok :: () if i < 5 { i += 1; true } else { false }
+ok := () if i < 5 { i += 1; true } else { false }
 
-main :: () {
+main := () {
     defer $println("deferred main 1")
     defer $println("deferred main 2")
     $println("main")

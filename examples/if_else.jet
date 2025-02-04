@@ -1,11 +1,11 @@
-main :: () {
+main := () {
     # 'if-else' statement
     if false {
-        $print("false")
+        $println("false")
     } else if true {
-        $print("true")
+        $println("true")
     } else {
-        $print("unreachable")
+        $println("unreachable")
     }
 
     # 'if-else' expression (similar to statement)
@@ -15,5 +15,16 @@ main :: () {
         20
     } else {
         30
+    }
+
+    $print("x: ")
+    $println(x)
+
+    cond := true
+
+    if cond {
+        $println("`cond` is true")
+    } else {
+        $println("`cond` is false")
     }
 }

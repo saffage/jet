@@ -4,7 +4,7 @@ scanf: (@[const_c] format: string, args: ...) -> int
 @[extern_c]
 exit: (code: int) -> ()
 
-main :: () {
+main := () {
     $println("1: +")
     $println("2: -")
     $println("3: *")
