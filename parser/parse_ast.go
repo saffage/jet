@@ -165,7 +165,7 @@ func (p *parser) parseBinaryExpr(x ast.Node, precedence int) ast.Node {
 				tok.Start,
 				tok.End,
 				"%s cannot be used in the binary expression",
-				tok.Kind.UserString(),
+				tok.Kind.String(),
 			)
 		}
 

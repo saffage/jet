@@ -2,13 +2,7 @@ package token
 
 import "fmt"
 
-//go:generate stringer -type=Kind
-//go:generate stringer -type=Kind -output=kind_user_string.go -linecomment
-
-// NOTE after generating the 'kind_user_string.go' file, the method name `String`
-// must be changed to `UserString`, because when using the 'stringer' tool you
-// cannot specify a name for the output method, and because of name conflict.
-
+//go:generate stringer -type=Kind -linecomment
 type Kind byte
 
 const (

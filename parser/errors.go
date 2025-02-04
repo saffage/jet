@@ -113,11 +113,11 @@ func (p *parser) errorExpectedTokenAt(start, end token.Pos, tokens ...token.Kind
 		if i != 0 {
 			buf.WriteString(" or ")
 		}
-		buf.WriteString(tok.UserString())
+		buf.WriteString(tok.String())
 	}
 	p.appendError(Error{
 		err:       ErrorUnexpectedToken,
 		Selection: start.WithEnd(end),
-		Message:   fmt.Sprintf("want %s, got %s instead", buf.String(), p.tok.Kind.UserString()),
+		Message:   fmt.Sprintf("want %s, got %s instead", buf.String(), p.tok.Kind.String()),
 	})
 }
