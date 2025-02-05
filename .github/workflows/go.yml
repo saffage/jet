@@ -24,6 +24,9 @@ jobs:
     - name: Verify dependencies
       run: go mod verify
 
+    - name: Install 'stringer' tool
+      run: go get -u golang.org/x/tools/cmd/stringer@latest
+
     - name: Run 'go generate'
       run: go generate -v -x ./...
 
