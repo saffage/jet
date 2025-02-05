@@ -1,20 +1,20 @@
 @[extern_c]
-malloc: (size: u64) -> pointer
+malloc: (size: Nat64) -> Pointer
 
 @[extern_c]
-free: (p: pointer) -> ()
+free: (p: Pointer) -> ()
 
 main := () {
-    x := malloc($size_of(int)) as *int
+    x := malloc($size_of(Int)) as *Int
     defer {
         $print("after free: ")
-        $println(x as u64)
+        $println(x as Nat64)
     }
     defer {
         free(x)
-        x = 0 as *int
+        x = 0 as *Int
     }
 
     $print("x: ")
-    $println(x as u64)
+    $println(x as Nat64)
 }

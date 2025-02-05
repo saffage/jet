@@ -1,8 +1,8 @@
 @[extern_c]
-scanf: (@[const_c] format: string, args: ...) -> int
+scanf: (@[const_c] format: String, args: ...) -> Int
 
 @[extern_c]
-exit: (code: int) -> ()
+exit: (code: Int) -> ()
 
 main := () {
     $println("1: +")

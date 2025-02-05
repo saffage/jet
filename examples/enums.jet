@@ -12,6 +12,6 @@ main := () {
     d = Direction.West
     $println(d) # output: `2`
 
-    x := Direction.East as int
+    x := Direction.East as Int
     $assert(x == 3)
 }

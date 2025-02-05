@@ -1,12 +1,12 @@
 N := 10
 
-qsort := (array: [N]int, begin: int, end: int) {
+qsort := (array: [N]Int, begin: Int, end: Int) {
     if end > begin {
         left := begin
         right := end
         pivot := array[{ left + right } / 2]
 
-        while true {
+        while True {
             while array[left] < pivot { left += 1 }
             while array[right] > pivot { right -= 1 }
 
@@ -26,20 +26,20 @@ qsort := (array: [N]int, begin: int, end: int) {
     }
 }
 
-sort := (array: [N]int) {
+sort := (array: [N]Int) {
     qsort(array, 0, N-1)
 }
 
 @[extern_c("rand")]
-rand: () -> int
+rand: () -> Int
 
 @[extern_c("srand")]
-rand_seed: (seed: u32) -> ()
+rand_seed: (seed: Nat32) -> ()
 
-rand_int := (min: int, max: int) rand() % { max + 1 - min } + min
+rand_int := (min: Int, max: Int) rand() % { max + 1 - min } + min
 
-make_array := () -> [N]int {
-    array: [N]int
+make_array := () -> [N]Int {
+    array: [N]Int
     max := N * 10
     for i in 0..<N {
         array[i] = rand_int(-max, max)
@@ -47,7 +47,7 @@ make_array := () -> [N]int {
     array
 }
 
-show_array := (array: [N]int) {
+show_array := (array: [N]Int) {
     for i in 0..<N {
         $print(array[i])
         $print(" ")
@@ -56,7 +56,7 @@ show_array := (array: [N]int) {
 }
 
 main := () {
-    rand_seed(0 as u32)
+    rand_seed(0 as Nat32)
 
     array := make_array()
     $print("initial array: "); show_array(array)

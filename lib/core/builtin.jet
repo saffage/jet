@@ -1,19 +1,25 @@
-@[comptime] bool := $builtin("Bool")
-@[comptime] int  := $builtin("I32")
-@[comptime] i8   := $builtin("I8")
-@[comptime] i16  := $builtin("I16")
-@[comptime] i32  := $builtin("I32")
-@[comptime] i64  := $builtin("I64")
-@[comptime] u8   := $builtin("U8")
-@[comptime] u16  := $builtin("U16")
-@[comptime] u32  := $builtin("U32")
-@[comptime] u64  := $builtin("U64")
-@[comptime] f32  := $builtin("F32")
-@[comptime] f64  := $builtin("F64")
+Bool    := $builtin("Bool")
+Int     := $builtin("I32")
+Int8    := $builtin("I8")
+Int16   := $builtin("I16")
+Int32   := $builtin("I32")
+Int64   := $builtin("I64")
+Nat     := $builtin("U32")
+Nat8    := $builtin("U8")
+Nat16   := $builtin("U16")
+Nat32   := $builtin("U32")
+Nat64   := $builtin("U64")
+Float   := $builtin("F32")
+Float32 := $builtin("F32")
+Float64 := $builtin("F64")
+String  := $builtin("String")
+Char    := $builtin("Char")
+Pointer := $builtin("Pointer")
 
-@[comptime] string  := $builtin("String")
-@[comptime] char    := $builtin("Char")
-@[comptime] pointer := $builtin("Pointer")
+# TODO make it works
+# Int   := if $size_of(Pointer) == 32 { $builtin("I32") } else { $builtin("I64") }
+# Nat   := if $size_of(Pointer) == 32 { $builtin("U32") } else { $builtin("U64") }
+# Float := if $size_of(Pointer) == 32 { $builtin("F32") } else { $builtin("F64") }
 
-@[comptime] false := 0 != 0
-@[comptime] true  := 0 == 0
+False := 0 != 0
+True  := 0 == 0

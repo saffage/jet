@@ -1,13 +1,13 @@
 X := struct {
-    x: int
+    x: Int
 }
 
 Foo := struct {
     field: X
-    arr: [4]int
+    arr: [4]Int
 }
 
-x := (x: int) X(x = x)
+x := (x: Int) X(x = x)
 
 main := () {
     foo := Foo(field = x(10), arr = [1, 2, 3, 4])

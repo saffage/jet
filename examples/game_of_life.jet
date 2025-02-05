@@ -1,13 +1,13 @@
 WIDTH  := 20
 HEIGHT := 15
 
-field: [HEIGHT][WIDTH]bool
-hidden_field: [HEIGHT][WIDTH]bool
+field: [HEIGHT][WIDTH]Bool
+hidden_field: [HEIGHT][WIDTH]Bool
 
 init_field := () {
     for row in 0 ..< HEIGHT {
         for col in 0 ..< WIDTH {
-            field[row][col] = false
+            field[row][col] = False
         }
     }
     # Pattern: 'glider'
@@ -15,11 +15,11 @@ init_field := () {
     # . 0 .
     # . . 0
     # 0 0 0
-    field[0][1] = true
-    field[1][2] = true
-    field[2][0] = true
-    field[2][1] = true
-    field[2][2] = true
+    field[0][1] = True
+    field[1][2] = True
+    field[2][0] = True
+    field[2][1] = True
+    field[2][2] = True
 }
 
 show_field := () {
@@ -32,7 +32,7 @@ show_field := () {
     $print("\n")
 }
 
-count_neighbors := (row0: int, col0: int) -> int {
+count_neighbors := (row0: Int, col0: Int) -> Int {
     neighbors := 0
     for row in -1 .. 1 {
         for col in -1 .. 1 {

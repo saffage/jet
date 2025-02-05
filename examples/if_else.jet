@@ -1,17 +1,17 @@
 main := () {
     # 'if-else' statement
-    if false {
+    if False {
         $println("false")
-    } else if true {
+    } else if True {
         $println("true")
     } else {
         $println("unreachable")
     }
 
     # 'if-else' expression (similar to statement)
-    x := if false {
+    x := if False {
         10
-    } else if true {
+    } else if True {
         20
     } else {
         30
@@ -20,7 +20,7 @@ main := () {
     $print("x: ")
     $println(x)
 
-    cond := true
+    cond := True
 
     if cond {
         $println("`cond` is true")
