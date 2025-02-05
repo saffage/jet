@@ -10,6 +10,10 @@ import (
 	"slices"
 )
 
+var (
+	ErrInvalidExt = errors.New("the file is expected to have a '.jet' or '.jem' extension")
+)
+
 // Represents an ID of the file, processed by a config.
 //
 // Zero value its an invalid ID.
@@ -71,7 +75,7 @@ func (cfg *Config) ReadFile(path string) (*File, error) {
 	path = filepath.Clean(path)
 
 	if !fs.ValidPath(path) {
-		return nil, fmt.Errorf("argument is not a valid path: '%s'", path)
+		return nil, fmt.Errorf("argument is not a valid path: %s", path)
 	}
 
 	name, data, err := readFile(path)
@@ -95,7 +99,7 @@ func readFile(path string) (name string, data []byte, err error) {
 	}
 
 	if !stat.Mode().IsRegular() {
-		err = fmt.Errorf("path '%s' is not a file", path)
+		err = fmt.Errorf("path is not a file: %s", path)
 		return
 	}
 
@@ -106,7 +110,7 @@ func readFile(path string) (name string, data []byte, err error) {
 		// OK
 
 	default:
-		err = fmt.Errorf("expected file to have extension '.jet' or '.jem', got '%s' instead", fileExt)
+		err = ErrInvalidExt
 		return
 	}
 
@@ -114,7 +118,7 @@ func readFile(path string) (name string, data []byte, err error) {
 	data, err = os.ReadFile(path)
 
 	if err != nil {
-		err = errors.Join(fmt.Errorf("failed to read file: '%s'", path), err)
+		err = fmt.Errorf("failed to read file: %s, %w", path, err)
 		return
 	}
 
