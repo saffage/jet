@@ -94,11 +94,7 @@ func (info *Info) Report(cfg *config.Config) {
 		buf.WriteString(genHint(info.Hints, info.SelectionRange, file, cfg))
 	}
 
-	if UseColors {
-		report(info.Level, info.Tag, info.Title+buf.String())
-	} else {
-		report(info.Level, info.Tag, info.Title+buf.String())
-	}
+	report(info.Level, info.Tag, info.Title+buf.String())
 }
 
 func (info *Info) With(hint HintInfo) *Info {
