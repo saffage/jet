@@ -55,7 +55,7 @@ func (err *Error) Info() *report.Info {
 
 	return &report.Info{
 		Tag:            "checker",
-		Title:          err.Error(),
+		Title:          err.Message,
 		SelectionRange: span,
 		Hints:          hints,
 	}

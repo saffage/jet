@@ -26,15 +26,21 @@ var OutFile io.Writer = os.Stderr
 // of the usual [Error] function.
 func Report(cfg *config.Config, errs ...error) {
 	for _, err := range errs {
-		var info *Info
+		switch err := err.(type) {
+		case nil:
 
-		if informer, ok := err.(Informer); ok && informer != nil {
-			info = informer.Info()
-		} else {
-			info = &Info{Title: err.Error()}
+		case Informer:
+			err.Info().Report(cfg)
+
+		case interface{ Unwrap() []error }:
+			Report(cfg, err.Unwrap()...)
+
+		case interface{ Unwrap() error }:
+			Report(cfg, err.Unwrap())
+
+		default:
+			(&Info{Title: err.Error()}).Report(cfg)
 		}
-
-		info.Report(cfg)
 	}
 }
 
