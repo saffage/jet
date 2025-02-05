@@ -44,7 +44,7 @@ func (check *Checker) resolveImport(node *ast.Import) {
 
 func (check *Checker) resolveImportPath(ident *ast.Ident) string {
 	modulePath := ""
-	dir := filepath.Dir(check.cfg.Files[check.fileID].Path)
+	dir := filepath.Dir(check.cfg.File(check.fileID).Path)
 	err := filepath.Walk(dir, makeWalkFunc(dir, ident.Name, &modulePath))
 	if err != nil {
 		check.errorf(ident, "while walking dir: %s", err.Error())

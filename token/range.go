@@ -55,7 +55,7 @@ func (rng Range) String() string {
 	filepath, start, end := "", "", ""
 
 	if rng.FileID != 0 {
-		filepath = config.Global.Files[rng.FileID].Path
+		filepath = config.Global.File(rng.FileID).Path
 	}
 
 	if rng.Start.Line > 0 {

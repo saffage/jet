@@ -18,7 +18,7 @@ import (
 var ErrorEmptyFileBuf = errors.New("empty file buffer or invalid file ID")
 
 func Check(cfg *config.Config, fileID config.FileID, stmts *ast.StmtList) (*Module, error) {
-	moduleName := cfg.Files[fileID].Name
+	moduleName := cfg.File(fileID).Name
 	report.Hint("checking module '%s'", moduleName)
 
 	module := NewModule(NewScope(Global, "module "+moduleName), moduleName, stmts)
@@ -65,7 +65,7 @@ func CheckFile(cfg *config.Config, fileID config.FileID) (*Module, error) {
 		parserFlags |= parser.Trace
 	}
 
-	fi := cfg.Files[fileID]
+	fi := cfg.File(fileID)
 	if fi.Buf == nil {
 		return nil, ErrorEmptyFileBuf
 	}

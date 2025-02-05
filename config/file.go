@@ -10,6 +10,9 @@ import (
 	"slices"
 )
 
+// Represents an ID of the file, processed by a config.
+//
+// Zero value its an invalid ID.
 type FileID uint16
 
 type File struct {
@@ -50,9 +53,17 @@ func (file *File) Line(n int) string {
 	return ""
 }
 
+func (cfg *Config) File(id FileID) *File {
+	if int(id) <= len(cfg.files) {
+		return cfg.files[id-1]
+	}
+
+	return nil
+}
+
 func (cfg *Config) NewFile() *File {
-	file := &File{ID: FileID(len(cfg.Files))}
-	cfg.Files = append(cfg.Files, file)
+	file := &File{ID: FileID(len(cfg.files) + 1)}
+	cfg.files = append(cfg.files, file)
 	return file
 }
 

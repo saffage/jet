@@ -27,7 +27,7 @@ func (pos Pos) String() string {
 	s := strings.Builder{}
 
 	if pos.FileID != 0 {
-		s.WriteString(config.Global.Files[pos.FileID].Path + ":")
+		s.WriteString(config.Global.File(pos.FileID).Path + ":")
 	}
 
 	if pos.Line > 0 {

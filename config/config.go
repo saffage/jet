@@ -3,10 +3,8 @@ package config
 var Global = &Config{}
 
 type Config struct {
-	// Contains filenames indexed by their IDs.
-	//
-	// The file on which the compiler was called always has the key [MainFileID].
-	Files     []*File
+	files []*File
+
 	MaxErrors int
 	Exe       string // Path to the compiler executable.
 	Flags     Flags

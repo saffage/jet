@@ -65,7 +65,7 @@ func (info *Info) Report(cfg *config.Config) {
 	var file *config.File
 
 	if info.SelectionRange.IsValid() {
-		file = cfg.Files[info.SelectionRange.FileID]
+		file = cfg.File(info.SelectionRange.FileID)
 
 		if file == nil {
 			panic("unreachable")
