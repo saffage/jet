@@ -168,7 +168,6 @@ func (base Base) GetLine(n int) (line string) {
 func (base *Base) Pos() token.Pos {
 	return token.Pos{
 		FileID: base.fileID,
-		Offset: uint64(base.bufPos),
 		Line:   uint32(base.lineNum),
 		Char:   uint32(base.charNum),
 	}
@@ -181,7 +180,6 @@ func (base *Base) PrevPos() token.Pos {
 
 	pos := token.Pos{
 		FileID: base.fileID,
-		Offset: uint64(base.bufPos - 1),
 		Line:   uint32(base.lineNum),
 		Char:   uint32(base.charNum - 1),
 	}

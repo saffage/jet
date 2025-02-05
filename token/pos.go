@@ -10,7 +10,6 @@ import (
 // Zero value is invalid location.
 type Pos struct {
 	FileID config.FileID
-	Offset uint64
 	Line   uint32
 	Char   uint32
 }

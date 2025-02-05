@@ -23,24 +23,21 @@ func RangeFrom(start, end Pos) Range {
 }
 
 type rangePos struct {
-	Offset uint64
-	Line   uint32
-	Char   uint32
+	Line uint32
+	Char uint32
 }
 
 type Range struct {
 	FileID     config.FileID
 	Start, End struct {
-		Offset uint64
-		Line   uint32
-		Char   uint32
+		Line uint32
+		Char uint32
 	}
 }
 
 func (rng Range) StartPos() Pos {
 	return Pos{
 		FileID: rng.FileID,
-		Offset: rng.Start.Offset,
 		Line:   rng.Start.Line,
 		Char:   rng.Start.Char,
 	}
@@ -49,7 +46,6 @@ func (rng Range) StartPos() Pos {
 func (rng Range) EndPos() Pos {
 	return Pos{
 		FileID: rng.FileID,
-		Offset: rng.End.Offset,
 		Line:   rng.End.Line,
 		Char:   rng.End.Char,
 	}
@@ -86,5 +82,5 @@ func (rng Range) String() string {
 }
 
 func (rng Range) IsValid() bool {
-	return rng.FileID != 0 && rng.Start.Line != 0 && rng.Start.Offset != 0
+	return rng.FileID != 0 && rng.Start.Line != 0
 }

@@ -382,7 +382,6 @@ func (n *Return) PosEnd() token.Pos {
 	const length = len("return") - 1
 	end := n.TokPos
 	end.Char += uint32(length)
-	end.Offset += uint64(length)
 	return end
 }
 
@@ -394,7 +393,6 @@ func (n *Break) PosEnd() token.Pos {
 	const length = uint32(len("break") - 1)
 	end := n.TokPos
 	end.Char += length
-	end.Offset += uint64(length)
 	return end
 }
 
@@ -406,7 +404,6 @@ func (n *Continue) PosEnd() token.Pos {
 	const length = uint32(len("continue") - 1)
 	end := n.TokPos
 	end.Char += length
-	end.Offset += uint64(length)
 	return end
 }
 
