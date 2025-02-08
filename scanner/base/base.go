@@ -65,7 +65,7 @@ func (base *Base) Advance() (previous byte) {
 	return
 }
 
-// Comsumes any of `chars` and returns true, otherwise returns false.
+// Consumes any of `chars` and returns true, otherwise returns false.
 func (base *Base) Consume(chars ...byte) bool {
 	if len(chars) == 0 || base.Match(chars...) {
 		base.Advance()

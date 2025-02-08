@@ -69,7 +69,7 @@ func (p *parser) matchSequence(tokens ...token.Kind) bool {
 	return true
 }
 
-// Cunsumes a specified token or returns nil without emitting error.
+// Consumes a specified token or returns nil without emitting error.
 func (p *parser) consume(kinds ...token.Kind) *token.Token {
 	if len(kinds) == 0 || p.match(kinds...) {
 		tok := p.tok
@@ -80,7 +80,7 @@ func (p *parser) consume(kinds ...token.Kind) *token.Token {
 	return nil
 }
 
-// Cunsumes a specified token or returns nil and emits error.
+// Consumes a specified token or returns nil and emits error.
 func (p *parser) expect(kinds ...token.Kind) *token.Token {
 	if tok := p.consume(kinds...); tok != nil {
 		return tok

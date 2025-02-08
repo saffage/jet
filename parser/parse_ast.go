@@ -49,7 +49,7 @@ func (p *parser) declOr(f parseFunc) parseFunc {
 				return decl
 			}
 
-			// Check is error was occured while parsing a declaration.
+			// Check is error was occurred while parsing a declaration.
 			// If not, try parse an expression.
 			if p.lastErrorIs(ErrorExpectedDecl) {
 				p.restore(begin)

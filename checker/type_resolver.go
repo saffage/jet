@@ -12,7 +12,7 @@ import (
 )
 
 // Type checks 'expr' and returns its type.
-// If error was occured, result is undefined
+// If error was occurred, result is undefined
 func (check *Checker) typeOfInternal(expr ast.Node) types.Type {
 	switch node := expr.(type) {
 	case nil:
@@ -195,7 +195,7 @@ func (check *Checker) typeOfIndex(node *ast.Index) types.Type {
 	}
 
 	if t.Equals(types.Unit) {
-		check.errorf(node.X, "expession is of type (unit) and cannot be indexed")
+		check.errorf(node.X, "expression is of type (unit) and cannot be indexed")
 		return nil
 	}
 
@@ -254,7 +254,7 @@ func (check *Checker) typeOfArrayType(node *ast.ArrayType) types.Type {
 
 	value := check.valueOf(node.Args.Nodes[0])
 	if value == nil {
-		check.errorf(node.Args.Nodes[0], "array size cannot be infered")
+		check.errorf(node.Args.Nodes[0], "array size cannot be inferred")
 		return nil
 	}
 

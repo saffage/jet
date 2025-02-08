@@ -1,6 +1,6 @@
 package cgen
 
-func isRevervedWord(word string) bool {
+func isReservedWord(word string) bool {
 	return reservedWords[word]
 }
 
@@ -37,7 +37,7 @@ var reservedWords = map[string]bool{
 	"union":      true,
 	"unsigned":   true,
 	"void":       true,
-	"volitile":   true,
+	"volatile":   true,
 	"while":      true,
 	"_Bool":      true,
 	"_Complex":   true,

@@ -261,7 +261,7 @@ const (
 	KindF32  // f32
 	KindF64  // f64
 
-	// For C interrop.
+	// For C interop.
 
 	KindChar    // char
 	KindPointer // pointer

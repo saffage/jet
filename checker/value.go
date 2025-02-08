@@ -20,7 +20,7 @@ type TypedValue struct {
 
 func constantFromNode(node *ast.Literal) constant.Value {
 	if node == nil {
-		panic("unnreachable")
+		panic("unreachable")
 	}
 
 	switch node.Kind {

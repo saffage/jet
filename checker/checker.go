@@ -20,7 +20,7 @@ type Checker struct {
 // Type checks 'expr' and returns its type.
 // Also, the value of the expression will also be evaluated
 // (if possible) and stored in the 'check.Types' field.
-// If error was occured, result is undefined.
+// If error was occurred, result is undefined.
 func (check *Checker) typeOf(expr ast.Node) types.Type {
 	if v := check.valueOf(expr); v != nil {
 		return v.Type
