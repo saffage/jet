@@ -54,7 +54,7 @@ func Check(cfg *config.Config, fileID config.FileID, stmts *ast.StmtList) (*Modu
 		spew.Fdump(f, check)
 	}
 
-	return check.module, errors.Join(check.errors...)
+	return check.module, report.Join(check.errors...)
 }
 
 func CheckFile(cfg *config.Config, fileID config.FileID) (*Module, error) {

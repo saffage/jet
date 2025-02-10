@@ -18,5 +18,5 @@ require (
 	github.com/smarty/assertions v1.15.1 // indirect
 	github.com/smartystreets/goconvey v1.8.1 // indirect
 	github.com/xrash/smetrics v0.0.0-20240312152122-5f08fbb34913 // indirect
-	golang.org/x/sys v0.19.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
 )

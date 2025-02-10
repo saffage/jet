@@ -23,24 +23,24 @@ func newErrorf(node ast.Node, format string, args ...any) *Error {
 	}
 }
 
-func (err *Error) Error() string {
-	if err.err != nil {
-		return err.Message + ": " + err.err.Error()
-	}
-
-	return err.Message
+func (e *Error) Error() string {
+	return e.Message
 }
 
-func (err *Error) Info() *report.Info {
+func (e *Error) Is(target error) bool {
+	return e.err == target
+}
+
+func (e *Error) Info() *report.Info {
 	var span token.Range
 
-	if err.Node != nil {
-		span = err.Node.Pos().WithEnd(err.Node.PosEnd())
+	if e.Node != nil {
+		span = e.Node.Pos().WithEnd(e.Node.PosEnd())
 	}
 
 	var hints []report.HintInfo
 
-	for _, hint := range err.Hints {
+	for _, hint := range e.Hints {
 		var span token.Range
 
 		if hint.Node != nil {
@@ -48,14 +48,14 @@ func (err *Error) Info() *report.Info {
 		}
 
 		hints = append(hints, report.HintInfo{
-			Message:   hint.Message,
-			HintRange: span,
+			Message:         hint.Message,
+			SuggestionRange: span,
 		})
 	}
 
 	return &report.Info{
 		Tag:            "checker",
-		Title:          err.Message,
+		Title:          e.Message,
 		SelectionRange: span,
 		Hints:          hints,
 	}

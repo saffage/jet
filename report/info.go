@@ -22,9 +22,9 @@ type Info struct {
 }
 
 type HintInfo struct {
-	Message    string
-	Suggestion string
-	HintRange  token.Range
+	Message         string
+	Suggestion      string // if empty, then config will be used
+	SuggestionRange token.Range
 }
 
 func (info *Info) Error() string {
@@ -90,12 +90,11 @@ func (info *Info) Report(cfg *config.Config) {
 		buf.WriteByte(')')
 	}
 
-	if info.SelectionRange.IsValid() {
-		buf.WriteString(genHint(info.Hints, info.SelectionRange, file, cfg))
-	}
-
+	buf.WriteString(genHint(info.Hints, info.SelectionRange, file, cfg))
 	report(info.Level, info.Tag, info.Title+buf.String())
 }
+
+func (info *Info) Info() *Info { return info }
 
 func (info *Info) With(hint HintInfo) *Info {
 	info.Hints = append(info.Hints, hint)

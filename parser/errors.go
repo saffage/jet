@@ -35,18 +35,15 @@ type Error struct {
 	Warning   bool
 }
 
-func (e Error) Error() string {
-	if e.Message != "" {
-		return e.err.Error() + ": " + e.Message
-	}
-	return e.err.Error()
+func (e *Error) Error() string {
+	return e.Message
 }
 
-func (e Error) Unwrap() error {
-	return e.err
+func (e *Error) Is(target error) bool {
+	return e.err == target
 }
 
-func (e Error) Info() *report.Info {
+func (e *Error) Info() *report.Info {
 	level := report.LevelError
 
 	if e.Warning {
@@ -90,14 +87,14 @@ func (p *parser) errorExpectedToken(tokens ...token.Kind) {
 }
 
 func (p *parser) errorAt(err error, start, end token.Pos) {
-	p.appendError(Error{
+	p.appendError(&Error{
 		err:       err,
 		Selection: start.WithEnd(end),
 	})
 }
 
 func (p *parser) errorfAt(err error, start, end token.Pos, format string, args ...any) {
-	p.appendError(Error{
+	p.appendError(&Error{
 		err:       err,
 		Selection: start.WithEnd(end),
 		Message:   fmt.Sprintf(format, args...),
@@ -115,7 +112,7 @@ func (p *parser) errorExpectedTokenAt(start, end token.Pos, tokens ...token.Kind
 		}
 		buf.WriteString(tok.String())
 	}
-	p.appendError(Error{
+	p.appendError(&Error{
 		err:       ErrorUnexpectedToken,
 		Selection: start.WithEnd(end),
 		Message:   fmt.Sprintf("want %s, got %s instead", buf.String(), p.tok.Kind.String()),

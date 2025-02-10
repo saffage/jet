@@ -31,15 +31,11 @@ type Error struct {
 }
 
 func (e *Error) Error() string {
-	if e.Message != "" {
-		return e.Message + ": " + e.err.Error()
-	}
-
-	return e.err.Error()
+	return e.Message
 }
 
-func (e *Error) Unwrap() error {
-	return e.err
+func (e *Error) Is(target error) bool {
+	return e.err == target
 }
 
 func (e *Error) Info() *report.Info {

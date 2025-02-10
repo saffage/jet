@@ -15,17 +15,8 @@ func main() {
 	spew.Config.DisableCapacities = true
 	spew.Config.DisablePointerAddresses = true
 
-	defer func() {
-		if err := recover(); err != nil {
-			report.ErrorX("internal", "%s", err)
-
-			if config.Global.Flags.Debug {
-				panic("internal error")
-			}
-		}
-	}()
-
 	if err := cmd.Run(os.Args); err != nil {
 		report.Report(config.Global, err)
+		os.Exit(1)
 	}
 }

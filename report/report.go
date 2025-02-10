@@ -21,7 +21,7 @@ func genHint(
 		buf.WriteByte('\n')
 		buf.WriteString(hint.Message)
 
-		if hint.HintRange.IsValid() {
+		if hint.SuggestionRange.IsValid() {
 			codeSnapshot := genCodeSnapshot(LevelHint, "", span, file, cfg)
 
 			buf.WriteByte('\n')

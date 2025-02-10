@@ -2,10 +2,10 @@ package cgen
 
 import (
 	"bufio"
-	"errors"
 	"io"
 
 	"github.com/saffage/jet/checker"
+	"github.com/saffage/jet/report"
 )
 
 func Generate(w io.Writer, m *checker.Module) error {
@@ -42,5 +42,5 @@ func Generate(w io.Writer, m *checker.Module) error {
 		panic(err)
 	}
 
-	return errors.Join(gen.errors...)
+	return report.Join(gen.errors...)
 }

@@ -150,13 +150,13 @@ func readFile(path string) (name string, data []byte, err error) {
 
 	name = filepath.Base(path[:len(path)-len(fileExt)])
 	if _, err = token.IsValidIdent(name); err != nil {
-		err = errors.Join(fmt.Errorf("filename is not a valid identifier"), err)
+		err = report.Wrap(err, "filename is not a valid identifier")
 		return
 	}
 
 	data, err = os.ReadFile(path)
 	if err != nil {
-		err = errors.Join(fmt.Errorf("while reading file '%s'", path), err)
+		err = report.Wrapf(err, "while reading file '%s'", path)
 		return
 	}
 

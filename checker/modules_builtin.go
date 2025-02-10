@@ -4,20 +4,42 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync"
 
 	"github.com/saffage/jet/config"
 	"github.com/saffage/jet/report"
 )
 
+var (
+	ErrWhileCheckingPackageCore = errors.New("while checking package 'builtin'")
+	ErrPackageWasNotFound       = errors.New("package was not found")
+	ErrInvalidPackagePath       = errors.New("invalid package path")
+)
+
+var (
+	builtinFilename = "builtin"
+	cFilename       = "cc"
+)
+
+var coreFilenames = [...]string{
+	builtinFilename,
+	cFilename,
+}
+
+var coreModules = map[string]*Module{
+	builtinFilename: nil,
+}
+
 // This module contains the declaration of the Jet built-in types.
-var ModuleBuiltin *Module = NewModule(NewScope(nil, "module builtin"), "builtin", nil)
+// var ModuleBuiltin *Module = NewModule(NewScope(nil, "module builtin"), builtinFilename, nil)
 
 // This module contains C type declarations and other tools for
 // interacting with the C backend.
-var ModuleC *Module = NewModule(NewScope(nil, "module c"), "c", nil)
+// var ModuleC *Module = NewModule(NewScope(nil, "module c"), "c", nil)
 
 func CheckBuiltInPkgs(cfg *config.Config) error {
 	var err error
@@ -32,7 +54,7 @@ func checkBuiltInPkgsAux(cfg *config.Config) error {
 		return nil
 	}
 
-	report.HintX("checker", "checking package 'core'")
+	report.Hint("checking package 'core'")
 
 	var libDir string
 
@@ -43,90 +65,98 @@ func checkBuiltInPkgsAux(cfg *config.Config) error {
 		libDir = filepath.Join(compilerDir, "lib")
 	}
 
-	if dir, err := os.Stat(libDir); os.IsNotExist(err) || (dir != nil && !dir.IsDir()) {
-		return fmt.Errorf("invalid path to the core package: '%s'", libDir)
+	if dir, err := os.Stat(libDir); errors.Is(err, fs.ErrNotExist) ||
+		(dir != nil && !dir.IsDir()) {
+
+		return report.Join(ErrWhileCheckingPackageCore, ErrPackageWasNotFound)
 	}
 
 	corePkgDir := filepath.Join(libDir, "core")
 
-	if _, err := os.Stat(corePkgDir); os.IsNotExist(err) {
-		return errors.New("package 'core' was not found")
+	if dir, err := os.Stat(corePkgDir); errors.Is(err, fs.ErrNotExist) ||
+		(dir != nil && !dir.IsDir()) {
+
+		return report.Join(ErrWhileCheckingPackageCore, ErrPackageWasNotFound)
 	}
 
 	corePkgFiles, err := os.ReadDir(corePkgDir)
+
 	if err != nil {
 		return errors.Join(errors.New("while reading package 'core'"), err)
 	}
 
-	var builtinModuleFilepath, cModuleFilepath string
+	files := map[string]string{}
+
+	for _, module := range coreFilenames {
+		files[module] = ""
+	}
 
 	for _, entry := range corePkgFiles {
-		switch entry.Name() {
-		case "builtin.jet":
-			builtinModuleFilepath = filepath.Join(corePkgDir, entry.Name())
+		if entry.Type().IsRegular() {
+			name := entry.Name()
+			ext := filepath.Ext(name)
+			base := name[:len(name)-len(ext)]
 
-		case "c.jet":
-			cModuleFilepath = filepath.Join(corePkgDir, entry.Name())
-
-		default:
-			return fmt.Errorf("unexpected file in package 'builtin': '%s'", entry.Name())
+			if ext == ".jet" {
+				if slices.Contains(coreFilenames[:], base) {
+					files[base] = filepath.Join(corePkgDir, name)
+				}
+			}
 		}
 	}
 
-	switch {
-	case builtinModuleFilepath == "":
-		return errors.New("module 'builtin' was not found")
+	// FIXME test it
+	var info *report.Info
+	var errs = []error{nil}
 
-	case cModuleFilepath == "":
-		return errors.New("module 'c' was not found")
-	}
+	for name, path := range files {
+		if path == "" {
+			if info == nil {
+				info = &report.Info{Title: "missing 'core' package files"}
+				info.Hints = append(info.Hints, report.HintInfo{
+					Message: "package 'core' have fixed file set that needs to be checked before anything else",
+				})
 
-	builtinModuleContent, err := os.ReadFile(builtinModuleFilepath)
-	if err != nil {
-		return err
-	}
+				errs[0] = info
+				// errs = append([]error{info}, errs...)
+			}
 
-	cModuleContent, err := os.ReadFile(cModuleFilepath)
-	if err != nil {
-		return err
-	}
+			info.Hints = append(info.Hints, report.HintInfo{
+				Message: fmt.Sprintf("module '%s' was not found in package 'core'", name),
+			})
+		} else {
+			content, err := os.ReadFile(path)
 
-	builtinFile := config.Global.NewFile()
-	builtinFile.Name = "Types"
-	builtinFile.Path = builtinModuleFilepath
-	builtinFile.Buf = bytes.NewBuffer(builtinModuleContent)
+			if err != nil {
+				errs = append(errs, report.Wrapf(err, "failed to read file: %s", path))
+				continue
+			}
 
-	cFile := config.Global.NewFile()
-	cFile.Name = "C"
-	cFile.Path = cModuleFilepath
-	cFile.Buf = bytes.NewBuffer(cModuleContent)
+			file := config.Global.NewFile()
+			file.Name = name
+			file.Path = path
+			file.Buf = bytes.NewBuffer(content)
 
-	ModuleBuiltin, err = CheckFile(cfg, builtinFile.ID)
-	if err != nil {
-		return &Error{
-			err:     err,
-			Message: "while checking package 'builtin'",
+			module, err := CheckFile(cfg, file.ID)
+
+			if err != nil {
+				errs = append(errs, report.Wrapf(err, "failed to check file: %s", path))
+				continue
+			}
+
+			coreModules[name] = module
+
+			if name == builtinFilename {
+				for _, sym := range module.Scope.symbols {
+					_ = Global.Define(sym)
+				}
+			}
 		}
 	}
 
-	// ModuleC, err = CheckFile(config.Global, cFileID)
-	// if err != nil {
-	// 	report.TaggedErrorf("internal", "while checking package 'builtin'")
-	// 	report.Errors(err)
-	// 	os.Exit(1)
-	// }
-
-	for _, sym := range ModuleBuiltin.Scope.symbols {
-		_ = Global.Define(sym)
+	if len(errs) > 1 || errs[0] != nil {
+		return report.Join(append([]error{ErrWhileCheckingPackageCore}, errs...)...)
 	}
 
 	return nil
-}
-
-var ErrorInvalidPkgPath = errors.New("invalid path to the package")
-
-func internalCheckBuiltInModule(cfg *config.Config, filepath string) (*Module, error) {
-	var fileID config.FileID
-
-	return CheckFile(cfg, fileID)
 }

@@ -24,22 +24,31 @@ var OutFile io.Writer = os.Stderr
 
 // If the error implements the [Informer] interface, it will be used instead
 // of the usual [Error] function.
+//
+// Note that errors joined using [errors.Join] will not be shown as separate
+// errors.
 func Report(cfg *config.Config, errs ...error) {
 	for _, err := range errs {
 		switch err := err.(type) {
 		case nil:
+			// Ignore
 
 		case Informer:
-			err.Info().Report(cfg)
+			if info := err.Info(); info != nil {
+				info.Report(cfg)
+			}
 
-		case interface{ Unwrap() []error }:
-			Report(cfg, err.Unwrap()...)
+			switch err := err.(type) {
+			case interface{ Unwrap() error }:
+				Report(cfg, err.Unwrap())
 
-		case interface{ Unwrap() error }:
-			Report(cfg, err.Unwrap())
+			case interface{ Unwrap() []error }:
+				Report(cfg, err.Unwrap()...)
+			}
 
 		default:
-			(&Info{Title: err.Error()}).Report(cfg)
+			info := Info{Title: err.Error()}
+			info.Report(cfg)
 		}
 	}
 }
