@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"sync"
 
 	"github.com/saffage/jet/config"
@@ -113,12 +114,7 @@ func checkBuiltInPkgsAux(cfg *config.Config) error {
 		if path == "" {
 			if info == nil {
 				info = &report.Info{Title: "missing 'core' package files"}
-				info.Hints = append(info.Hints, report.HintInfo{
-					Message: "package 'core' have fixed file set that needs to be checked before anything else",
-				})
-
 				errs[0] = info
-				// errs = append([]error{info}, errs...)
 			}
 
 			info.Hints = append(info.Hints, report.HintInfo{
@@ -152,6 +148,13 @@ func checkBuiltInPkgsAux(cfg *config.Config) error {
 				}
 			}
 		}
+	}
+
+	if info != nil && len(info.Hints) > 0 {
+		info.Hints = append(info.Hints, report.HintInfo{
+			Message:    "package 'core' have fixed file set that needs to be checked before anything else",
+			Suggestion: strings.Join(coreFilenames[:], "\n"),
+		})
 	}
 
 	if len(errs) > 1 || errs[0] != nil {
