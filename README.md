@@ -1,13 +1,23 @@
-> **Warning!** The project is not finished and very unstable.
+> [!WARNING]
+> The project is unfinished and very unstable.
 
-**Jet** is planned as a compiled general-purpose programming language with a simple syntax and a rich type system.
+__Jet__ is planned as a compiled programming language with a simple syntax and a rich type system.
 
-## Status
+# Status
 
-Currently it looks more like a transpiler than a compiler.
-The syntax of the language WILL be changed in the future.
+Currently it looks more like a transpiler than a compiler. The syntax of the language __WILL__ be changed in the future.
 
-## TODO
+# Planed features
 
-* finish the checker
-* improve code generation and type checking
+- compile-time code execution (using virtual machine)
+- user-defined annotations or directives
+- compiler API
+
+# TODO
+
+- fix a case when an error message may be shown several times
+- fix scanning interpolated strings that contains other strings
+- finish new syntax
+- finish the checker
+- improve code generation
+- fault tolerant parsing & checking stages
