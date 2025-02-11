@@ -84,7 +84,7 @@ func (check *Checker) newDef(ident *ast.Ident, sym Symbol) {
 		"checker",
 		"def %s `%s`",
 		color.HiBlueString(symStr),
-		ident,
+		ident.Repr(),
 	)
 	if !check.module.Defs.Set(ident, sym) {
 		report.WarningX("checker", "identifier '%s' was redefined", ident.Name)
@@ -114,8 +114,8 @@ func (check *Checker) newUse(ident *ast.Ident, sym Symbol) {
 		"checker",
 		"use %s `%s` of `%s`",
 		color.HiBlueString(symStr),
-		ident,
-		sym.Ident(),
+		ident.Repr(),
+		sym.Ident().Repr(),
 	)
 	check.module.Uses[ident] = sym
 }

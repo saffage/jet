@@ -281,5 +281,5 @@ func (n *Continue) Repr() string {
 }
 
 func (n *Import) Repr() string {
-	return fmt.Sprintf("import %s", n.Module)
+	return fmt.Sprintf("import %s", n.Module.Repr())
 }

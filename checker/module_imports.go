@@ -12,7 +12,7 @@ import (
 func (check *Checker) resolveImport(node *ast.Import) {
 	path := check.resolveImportPath(node.Module)
 	if path == "" {
-		check.errorf(node.Module, "cannot find module named '%s'", node.Module)
+		check.errorf(node.Module, "cannot find module named '%s'", node.Module.Repr())
 		return
 	}
 

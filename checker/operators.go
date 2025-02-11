@@ -311,7 +311,12 @@ func (check *Checker) assignable(node ast.Node) bool {
 				return false
 			}
 
-			report.DebugX("checker", "assign '%s' at '%s'", varSym.Name(), operand)
+			report.DebugX(
+				"checker",
+				"assign '%s' at '%s'",
+				varSym.Name(),
+				operand.Repr(),
+			)
 			check.newUse(operand, varSym)
 			return true
 		}
