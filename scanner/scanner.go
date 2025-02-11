@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/galsondor/go-ascii"
 	"github.com/saffage/jet/text"
 	"github.com/saffage/jet/token"
 )
@@ -74,7 +73,7 @@ func (s *Scanner) Next() token.Token {
 				Data: s.TakeWhile(isNewLine),
 			}
 
-		case ascii.IsDigit(s.Peek()):
+		case isDigit(s.Peek()):
 			tok = s.scanNumber()
 
 		case token.IsIdentifierStartChar(s.Peek()):
@@ -296,13 +295,13 @@ func (s *Scanner) parseBytes(n int) ([]byte, bool) {
 		if s.Consume('_') {
 			realBytes = append(realBytes, '_')
 
-			if !ascii.IsHexDigit(s.Peek()) {
+			if !isHexDigit(s.Peek()) {
 				s.error(ErrorInvalidByte, s.Pos())
 				return realBytes, false
 			}
 		}
 
-		if !ascii.IsHexDigit(s.Peek()) {
+		if !isHexDigit(s.Peek()) {
 			break
 		}
 
@@ -358,7 +357,7 @@ func (s *Scanner) scanNumber() token.Token {
 				Data: string(s.Peek()),
 			}
 
-		case ascii.IsDigit(s.Peek()):
+		case isDigit(s.Peek()):
 			s.error(ErrorFirstDigitIsZero, s.Pos())
 			return token.Token{
 				Kind: token.Illegal,
@@ -376,12 +375,12 @@ func (s *Scanner) scanNumber() token.Token {
 		}
 	}
 
-	if s.Match('.') && ascii.IsDigit(s.LookAhead(1)) {
+	if s.Match('.') && isDigit(s.LookAhead(1)) {
 		s.Advance()
 		buf.WriteByte('.')
 		tok.Kind = token.Float
 
-		num := s.parseNumber(ascii.IsDigit, ErrorExpectedDigitAfterPoint)
+		num := s.parseNumber(isDigit, ErrorExpectedDigitAfterPoint)
 		if num.Kind != token.Illegal {
 			buf.WriteString(num.Data)
 		} else {
@@ -472,11 +471,21 @@ func (s *Scanner) parseOctNumber() token.Token {
 }
 
 func (s *Scanner) parseDecNumber() token.Token {
-	return s.parseNumber(ascii.IsDigit, ErrorExpectedDecNumber)
+	return s.parseNumber(isDigit, ErrorExpectedDecNumber)
 }
 
 func (s *Scanner) parseHexNumber() token.Token {
-	return s.parseNumber(ascii.IsHexDigit, ErrorExpectedHexNumber)
+	return s.parseNumber(isHexDigit, ErrorExpectedHexNumber)
+}
+
+func isDigit(c byte) bool {
+	return '0' <= c && c <= '9'
+}
+
+func isHexDigit(c byte) bool {
+	return '0' <= c && c <= '9' ||
+		'a' <= c && c <= 'f' ||
+		'A' <= c && c <= 'F'
 }
 
 func isBinDigit(c byte) bool {

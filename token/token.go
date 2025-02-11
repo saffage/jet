@@ -4,7 +4,6 @@ import (
 	"errors"
 	"unicode/utf8"
 
-	"github.com/galsondor/go-ascii"
 	"github.com/saffage/jet/text"
 )
 
@@ -62,28 +61,24 @@ func (t Token) Precedence() int {
 }
 
 func IsIdentifierStartChar(char byte) bool {
-	return char == '_' || ascii.IsLetter(char)
+	return char == '_' ||
+		'a' <= char && char <= 'f' ||
+		'A' <= char && char <= 'F'
 }
 
 func IsIdentifierChar(char byte) bool {
-	return IsIdentifierStartChar(char) || ascii.IsDigit(char)
+	return IsIdentifierStartChar(char) || '0' <= char && char <= '9'
 }
 
 func IsValidIdent(s string) (int, error) {
-	if !ascii.IsLetter(s[0]) {
+	if !IsIdentifierStartChar(s[0]) {
 		return 0, ErrorFirstIsNotLetter
 	}
 
 	for i := 1; i < len(s); i++ {
 		switch {
-		case ascii.IsLetter(s[i]), ascii.IsDigit(s[i]), s[i] == '_':
+		case IsIdentifierChar(s[i]):
 			// OK
-
-		case ascii.IsSpace(s[i]):
-			return i, ErrorContainSpace
-
-		case ascii.IsPunct(s[i]):
-			return i, ErrorContainPunct
 
 		case utf8.RuneStart(s[i]):
 			return i, ErrorUnsupportedUTF8
