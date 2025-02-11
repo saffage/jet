@@ -38,5 +38,5 @@ const (
 type LineInfo byte
 
 const (
-	LineInfoUnix Level = iota // unix
+	LineInfoUnix LineInfo = iota // unix
 )
