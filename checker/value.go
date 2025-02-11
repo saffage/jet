@@ -165,7 +165,7 @@ func (check *Checker) resolveBuiltInCall(node *ast.BuiltIn, call *ast.Call) *Typ
 			n = call.Args.Nodes[idx]
 		}
 
-		check.errorf(n, err.Error())
+		check.errorf(n, "%s", err.Error())
 		return nil
 	}
 

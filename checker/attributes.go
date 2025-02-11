@@ -129,7 +129,7 @@ func (check *Checker) attrExternC(sym Symbol, node ast.Node) {
 			if idx < len(node.Args.Nodes) {
 				n = node.Args.Nodes[idx]
 			}
-			check.errorf(n, err.Error())
+			check.errorf(n, "%s", err.Error())
 			return
 		}
 

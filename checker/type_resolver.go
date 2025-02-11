@@ -178,7 +178,7 @@ func (check *Checker) typeOfCall(node *ast.Call) types.Type {
 				n = node.Args.Nodes[idx]
 			}
 
-			check.errorf(n, err.Error())
+			check.errorf(n, "%s", err.Error())
 			return nil
 		}
 

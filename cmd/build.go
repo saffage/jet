@@ -43,7 +43,7 @@ func Build(file *text.File) error {
 
 		if err := cmd.Run(); err != nil {
 			wd, _ := os.Getwd()
-			report.Hint(wd)
+			report.Hint("%s", wd)
 			report.ErrorX("run", "%s", err.Error())
 		}
 	}
