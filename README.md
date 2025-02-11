@@ -23,7 +23,7 @@ Currently it looks more like a transpiler than a compiler. The syntax of the lan
 
 - [ ] cleanup
   - [ ] remove unused API from `scanner`, `parser`, `checker` packages
-    - [ ] functions named `Must...()` are redundant
+    - [x] functions named `Must...()` are redundant
   - [ ] remove `constant` package
 
 - [ ] error reporting

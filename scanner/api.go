@@ -22,13 +22,3 @@ func Scan(buffer []byte, id text.FileID, flags Flags) ([]token.Token, error) {
 	s := New(buffer, id, flags)
 	return s.AllTokens(), errors.Join(s.errors...)
 }
-
-func MustScan(buffer []byte, id text.FileID, flags Flags) []token.Token {
-	tokens, err := Scan(buffer, id, flags)
-
-	if err != nil {
-		panic(err)
-	}
-
-	return tokens
-}

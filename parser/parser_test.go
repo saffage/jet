@@ -98,7 +98,11 @@ func TestExprs(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			tokens := scanner.MustScan(([]byte)(c.input), 1, c.scannerFlags)
+			tokens, scanError := scanner.Scan(([]byte)(c.input), 1, c.scannerFlags)
+
+			if scanError != nil {
+				t.Fatalf("unexpected scan error: %s", scanError)
+			}
 
 			var stmts *ast.StmtList
 			var err error

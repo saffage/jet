@@ -11,16 +11,8 @@ func Parse(tokens []token.Token, flags Flags) (*ast.StmtList, error) {
 	return New(tokens, flags).Parse()
 }
 
-func MustParse(tokens []token.Token, flags Flags) *ast.StmtList {
-	return New(tokens, flags).MustParse()
-}
-
 func ParseExpr(tokens []token.Token, flags Flags) (ast.Node, error) {
 	return New(tokens, flags).ParseExpr()
-}
-
-func MustParseExpr(tokens []token.Token, flags Flags) ast.Node {
-	return New(tokens, flags).MustParseExpr()
 }
 
 type parser struct {
@@ -63,22 +55,6 @@ func (p *parser) Parse() (*ast.StmtList, error) {
 func (p *parser) ParseExpr() (ast.Node, error) {
 	expr := p.parseExpr()
 	return expr, errors.Join(p.errors...)
-}
-
-func (p *parser) MustParse() *ast.StmtList {
-	decls, err := p.Parse()
-	if err != nil {
-		panic(err)
-	}
-	return decls
-}
-
-func (p *parser) MustParseExpr() ast.Node {
-	expr, err := p.ParseExpr()
-	if err != nil {
-		panic(err)
-	}
-	return expr
 }
 
 type Flags int
