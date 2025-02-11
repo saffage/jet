@@ -1,9 +1,7 @@
 package cmd
 
 import (
-	"bytes"
 	"errors"
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,22 +12,22 @@ import (
 	"github.com/saffage/jet/checker"
 	"github.com/saffage/jet/config"
 	"github.com/saffage/jet/report"
-	"github.com/saffage/jet/token"
+	"github.com/saffage/jet/text"
 	"github.com/urfave/cli/v2"
 )
 
-func Build(cfg *config.Config, file *config.File) error {
+func Build(file *text.File) error {
 	report.Debug("set file '%s' as main module", file.Path)
 
-	if err := internalBuild(cfg, file); err != nil {
+	if err := build(file); err != nil {
 		return err
 	}
 
-	if err := compileToC(cfg, filepath.Dir(file.Path), file.Name); err != nil {
+	if err := compileToC(filepath.Dir(file.Path), file.Name); err != nil {
 		return err
 	}
 
-	if cfg.Flags.Run {
+	if config.Run {
 		exePath := "." + string(filepath.Separator) + file.Name
 
 		if runtime.GOOS == "windows" {
@@ -54,13 +52,15 @@ func Build(cfg *config.Config, file *config.File) error {
 }
 
 func beforeBuild(ctx *cli.Context) error {
-	config.Global.Flags.Run = ctx.Bool("run")
-	config.Global.Flags.DumpCheckerState = ctx.Bool("dump-checker-state")
-	config.Global.Flags.ParseAst = ctx.Bool("parse-ast")
-	config.Global.Flags.TraceParser = ctx.Bool("trace-parser")
-	config.Global.Options.CC = ctx.String("cc")
-	config.Global.Options.CCFlags = ctx.String("cc-flags")
-	config.Global.Options.LDFlags = ctx.String("ld-flags")
+	config.Run = ctx.Bool("run")
+	config.DumpCheckerState = ctx.Bool("dump-checker-state")
+	config.ParseAst = ctx.Bool("parse-ast")
+	config.TraceParser = ctx.Bool("trace-parser")
+
+	config.CC = ctx.String("cc")
+	config.CCFlags = ctx.String("cc-flags")
+	config.LDFlags = ctx.String("ld-flags")
+
 	return nil
 }
 
@@ -73,31 +73,29 @@ func actionBuild(ctx *cli.Context) error {
 		return errors.New("invalid arguments count (expected 1)")
 	}
 
-	path := filepath.Clean(ctx.Args().Get(0))
-	name, data, err := readFile(path)
+	argument := ctx.Args().Get(0)
+	file, err := config.ReadFile(argument)
+
 	if err != nil {
 		return err
 	}
 
-	mainFile := config.Global.NewFile()
-	mainFile.Name = name
-	mainFile.Path = path
-	mainFile.Buf = bytes.NewBuffer(data)
-
-	return Build(config.Global, mainFile)
+	return Build(file)
 }
 
-func internalBuild(cfg *config.Config, file *config.File) error {
-	if err := checker.CheckBuiltInPkgs(cfg); err != nil {
+func build(file *text.File) error {
+	if err := checker.CheckBuiltInPackage(); err != nil {
 		return err
 	}
 
-	m, err := checker.CheckFile(cfg, file.ID)
+	m, err := checker.CheckFile(file)
 	if err != nil {
 		return err
 	}
 
-	dir := filepath.Join(filepath.Dir(file.Path), cfg.Options.CacheDir)
+	fileDir := filepath.Dir(file.Path)
+	dir := filepath.Join(fileDir, config.CacheDirName)
+
 	err = os.Mkdir(dir, os.ModePerm)
 	if err != nil && !os.IsExist(err) {
 		return err
@@ -130,48 +128,15 @@ func genModule(m *checker.Module, dir string) error {
 	return nil
 }
 
-func readFile(path string) (name string, data []byte, err error) {
-	stat, err := os.Stat(path)
-	if err != nil {
-		return
+func compileToC(dir, name string) error {
+	file := filepath.Join(dir, config.CacheDirName, name+".c")
+	args := []string{"-o", name, file}
+
+	if len(config.LDFlags) > 0 {
+		args = append(args, strings.Split(config.LDFlags, " ")...)
 	}
 
-	if !stat.Mode().IsRegular() {
-		err = fmt.Errorf("'%s' is not a file", path)
-		return
-	}
-
-	fileExt := filepath.Ext(path)
-
-	if fileExt != ".jet" {
-		err = fmt.Errorf("expected file extension '.jet', got '%s' instead", fileExt)
-		return
-	}
-
-	name = filepath.Base(path[:len(path)-len(fileExt)])
-	if _, err = token.IsValidIdent(name); err != nil {
-		err = report.Wrap(err, "filename is not a valid identifier")
-		return
-	}
-
-	data, err = os.ReadFile(path)
-	if err != nil {
-		err = report.Wrapf(err, "while reading file '%s'", path)
-		return
-	}
-
-	return
-}
-
-func compileToC(cfg *config.Config, dir, moduleName string) error {
-	file := filepath.Join(dir, cfg.Options.CacheDir, moduleName+".c")
-	args := []string{"-o", moduleName, file}
-
-	if len(cfg.Options.LDFlags) > 0 {
-		args = append(args, strings.Split(cfg.Options.LDFlags, " ")...)
-	}
-
-	cmd := exec.Command(cfg.Options.CC, args...)
+	cmd := exec.Command(config.CC, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	report.HintX("cc", "%s", cmd.String())

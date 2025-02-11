@@ -4,23 +4,8 @@ import (
 	"fmt"
 
 	"github.com/saffage/jet/config"
+	"github.com/saffage/jet/text"
 )
-
-func RangeFrom(start, end Pos) Range {
-	if start.FileID != end.FileID {
-		panic(fmt.Sprintf(
-			"start & end position have different file IDs (%d and %d)",
-			start.FileID,
-			end.FileID,
-		))
-	}
-
-	return Range{
-		FileID: start.FileID,
-		Start:  rangePos{Line: start.Line, Char: start.Char},
-		End:    rangePos{Line: end.Line, Char: end.Char},
-	}
-}
 
 type rangePos struct {
 	Line uint32
@@ -28,7 +13,7 @@ type rangePos struct {
 }
 
 type Range struct {
-	FileID     config.FileID
+	FileID     text.FileID
 	Start, End struct {
 		Line uint32
 		Char uint32
@@ -55,7 +40,7 @@ func (rng Range) String() string {
 	filepath, start, end := "", "", ""
 
 	if rng.FileID != 0 {
-		filepath = config.Global.File(rng.FileID).Path
+		filepath = config.File(rng.FileID).Path
 	}
 
 	if rng.Start.Line > 0 {

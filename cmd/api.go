@@ -72,7 +72,7 @@ func Run(args []string) error {
 		Name:    "jet",
 		Version: "0.0.1",
 		Flags:   appFlags,
-		Before:  beforeCommand(config.Global),
+		Before:  beforeCommand,
 		Commands: []*cli.Command{
 			{
 				Name:            "build",
@@ -93,16 +93,23 @@ func Run(args []string) error {
 	return app.Run(args)
 }
 
-func beforeCommand(cfg *config.Config) func(ctx *cli.Context) error {
-	return func(ctx *cli.Context) error {
-		cfg.Flags.Debug = ctx.Bool("debug")
-		cfg.Flags.NoHints = ctx.Bool("no-hints")
-		cfg.Flags.NoCoreLib = ctx.Bool("no-core-lib")
-		cfg.Options.CoreLibPath = ctx.Path("core-lib-path")
-		cfg.Options.CacheDir = ctx.String("cache-dir")
+func beforeCommand(ctx *cli.Context) error {
+	config.Debug = ctx.Bool("debug")
+	config.NoHints = ctx.Bool("no-hints")
+	config.NoBuiltinPackage = ctx.Bool("no-core-lib")
+	config.BuiltinPackagePath = ctx.Path("core-lib-path")
+	config.CacheDirName = ctx.String("cache-dir")
 
-		report.MinDisplayLevel = report.ConfigLevel(cfg)
+	switch {
+	case config.Debug:
+		report.MinDisplayLevel = report.LevelDebug
 
-		return nil
+	case config.NoHints:
+		report.MinDisplayLevel = report.LevelWarning
+
+	default:
+		report.MinDisplayLevel = report.LevelHint
 	}
+
+	return nil
 }

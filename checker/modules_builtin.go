@@ -1,7 +1,6 @@
 package checker
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -42,37 +41,31 @@ var coreModules = map[string]*Module{
 // interacting with the C backend.
 // var ModuleC *Module = NewModule(NewScope(nil, "module c"), "c", nil)
 
-func CheckBuiltInPkgs(cfg *config.Config) error {
+var once sync.Once
+
+func CheckBuiltInPackage() error {
 	var err error
-	once.Do(func() { err = checkBuiltInPkgsAux(cfg) })
+	once.Do(func() { err = checkBuiltInPackage() })
 	return err
 }
 
-var once sync.Once
-
-func checkBuiltInPkgsAux(cfg *config.Config) error {
-	if cfg.Flags.NoCoreLib {
+func checkBuiltInPackage() error {
+	if config.NoBuiltinPackage {
 		return nil
 	}
 
 	report.Hint("checking package 'core'")
 
-	var libDir string
+	compilerPath := filepath.Dir(config.CompilerFilepath)
+	builtinPackagePath := filepath.Join(compilerPath, config.BuiltinPackagePath)
 
-	if cfg.Options.CoreLibPath != "" {
-		libDir = filepath.Clean(cfg.Options.CoreLibPath)
-	} else {
-		compilerDir := filepath.Dir(cfg.Exe)
-		libDir = filepath.Join(compilerDir, "lib")
-	}
-
-	if dir, err := os.Stat(libDir); errors.Is(err, fs.ErrNotExist) ||
+	if dir, err := os.Stat(builtinPackagePath); errors.Is(err, fs.ErrNotExist) ||
 		(dir != nil && !dir.IsDir()) {
 
 		return report.Join(ErrWhileCheckingPackageCore, ErrPackageWasNotFound)
 	}
 
-	corePkgDir := filepath.Join(libDir, "core")
+	corePkgDir := filepath.Join(builtinPackagePath, "core")
 
 	if dir, err := os.Stat(corePkgDir); errors.Is(err, fs.ErrNotExist) ||
 		(dir != nil && !dir.IsDir()) {
@@ -121,19 +114,14 @@ func checkBuiltInPkgsAux(cfg *config.Config) error {
 				Message: fmt.Sprintf("module '%s' was not found in package 'core'", name),
 			})
 		} else {
-			content, err := os.ReadFile(path)
+			file, err := config.ReadFile(path)
 
 			if err != nil {
 				errs = append(errs, report.Wrapf(err, "failed to read file: %s", path))
 				continue
 			}
 
-			file := config.Global.NewFile()
-			file.Name = name
-			file.Path = path
-			file.Buf = bytes.NewBuffer(content)
-
-			module, err := CheckFile(cfg, file.ID)
+			module, err := CheckFile(file)
 
 			if err != nil {
 				errs = append(errs, report.Wrapf(err, "failed to check file: %s", path))

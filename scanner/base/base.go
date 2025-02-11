@@ -5,12 +5,12 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/saffage/jet/config"
+	"github.com/saffage/jet/text"
 	"github.com/saffage/jet/token"
 )
 
 type Base struct {
-	fileID          config.FileID // Needed for token position.
+	fileID          text.FileID // Needed for token position.
 	buf             []byte        // Actual data.
 	bufPos          int           // Current character index.
 	lineNum         uint32        // Current line number.
@@ -18,9 +18,9 @@ type Base struct {
 	prevLineCharNum uint32        // Last character number in the previous line (needed for [PrevPos] function).
 }
 
-func New(buffer []byte, fileID config.FileID) *Base {
+func New(buffer []byte, id text.FileID) *Base {
 	return &Base{
-		fileID:  fileID,
+		fileID:  id,
 		buf:     buffer,
 		lineNum: 1,
 		charNum: 1,

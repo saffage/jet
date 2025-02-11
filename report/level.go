@@ -4,30 +4,6 @@ import (
 	"fmt"
 
 	"github.com/fatih/color"
-	"github.com/saffage/jet/config"
-)
-
-func ConfigLevel(cfg *config.Config) Level {
-	switch {
-	case cfg.Flags.Debug:
-		return LevelDebug
-
-	case cfg.Flags.NoHints:
-		return LevelWarning
-
-	default:
-		return LevelHint
-	}
-}
-
-//go:generate stringer -type=Level -linecomment
-type Level byte
-
-const (
-	LevelError   Level = iota // error
-	LevelWarning              // warning
-	LevelHint                 // hint
-	LevelDebug                // debug
 )
 
 // The longest label name without tag (len("warning"))

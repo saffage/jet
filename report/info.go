@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/saffage/jet/config"
+	"github.com/saffage/jet/text"
 	"github.com/saffage/jet/token"
 )
 
@@ -52,7 +53,7 @@ func (info *Info) Error() string {
 	return buf.String()
 }
 
-func (info *Info) Report(cfg *config.Config) {
+func (info *Info) Report() {
 	if info.Level > MinDisplayLevel {
 		return
 	}
@@ -62,10 +63,10 @@ func (info *Info) Report(cfg *config.Config) {
 		info.Title = emptyMessage
 	}
 
-	var file *config.File
+	var file *text.File
 
 	if info.SelectionRange.IsValid() {
-		file = cfg.File(info.SelectionRange.FileID)
+		file = config.File(info.SelectionRange.FileID)
 
 		if file == nil {
 			panic("unreachable")
@@ -80,7 +81,6 @@ func (info *Info) Report(cfg *config.Config) {
 			info.SelectionHint,
 			info.SelectionRange,
 			file,
-			cfg,
 		)
 		buf.WriteByte('\n')
 		buf.WriteString(snapshot)
@@ -90,7 +90,7 @@ func (info *Info) Report(cfg *config.Config) {
 		buf.WriteByte(')')
 	}
 
-	buf.WriteString(genHint(info.Hints, info.SelectionRange, file, cfg))
+	buf.WriteString(genHint(info.Hints, info.SelectionRange, file))
 	report(info.Level, info.Tag, info.Title+buf.String())
 }
 

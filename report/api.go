@@ -2,32 +2,16 @@ package report
 
 import (
 	"fmt"
-	"io"
-	"os"
 	"runtime"
 	"strings"
-
-	"github.com/saffage/jet/config"
 )
-
-// Specifies whether colors will be used when printing messages.
-var UseColors = true
-
-// Specifies whether to output the actual code from the file.
-var ShowCodeSnapshot = true
-
-// Specifies a level of messages to be displayed.
-var MinDisplayLevel = LevelHint
-
-// Specifies output file.
-var OutFile io.Writer = os.Stderr
 
 // If the error implements the [Informer] interface, it will be used instead
 // of the usual [Error] function.
 //
 // Note that errors joined using [errors.Join] will not be shown as separate
 // errors.
-func Report(cfg *config.Config, errs ...error) {
+func Report(errs ...error) {
 	for _, err := range errs {
 		switch err := err.(type) {
 		case nil:
@@ -35,20 +19,20 @@ func Report(cfg *config.Config, errs ...error) {
 
 		case Informer:
 			if info := err.Info(); info != nil {
-				info.Report(cfg)
+				info.Report()
 			}
 
 			switch err := err.(type) {
 			case interface{ Unwrap() error }:
-				Report(cfg, err.Unwrap())
+				Report(err.Unwrap())
 
 			case interface{ Unwrap() []error }:
-				Report(cfg, err.Unwrap()...)
+				Report(err.Unwrap()...)
 			}
 
 		default:
 			info := Info{Title: err.Error()}
-			info.Report(cfg)
+			info.Report()
 		}
 	}
 }

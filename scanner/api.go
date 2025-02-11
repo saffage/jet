@@ -3,7 +3,7 @@ package scanner
 import (
 	"errors"
 
-	"github.com/saffage/jet/config"
+	"github.com/saffage/jet/text"
 	"github.com/saffage/jet/token"
 )
 
@@ -18,15 +18,17 @@ const (
 	DefaultFlags Flags = NoFlags
 )
 
-func Scan(buffer []byte, fileid config.FileID, flags Flags) ([]token.Token, error) {
-	s := New(buffer, fileid, flags)
+func Scan(buffer []byte, id text.FileID, flags Flags) ([]token.Token, error) {
+	s := New(buffer, id, flags)
 	return s.AllTokens(), errors.Join(s.errors...)
 }
 
-func MustScan(buffer []byte, fileid config.FileID, flags Flags) []token.Token {
-	tokens, err := Scan(buffer, fileid, flags)
+func MustScan(buffer []byte, id text.FileID, flags Flags) []token.Token {
+	tokens, err := Scan(buffer, id, flags)
+
 	if err != nil {
 		panic(err)
 	}
+
 	return tokens
 }

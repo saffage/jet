@@ -3,18 +3,16 @@ package checker
 import (
 	"github.com/fatih/color"
 	"github.com/saffage/jet/ast"
-	"github.com/saffage/jet/config"
 	"github.com/saffage/jet/report"
+	"github.com/saffage/jet/text"
 	"github.com/saffage/jet/types"
 )
 
 type Checker struct {
 	module *Module
 	scope  *Scope
+	file   *text.File
 	errors []error
-
-	cfg    *config.Config
-	fileID config.FileID
 }
 
 // Type checks 'expr' and returns its type.

@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/galsondor/go-ascii"
-	"github.com/saffage/jet/config"
 	"github.com/saffage/jet/scanner/base"
+	"github.com/saffage/jet/text"
 	"github.com/saffage/jet/token"
 )
 
@@ -17,17 +17,17 @@ type Scanner struct {
 	flags  Flags
 }
 
-func New(buffer []byte, fileid config.FileID, flags Flags) *Scanner {
+func New(buffer []byte, id text.FileID, flags Flags) *Scanner {
 	return &Scanner{
-		Base:  base.New(buffer, fileid),
+		Base:  base.New(buffer, id),
 		flags: flags,
 	}
 }
 
-func (s *Scanner) AllTokens() (toks []token.Token) {
+func (s *Scanner) AllTokens() (tokens []token.Token) {
 	for {
 		tok := s.Next()
-		toks = append(toks, tok)
+		tokens = append(tokens, tok)
 
 		if tok.Kind == token.EOF {
 			break

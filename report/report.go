@@ -5,15 +5,14 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
-	"github.com/saffage/jet/config"
+	"github.com/saffage/jet/text"
 	"github.com/saffage/jet/token"
 )
 
 func genHint(
 	hints []HintInfo,
 	span token.Range,
-	file *config.File,
-	cfg *config.Config,
+	file *text.File,
 ) string {
 	buf := strings.Builder{}
 
@@ -22,7 +21,7 @@ func genHint(
 		buf.WriteString(hint.Message)
 
 		if hint.SuggestionRange.IsValid() {
-			codeSnapshot := genCodeSnapshot(LevelHint, "", span, file, cfg)
+			codeSnapshot := genCodeSnapshot(LevelHint, "", span, file)
 
 			buf.WriteByte('\n')
 			buf.WriteString(codeSnapshot)
@@ -45,15 +44,17 @@ func genCodeSnapshot(
 	level Level,
 	hint string,
 	span token.Range,
-	file *config.File,
-	cfg *config.Config,
+	file *text.File,
 ) string {
 	if !span.IsValid() {
 		return ""
 	}
 
+	// FIXME cannot use `file.Line()` because span type is different
+	return ""
+
 	var (
-		codeSnapshot = file.Line(int(span.Start.Line))
+		codeSnapshot = file.Line(0) // span.From
 		lineNumStr   = fmt.Sprintf("%d", span.Start.Line)
 		emptyLineNum = genLineNum(strings.Repeat(" ", numLen(span.Start.Line)))
 		leftBound    = int(span.Start.Char) - 1

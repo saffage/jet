@@ -3,22 +3,20 @@ package checker
 import (
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/fatih/color"
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/config"
 	"github.com/saffage/jet/parser"
 	"github.com/saffage/jet/report"
 	"github.com/saffage/jet/scanner"
+	"github.com/saffage/jet/text"
 )
 
 var ErrorEmptyFileBuf = errors.New("empty file buffer or invalid file ID")
 
-func Check(cfg *config.Config, fileID config.FileID, stmts *ast.StmtList) (*Module, error) {
-	moduleName := cfg.File(fileID).Name
+func Check(file *text.File, stmts *ast.StmtList) (*Module, error) {
+	moduleName := file.Name
 	report.Hint("checking module '%s'", moduleName)
 
 	module := NewModule(NewScope(Global, "module "+moduleName), moduleName, stmts)
@@ -26,8 +24,7 @@ func Check(cfg *config.Config, fileID config.FileID, stmts *ast.StmtList) (*Modu
 		module: module,
 		scope:  module.Scope,
 		errors: make([]error, 0),
-		cfg:    cfg,
-		fileID: fileID,
+		file:   file,
 	}
 
 	visitor := ast.Visitor(check.visit)
@@ -38,39 +35,35 @@ func Check(cfg *config.Config, fileID config.FileID, stmts *ast.StmtList) (*Modu
 
 	module.completed = true
 
-	if cfg.Flags.DumpCheckerState {
-		err := os.Mkdir(cfg.Options.CacheDir, os.ModePerm)
-		if err != nil && !os.IsExist(err) {
-			panic(err)
-		}
-
-		f, err := os.Create(filepath.Join(cfg.Options.CacheDir, "checker-state.txt"))
-		if err != nil {
-			panic(err)
-		}
-
-		defer f.Close()
-		report.HintX("checker", "dumping checker state")
-		spew.Fdump(f, check)
-	}
+	// TODO move to separate cli command
+	// if cfg.Flags.DumpCheckerState {
+	// 	err := os.Mkdir(cfg.Options.CacheDir, os.ModePerm)
+	// 	if err != nil && !os.IsExist(err) {
+	// 		panic(err)
+	// 	}
+	//
+	// 	f, err := os.Create(filepath.Join(cfg.Options.CacheDir, "checker-state.txt"))
+	// 	if err != nil {
+	// 		panic(err)
+	// 	}
+	//
+	// 	defer f.Close()
+	// 	report.HintX("checker", "dumping checker state")
+	// 	spew.Fdump(f, check)
+	// }
 
 	return check.module, report.Join(check.errors...)
 }
 
-func CheckFile(cfg *config.Config, fileID config.FileID) (*Module, error) {
+func CheckFile(file *text.File) (*Module, error) {
 	scannerFlags := scanner.SkipWhitespace | scanner.SkipComments
 	parserFlags := parser.DefaultFlags
 
-	if cfg.Flags.TraceParser {
+	if config.TraceParser {
 		parserFlags |= parser.Trace
 	}
 
-	fi := cfg.File(fileID)
-	if fi.Buf == nil {
-		return nil, ErrorEmptyFileBuf
-	}
-
-	tokens, err := scanner.Scan(fi.Buf.Bytes(), fileID, scannerFlags)
+	tokens, err := scanner.Scan(file.Content, file.ID, scannerFlags)
 	if err != nil {
 		return nil, err
 	}
@@ -81,15 +74,16 @@ func CheckFile(cfg *config.Config, fileID config.FileID) (*Module, error) {
 	}
 	if stmts == nil {
 		// Empty file, nothing to check.
-		return NewModule(NewScope(nil, "module "+fi.Name), fi.Name, nil), nil
+		return NewModule(NewScope(nil, "module "+file.Name), file.Name, nil), nil
 	}
 
-	if cfg.Flags.ParseAst {
-		printRecreatedAST(stmts)
-		return NewModule(NewScope(nil, "module "+fi.Name), fi.Name, nil), nil
-	}
+	// TODO move to separate cli command
+	// if config.ParseAst {
+	// 	printRecreatedAST(stmts)
+	// 	return NewModule(NewScope(nil, "module "+file.Name), file.Name, nil), nil
+	// }
 
-	return Check(cfg, fileID, stmts)
+	return Check(file, stmts)
 }
 
 func printRecreatedAST(nodeList *ast.StmtList) {

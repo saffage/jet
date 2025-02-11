@@ -1,9 +1,7 @@
 package checker
 
 import (
-	"bytes"
 	"io/fs"
-	"os"
 	"path/filepath"
 
 	"github.com/saffage/jet/ast"
@@ -18,20 +16,15 @@ func (check *Checker) resolveImport(node *ast.Import) {
 		return
 	}
 
-	fileContent, err := os.ReadFile(path)
+	file, err := config.ReadFile(path)
+
 	if err != nil {
 		check.errorf(node.Module, "while reading file: %s", err.Error())
 	}
 
-	file := config.Global.NewFile()
-	file.Name = node.Module.Name
-	file.Path = path
-	file.Buf = bytes.NewBuffer(fileContent)
-
-	m, err := CheckFile(check.cfg, file.ID)
+	m, err := CheckFile(file)
 	if err != nil {
-		report.Report(config.Global, err)
-		check.errorf(node.Module, "the module check was finished with errors")
+		check.errorf(node.Module, "while processing import: %s", err.Error())
 	}
 
 	if defined := check.module.Scope.Define(m); defined != nil {
@@ -44,7 +37,7 @@ func (check *Checker) resolveImport(node *ast.Import) {
 
 func (check *Checker) resolveImportPath(ident *ast.Ident) string {
 	modulePath := ""
-	dir := filepath.Dir(check.cfg.File(check.fileID).Path)
+	dir := filepath.Dir(check.file.Path)
 	err := filepath.Walk(dir, makeWalkFunc(dir, ident.Name, &modulePath))
 	if err != nil {
 		check.errorf(ident, "while walking dir: %s", err.Error())

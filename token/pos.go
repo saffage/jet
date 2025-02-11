@@ -5,11 +5,12 @@ import (
 	"strings"
 
 	"github.com/saffage/jet/config"
+	"github.com/saffage/jet/text"
 )
 
 // Zero value is invalid location.
 type Pos struct {
-	FileID config.FileID
+	FileID text.FileID
 	Line   uint32
 	Char   uint32
 }
@@ -27,7 +28,7 @@ func (pos Pos) String() string {
 	s := strings.Builder{}
 
 	if pos.FileID != 0 {
-		s.WriteString(config.Global.File(pos.FileID).Path + ":")
+		s.WriteString(config.File(pos.FileID).Path + ":")
 	}
 
 	if pos.Line > 0 {
@@ -50,21 +51,22 @@ func (pos Pos) IsValid() bool {
 }
 
 func (pos Pos) WithEnd(end Pos) Range {
-	return RangeFrom(pos, end)
+	return Range{FileID: pos.FileID, Start: rangePos{Line: pos.Line, Char: pos.Char}, End: rangePos{Line: end.Line, Char: end.Char}}
 }
 
 func (pos Pos) WithStart(start Pos) Range {
-	return RangeFrom(start, pos)
+	return Range{FileID: start.FileID, Start: rangePos{Line: start.Line, Char: start.Char}, End: rangePos{Line: pos.Line, Char: pos.Char}}
 }
 
 func (pos Pos) WithLen(i uint32) Range {
-	return RangeFrom(pos, Pos{
+	end := Pos{
 		FileID: pos.FileID,
 		Line:   pos.Line,
 		Char:   pos.Char + i,
-	})
+	}
+	return Range{FileID: pos.FileID, Start: rangePos{Line: pos.Line, Char: pos.Char}, End: rangePos{Line: end.Line, Char: end.Char}}
 }
 
 func (pos Pos) AsRange() Range {
-	return RangeFrom(pos, pos)
+	return Range{FileID: pos.FileID, Start: rangePos{Line: pos.Line, Char: pos.Char}, End: rangePos{Line: pos.Line, Char: pos.Char}}
 }

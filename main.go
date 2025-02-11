@@ -5,7 +5,6 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/saffage/jet/cmd"
-	"github.com/saffage/jet/config"
 	"github.com/saffage/jet/report"
 )
 
@@ -16,7 +15,7 @@ func main() {
 	spew.Config.DisablePointerAddresses = true
 
 	if err := cmd.Run(os.Args); err != nil {
-		report.Report(config.Global, err)
+		report.Report(err)
 		os.Exit(1)
 	}
 }
