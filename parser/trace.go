@@ -10,13 +10,13 @@ import (
 )
 
 func printTrace(p *parser, args ...any) {
-	pos := p.tok.Start
+	// pos := p.tok.Span.From
 
-	if report.UseColors {
-		fmt.Print(color.HiCyanString("%6d:%4d: ", pos.Line, pos.Char))
-	} else {
-		fmt.Printf("%6d:%4d: ", pos.Line, pos.Char)
-	}
+	// if report.UseColors {
+	// 	fmt.Print(color.HiCyanString("%6d:%4d: ", pos.Line, pos.Char))
+	// } else {
+	// 	fmt.Printf("%6d:%4d: ", pos.Line, pos.Char)
+	// }
 
 	for i := 0; i < p.indent; i++ {
 		fmt.Print("  ")

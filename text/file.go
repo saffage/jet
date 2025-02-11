@@ -95,6 +95,10 @@ func ReadFile(id FileID, path string) (*File, error) {
 }
 
 func lineOffsetOfPos(file *File, pos Pos) (offset, index int, found bool) {
+	if pos.ID() != file.ID {
+		return 0, 0, false
+	}
+
 	for i, lineOffset := range file.lines {
 		if lineOffset > pos.Offset() {
 			found = true
@@ -130,15 +134,15 @@ func (file *File) Line(pos Pos) string {
 
 func (file *File) GetPosition(pos Pos) (position Position, valid bool) {
 	if lineOffset, lineIndex, found := lineOffsetOfPos(file, pos); found {
+		offset := pos.Offset()
+		columnOffset := offset - lineOffset
+
 		valid = true
 		position = Position{
-			ID:   file.ID,
+			Pos:  pos,
 			Path: file.Path,
 			Line: lineIndex + 1,
-			Char: pos.Offset(),
 		}
-
-		columnOffset := position.Offset - lineOffset
 
 		for i := range file.Content {
 			if i >= columnOffset {

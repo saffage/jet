@@ -4,6 +4,7 @@ import (
 	"slices"
 
 	"github.com/saffage/jet/ast"
+	"github.com/saffage/jet/text"
 	"github.com/saffage/jet/token"
 )
 
@@ -15,8 +16,8 @@ func (p *parser) parseIdentNode() *ast.Ident {
 	if tok := p.consume(token.Ident); tok != nil {
 		return &ast.Ident{
 			Name:  tok.Data,
-			Start: tok.Start,
-			End:   tok.End,
+			Start: tok.Span.From,
+			End:   tok.Span.To,
 		}
 	}
 
@@ -48,32 +49,32 @@ func (p *parser) parseLiteralNode() *ast.Literal {
 		return &ast.Literal{
 			Kind:  litKind,
 			Value: tok.Data,
-			Start: tok.Start,
-			End:   tok.End,
+			Start: tok.Span.From,
+			End:   tok.Span.To,
 		}
 	}
 
 	return nil
 }
 
-func (p *parser) skip(to ...token.Kind) (start, end token.Pos) {
+func (p *parser) skip(to ...token.Kind) (start, end text.Pos) {
 	if len(to) == 0 {
 		to = endOfExprKinds
 	}
 
-	start = p.tok.Start
+	start = p.tok.Span.From
 
 	for p.tok.Kind != token.EOF && !slices.Contains(to, p.tok.Kind) {
-		end = p.tok.End
+		end = p.tok.Span.To
 		p.next()
 	}
 
 	if p.flags&Trace != 0 && end.IsValid() {
 		// TODO must be removed
 		panic(Error{
-			Selection: start.WithEnd(end),
-			Message:   "tokens was skipped for some reason",
-			Warning:   true,
+			SelectionRange: text.Span{From: start, To: end},
+			Message:        "tokens was skipped for some reason",
+			Warning:        true,
 		})
 	}
 

@@ -2,11 +2,10 @@ package token
 
 import (
 	"errors"
-	"fmt"
-	"strconv"
 	"unicode/utf8"
 
 	"github.com/galsondor/go-ascii"
+	"github.com/saffage/jet/text"
 )
 
 var (
@@ -18,34 +17,9 @@ var (
 )
 
 type Token struct {
-	Kind       Kind
-	Data       string
-	Start, End Pos
-}
-
-func (token Token) String() string {
-	switch token.Kind {
-	case Whitespace, NewLine:
-		return fmt.Sprintf("<%ss %d at %s>",
-			token.Kind.String(),
-			len(token.Data),
-			token.Start.String(),
-		)
-
-	default:
-		if len(token.Data) > 0 {
-			return fmt.Sprintf("<%s %s at %s>",
-				token.Kind,
-				strconv.Quote(token.Data),
-				token.Start.String(),
-			)
-		}
-
-		return fmt.Sprintf("<%s at %s>",
-			token.Kind.String(),
-			token.Start.String(),
-		)
-	}
+	Kind Kind
+	Data string
+	Span text.Span
 }
 
 func (t Token) Precedence() int {

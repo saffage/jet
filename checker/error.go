@@ -5,7 +5,7 @@ import (
 
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/report"
-	"github.com/saffage/jet/token"
+	"github.com/saffage/jet/text"
 )
 
 type Error struct {
@@ -32,32 +32,32 @@ func (e *Error) Is(target error) bool {
 }
 
 func (e *Error) Info() *report.Info {
-	var span token.Range
+	var span text.Span
 
 	if e.Node != nil {
-		span = e.Node.Pos().WithEnd(e.Node.PosEnd())
+		span = text.Span{From: e.Node.Pos(), To: e.Node.PosEnd()}
 	}
 
-	var hints []report.HintInfo
+	var hints []report.Suggestion
 
 	for _, hint := range e.Hints {
-		var span token.Range
+		var span text.Span
 
 		if hint.Node != nil {
-			span = hint.Node.Pos().WithEnd(hint.Node.PosEnd())
+			span = text.Span{From: hint.Node.Pos(), To: hint.Node.PosEnd()}
 		}
 
-		hints = append(hints, report.HintInfo{
-			Message:         hint.Message,
-			SuggestionRange: span,
+		hints = append(hints, report.Suggestion{
+			Message:   hint.Message,
+			Selection: report.Selection{Range: span},
 		})
 	}
 
 	return &report.Info{
-		Tag:            "checker",
-		Title:          e.Message,
-		SelectionRange: span,
-		Hints:          hints,
+		Tag:         "checker",
+		Title:       e.Message,
+		Selection:   report.Selection{Range: span},
+		Suggestions: hints,
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/saffage/jet/report"
+	"github.com/saffage/jet/text"
 	"github.com/saffage/jet/token"
 )
 
@@ -30,9 +31,9 @@ var (
 type Error struct {
 	err error
 
-	Message   string
-	Selection token.Range
-	Warning   bool
+	Message        string
+	SelectionRange text.Span
+	Warning        bool
 }
 
 func (e *Error) Error() string {
@@ -51,10 +52,10 @@ func (e *Error) Info() *report.Info {
 	}
 
 	return &report.Info{
-		Tag:            "parse",
-		Title:          "",
-		SelectionRange: e.Selection,
-		Level:          level,
+		Tag:       "parse",
+		Title:     e.Error(),
+		Selection: report.Selection{Range: e.SelectionRange},
+		Level:     level,
 	}
 }
 
@@ -75,33 +76,33 @@ func (p *parser) appendError(err error) {
 }
 
 func (p *parser) error(err error) {
-	p.errorAt(err, p.tok.Start, p.tok.End)
+	p.errorAt(err, p.tok.Span.From, p.tok.Span.To)
 }
 
 func (p *parser) errorf(err error, format string, args ...any) {
-	p.errorfAt(err, p.tok.Start, p.tok.End, format, args...)
+	p.errorfAt(err, p.tok.Span.From, p.tok.Span.To, format, args...)
 }
 
 func (p *parser) errorExpectedToken(tokens ...token.Kind) {
-	p.errorExpectedTokenAt(p.tok.Start, p.tok.End, tokens...)
+	p.errorExpectedTokenAt(p.tok.Span.From, p.tok.Span.To, tokens...)
 }
 
-func (p *parser) errorAt(err error, start, end token.Pos) {
+func (p *parser) errorAt(err error, start, end text.Pos) {
 	p.appendError(&Error{
-		err:       err,
-		Selection: start.WithEnd(end),
+		err:            err,
+		SelectionRange: text.Span{From: start, To: end},
 	})
 }
 
-func (p *parser) errorfAt(err error, start, end token.Pos, format string, args ...any) {
+func (p *parser) errorfAt(err error, start, end text.Pos, format string, args ...any) {
 	p.appendError(&Error{
-		err:       err,
-		Selection: start.WithEnd(end),
-		Message:   fmt.Sprintf(format, args...),
+		err:            err,
+		SelectionRange: text.Span{From: start, To: end},
+		Message:        fmt.Sprintf(format, args...),
 	})
 }
 
-func (p *parser) errorExpectedTokenAt(start, end token.Pos, tokens ...token.Kind) {
+func (p *parser) errorExpectedTokenAt(start, end text.Pos, tokens ...token.Kind) {
 	if len(tokens) < 1 {
 		panic("required at least 1 token")
 	}
@@ -113,8 +114,8 @@ func (p *parser) errorExpectedTokenAt(start, end token.Pos, tokens ...token.Kind
 		buf.WriteString(tok.String())
 	}
 	p.appendError(&Error{
-		err:       ErrorUnexpectedToken,
-		Selection: start.WithEnd(end),
-		Message:   fmt.Sprintf("want %s, got %s instead", buf.String(), p.tok.Kind.String()),
+		err:            ErrorUnexpectedToken,
+		SelectionRange: text.Span{From: start, To: end},
+		Message:        fmt.Sprintf("want %s, got %s instead", buf.String(), p.tok.Kind.String()),
 	})
 }

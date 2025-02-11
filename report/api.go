@@ -1,6 +1,7 @@
 package report
 
 import (
+	"bytes"
 	"fmt"
 	"runtime"
 	"strings"
@@ -81,5 +82,12 @@ func report(level Level, tag, message string) {
 		message = emptyMessage
 	}
 
-	fmt.Fprintln(OutFile, level.Label(tag), message)
+	const labelBufferSize = 10
+
+	buf := bytes.Buffer{}
+	buf.Grow(len(message) + len(tag) + labelBufferSize)
+	writeLabel(&buf, level, tag)
+	titleStyle.Fprint(&buf, message)
+
+	fmt.Fprintln(Output, buf.String())
 }

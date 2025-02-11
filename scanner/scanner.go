@@ -6,21 +6,20 @@ import (
 	"strings"
 
 	"github.com/galsondor/go-ascii"
-	"github.com/saffage/jet/scanner/base"
 	"github.com/saffage/jet/text"
 	"github.com/saffage/jet/token"
 )
 
 type Scanner struct {
-	*base.Base
+	text.Scanner
 	errors []error
 	flags  Flags
 }
 
 func New(buffer []byte, id text.FileID, flags Flags) *Scanner {
 	return &Scanner{
-		Base:  base.New(buffer, id),
-		flags: flags,
+		Scanner: *text.NewScanner(buffer, id),
+		flags:   flags,
 	}
 }
 
@@ -91,7 +90,7 @@ func (s *Scanner) Next() token.Token {
 
 				if s.Match('"', '\'') {
 					strTok := s.scanString()
-					strTok.Start = tok.Start
+					strTok.Span.From = tok.Span.From
 					strTok.Data = tok.Data + strTok.Data
 					tok = strTok
 				}
@@ -187,12 +186,12 @@ func (s *Scanner) Next() token.Token {
 			}
 		}
 
-		if !tok.Start.IsValid() {
-			tok.Start = startPos
+		if !tok.Span.From.IsValid() {
+			tok.Span.From = startPos
 		}
 
-		if !tok.End.IsValid() {
-			tok.End = s.PrevPos()
+		if !tok.Span.To.IsValid() {
+			tok.Span.To = s.PrevPos()
 		}
 
 		if s.flags&SkipWhitespace != 0 &&
@@ -206,9 +205,8 @@ func (s *Scanner) Next() token.Token {
 	}
 
 	return token.Token{
-		Kind:  token.EOF,
-		Start: s.Pos(),
-		End:   s.Pos(),
+		Kind: token.EOF,
+		Span: text.Span{From: s.Pos(), To: s.Pos()},
 	}
 }
 
@@ -277,18 +275,16 @@ func (s *Scanner) scanString() token.Token {
 	if !s.Consume(quote) {
 		s.error(ErrorUnterminatedStringLit, quotePos)
 		return token.Token{
-			Kind:  token.Illegal,
-			Data:  data,
-			Start: quotePos,
-			End:   s.PrevPos(),
+			Kind: token.Illegal,
+			Data: data,
+			Span: text.Span{From: quotePos, To: s.PrevPos()},
 		}
 	}
 
 	return token.Token{
-		Kind:  token.String,
-		Data:  data + string(quote),
-		Start: quotePos,
-		End:   s.PrevPos(),
+		Kind: token.String,
+		Data: data + string(quote),
+		Span: text.Span{From: quotePos, To: s.PrevPos()},
 	}
 }
 

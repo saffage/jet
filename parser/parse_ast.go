@@ -2,6 +2,7 @@ package parser
 
 import (
 	"github.com/saffage/jet/ast"
+	"github.com/saffage/jet/text"
 	"github.com/saffage/jet/token"
 )
 
@@ -75,7 +76,7 @@ func (p *parser) parseStmt() ast.Node {
 	}
 
 	if p.consume(token.Semicolon) != nil {
-		return &ast.Empty{DesiredPos: p.tok.Start}
+		return &ast.Empty{DesiredPos: p.tok.Span.From}
 	}
 
 	return p.declOr(p.parseExpr)()
@@ -162,8 +163,8 @@ func (p *parser) parseBinaryExpr(x ast.Node, precedence int) ast.Node {
 		if !ok {
 			p.errorfAt(
 				ErrorInvalidBinaryOperator,
-				tok.Start,
-				tok.End,
+				tok.Span.From,
+				tok.Span.To,
 				"%s cannot be used in the binary expression",
 				tok.Kind.String(),
 			)
@@ -172,8 +173,8 @@ func (p *parser) parseBinaryExpr(x ast.Node, precedence int) ast.Node {
 		x = &ast.Op{
 			X:     x,
 			Y:     y,
-			Start: tok.Start,
-			End:   tok.End,
+			Start: tok.Span.From,
+			End:   tok.Span.To,
 			Kind:  binaryOpKind,
 		}
 	}
@@ -201,8 +202,8 @@ func (p *parser) parsePrefixExpr() ast.Node {
 		return &ast.Op{
 			X:     nil,
 			Y:     p.parsePrefixExpr(),
-			Start: minus.Start,
-			End:   minus.End,
+			Start: minus.Span.From,
+			End:   minus.Span.To,
 			Kind:  ast.OperatorNeg,
 		}
 
@@ -212,8 +213,8 @@ func (p *parser) parsePrefixExpr() ast.Node {
 		return &ast.Op{
 			X:     nil,
 			Y:     p.parsePrefixExpr(),
-			Start: bang.Start,
-			End:   bang.End,
+			Start: bang.Span.From,
+			End:   bang.Span.To,
 			Kind:  ast.OperatorNot,
 		}
 
@@ -224,8 +225,8 @@ func (p *parser) parsePrefixExpr() ast.Node {
 			return &ast.Op{
 				X:     nil,
 				Y:     p.parsePrefixExpr(),
-				Start: asterisk.Start,
-				End:   tokMut.End,
+				Start: asterisk.Span.From,
+				End:   tokMut.Span.To,
 				Kind:  ast.OperatorMutPtr,
 			}
 		}
@@ -233,8 +234,8 @@ func (p *parser) parsePrefixExpr() ast.Node {
 		return &ast.Op{
 			X:     nil,
 			Y:     p.parsePrefixExpr(),
-			Start: asterisk.Start,
-			End:   asterisk.End,
+			Start: asterisk.Span.From,
+			End:   asterisk.Span.To,
 			Kind:  ast.OperatorPtr,
 		}
 
@@ -245,8 +246,8 @@ func (p *parser) parsePrefixExpr() ast.Node {
 			return &ast.Op{
 				X:     nil,
 				Y:     p.parsePrefixExpr(),
-				Start: amp.Start,
-				End:   tokMut.End,
+				Start: amp.Span.From,
+				End:   tokMut.Span.To,
 				Kind:  ast.OperatorMutAddrOf,
 			}
 		}
@@ -254,8 +255,8 @@ func (p *parser) parsePrefixExpr() ast.Node {
 		return &ast.Op{
 			X:     nil,
 			Y:     p.parsePrefixExpr(),
-			Start: amp.Start,
-			End:   amp.End,
+			Start: amp.Span.From,
+			End:   amp.Span.To,
 			Kind:  ast.OperatorAddrOf,
 		}
 
@@ -396,8 +397,8 @@ func (p *parser) parseEllipsisExpr() ast.Node {
 		return &ast.Op{
 			X:     nil,
 			Y:     y,
-			Start: tok.Start,
-			End:   tok.End,
+			Start: tok.Span.From,
+			End:   tok.Span.To,
 			Kind:  ast.OperatorEllipsis,
 		}
 	}
@@ -469,8 +470,8 @@ func (p *parser) parseDot(x ast.Node) ast.Node {
 	if star := p.consume(token.Asterisk); star != nil {
 		return &ast.Deref{
 			X:       x,
-			DotPos:  dot.Start,
-			StarPos: star.Start,
+			DotPos:  dot.Span.From,
+			StarPos: star.Span.From,
 		}
 	}
 
@@ -483,7 +484,7 @@ func (p *parser) parseDot(x ast.Node) ast.Node {
 	return &ast.Dot{
 		X:      x,
 		Y:      y,
-		DotPos: dot.Start,
+		DotPos: dot.Span.From,
 	}
 }
 
@@ -505,7 +506,7 @@ func (p *parser) parseBuiltIn() ast.Node {
 
 	return &ast.BuiltIn{
 		Ident:  ident,
-		TokPos: tok.Start,
+		TokPos: tok.Span.From,
 	}
 }
 
@@ -525,9 +526,9 @@ func (p *parser) parseDecl() ast.Node {
 		}
 	}
 
-	mutLoc := token.Pos{}
+	mutLoc := text.NoPos
 	if tokMut := p.consume(token.KwMut); tokMut != nil {
-		mutLoc = tokMut.Start
+		mutLoc = tokMut.Span.From
 	}
 
 	if p.matchSequence(token.Ident, token.Colon) {
@@ -550,7 +551,7 @@ func (p *parser) parseDecl() ast.Node {
 	return nil
 }
 
-func (p *parser) parseDeclNode(mut token.Pos, name *ast.Ident) *ast.Decl {
+func (p *parser) parseDeclNode(mut text.Pos, name *ast.Ident) *ast.Decl {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
@@ -598,7 +599,7 @@ func (p *parser) parseAttributeListNode() *ast.AttributeList {
 
 		if list := p.parseBracketList(p.parseExpr); list != nil {
 			return &ast.AttributeList{
-				TokLoc: tok.Start,
+				TokLoc: tok.Span.From,
 				List:   list,
 			}
 		}
@@ -631,7 +632,7 @@ func (p *parser) parseStructType() ast.Node {
 
 	return &ast.StructType{
 		Fields: fields,
-		TokPos: tok.Start,
+		TokPos: tok.Span.From,
 		Open:   body.Open,
 		Close:  body.Close,
 	}
@@ -661,7 +662,7 @@ func (p *parser) parseEnumType() ast.Node {
 
 	return &ast.EnumType{
 		Fields: fields,
-		TokPos: tok.Start,
+		TokPos: tok.Span.From,
 		Open:   body.Open,
 		Close:  body.Close,
 	}
@@ -699,7 +700,7 @@ func (p *parser) parseIf() ast.Node {
 	}
 
 	return &ast.If{
-		TokPos: tok.Start,
+		TokPos: tok.Span.From,
 		Cond:   cond,
 		Body:   body,
 		Else:   elseClause,
@@ -725,7 +726,7 @@ func (p *parser) parseElse() ast.Node {
 		}
 
 		return &ast.Else{
-			TokPos: elseTok.Start,
+			TokPos: elseTok.Span.From,
 			Body:   body,
 		}
 	}
@@ -754,7 +755,7 @@ func (p *parser) parseWhile() ast.Node {
 	}
 
 	return &ast.While{
-		TokPos: tok.Start,
+		TokPos: tok.Span.From,
 		Cond:   cond,
 		Body:   body,
 	}
@@ -793,7 +794,7 @@ func (p *parser) parseFor() ast.Node {
 		DeclList: declList,
 		IterExpr: iterExpr,
 		Body:     body,
-		TokPos:   tok.Start,
+		TokPos:   tok.Span.From,
 	}
 }
 
@@ -830,9 +831,9 @@ func (p *parser) parseForLoopDecl() ast.Node {
 		}
 	}
 
-	mutLoc := token.Pos{}
+	mutLoc := text.NoPos
 	if tokMut := p.consume(token.KwMut); tokMut != nil {
-		mutLoc = tokMut.Start
+		mutLoc = tokMut.Span.From
 	}
 
 	name := p.parseIdentNode()
@@ -880,7 +881,7 @@ func (p *parser) parseDefer() ast.Node {
 		return nil
 	}
 
-	return &ast.Defer{X: x, TokPos: tok.Start}
+	return &ast.Defer{X: x, TokPos: tok.Span.From}
 }
 
 func (p *parser) parseReturn() ast.Node {
@@ -902,7 +903,7 @@ func (p *parser) parseReturn() ast.Node {
 		}
 	}
 
-	return &ast.Return{X: x, TokPos: tok.Start}
+	return &ast.Return{X: x, TokPos: tok.Span.From}
 }
 
 func (p *parser) parseBreak() ast.Node {
@@ -917,7 +918,7 @@ func (p *parser) parseBreak() ast.Node {
 
 	return &ast.Break{
 		Label:  p.parseIdentNode(),
-		TokPos: tok.Start,
+		TokPos: tok.Span.From,
 	}
 }
 
@@ -933,7 +934,7 @@ func (p *parser) parseContinue() ast.Node {
 
 	return &ast.Continue{
 		Label:  p.parseIdentNode(),
-		TokPos: tok.Start,
+		TokPos: tok.Span.From,
 	}
 }
 
@@ -1079,7 +1080,7 @@ func (p *parser) listWithDelimiter(
 			return nil, false
 		}
 
-		nodeStart := p.tok.Start
+		nodeStart := p.tok.Span.From
 
 		if node := f(); node != nil {
 			switch {
@@ -1112,25 +1113,25 @@ func (p *parser) parseBracketedList(
 	f parseFunc,
 	opening, closing token.Kind,
 	separators ...token.Kind,
-) (nodes []ast.Node, openLoc, closeLoc token.Pos, wasSeparator bool) {
+) (nodes []ast.Node, openLoc, closeLoc text.Pos, wasSeparator bool) {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))
 	}
 
 	if tok := p.expect(opening); tok != nil {
-		openLoc = tok.Start
+		openLoc = tok.Span.From
 	} else {
-		return nil, token.Pos{}, token.Pos{}, false
+		return nil, text.NoPos, text.NoPos, false
 	}
 
 	nodes, wasSeparator = p.listWithDelimiter(f, closing, separators...)
 
 	if nodes == nil {
-		return nil, token.Pos{}, token.Pos{}, false
+		return nil, text.NoPos, text.NoPos, false
 	}
 
 	if tok := p.consume(closing); tok != nil {
-		closeLoc = tok.Start
+		closeLoc = tok.Span.From
 	} else {
 		if p.tok.Kind == token.EOF {
 			p.errorAt(ErrorBracketIsNeverClosed, openLoc, openLoc)
@@ -1138,7 +1139,7 @@ func (p *parser) parseBracketedList(
 			start, end := p.skip()
 			p.errorExpectedTokenAt(start, end, append(separators, closing)...)
 		}
-		return nil, token.Pos{}, token.Pos{}, false
+		return nil, text.NoPos, text.NoPos, false
 	}
 
 	return

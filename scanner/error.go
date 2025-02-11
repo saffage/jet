@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/saffage/jet/report"
-	"github.com/saffage/jet/token"
+	"github.com/saffage/jet/text"
 )
 
 var (
@@ -27,7 +27,7 @@ type Error struct {
 	err error
 
 	Message   string
-	Selection token.Range
+	Selection text.Span
 }
 
 func (e *Error) Error() string {
@@ -40,17 +40,17 @@ func (e *Error) Is(target error) bool {
 
 func (e *Error) Info() *report.Info {
 	return &report.Info{
-		Tag:            "scanner",
-		Title:          e.Error(),
-		SelectionRange: e.Selection,
+		Tag:       "scanner",
+		Title:     e.Error(),
+		Selection: report.Selection{Range: e.Selection},
 	}
 }
 
 // Emits an error. Error end is a current scanner position.
-func (s *Scanner) error(err error, start token.Pos, message ...any) {
+func (s *Scanner) error(err error, start text.Pos, message ...any) {
 	s.errors = append(s.errors, &Error{
 		Message:   fmt.Sprint(message...),
-		Selection: start.WithEnd(s.Pos()),
+		Selection: text.Span{From: start, To: s.Pos()},
 		err:       err,
 	})
 }

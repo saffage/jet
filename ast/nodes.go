@@ -3,15 +3,15 @@ package ast
 import (
 	"strings"
 
-	"github.com/saffage/jet/token"
+	"github.com/saffage/jet/text"
 )
 
 type Node interface {
 	// Start of the entire tree. This position must also include nested nodes.
-	Pos() token.Pos
+	Pos() text.Pos
 
 	// End of the entire tree. This position must also include nested nodes.
-	PosEnd() token.Pos
+	PosEnd() text.Pos
 
 	// String representation of the node. This string must be equal to the
 	// code from which this tree was parsed (ignoring location).
@@ -26,36 +26,36 @@ type Node interface {
 
 type (
 	BadNode struct {
-		DesiredPos token.Pos
+		DesiredPos text.Pos
 	}
 
 	Empty struct {
-		DesiredPos token.Pos
+		DesiredPos text.Pos
 	}
 
 	Ident struct {
 		Name       string
-		Start, End token.Pos
+		Start, End text.Pos
 	}
 
 	Literal struct {
 		Value      string
 		Kind       LiteralKind
-		Start, End token.Pos
+		Start, End text.Pos
 	}
 )
 
-func (n *BadNode) Pos() token.Pos    { return n.DesiredPos }
-func (n *BadNode) PosEnd() token.Pos { return n.DesiredPos }
+func (n *BadNode) Pos() text.Pos    { return n.DesiredPos }
+func (n *BadNode) PosEnd() text.Pos { return n.DesiredPos }
 
-func (n *Empty) Pos() token.Pos    { return n.DesiredPos }
-func (n *Empty) PosEnd() token.Pos { return n.DesiredPos }
+func (n *Empty) Pos() text.Pos    { return n.DesiredPos }
+func (n *Empty) PosEnd() text.Pos { return n.DesiredPos }
 
-func (n *Ident) Pos() token.Pos    { return n.Start }
-func (n *Ident) PosEnd() token.Pos { return n.End }
+func (n *Ident) Pos() text.Pos    { return n.Start }
+func (n *Ident) PosEnd() text.Pos { return n.End }
 
-func (n *Literal) Pos() token.Pos    { return n.Start }
-func (n *Literal) PosEnd() token.Pos { return n.End }
+func (n *Literal) Pos() text.Pos    { return n.Start }
+func (n *Literal) PosEnd() text.Pos { return n.End }
 
 //------------------------------------------------
 // Declaration
@@ -64,8 +64,8 @@ func (n *Literal) PosEnd() token.Pos { return n.End }
 type (
 	Comment struct {
 		Value string
-		Start token.Pos
-		End   token.Pos
+		Start text.Pos
+		End   text.Pos
 	}
 
 	CommentGroup struct {
@@ -75,36 +75,36 @@ type (
 	// Represents '@[...attributes]'.
 	AttributeList struct {
 		List   *BracketList
-		TokLoc token.Pos // '@' token.
+		TokLoc text.Pos // '@' token.
 	}
 
 	// Represents '@[..attributes] mut name: T = expr'.
 	Decl struct {
 		Attrs *AttributeList
 		Ident *Ident
-		Mut   token.Pos // optional
-		Type  Node      // optional
-		Value Node      // optional
+		Mut   text.Pos // optional
+		Type  Node     // optional
+		Value Node     // optional
 	}
 )
 
-func (n *Comment) Pos() token.Pos    { return n.Start }
-func (n *Comment) PosEnd() token.Pos { return n.End }
+func (n *Comment) Pos() text.Pos    { return n.Start }
+func (n *Comment) PosEnd() text.Pos { return n.End }
 
-func (n *CommentGroup) Pos() token.Pos    { return n.Comments[0].Pos() }
-func (n *CommentGroup) PosEnd() token.Pos { return n.Comments[len(n.Comments)-1].PosEnd() }
+func (n *CommentGroup) Pos() text.Pos    { return n.Comments[0].Pos() }
+func (n *CommentGroup) PosEnd() text.Pos { return n.Comments[len(n.Comments)-1].PosEnd() }
 
-func (n *AttributeList) Pos() token.Pos    { return n.TokLoc }
-func (n *AttributeList) PosEnd() token.Pos { return n.List.PosEnd() }
+func (n *AttributeList) Pos() text.Pos    { return n.TokLoc }
+func (n *AttributeList) PosEnd() text.Pos { return n.List.PosEnd() }
 
-func (decl *Decl) Pos() token.Pos {
+func (decl *Decl) Pos() text.Pos {
 	if decl.Mut.IsValid() {
 		return decl.Mut
 	}
 	return decl.Ident.Pos()
 }
 
-func (decl *Decl) PosEnd() token.Pos {
+func (decl *Decl) PosEnd() text.Pos {
 	if decl.Value != nil {
 		return decl.Value.PosEnd()
 	}
@@ -138,17 +138,17 @@ type (
 	// Represents 'struct {...fields}'.
 	StructType struct {
 		Fields []*Decl
-		TokPos token.Pos
-		Open   token.Pos
-		Close  token.Pos
+		TokPos text.Pos
+		Open   text.Pos
+		Close  text.Pos
 	}
 
 	// Represents 'enum {...fields}'.
 	EnumType struct {
 		Fields []*Ident
-		TokPos token.Pos
-		Open   token.Pos
-		Close  token.Pos
+		TokPos text.Pos
+		Open   text.Pos
+		Close  text.Pos
 	}
 
 	// Represents '() -> ()'.
@@ -160,7 +160,7 @@ type (
 	// Represents an identifier, prefixed with a '$' sign.
 	BuiltIn struct {
 		*Ident
-		TokPos token.Pos // '$' token.
+		TokPos text.Pos // '$' token.
 	}
 
 	// Represents 'x(...args)'.
@@ -185,64 +185,64 @@ type (
 	Dot struct {
 		X      Node
 		Y      *Ident
-		DotPos token.Pos
+		DotPos text.Pos
 	}
 
 	// Represents 'x.*'.
 	Deref struct {
 		X       Node
-		DotPos  token.Pos
-		StarPos token.Pos
+		DotPos  text.Pos
+		StarPos text.Pos
 	}
 
 	// Represents 'x OP y', where 'OP' is an operator.
 	Op struct {
 		X     Node
 		Y     Node
-		Start token.Pos
-		End   token.Pos
+		Start text.Pos
+		End   text.Pos
 		Kind  OperatorKind
 	}
 )
 
-func (n *ArrayType) Pos() token.Pos    { return n.Args.Pos() }
-func (n *ArrayType) PosEnd() token.Pos { return n.X.PosEnd() }
+func (n *ArrayType) Pos() text.Pos    { return n.Args.Pos() }
+func (n *ArrayType) PosEnd() text.Pos { return n.X.PosEnd() }
 
-func (n *StructType) Pos() token.Pos    { return n.TokPos }
-func (n *StructType) PosEnd() token.Pos { return n.Close }
+func (n *StructType) Pos() text.Pos    { return n.TokPos }
+func (n *StructType) PosEnd() text.Pos { return n.Close }
 
-func (n *EnumType) Pos() token.Pos    { return n.TokPos }
-func (n *EnumType) PosEnd() token.Pos { return n.Close }
+func (n *EnumType) Pos() text.Pos    { return n.TokPos }
+func (n *EnumType) PosEnd() text.Pos { return n.Close }
 
-func (n *Signature) Pos() token.Pos    { return n.Params.Pos() }
-func (n *Signature) PosEnd() token.Pos { return n.Result.PosEnd() }
+func (n *Signature) Pos() text.Pos    { return n.Params.Pos() }
+func (n *Signature) PosEnd() text.Pos { return n.Result.PosEnd() }
 
-func (n *BuiltIn) Pos() token.Pos    { return n.TokPos }
-func (n *BuiltIn) PosEnd() token.Pos { return n.Ident.PosEnd() }
+func (n *BuiltIn) Pos() text.Pos    { return n.TokPos }
+func (n *BuiltIn) PosEnd() text.Pos { return n.Ident.PosEnd() }
 
-func (n *Call) Pos() token.Pos    { return n.X.Pos() }
-func (n *Call) PosEnd() token.Pos { return n.Args.PosEnd() }
+func (n *Call) Pos() text.Pos    { return n.X.Pos() }
+func (n *Call) PosEnd() text.Pos { return n.Args.PosEnd() }
 
-func (n *Index) Pos() token.Pos    { return n.X.Pos() }
-func (n *Index) PosEnd() token.Pos { return n.Args.PosEnd() }
+func (n *Index) Pos() text.Pos    { return n.X.Pos() }
+func (n *Index) PosEnd() text.Pos { return n.Args.PosEnd() }
 
-func (n *Function) Pos() token.Pos    { return n.Signature.Pos() }
-func (n *Function) PosEnd() token.Pos { return n.Body.PosEnd() }
+func (n *Function) Pos() text.Pos    { return n.Signature.Pos() }
+func (n *Function) PosEnd() text.Pos { return n.Body.PosEnd() }
 
-func (n *Dot) Pos() token.Pos    { return n.X.Pos() }
-func (n *Dot) PosEnd() token.Pos { return n.Y.PosEnd() }
+func (n *Dot) Pos() text.Pos    { return n.X.Pos() }
+func (n *Dot) PosEnd() text.Pos { return n.Y.PosEnd() }
 
-func (n *Deref) Pos() token.Pos    { return n.X.Pos() }
-func (n *Deref) PosEnd() token.Pos { return n.StarPos }
+func (n *Deref) Pos() text.Pos    { return n.X.Pos() }
+func (n *Deref) PosEnd() text.Pos { return n.StarPos }
 
-func (n *Op) Pos() token.Pos {
+func (n *Op) Pos() text.Pos {
 	if n.X != nil {
 		return n.X.Pos()
 	}
 	return n.Start
 }
 
-func (n *Op) PosEnd() token.Pos {
+func (n *Op) PosEnd() text.Pos {
 	if n.Y != nil {
 		return n.Y.PosEnd()
 	}
@@ -267,36 +267,36 @@ type (
 	// Represents '[a, b, c]'.
 	BracketList struct {
 		*List
-		Open, Close token.Pos // '[' and ']'.
+		Open, Close text.Pos // '[' and ']'.
 	}
 
 	// Represents '(a, b, c)'.
 	ParenList struct {
 		*List
-		Open, Close token.Pos // '(' and ')'.
+		Open, Close text.Pos // '(' and ')'.
 	}
 
 	// Represents '{a; b; c}'.
 	CurlyList struct {
 		*StmtList
-		Open, Close token.Pos // '{' and '}'.
+		Open, Close text.Pos // '{' and '}'.
 	}
 )
 
-func (n *List) Pos() token.Pos    { return n.Nodes[0].Pos() }
-func (n *List) PosEnd() token.Pos { return n.Nodes[len(n.Nodes)-1].PosEnd() }
+func (n *List) Pos() text.Pos    { return n.Nodes[0].Pos() }
+func (n *List) PosEnd() text.Pos { return n.Nodes[len(n.Nodes)-1].PosEnd() }
 
-func (n *StmtList) Pos() token.Pos    { return n.Nodes[0].Pos() }
-func (n *StmtList) PosEnd() token.Pos { return n.Nodes[len(n.Nodes)-1].PosEnd() }
+func (n *StmtList) Pos() text.Pos    { return n.Nodes[0].Pos() }
+func (n *StmtList) PosEnd() text.Pos { return n.Nodes[len(n.Nodes)-1].PosEnd() }
 
-func (n *BracketList) Pos() token.Pos    { return n.Open }
-func (n *BracketList) PosEnd() token.Pos { return n.Close }
+func (n *BracketList) Pos() text.Pos    { return n.Open }
+func (n *BracketList) PosEnd() text.Pos { return n.Close }
 
-func (n *ParenList) Pos() token.Pos    { return n.Open }
-func (n *ParenList) PosEnd() token.Pos { return n.Close }
+func (n *ParenList) Pos() text.Pos    { return n.Open }
+func (n *ParenList) PosEnd() text.Pos { return n.Close }
 
-func (n *CurlyList) Pos() token.Pos    { return n.Open }
-func (n *CurlyList) PosEnd() token.Pos { return n.Close }
+func (n *CurlyList) Pos() text.Pos    { return n.Open }
+func (n *CurlyList) PosEnd() text.Pos { return n.Close }
 
 //------------------------------------------------
 // Language constructions
@@ -307,108 +307,102 @@ type (
 		Cond   Node
 		Body   *CurlyList
 		Else   *Else
-		TokPos token.Pos // 'if' token.
+		TokPos text.Pos // 'if' token.
 	}
 
 	Else struct {
-		Body   Node      // Can be either [*If] or [*CurlyList].
-		TokPos token.Pos // 'else' token.
+		Body   Node     // Can be either [*If] or [*CurlyList].
+		TokPos text.Pos // 'else' token.
 	}
 
 	While struct {
 		Cond   Node
 		Body   *CurlyList
-		TokPos token.Pos // 'while' token.
+		TokPos text.Pos // 'while' token.
 	}
 
 	For struct {
 		DeclList *List
 		IterExpr Node
 		Body     *CurlyList
-		TokPos   token.Pos // 'for' token.
+		TokPos   text.Pos // 'for' token.
 	}
 
 	Defer struct {
 		X      Node
-		TokPos token.Pos // 'defer' token.
+		TokPos text.Pos // 'defer' token.
 	}
 
 	Return struct {
-		X      Node      // optional
-		TokPos token.Pos // 'return' token.
+		X      Node     // optional
+		TokPos text.Pos // 'return' token.
 	}
 
 	Break struct {
 		Label  *Ident
-		TokPos token.Pos
+		TokPos text.Pos
 	}
 
 	Continue struct {
 		Label  *Ident
-		TokPos token.Pos
+		TokPos text.Pos
 	}
 
 	Import struct {
 		Module *Ident
-		TokPos token.Pos
+		TokPos text.Pos
 	}
 )
 
-func (n *If) Pos() token.Pos { return n.TokPos }
-func (n *If) PosEnd() token.Pos {
+func (n *If) Pos() text.Pos { return n.TokPos }
+func (n *If) PosEnd() text.Pos {
 	if n.Else != nil {
 		return n.Else.PosEnd()
 	}
 	return n.Body.PosEnd()
 }
 
-func (n *Else) Pos() token.Pos    { return n.TokPos }
-func (n *Else) PosEnd() token.Pos { return n.Body.PosEnd() }
+func (n *Else) Pos() text.Pos    { return n.TokPos }
+func (n *Else) PosEnd() text.Pos { return n.Body.PosEnd() }
 
-func (n *While) Pos() token.Pos    { return n.TokPos }
-func (n *While) PosEnd() token.Pos { return n.Body.PosEnd() }
+func (n *While) Pos() text.Pos    { return n.TokPos }
+func (n *While) PosEnd() text.Pos { return n.Body.PosEnd() }
 
-func (n *For) Pos() token.Pos    { return n.TokPos }
-func (n *For) PosEnd() token.Pos { return n.Body.PosEnd() }
+func (n *For) Pos() text.Pos    { return n.TokPos }
+func (n *For) PosEnd() text.Pos { return n.Body.PosEnd() }
 
-func (n *Defer) Pos() token.Pos    { return n.TokPos }
-func (n *Defer) PosEnd() token.Pos { return n.X.PosEnd() }
+func (n *Defer) Pos() text.Pos    { return n.TokPos }
+func (n *Defer) PosEnd() text.Pos { return n.X.PosEnd() }
 
-func (n *Return) Pos() token.Pos { return n.TokPos }
-func (n *Return) PosEnd() token.Pos {
+func (n *Return) Pos() text.Pos { return n.TokPos }
+func (n *Return) PosEnd() text.Pos {
 	if n.X != nil {
 		return n.X.PosEnd()
 	}
 	const length = len("return") - 1
-	end := n.TokPos
-	end.Char += uint32(length)
-	return end
+	return text.PosFrom(n.TokPos.ID(), n.TokPos.Offset()+length)
 }
 
-func (n *Break) Pos() token.Pos { return n.TokPos }
-func (n *Break) PosEnd() token.Pos {
+func (n *Break) Pos() text.Pos { return n.TokPos }
+func (n *Break) PosEnd() text.Pos {
 	if n.Label != nil {
 		return n.Label.PosEnd()
 	}
-	const length = uint32(len("break") - 1)
-	end := n.TokPos
-	end.Char += length
-	return end
+	const length = len("break") - 1
+	return text.PosFrom(n.TokPos.ID(), n.TokPos.Offset()+length)
 }
 
-func (n *Continue) Pos() token.Pos { return n.TokPos }
-func (n *Continue) PosEnd() token.Pos {
+func (n *Continue) Pos() text.Pos { return n.TokPos }
+func (n *Continue) PosEnd() text.Pos {
 	if n.Label != nil {
 		return n.Label.PosEnd()
 	}
-	const length = uint32(len("continue") - 1)
-	end := n.TokPos
-	end.Char += length
-	return end
+	const length = len("continue") - 1
+	return text.PosFrom(n.TokPos.ID(), n.TokPos.Offset()+length)
 }
 
-func (n *Import) Pos() token.Pos    { return n.TokPos }
-func (n *Import) PosEnd() token.Pos { return n.Module.PosEnd() }
+func (n *Import) Pos() text.Pos    { return n.TokPos }
+func (n *Import) PosEnd() text.Pos { return n.Module.PosEnd() }
 
 //-----------------------------------------------
 // TODO name it

@@ -2,7 +2,6 @@ package checker
 
 import (
 	"errors"
-	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -10,6 +9,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/fatih/color"
 	"github.com/saffage/jet/config"
 	"github.com/saffage/jet/report"
 )
@@ -20,26 +20,29 @@ var (
 	ErrInvalidPackagePath       = errors.New("invalid package path")
 )
 
-var (
-	builtinFilename = "builtin"
-	cFilename       = "cc"
+const (
+	// This module contains the declaration of the Jet built-in types.
+	builtinModuleName  = "builtin"
+	builtinModuleIndex = 0
+
+	// This module contains C type declarations and other tools for
+	// interacting with the C backend.
+	cModuleName  = "c"
+	cModuleIndex = 1
 )
 
-var coreFilenames = [...]string{
-	builtinFilename,
-	cFilename,
-}
+const builtinFilesCount = len(builtinFiles)
 
-var coreModules = map[string]*Module{
-	builtinFilename: nil,
-}
+var (
+	builtinFiles = [...]string{
+		builtinModuleIndex: builtinModuleName,
+		cModuleIndex:       cModuleName,
+	}
 
-// This module contains the declaration of the Jet built-in types.
-// var ModuleBuiltin *Module = NewModule(NewScope(nil, "module builtin"), builtinFilename, nil)
-
-// This module contains C type declarations and other tools for
-// interacting with the C backend.
-// var ModuleC *Module = NewModule(NewScope(nil, "module c"), "c", nil)
+	builtinMutex      sync.RWMutex
+	builtinModules    [builtinFilesCount]*Module
+	builtinFileStatus [builtinFilesCount]FileStatus
+)
 
 var once sync.Once
 
@@ -47,6 +50,76 @@ func CheckBuiltInPackage() error {
 	var err error
 	once.Do(func() { err = checkBuiltInPackage() })
 	return err
+}
+
+type FileStatus byte
+
+const (
+	StatusUnchecked  FileStatus = iota // unchecked
+	StatusInProgress                   // in progress
+	StatusSuccess                      // checked
+	StatusFailure                      // failed to check
+	StatusIgnored                      // ignored
+	StatusMissing                      // missing
+)
+
+var (
+	uncheckedColor  = color.New(color.FgBlack)
+	inProgressColor = color.New(color.FgBlue)
+	successColor    = color.New(color.FgGreen)
+	failureColor    = color.New(color.FgRed)
+	ignoredColor    = color.New(color.FgBlack)
+	missingColor    = color.New(color.FgHiRed)
+)
+
+func statusColor(status FileStatus) *color.Color {
+	switch status {
+	case StatusUnchecked:
+		return uncheckedColor
+
+	case StatusInProgress:
+		return inProgressColor
+
+	case StatusSuccess:
+		return successColor
+
+	case StatusFailure:
+		return failureColor
+
+	case StatusIgnored:
+		return ignoredColor
+
+	case StatusMissing:
+		return missingColor
+
+	default:
+		panic("invalid enum value")
+	}
+}
+
+func statusChar(status FileStatus) rune {
+	switch status {
+	case StatusUnchecked:
+		return '-'
+
+	case StatusInProgress:
+		return '*'
+
+	case StatusSuccess:
+		return '✓'
+
+	case StatusFailure:
+		return '!'
+
+	case StatusIgnored:
+		return '#'
+
+	case StatusMissing:
+		return '?'
+
+	default:
+		panic("invalid enum value")
+	}
 }
 
 func checkBuiltInPackage() error {
@@ -79,11 +152,7 @@ func checkBuiltInPackage() error {
 		return errors.Join(errors.New("while reading package 'core'"), err)
 	}
 
-	files := map[string]string{}
-
-	for _, module := range coreFilenames {
-		files[module] = ""
-	}
+	var files [builtinFilesCount]string
 
 	for _, entry := range corePkgFiles {
 		if entry.Type().IsRegular() {
@@ -92,8 +161,8 @@ func checkBuiltInPackage() error {
 			base := name[:len(name)-len(ext)]
 
 			if ext == ".jet" {
-				if slices.Contains(coreFilenames[:], base) {
-					files[base] = filepath.Join(corePkgDir, name)
+				if fileIndex := slices.Index(builtinFiles[:], base); fileIndex != -1 {
+					files[fileIndex] = filepath.Join(corePkgDir, name)
 				}
 			}
 		}
@@ -102,22 +171,24 @@ func checkBuiltInPackage() error {
 	// FIXME test it
 	var info *report.Info
 	var errs = []error{nil}
+	var hasMissingFiles = false
 
-	for name, path := range files {
+	for index, path := range files {
 		if path == "" {
 			if info == nil {
-				info = &report.Info{Title: "missing 'core' package files"}
+				info = &report.Info{Title: "missing 'builtin' package files"}
 				errs[0] = info
 			}
 
-			info.Hints = append(info.Hints, report.HintInfo{
-				Message: fmt.Sprintf("module '%s' was not found in package 'core'", name),
-			})
+			builtinFileStatus[index] = StatusMissing
+			hasMissingFiles = true
 		} else {
+			builtinFileStatus[index] = StatusInProgress
 			file, err := config.ReadFile(path)
 
 			if err != nil {
 				errs = append(errs, report.Wrapf(err, "failed to read file: %s", path))
+				builtinFileStatus[index] = StatusFailure
 				continue
 			}
 
@@ -125,23 +196,39 @@ func checkBuiltInPackage() error {
 
 			if err != nil {
 				errs = append(errs, report.Wrapf(err, "failed to check file: %s", path))
+				builtinFileStatus[index] = StatusFailure
 				continue
 			}
 
-			coreModules[name] = module
+			builtinModules[index] = module
 
-			if name == builtinFilename {
+			if index == builtinModuleIndex {
 				for _, sym := range module.Scope.symbols {
 					_ = Global.Define(sym)
 				}
 			}
+
+			builtinFileStatus[index] = StatusSuccess
 		}
 	}
 
-	if info != nil && len(info.Hints) > 0 {
-		info.Hints = append(info.Hints, report.HintInfo{
-			Message:    "package 'core' have fixed file set that needs to be checked before anything else",
-			Suggestion: strings.Join(coreFilenames[:], "\n"),
+	if info != nil && hasMissingFiles {
+		buf := strings.Builder{}
+		buf.WriteString("package 'core' have fixed file set that needs to be " +
+			"checked before anything else")
+
+		for index, status := range builtinFileStatus {
+			buf.WriteString("\n\t")
+
+			module := builtinFiles[index]
+			color := statusColor(status)
+			char := statusChar(status)
+
+			color.Fprintf(&buf, "%c %s", char, module)
+		}
+
+		info.Suggestions = append(info.Suggestions, report.Suggestion{
+			Message: buf.String(),
 		})
 	}
 

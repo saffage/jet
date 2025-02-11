@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	"github.com/saffage/jet/ast"
+	"github.com/saffage/jet/config"
 	"github.com/saffage/jet/constant"
 	"github.com/saffage/jet/report"
 	"github.com/saffage/jet/types"
@@ -19,7 +20,14 @@ func (check *Checker) typeOfInternal(expr ast.Node) types.Type {
 		panic("got nil node for expr")
 
 	case *ast.Decl:
-		panic("unhandled declaration at " + expr.Pos().String())
+		pos := expr.Pos()
+		position, _ := config.File(pos.ID()).GetPosition(pos)
+		panic(fmt.Sprintf(
+			"unhandled declaration at %s:%d:%d",
+			position.Path,
+			position.Line,
+			position.Char,
+		))
 
 	case *ast.BadNode,
 		*ast.Comment,
