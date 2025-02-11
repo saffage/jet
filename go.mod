@@ -1,6 +1,6 @@
 module github.com/saffage/jet
 
-go 1.23
+go 1.24
 
 require (
 	github.com/davecgh/go-spew v1.1.1
@@ -18,5 +18,10 @@ require (
 	github.com/smarty/assertions v1.15.1 // indirect
 	github.com/smartystreets/goconvey v1.8.1 // indirect
 	github.com/xrash/smetrics v0.0.0-20240312152122-5f08fbb34913 // indirect
+	golang.org/x/mod v0.23.0 // indirect
+	golang.org/x/sync v0.11.0 // indirect
 	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/tools v0.30.0 // indirect
 )
+
+tool golang.org/x/tools/cmd/stringer
