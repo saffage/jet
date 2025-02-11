@@ -16,7 +16,7 @@ Currently it looks more like a transpiler than a compiler. The syntax of the lan
 # TODO
 
 - [ ] new syntax
-  - [ ] port parser, AST and type system from the `set-syntax-2` branch
+  - [ ] port parser, AST and type system from the `new-syntax-2` branch
     - [ ] rework checker to work with new AST & type system
     - [ ] rework code generator to work with new AST & type system
   - [ ] fix interpolated strings parsing (this must be done using nested scanner pass)
