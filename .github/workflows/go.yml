@@ -25,7 +25,7 @@ jobs:
       run: go mod verify
 
     - name: Install tools
-      run: go get tool
+      run: go install tool
 
     - name: Run 'go generate'
       run: go generate -v -x ./...
