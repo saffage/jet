@@ -8,11 +8,8 @@ type Kind byte
 const (
 	Illegal Kind = iota // illegal character
 
-	EOF        // end of file
-	Comment    // comment
-	Whitespace // whitespace
-	Tab        // horizontal tabulation
-	NewLine    // new line
+	EOF     // end of file
+	Comment // comment
 
 	Ident  // identifier
 	Int    // untyped int
@@ -63,36 +60,35 @@ const (
 
 	// End of position dependent tokens.
 
-	At           // operator '@'
-	Dollar       // operator '$'
-	QuestionMark // operator '?'
-	Arrow        // operator '->'
-	FatArrow     // operator '=>'
-	Dot          // operator '.'
-	Dot2         // operator '..'
-	Dot2Less     // operator '..<'
-	Ellipsis     // operator '...'
+	At       // operator '@'
+	Dollar   // operator '$'
+	Arrow    // operator '->'
+	FatArrow // operator '=>'
+	Dot      // operator '.'
+	Dot2     // operator '..'
+	Dot2Less // operator '..<'
+	Ellipsis // operator '...'
 
 	KwAnd      // keyword 'and'
-	KwOr       // keyword 'or'
-	KwStruct   // keyword 'struct'
-	KwEnum     // keyword 'enum'
-	KwMut      // keyword 'mut'
-	KwIf       // keyword 'if'
-	KwElse     // keyword 'else'
-	KwWhile    // keyword 'while'
-	KwFor      // keyword 'for'
-	KwIn       // keyword 'in'
 	KwAs       // keyword 'as'
-	KwDefer    // keyword 'defer'
-	KwReturn   // keyword 'return'
 	KwBreak    // keyword 'break'
 	KwContinue // keyword 'continue'
+	KwDefer    // keyword 'defer'
+	KwElse     // keyword 'else'
+	KwEnum     // keyword 'enum'
+	KwFor      // keyword 'for'
+	KwIf       // keyword 'if'
+	KwIn       // keyword 'in'
+	KwMut      // keyword 'mut'
+	KwOr       // keyword 'or'
+	KwReturn   // keyword 'return'
+	KwStruct   // keyword 'struct'
+	KwWhile    // keyword 'while'
 )
 
 const (
 	_special_begin = EOF
-	_special_end   = NewLine
+	_special_end   = Comment
 
 	_primary_begin = Ident
 	_primary_end   = String
@@ -104,19 +100,23 @@ const (
 	_operator_end   = Ellipsis
 
 	_keywords_begin = KwAnd
-	_keywords_end   = KwContinue
+	_keywords_end   = KwWhile
 
 	_kinds_last = _keywords_end
 )
 
+type stringLike interface {
+	~[]byte | ~string | ~rune | ~byte
+}
+
 // Returns `Illegal` if `s` is not a kind name.
-func KindFromString(s string) Kind {
+func KindFrom[T stringLike](s T) Kind {
+	x := string(s)
 	for kind, str := range representableKinds {
-		if str == s {
+		if str == x {
 			return kind
 		}
 	}
-
 	return Illegal
 }
 
@@ -185,65 +185,67 @@ func AllKinds() []Kind {
 }
 
 var representableKinds = map[Kind]string{
-	LParen:       "(",
-	RParen:       ")",
-	LCurly:       "{",
-	RCurly:       "}",
-	LBracket:     "[",
-	RBracket:     "]",
-	Dot:          ".",
-	Comma:        ",",
-	Colon:        ":",
-	Semicolon:    ";",
-	Eq:           "=",
-	Bang:         "!",
-	QuestionMark: "?",
-	EqOp:         "==",
-	NeOp:         "!=",
-	LtOp:         "<",
-	GtOp:         ">",
-	LeOp:         "<=",
-	GeOp:         ">=",
-	Arrow:        "->",
-	FatArrow:     "=>",
-	Shl:          "<<",
-	ShlEq:        "<<=",
-	Shr:          ">>",
-	ShrEq:        ">>=",
-	Plus:         "+",
-	Minus:        "-",
-	Asterisk:     "*",
-	Slash:        "/",
-	Percent:      "%",
-	Amp:          "&",
-	AmpEq:        "&=",
-	Pipe:         "|",
-	PipeEq:       "|=",
-	Caret:        "^",
-	CaretEq:      "^=",
-	At:           "@",
-	Dollar:       "$",
-	PlusEq:       "+=",
-	MinusEq:      "-=",
-	AsteriskEq:   "*=",
-	SlashEq:      "/=",
-	PercentEq:    "%=",
-	Dot2:         "..",
-	Dot2Less:     "..<",
-	Ellipsis:     "...",
-	KwAnd:        "and",
-	KwOr:         "or",
-	KwStruct:     "struct",
-	KwEnum:       "enum",
-	KwMut:        "mut",
-	KwIf:         "if",
-	KwElse:       "else",
-	KwWhile:      "while",
-	KwFor:        "for",
-	KwIn:         "in",
-	KwAs:         "as",
-	KwDefer:      "defer",
-	KwReturn:     "return",
-	KwBreak:      "break",
-	KwContinue:   "continue",
+	LParen:    "(",
+	RParen:    ")",
+	LCurly:    "{",
+	RCurly:    "}",
+	LBracket:  "[",
+	RBracket:  "]",
+	Comma:     ",",
+	Colon:     ":",
+	Semicolon: ";",
+
+	Eq:         "=",
+	EqOp:       "==",
+	Bang:       "!",
+	NeOp:       "!=",
+	LtOp:       "<",
+	LeOp:       "<=",
+	GtOp:       ">",
+	GeOp:       ">=",
+	Shl:        "<<",
+	ShlEq:      "<<=",
+	Shr:        ">>",
+	ShrEq:      ">>=",
+	Plus:       "+",
+	PlusEq:     "+=",
+	Minus:      "-",
+	MinusEq:    "-=",
+	Asterisk:   "*",
+	AsteriskEq: "*=",
+	Slash:      "/",
+	SlashEq:    "/=",
+	Percent:    "%",
+	PercentEq:  "%=",
+	Amp:        "&",
+	AmpEq:      "&=",
+	Pipe:       "|",
+	PipeEq:     "|=",
+	Caret:      "^",
+	CaretEq:    "^=",
+
+	At:       "@",
+	Dollar:   "$",
+	Arrow:    "->",
+	FatArrow: "=>",
+	Dot:      ".",
+	Dot2:     "..",
+	Dot2Less: "..<",
+	Ellipsis: "...",
+
+	KwAnd:      "and",
+	KwAs:       "as",
+	KwBreak:    "break",
+	KwContinue: "continue",
+	KwDefer:    "defer",
+	KwElse:     "else",
+	KwEnum:     "enum",
+	KwFor:      "for",
+	KwIf:       "if",
+	KwIn:       "in",
+	KwMut:      "mut",
+	KwOr:       "or",
+	KwReturn:   "return",
+	KwStruct:   "struct",
+	KwWhile:    "while",
 }

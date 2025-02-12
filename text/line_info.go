@@ -15,7 +15,7 @@ type Pos uint64
 
 func (p Pos) ID() FileID    { return FileID(p & fileid_mask) }
 func (p Pos) Offset() int   { return int((p >> fileid_bits) & offset_mask) }
-func (p Pos) IsValid() bool { return p != 0 }
+func (p Pos) IsValid() bool { return p != NoPos }
 
 type Span struct {
 	From Pos
@@ -23,8 +23,8 @@ type Span struct {
 }
 
 func (s Span) ID() FileID    { return s.From.ID() }
-func (s Span) IsPos() bool   { return s.From == s.To }
-func (s Span) IsValid() bool { return s.From.IsValid() && s.To.IsValid() }
+func (s Span) IsPos() bool   { return s.From.IsValid() && (!s.To.IsValid() || s.To == s.From) }
+func (s Span) IsValid() bool { return s.From.IsValid() }
 
 func PosFrom(id FileID, offset int) Pos {
 	if offset < 0 {

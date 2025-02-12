@@ -1,123 +1,223 @@
 package text
 
 import (
+	"bytes"
+	"io"
+	"iter"
 	"slices"
 	"strings"
 )
 
-type Scanner struct {
-	fileID FileID // Needed for token position.
-	buf    []byte // Actual data.
-	bufPos int    // Current character index.
+const eof = '\000'
+
+type UnexpectedCharError struct {
+	Expected string
+	Found    rune
+	Range    Span
 }
 
-func NewScanner(buffer []byte, id FileID) *Scanner {
+type Scanner struct {
+	fileID FileID
+	offset int
+	peeked rune
+	reader bytes.Reader
+}
+
+func NewScanner(input []byte, id FileID) *Scanner {
 	return &Scanner{
 		fileID: id,
-		buf:    buffer,
+		reader: *bytes.NewReader(input),
 	}
 }
 
-// Returns the current character.
-func (base *Scanner) Peek() byte {
-	return base.LookAhead(0)
-}
+func (s *Scanner) Next() (peeked rune) {
+	char, size, err := s.reader.ReadRune()
 
-// Returns the previous character. Maybe can panic.
-func (base *Scanner) Prev() byte {
-	return base.LookAhead(-1)
-}
-
-// Returns character with specified offset.
-func (base *Scanner) LookAhead(offset int) byte {
-	if base.bufPos+offset < len(base.buf) {
-		return base.buf[base.bufPos+offset]
+	if err != nil {
+		if err == io.EOF {
+			s.peeked = eof
+			return eof
+		}
+		// Unreachable because [bytes.Reader.ReadRune] can't return other error.
+		panic(err)
 	}
 
-	return '\000'
+	s.peeked = char
+	s.offset += size
+	return char
 }
 
-// Returns the current character and advances forward.
-func (base *Scanner) Advance() (previous byte) {
-	previous = base.Peek()
+// TODO rename, `Advance` is not clear enough
+func (s *Scanner) Advance() (previous rune) {
+	previous = s.peeked
+	s.Next()
+	return previous
+}
 
-	switch previous {
-	case '\000':
-		// Stay here
+func (s *Scanner) Peek() (peeked rune) {
+	if s.peeked == eof {
+		// Likely first read. Or last.
+		s.Next()
+	}
 
-	case '\n', '\r':
-		if base.Peek() == '\r' {
-			base.bufPos++
+	return s.peeked
+}
+
+func (s *Scanner) ExpectFunc(predicate func(peeked rune) (expected string, ok bool)) rune {
+	char := s.Peek()
+	expected, ok := predicate(char)
+
+	if !ok {
+		panic(UnexpectedCharError{
+			Range:    Span{From: s.Pos()},
+			Found:    char,
+			Expected: expected,
+		})
+	}
+
+	s.Next()
+	return char
+}
+
+func (s *Scanner) ExpectChar(chars ...rune) rune {
+	char, ok := s.Consume(chars...)
+
+	if !ok {
+		expected := []string{}
+
+		for _, char := range chars {
+			expected = append(expected, string(char))
 		}
 
-		if base.Peek() == '\n' {
-			base.bufPos++
-		}
+		panic(UnexpectedCharError{
+			Range:    Span{From: s.Pos()},
+			Found:    char,
+			Expected: strings.Join(expected, ", "),
+		})
+	}
 
-	default:
-		base.bufPos++
+	return char
+}
+
+func (s *Scanner) Expect(what string, chars ...rune) rune {
+	char, ok := s.Consume(chars...)
+
+	if !ok {
+		panic(UnexpectedCharError{
+			Range:    Span{From: s.Pos()},
+			Found:    char,
+			Expected: what,
+		})
+	}
+
+	return char
+}
+
+func (s *Scanner) Consume(chars ...rune) (char rune, consumed bool) {
+	char = s.Peek()
+
+	if len(chars) > 0 && slices.Contains(chars, char) {
+		s.Next()
+		consumed = true
 	}
 
 	return
 }
 
-// Consumes any of `chars` and returns true, otherwise returns false.
-func (base *Scanner) Consume(chars ...byte) bool {
-	if len(chars) == 0 || base.Match(chars...) {
-		base.Advance()
-		return true
+func (s *Scanner) ConsumeFunc(predicate func(peeked rune) bool) (char rune, consumed bool) {
+	char = s.Peek()
+
+	if predicate(char) {
+		s.Next()
+		consumed = true
 	}
 
-	return false
+	return
 }
+
+func (s *Scanner) Consumed(chars ...rune) bool {
+	_, consumed := s.Consume(chars...)
+	return consumed
+}
+
+//
+//
+//
 
 // Returns true if the current character matches `char`.
-func (base *Scanner) Match(chars ...byte) bool {
-	return slices.Contains(chars, base.Peek())
+func (s *Scanner) Match(chars ...rune) bool {
+	return slices.Contains(chars, s.Peek())
 }
 
-// Takes all `data` while not `stop`.
-//
-// Note: `function` should advance on every iteration.
-func (base *Scanner) Take(f func() (data []byte, stop bool)) string {
-	result := strings.Builder{}
-
-	for base.bufPos < len(base.buf) {
-		data, stop := f()
-		result.Write(data)
-
-		if stop {
-			break
+func (s *Scanner) Chars() iter.Seq[rune] {
+	return func(yield func(rune) bool) {
+		for {
+			char := s.Advance()
+			if !yield(char) || char == eof {
+				return
+			}
 		}
 	}
-
-	return result.String()
 }
 
-// Takes all characters while `predicate` returns true.
-func (s *Scanner) TakeWhile(predicate func(byte) bool) string {
-	return s.Take(func() ([]byte, bool) {
-		if predicate(s.Peek()) {
-			return []byte{s.Advance()}, false
+// Takes all characters while predicate returns true.
+func (s *Scanner) TakeWhile(predicate func(rune) bool) string {
+	buf := strings.Builder{}
+	for char := range s.Chars() {
+		if !predicate(char) {
+			break
 		}
-		return nil, true
-	})
+		buf.WriteRune(char)
+	}
+	return buf.String()
 }
 
-// Takes all characters while `predicate` returns false.
-func (base *Scanner) TakeUntil(predicate func(byte) bool) string {
-	return base.Take(func() ([]byte, bool) {
-		if !predicate(base.Peek()) {
-			return []byte{base.Advance()}, false
+// Takes all characters while predicate returns false.
+func (s *Scanner) TakeUntil(predicate func(rune) bool) string {
+	buf := strings.Builder{}
+	for char := range s.Chars() {
+		if predicate(char) {
+			break
 		}
-		return nil, true
-	})
+		buf.WriteRune(char)
+	}
+	return buf.String()
 }
 
-func (base *Scanner) Pos() Pos {
-	return PosFrom(base.fileID, base.bufPos)
+// Skips all characters while predicate returns true.
+func (s *Scanner) SkipWhile(predicate func(rune) bool) (skipped int) {
+	for char := range s.Chars() {
+		if !predicate(char) {
+			break
+		}
+		skipped++
+	}
+	return
 }
 
-func (base *Scanner) PrevPos() Pos {
-	return PosFrom(base.fileID, base.bufPos-1)
+// Skips all characters while predicate returns false.
+func (s *Scanner) SkipUntil(predicate func(rune) bool) (skipped int) {
+	for char := range s.Chars() {
+		if predicate(char) {
+			break
+		}
+		skipped++
+	}
+	return
+}
+
+func wrapPredicate(s *Scanner, predicate func(rune) bool, truth bool) func() (string, bool) {
+	return func() (data string, stop bool) {
+		if predicate(s.Peek()) == truth {
+			data = string(s.peeked)
+			s.Next()
+		} else {
+			stop = true
+		}
+		return
+	}
+}
+
+func (s *Scanner) Pos() Pos {
+	return PosFrom(s.fileID, s.offset)
 }

@@ -21,8 +21,8 @@ type Token struct {
 	Span text.Span
 }
 
-func (t Token) Precedence() int {
-	switch t.Kind {
+func (kind Kind) Precedence() int {
+	switch kind {
 	case Asterisk, Slash, Percent:
 		return 10
 
@@ -60,24 +60,24 @@ func (t Token) Precedence() int {
 	}
 }
 
-func IsIdentifierStartChar(char byte) bool {
+func IsIdentifierStartChar(char rune) bool {
 	return char == '_' ||
 		'a' <= char && char <= 'f' ||
 		'A' <= char && char <= 'F'
 }
 
-func IsIdentifierChar(char byte) bool {
+func IsIdentifierChar(char rune) bool {
 	return IsIdentifierStartChar(char) || '0' <= char && char <= '9'
 }
 
 func IsValidIdent(s string) (int, error) {
-	if !IsIdentifierStartChar(s[0]) {
+	if !IsIdentifierStartChar(rune(s[0])) {
 		return 0, ErrorFirstIsNotLetter
 	}
 
 	for i := 1; i < len(s); i++ {
 		switch {
-		case IsIdentifierChar(s[i]):
+		case IsIdentifierChar(rune(s[i])):
 			// OK
 
 		case utf8.RuneStart(s[i]):

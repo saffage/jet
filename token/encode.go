@@ -7,7 +7,7 @@ import (
 
 func (kind *Kind) UnmarshalJSON(data []byte) error {
 	name := string(data)
-	k := KindFromString(name)
+	k := KindFrom(name)
 
 	if k == Illegal {
 		return fmt.Errorf("invalid kind: '%s'", name)

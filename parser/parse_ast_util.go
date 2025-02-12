@@ -84,7 +84,6 @@ func (p *parser) skip(to ...token.Kind) (start, end text.Pos) {
 var (
 	endOfStmtKinds = []token.Kind{
 		token.Semicolon,
-		token.NewLine,
 	}
 
 	endOfExprKinds = append(endOfStmtKinds, []token.Kind{

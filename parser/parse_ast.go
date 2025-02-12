@@ -71,10 +71,6 @@ func (p *parser) parseStmt() ast.Node {
 		defer un(trace(p))
 	}
 
-	for p.tok.Kind == token.NewLine {
-		p.next()
-	}
-
 	if p.consume(token.Semicolon) != nil {
 		return &ast.Empty{DesiredPos: p.tok.Span.From}
 	}
@@ -147,14 +143,9 @@ func (p *parser) parseBinaryExpr(x ast.Node, precedence int) ast.Node {
 		}
 	}
 
-	for p.tok.Precedence() >= precedence {
+	for p.tok.Kind.Precedence() >= precedence {
 		tok := p.consume()
-
-		for p.tok.Kind == token.NewLine {
-			p.next()
-		}
-
-		y := p.parseBinaryExpr(nil, tok.Precedence()+1)
+		y := p.parseBinaryExpr(nil, tok.Kind.Precedence()+1)
 		if y == nil {
 			return nil
 		}
@@ -520,12 +511,6 @@ func (p *parser) parseDecl() ast.Node {
 	}
 
 	attributes := p.parseAttributeListNode()
-	if attributes != nil {
-		for p.tok.Kind == token.NewLine {
-			p.next()
-		}
-	}
-
 	mutLoc := text.NoPos
 	if tokMut := p.consume(token.KwMut); tokMut != nil {
 		mutLoc = tokMut.Span.From
@@ -826,9 +811,6 @@ func (p *parser) parseForLoopDecl() ast.Node {
 
 	attributes := p.parseAttributeListNode()
 	if attributes != nil {
-		for p.tok.Kind == token.NewLine {
-			p.next()
-		}
 	}
 
 	mutLoc := text.NoPos
@@ -994,7 +976,6 @@ func (p *parser) parseCurlyList(f parseFunc) *ast.CurlyList {
 		token.LCurly,
 		token.RCurly,
 		token.Semicolon,
-		token.NewLine,
 	); nodes != nil {
 		return &ast.CurlyList{
 			StmtList: &ast.StmtList{Nodes: nodes},
@@ -1036,7 +1017,6 @@ func (p *parser) parseDeclList() *ast.StmtList {
 		p.parseDecl,
 		token.EOF,
 		token.Semicolon,
-		token.NewLine,
 	); len(nodes) > 0 {
 		return &ast.StmtList{Nodes: nodes}
 	}
@@ -1065,11 +1045,6 @@ func (p *parser) listWithDelimiter(
 
 	// List = Expr {Separator Expr} [Separator]
 	for {
-		// Element can start at new line.
-		for p.tok.Kind == token.NewLine {
-			p.next()
-		}
-
 		// Possible cases:
 		//  - empty list `{}`
 		//  - list closes after separators `{x,}`

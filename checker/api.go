@@ -9,8 +9,8 @@ import (
 	"github.com/saffage/jet/config"
 	"github.com/saffage/jet/parser"
 	"github.com/saffage/jet/report"
-	"github.com/saffage/jet/scanner"
 	"github.com/saffage/jet/text"
+	"github.com/saffage/jet/token"
 )
 
 var ErrorEmptyFileBuf = errors.New("empty file buffer or invalid file ID")
@@ -56,14 +56,14 @@ func Check(file *text.File, stmts *ast.StmtList) (*Module, error) {
 }
 
 func CheckFile(file *text.File) (*Module, error) {
-	scannerFlags := scanner.SkipWhitespace | scanner.SkipComments
+	scannerFlags := token.SkipComments
 	parserFlags := parser.DefaultFlags
 
 	if config.TraceParser {
 		parserFlags |= parser.Trace
 	}
 
-	tokens, err := scanner.Scan(file.Content, file.ID, scannerFlags)
+	tokens, err := token.Scan(file.Content, file.ID, scannerFlags)
 	if err != nil {
 		return nil, err
 	}

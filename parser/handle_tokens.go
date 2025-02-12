@@ -43,11 +43,6 @@ func (p *parser) next() {
 		p.next()
 	}
 
-	if p.flags&SkipWhitespace != 0 &&
-		(p.tok.Kind == token.Whitespace || p.tok.Kind == token.Tab) {
-		p.next()
-	}
-
 	if p.flags&SkipIllegal != 0 && p.tok.Kind == token.Illegal {
 		p.next()
 	}

@@ -61,9 +61,8 @@ type Flags int
 
 const (
 	Trace Flags = 1 << iota
-	SkipWhitespace
 	SkipIllegal
 
 	NoFlags      = Flags(0)
-	DefaultFlags = SkipWhitespace | SkipIllegal
+	DefaultFlags = SkipIllegal
 )

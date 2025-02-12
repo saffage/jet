@@ -98,6 +98,7 @@ func statusColor(status FileStatus) *color.Color {
 }
 
 func statusChar(status FileStatus) rune {
+	// TODO show legend to user in verbose mode
 	switch status {
 	case StatusUnchecked:
 		return '-'

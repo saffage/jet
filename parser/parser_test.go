@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/saffage/jet/ast"
-	"github.com/saffage/jet/scanner"
 	"github.com/saffage/jet/token"
 )
 
@@ -70,7 +69,7 @@ type testCase struct {
 	expectedJSON string
 	error        error
 	isExpr       bool
-	scannerFlags scanner.Flags
+	scannerFlags token.ScannerFlags
 	parserFlags  Flags
 }
 
@@ -98,7 +97,7 @@ func TestExprs(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			tokens, scanError := scanner.Scan(([]byte)(c.input), 1, c.scannerFlags)
+			tokens, scanError := token.Scan(([]byte)(c.input), 1, c.scannerFlags)
 
 			if scanError != nil {
 				t.Fatalf("unexpected scan error: %s", scanError)
