@@ -17,12 +17,18 @@ Currently it looks more like a transpiler than a compiler. The syntax of the lan
 
 - [ ] new syntax
   - [ ] port parser, AST and type system from the `new-syntax-2` branch
+    - [ ] scanner
+      - [ ] tests
+    - [ ] parser
+      - [ ] tests
+    - [ ] type system
+      - [ ] tests
     - [ ] rework checker to work with new AST & type system
     - [ ] rework code generator to work with new AST & type system
-  - [ ] fix interpolated strings parsing (this must be done using nested scanner pass)
+  - [ ] fix interpolated strings parsing (this must be done with additional scanner pass)
 
 - [ ] cleanup
-  - [ ] remove unused API from `scanner`, `parser`, `checker` packages
+  - [x] remove unused API from `scanner`, `parser`, `checker` packages
     - [x] functions named `Must...()` are redundant
   - [ ] remove `constant` package
 
