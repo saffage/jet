@@ -10,53 +10,32 @@ const (
 
 	// Prefix.
 
-	OperatorNot       // !
-	OperatorNeg       // -
-	OperatorAddrOf    // &
-	OperatorMutAddrOf // &mut
-	OperatorPtr       // *
-	OperatorMutPtr    // *mut
-	OperatorEllipsis  // ...
+	OperatorNot // !
+	OperatorNeg // -
 
 	// Infix.
 
-	OperatorAssign         // =
-	OperatorAddAssign      // +=
-	OperatorSubAssign      // -=
-	OperatorMultAssign     // *=
-	OperatorDivAssign      // /=
-	OperatorModAssign      // %=
-	OperatorBitAndAssign   // &=
-	OperatorBitOrAssign    // |=
-	OperatorBitXorAssign   // ^=
-	OperatorBitShlAssign   // <<=
-	OperatorBitShrAssign   // >>=
-	OperatorAdd            // +
-	OperatorSub            // -
-	OperatorMul            // *
-	OperatorDiv            // /
-	OperatorMod            // %
-	OperatorEq             // ==
-	OperatorNe             // !=
-	OperatorLt             // <
-	OperatorLe             // <=
-	OperatorGt             // >
-	OperatorGe             // >=
-	OperatorBitAnd         // &
-	OperatorBitOr          // |
-	OperatorBitXor         // ^
-	OperatorBitShl         // <<
-	OperatorBitShr         // >>
-	OperatorAnd            // and
-	OperatorOr             // or
-	OperatorAs             // as
-	OperatorRangeInclusive // ..
-	OperatorRangeExclusive // ..<
+	OperatorAssign    // =
+	OperatorAdd       // +
+	OperatorAddAssign // +=
+	OperatorSub       // -
+	OperatorSubAssign // -=
+	OperatorMul       // *
+	OperatorMulAssign // *=
+	OperatorDiv       // /
+	OperatorDivAssign // /=
+	OperatorMod       // %
+	OperatorModAssign // %=
+	OperatorEq        // ==
+	OperatorNe        // !=
+	OperatorLt        // <
+	OperatorLe        // <=
+	OperatorGt        // >
+	OperatorGe        // >=
+	OperatorBitAnd    // &
+	OperatorBitOr     // |
 
 	// Postfix.
-
-	// OperatorTry    // ?
-	// OperatorUnwrap // !
 )
 
 func (kind OperatorKind) MarshalJSON() ([]byte, error) {

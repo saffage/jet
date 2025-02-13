@@ -129,7 +129,7 @@ var (
 		token.Eq:         ast.OperatorAssign,
 		token.PlusEq:     ast.OperatorAddAssign,
 		token.MinusEq:    ast.OperatorSubAssign,
-		token.AsteriskEq: ast.OperatorMultAssign,
+		token.AsteriskEq: ast.OperatorMulAssign,
 		token.SlashEq:    ast.OperatorDivAssign,
 		token.PercentEq:  ast.OperatorModAssign,
 		token.EqOp:       ast.OperatorEq,

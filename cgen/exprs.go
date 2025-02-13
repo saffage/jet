@@ -318,7 +318,7 @@ func (gen *generator) binary(x, y ast.Node, t types.Type, op ast.OperatorKind) s
 			gen.exprString(y),
 		)
 
-	case ast.OperatorMultAssign:
+	case ast.OperatorMulAssign:
 		return fmt.Sprintf("%s *= %s",
 			gen.exprString(x),
 			gen.exprString(y),

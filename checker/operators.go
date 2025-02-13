@@ -146,7 +146,7 @@ func (check *Checker) infixPrimitive(
 
 	case ast.OperatorAddAssign,
 		ast.OperatorSubAssign,
-		ast.OperatorMultAssign,
+		ast.OperatorMulAssign,
 		ast.OperatorDivAssign:
 		switch tOperandX.Kind() {
 		case types.KindUntypedInt,

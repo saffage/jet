@@ -13,9 +13,10 @@ func (p *Position) IsValid() bool { return p != nil && *p != Position{} }
 
 type Pos uint64
 
-func (p Pos) ID() FileID    { return FileID(p & fileid_mask) }
-func (p Pos) Offset() int   { return int((p >> fileid_bits) & offset_mask) }
-func (p Pos) IsValid() bool { return p != NoPos }
+func (p Pos) ID() FileID                { return FileID(p & fileid_mask) }
+func (p Pos) Offset() int               { return int((p >> fileid_bits) & offset_mask) }
+func (p Pos) IsValid() bool             { return p != NoPos }
+func (p Pos) WithOffset(offset int) Pos { return PosFrom(p.ID(), p.Offset()+offset) }
 
 type Span struct {
 	From Pos

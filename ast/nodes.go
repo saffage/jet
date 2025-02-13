@@ -1,23 +1,15 @@
 package ast
 
-import (
-	"strings"
-
-	"github.com/saffage/jet/text"
-)
+import "github.com/saffage/jet/text"
 
 type Node interface {
-	// Start of the entire tree. This position must also include nested nodes.
-	Pos() text.Pos
+	Range() text.Span
+	Renderer
+}
 
-	// End of the entire tree. This position must also include nested nodes.
-	PosEnd() text.Pos
-
-	// String representation of the node. This string must be equal to the
-	// code from which this tree was parsed (ignoring location).
-	Repr() string
-
-	implNode()
+type Ident interface {
+	Node
+	Name() string
 }
 
 //------------------------------------------------
@@ -29,99 +21,146 @@ type (
 		DesiredPos text.Pos
 	}
 
-	Empty struct {
-		DesiredPos text.Pos
+	Lower struct {
+		Data string
+		Span text.Span
 	}
 
-	Ident struct {
-		Name       string
-		Start, End text.Pos
+	Upper struct {
+		Data string
+		Span text.Span
+	}
+
+	Placeholder struct {
+		Data string
+		Span text.Span
 	}
 
 	Literal struct {
-		Value      string
-		Kind       LiteralKind
-		Start, End text.Pos
+		Value string
+		Kind  LiteralKind
+		Span  text.Span
 	}
 )
 
-func (n *BadNode) Pos() text.Pos    { return n.DesiredPos }
-func (n *BadNode) PosEnd() text.Pos { return n.DesiredPos }
+func (node *BadNode) Range() text.Span     { return text.Span{From: node.DesiredPos} }
+func (node *Lower) Range() text.Span       { return node.Span }
+func (node *Upper) Range() text.Span       { return node.Span }
+func (node *Placeholder) Range() text.Span { return node.Span }
+func (node *Literal) Range() text.Span     { return node.Span }
 
-func (n *Empty) Pos() text.Pos    { return n.DesiredPos }
-func (n *Empty) PosEnd() text.Pos { return n.DesiredPos }
-
-func (n *Ident) Pos() text.Pos    { return n.Start }
-func (n *Ident) PosEnd() text.Pos { return n.End }
-
-func (n *Literal) Pos() text.Pos    { return n.Start }
-func (n *Literal) PosEnd() text.Pos { return n.End }
+func (node *Lower) Name() string       { return node.Data }
+func (node *Upper) Name() string       { return node.Data }
+func (node *Placeholder) Name() string { return node.Data }
 
 //------------------------------------------------
 // Declaration
 //------------------------------------------------
 
 type (
-	Comment struct {
-		Value string
-		Start text.Pos
-		End   text.Pos
+	// CommentGroup struct {
+	// 	Comments []struct {
+	// 		Value string
+	// 		Span  text.Span
+	// 	}
+	// }
+
+	// Represents 'let name Type = value'.
+	LetDecl struct {
+		LetTok text.Pos
+		Decl   *Decl
+		Value  Node
 	}
 
-	CommentGroup struct {
-		Comments []*Comment
+	// Represents 'type Name = Type' or 'type Name(params) = Type'.
+	TypeAlias struct {
+		Name    *Upper
+		Args    *Parens `yaml:",omitempty"`
+		Expr    Node
+		TypeTok text.Pos
+		EqTok   text.Pos
 	}
 
-	// Represents '@[...attributes]'.
-	AttributeList struct {
-		List   *BracketList
-		TokLoc text.Pos // '@' token.
+	// Represents 'type Name { fields and variants }' or 'type Name(params) { fields and variants }'.
+	TypeDef struct {
+		Name    *Upper
+		Args    *Parens `yaml:",omitempty"`
+		Body    *Block
+		TypeTok text.Pos
 	}
 
-	// Represents '@[..attributes] mut name: T = expr'.
+	// Represents `name T`, `name`, `type name T`, `type name`.
 	Decl struct {
-		Attrs *AttributeList
-		Ident *Ident
-		Mut   text.Pos // optional
-		Type  Node     // optional
-		Value Node     // optional
+		Name    Ident    ``
+		Type    Node     `yaml:",omitempty"`
+		TypeTok text.Pos `yaml:",omitempty"`
+	}
+
+	// Represents 'Name' or 'Name(T)'.
+	Variant struct {
+		Name   *Upper
+		Params *Parens `yaml:",omitempty"` // Optional.
 	}
 )
 
-func (n *Comment) Pos() text.Pos    { return n.Start }
-func (n *Comment) PosEnd() text.Pos { return n.End }
+// func (node *CommentGroup) Range() text.Span {
+// 	if len(node.Comments) > 0 {
+// 		return text.Span{
+// 			From: node.Comments[0].Span.From,
+// 			To:   node.Comments[len(node.Comments)-1].Span.To,
+// 		}
+// 	}
 
-func (n *CommentGroup) Pos() text.Pos    { return n.Comments[0].Pos() }
-func (n *CommentGroup) PosEnd() text.Pos { return n.Comments[len(n.Comments)-1].PosEnd() }
+// 	return text.Span{}
+// }
 
-func (n *AttributeList) Pos() text.Pos    { return n.TokLoc }
-func (n *AttributeList) PosEnd() text.Pos { return n.List.PosEnd() }
-
-func (decl *Decl) Pos() text.Pos {
-	if decl.Mut.IsValid() {
-		return decl.Mut
+func (node *LetDecl) Range() text.Span {
+	return text.Span{
+		From: node.LetTok,
+		To:   node.Value.Range().To,
 	}
-	return decl.Ident.Pos()
 }
 
-func (decl *Decl) PosEnd() text.Pos {
-	if decl.Value != nil {
-		return decl.Value.PosEnd()
+func (node *TypeAlias) Range() text.Span {
+	return text.Span{
+		From: node.TypeTok,
+		To:   node.Expr.Range().To,
 	}
-	if decl.Type != nil {
-		return decl.Type.PosEnd()
-	}
-	return decl.Ident.PosEnd()
 }
 
-func (n *CommentGroup) Merged() string {
-	buf := strings.Builder{}
+func (node *TypeDef) Range() text.Span {
+	return text.Span{
+		From: node.TypeTok,
+		To:   node.Body.Range().To,
+	}
+}
 
-	for _, comment := range n.Comments {
-		buf.WriteString(comment.Value[1:])
+func (node *Decl) Range() (span text.Span) {
+	if node.TypeTok.IsValid() {
+		span.From = node.TypeTok
+	} else {
+		span.From = node.Name.Range().From
 	}
 
-	return buf.String()
+	if node.Type != nil {
+		span.To = node.Type.Range().To
+	} else {
+		span.To = node.Name.Range().To
+	}
+
+	return
+}
+
+func (node *Variant) Range() (span text.Span) {
+	span.From = node.Name.Range().From
+
+	if node.Params != nil {
+		span.To = node.Params.Range().To
+	} else {
+		span.To = node.Name.Span.To
+	}
+
+	return
 }
 
 //------------------------------------------------
@@ -129,319 +168,237 @@ func (n *CommentGroup) Merged() string {
 //------------------------------------------------
 
 type (
-	// Represents '[...args]x'.
-	ArrayType struct {
+	Label struct {
+		Name *Lower
 		X    Node
-		Args *BracketList
 	}
 
-	// Represents 'struct {...fields}'.
-	StructType struct {
-		Fields []*Decl
-		TokPos text.Pos
-		Open   text.Pos
-		Close  text.Pos
-	}
-
-	// Represents 'enum {...fields}'.
-	EnumType struct {
-		Fields []*Ident
-		TokPos text.Pos
-		Open   text.Pos
-		Close  text.Pos
-	}
-
-	// Represents '() -> ()'.
+	// Represents '() T with Effects'.
 	Signature struct {
-		Params *ParenList
-		Result Node // can be nil in some cases
+		Params  *Parens
+		Result  Node `yaml:",omitempty"` // can be nil in some cases
+		WithTok text.Pos
 	}
 
-	// Represents an identifier, prefixed with a '$' sign.
-	BuiltIn struct {
-		*Ident
-		TokPos text.Pos // '$' token.
+	// Represents 'fn() R = expr'
+	Function struct {
+		Signature *Signature
+		Body      Node
+		FnTok     text.Pos
+		EqTok     text.Pos
 	}
 
 	// Represents 'x(...args)'.
 	Call struct {
 		X    Node
-		Args *ParenList
-	}
-
-	// Represents 'x[...args]'.
-	Index struct {
-		X    Node
-		Args *BracketList
-	}
-
-	// Represents '(...params) -> T {...}' or '() expr'
-	Function struct {
-		*Signature
-		Body Node
+		Args *Parens
 	}
 
 	// Represents 'x.y'.
 	Dot struct {
 		X      Node
-		Y      *Ident
+		Y      Node
 		DotPos text.Pos
 	}
 
-	// Represents 'x.*'.
-	Deref struct {
-		X       Node
-		DotPos  text.Pos
-		StarPos text.Pos
-	}
-
-	// Represents 'x OP y', where 'OP' is an operator.
+	// Represents 'x OP y, where 'OP' is an operator.
 	Op struct {
-		X     Node
-		Y     Node
-		Start text.Pos
-		End   text.Pos
-		Kind  OperatorKind
+		X    Node `yaml:",omitempty"`
+		Y    Node `yaml:",omitempty"`
+		Span text.Span
+		Kind OperatorKind
 	}
 )
 
-func (n *ArrayType) Pos() text.Pos    { return n.Args.Pos() }
-func (n *ArrayType) PosEnd() text.Pos { return n.X.PosEnd() }
-
-func (n *StructType) Pos() text.Pos    { return n.TokPos }
-func (n *StructType) PosEnd() text.Pos { return n.Close }
-
-func (n *EnumType) Pos() text.Pos    { return n.TokPos }
-func (n *EnumType) PosEnd() text.Pos { return n.Close }
-
-func (n *Signature) Pos() text.Pos    { return n.Params.Pos() }
-func (n *Signature) PosEnd() text.Pos { return n.Result.PosEnd() }
-
-func (n *BuiltIn) Pos() text.Pos    { return n.TokPos }
-func (n *BuiltIn) PosEnd() text.Pos { return n.Ident.PosEnd() }
-
-func (n *Call) Pos() text.Pos    { return n.X.Pos() }
-func (n *Call) PosEnd() text.Pos { return n.Args.PosEnd() }
-
-func (n *Index) Pos() text.Pos    { return n.X.Pos() }
-func (n *Index) PosEnd() text.Pos { return n.Args.PosEnd() }
-
-func (n *Function) Pos() text.Pos    { return n.Signature.Pos() }
-func (n *Function) PosEnd() text.Pos { return n.Body.PosEnd() }
-
-func (n *Dot) Pos() text.Pos    { return n.X.Pos() }
-func (n *Dot) PosEnd() text.Pos { return n.Y.PosEnd() }
-
-func (n *Deref) Pos() text.Pos    { return n.X.Pos() }
-func (n *Deref) PosEnd() text.Pos { return n.StarPos }
-
-func (n *Op) Pos() text.Pos {
-	if n.X != nil {
-		return n.X.Pos()
+func (node *Label) Range() text.Span {
+	return text.Span{
+		From: node.Name.Range().From,
+		To:   node.X.Range().To,
 	}
-	return n.Start
 }
 
-func (n *Op) PosEnd() text.Pos {
-	if n.Y != nil {
-		return n.Y.PosEnd()
+func (node *Label) Label() *Lower {
+	if node.Name != nil {
+		return node.Name
 	}
-	return n.End
+
+	switch x := node.X.(type) {
+	case *Lower:
+		return x
+
+	case *Decl:
+		if name, _ := x.Name.(*Lower); name != nil {
+			return name
+		}
+	}
+
+	return nil
 }
+
+func (node *Signature) Range() (span text.Span) {
+	span.From = node.Params.Range().From
+
+	if node.Result != nil {
+		span.To = node.Result.Range().To
+	} else {
+		span.To = node.Params.Range().To
+	}
+
+	return
+}
+
+func (node *Function) Range() text.Span {
+	return text.Span{
+		From: node.FnTok,
+		To:   node.Body.Range().To,
+	}
+}
+
+func (node *Call) Range() text.Span {
+	return text.Span{
+		From: node.X.Range().From,
+		To:   node.Args.Range().To,
+	}
+}
+
+func (node *Dot) Range() text.Span {
+	return text.Span{
+		From: node.X.Range().From,
+		To:   node.Y.Range().To,
+	}
+}
+
+func (node *Op) Range() (span text.Span) {
+	if node.X != nil {
+		span.From = node.X.Range().From
+	} else {
+		span.From = node.Span.From
+	}
+
+	if node.Y != nil {
+		span.To = node.Y.Range().To
+	} else {
+		span.To = node.Span.To
+	}
+
+	return
+}
+
+func (node *Op) IsInfix() bool   { return node.X != nil && node.Y != nil }
+func (node *Op) IsPrefix() bool  { return node.X != nil && node.Y == nil }
+func (node *Op) IsPostfix() bool { return node.X == nil && node.Y != nil }
+func (node *Op) IsName() bool    { return node.X == nil && node.Y == nil }
 
 //------------------------------------------------
 // Lists
 //------------------------------------------------
 
 type (
-	// Represents sequence of nodes, separated by comma.
+	// Represents '[a, b, c]'.
 	List struct {
 		Nodes []Node
+		Span  text.Span
 	}
 
-	// Represents sequence of nodes, separated by semicolon\new line.
-	StmtList struct {
-		Nodes []Node
+	Stmts struct {
+		Items      []Node
+		DesiredPos text.Pos
 	}
 
-	// Represents '[a, b, c]'.
-	BracketList struct {
-		*List
-		Open, Close text.Pos // '[' and ']'.
+	// Represents '{ a; b; c }'.
+	Block struct {
+		Stmts Stmts
+		Span  text.Span
 	}
 
 	// Represents '(a, b, c)'.
-	ParenList struct {
-		*List
-		Open, Close text.Pos // '(' and ')'.
-	}
-
-	// Represents '{a; b; c}'.
-	CurlyList struct {
-		*StmtList
-		Open, Close text.Pos // '{' and '}'.
+	Parens struct {
+		Nodes []Node
+		Span  text.Span
 	}
 )
 
-func (n *List) Pos() text.Pos    { return n.Nodes[0].Pos() }
-func (n *List) PosEnd() text.Pos { return n.Nodes[len(n.Nodes)-1].PosEnd() }
+func (node *List) Range() text.Span   { return node.Span }
+func (node *Block) Range() text.Span  { return node.Span }
+func (node *Parens) Range() text.Span { return node.Span }
 
-func (n *StmtList) Pos() text.Pos    { return n.Nodes[0].Pos() }
-func (n *StmtList) PosEnd() text.Pos { return n.Nodes[len(n.Nodes)-1].PosEnd() }
-
-func (n *BracketList) Pos() text.Pos    { return n.Open }
-func (n *BracketList) PosEnd() text.Pos { return n.Close }
-
-func (n *ParenList) Pos() text.Pos    { return n.Open }
-func (n *ParenList) PosEnd() text.Pos { return n.Close }
-
-func (n *CurlyList) Pos() text.Pos    { return n.Open }
-func (n *CurlyList) PosEnd() text.Pos { return n.Close }
+func (stmts *Stmts) Range() text.Span {
+	if len(stmts.Items) > 0 {
+		return text.Span{
+			From: stmts.Items[0].Range().From,
+			To:   stmts.Items[len(stmts.Items)-1].Range().To,
+		}
+	}
+	return text.Span{From: stmts.DesiredPos}
+}
 
 //------------------------------------------------
 // Language constructions
 //------------------------------------------------
 
 type (
-	If struct {
-		Cond   Node
-		Body   *CurlyList
-		Else   *Else
-		TokPos text.Pos // 'if' token.
+	When struct {
+		Expr    Node `yaml:",omitempty"`
+		Body    *Block
+		WhenTok text.Pos
 	}
 
-	Else struct {
-		Body   Node     // Can be either [*If] or [*CurlyList].
-		TokPos text.Pos // 'else' token.
-	}
-
-	While struct {
-		Cond   Node
-		Body   *CurlyList
-		TokPos text.Pos // 'while' token.
-	}
-
-	For struct {
-		DeclList *List
-		IterExpr Node
-		Body     *CurlyList
-		TokPos   text.Pos // 'for' token.
-	}
-
-	Defer struct {
-		X      Node
-		TokPos text.Pos // 'defer' token.
-	}
-
-	Return struct {
-		X      Node     // optional
-		TokPos text.Pos // 'return' token.
-	}
-
-	Break struct {
-		Label  *Ident
-		TokPos text.Pos
-	}
-
-	Continue struct {
-		Label  *Ident
-		TokPos text.Pos
-	}
-
-	Import struct {
-		Module *Ident
-		TokPos text.Pos
+	Extern struct {
+		Args      *Parens `yaml:",omitempty"`
+		ExternTok text.Pos
 	}
 )
 
-func (n *If) Pos() text.Pos { return n.TokPos }
-func (n *If) PosEnd() text.Pos {
-	if n.Else != nil {
-		return n.Else.PosEnd()
+func (node *When) Range() text.Span {
+	return text.Span{
+		From: node.WhenTok,
+		To:   node.Body.Range().To,
 	}
-	return n.Body.PosEnd()
 }
 
-func (n *Else) Pos() text.Pos    { return n.TokPos }
-func (n *Else) PosEnd() text.Pos { return n.Body.PosEnd() }
+func (node *Extern) Range() text.Span {
+	span := text.Span{From: node.ExternTok}
 
-func (n *While) Pos() text.Pos    { return n.TokPos }
-func (n *While) PosEnd() text.Pos { return n.Body.PosEnd() }
-
-func (n *For) Pos() text.Pos    { return n.TokPos }
-func (n *For) PosEnd() text.Pos { return n.Body.PosEnd() }
-
-func (n *Defer) Pos() text.Pos    { return n.TokPos }
-func (n *Defer) PosEnd() text.Pos { return n.X.PosEnd() }
-
-func (n *Return) Pos() text.Pos { return n.TokPos }
-func (n *Return) PosEnd() text.Pos {
-	if n.X != nil {
-		return n.X.PosEnd()
+	if node.Args != nil {
+		span.To = node.Args.Range().To
+	} else {
+		span.To = node.ExternTok.WithOffset(len("extern") - 1)
 	}
-	const length = len("return") - 1
-	return text.PosFrom(n.TokPos.ID(), n.TokPos.Offset()+length)
+
+	return span
 }
 
-func (n *Break) Pos() text.Pos { return n.TokPos }
-func (n *Break) PosEnd() text.Pos {
-	if n.Label != nil {
-		return n.Label.PosEnd()
-	}
-	const length = len("break") - 1
-	return text.PosFrom(n.TokPos.ID(), n.TokPos.Offset()+length)
-}
+var (
+	_ Node = (*BadNode)(nil)
+	_ Node = (*Lower)(nil)
+	_ Node = (*Upper)(nil)
+	_ Node = (*Placeholder)(nil)
+	_ Node = (*Literal)(nil)
 
-func (n *Continue) Pos() text.Pos { return n.TokPos }
-func (n *Continue) PosEnd() text.Pos {
-	if n.Label != nil {
-		return n.Label.PosEnd()
-	}
-	const length = len("continue") - 1
-	return text.PosFrom(n.TokPos.ID(), n.TokPos.Offset()+length)
-}
+	_ Node = (*LetDecl)(nil)
+	_ Node = (*TypeAlias)(nil)
+	_ Node = (*TypeDef)(nil)
+	_ Node = (*Decl)(nil)
+	_ Node = (*Variant)(nil)
 
-func (n *Import) Pos() text.Pos    { return n.TokPos }
-func (n *Import) PosEnd() text.Pos { return n.Module.PosEnd() }
+	_ Node = (*Label)(nil)
+	_ Node = (*Signature)(nil)
+	_ Node = (*Function)(nil)
+	_ Node = (*Call)(nil)
+	_ Node = (*Dot)(nil)
+	_ Node = (*Op)(nil)
 
-//-----------------------------------------------
-// TODO name it
-//-----------------------------------------------
+	_ Node = (*List)(nil)
+	_ Node = (*Stmts)(nil)
+	_ Node = (*Block)(nil)
+	_ Node = (*Parens)(nil)
 
-func (*BadNode) implNode() {}
-func (*Empty) implNode()   {}
-func (*Ident) implNode()   {}
-func (*Literal) implNode() {}
+	_ Node = (*When)(nil)
+	_ Node = (*Extern)(nil)
+)
 
-func (*Comment) implNode()       {}
-func (*CommentGroup) implNode()  {}
-func (*AttributeList) implNode() {}
-func (*Decl) implNode()          {}
-
-func (*ArrayType) implNode()  {}
-func (*StructType) implNode() {}
-func (*EnumType) implNode()   {}
-func (*Signature) implNode()  {}
-func (*BuiltIn) implNode()    {}
-func (*Call) implNode()       {}
-func (*Index) implNode()      {}
-func (*Function) implNode()   {}
-func (*Dot) implNode()        {}
-func (*Deref) implNode()      {}
-func (*Op) implNode()         {}
-
-func (*List) implNode()        {}
-func (*StmtList) implNode()    {}
-func (*BracketList) implNode() {}
-func (*ParenList) implNode()   {}
-func (*CurlyList) implNode()   {}
-
-func (*If) implNode()       {}
-func (*Else) implNode()     {}
-func (*While) implNode()    {}
-func (*For) implNode()      {}
-func (*Defer) implNode()    {}
-func (*Return) implNode()   {}
-func (*Break) implNode()    {}
-func (*Continue) implNode() {}
-func (*Import) implNode()   {}
+var (
+	_ Ident = (*Lower)(nil)
+	_ Ident = (*Upper)(nil)
+	_ Ident = (*Placeholder)(nil)
+)
