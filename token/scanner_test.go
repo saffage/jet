@@ -11,15 +11,27 @@ func TestSelectToken(t *testing.T) {
 
 func testTokenKinds(t *testing.T, input string, expectedKinds ...Kind) {
 	scanner := New([]byte(input), 0, NoFlags)
-	toks := scanner.AllTokens()
+	i := 0
 
-	if len(expectedKinds) != len(toks) {
-		t.Errorf("lengths are not the same; want %d, have %d", len(expectedKinds), len(toks))
+	for tok := range scanner.Tokens() {
+		if i >= len(expectedKinds) {
+			break
+		}
+		if tok.Kind != expectedKinds[i] {
+			t.Errorf(
+				"unexpected token; want %s, have %s",
+				expectedKinds[i].String(),
+				tok.Kind.String(),
+			)
+		}
+		i++
 	}
 
-	for i := range toks {
-		if toks[i].Kind != expectedKinds[i] {
-			t.Errorf("unexpected token; want %s, have %s", expectedKinds[i].String(), toks[i].Kind.String())
-		}
+	if len(expectedKinds) != i {
+		t.Errorf(
+			"lengths are not the same; want %d, have %d",
+			len(expectedKinds),
+			i,
+		)
 	}
 }
