@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	_ "go/token"
 	"strings"
 	"unicode"
 
@@ -41,6 +40,13 @@ type Scanner struct {
 	text.Scanner
 	errors []error
 	flags  ScannerFlags
+}
+
+// TODO remove it
+type Token struct {
+	Kind Kind
+	Data string
+	Span text.Span
 }
 
 func New(input []byte, id text.FileID, flags ScannerFlags) *Scanner {

@@ -8,6 +8,45 @@ import (
 	"github.com/saffage/jet/token"
 )
 
+func precedence(kind token.Kind) int {
+	switch kind {
+	case token.Asterisk, token.Slash, token.Percent:
+		return 10
+
+	case token.Plus, token.Minus:
+		return 9
+
+	case token.Shl, token.Shr:
+		return 8
+
+	case token.Amp, token.Pipe, token.Caret:
+		return 7
+
+	case token.EqOp, token.NeOp, token.LtOp, token.GtOp, token.LeOp, token.GeOp:
+		return 6
+
+	case token.KwAnd:
+		return 5
+
+	case token.KwOr:
+		return 4
+
+	case token.KwAs:
+		return 3
+
+	case token.Dot2, token.Dot2Less:
+		return 2
+
+		// TODO maybe add 'Arrow' & 'FatArrow' operators
+
+	case token.Eq, token.PlusEq, token.MinusEq, token.AsteriskEq, token.SlashEq, token.PercentEq, token.AmpEq, token.PipeEq, token.CaretEq, token.ShlEq, token.ShrEq:
+		return 1
+
+	default:
+		return 0
+	}
+}
+
 func (p *parser) parseIdentNode() *ast.Ident {
 	if p.flags&Trace != 0 {
 		defer un(trace(p))

@@ -122,26 +122,13 @@ func KindFrom[T stringLike](s T) Kind {
 	return Illegal
 }
 
-func (kind Kind) IsSpecial() bool {
-	return _special_begin <= kind && kind <= _special_end
-}
+func (kind Kind) IsSpecial() bool     { return _special_begin <= kind && kind <= _special_end }
+func (kind Kind) IsPrimary() bool     { return _primary_begin <= kind && kind <= _primary_end }
+func (kind Kind) IsPunctuation() bool { return _punctuation_begin <= kind && kind <= _punctuation_end }
+func (kind Kind) IsOperator() bool    { return _operator_begin <= kind && kind <= _operator_end }
+func (kind Kind) IsKeyword() bool     { return _keywords_begin <= kind && kind <= _keywords_end }
 
-func (kind Kind) IsPrimary() bool {
-	return _primary_begin <= kind && kind <= _primary_end
-}
-
-func (kind Kind) IsPunctuation() bool {
-	return _punctuation_begin <= kind && kind <= _punctuation_end
-}
-
-func (kind Kind) IsOperator() bool {
-	return _operator_begin <= kind && kind <= _operator_end
-}
-
-func (kind Kind) IsKeyword() bool {
-	return _keywords_begin <= kind && kind <= _keywords_end
-}
-
+// TODO rename to `Render`, maybe add `Renderer` interface to [report] package?
 func (kind Kind) Repr() string {
 	s, ok := representableKinds[kind]
 
@@ -150,40 +137,6 @@ func (kind Kind) Repr() string {
 	}
 
 	return s
-}
-
-func getKinds(begin, end int) []Kind {
-	kinds := make([]Kind, 0, end-begin+1)
-
-	for kind := begin; kind <= end; kind++ {
-		kinds = append(kinds, Kind(kind))
-	}
-
-	return kinds
-}
-
-func SpecialKinds() []Kind {
-	return getKinds(int(_special_begin), int(_special_end))
-}
-
-func PrimaryKinds() []Kind {
-	return getKinds(int(_primary_begin), int(_primary_end))
-}
-
-func PunctuationKinds() []Kind {
-	return getKinds(int(_punctuation_begin), int(_punctuation_end))
-}
-
-func OperatorKinds() []Kind {
-	return getKinds(int(_operator_begin), int(_operator_end))
-}
-
-func KeywordKinds() []Kind {
-	return getKinds(int(_keywords_begin), int(_keywords_end))
-}
-
-func AllKinds() []Kind {
-	return getKinds(0, int(_kinds_last))
 }
 
 var representableKinds = map[Kind]string{

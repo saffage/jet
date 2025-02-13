@@ -35,3 +35,20 @@ func TestKindRepr(t *testing.T) {
 		t.Errorf("\nextra token representations: %v", extraKinds)
 	}
 }
+
+func getKinds(begin, end int) []Kind {
+	kinds := make([]Kind, 0, end-begin+1)
+
+	for kind := begin; kind <= end; kind++ {
+		kinds = append(kinds, Kind(kind))
+	}
+
+	return kinds
+}
+
+func SpecialKinds() []Kind     { return getKinds(int(_special_begin), int(_special_end)) }
+func PrimaryKinds() []Kind     { return getKinds(int(_primary_begin), int(_primary_end)) }
+func PunctuationKinds() []Kind { return getKinds(int(_punctuation_begin), int(_punctuation_end)) }
+func OperatorKinds() []Kind    { return getKinds(int(_operator_begin), int(_operator_end)) }
+func KeywordKinds() []Kind     { return getKinds(int(_keywords_begin), int(_keywords_end)) }
+func AllKinds() []Kind         { return getKinds(0, int(_kinds_last)) }
