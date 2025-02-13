@@ -11,10 +11,12 @@ const (
 	EOF     // end of file
 	Comment // comment
 
-	Ident  // identifier
-	Int    // untyped int
-	Float  // untyped float
-	String // untyped string
+	LowercaseIdent   // lowercase identifier
+	UppercaseIdent   // uppercase identifier
+	IdentPlaceholder // identifier placeholder
+	Int              // untyped int
+	Float            // untyped float
+	String           // untyped string
 
 	LParen    // '('
 	RParen    // ')'
@@ -90,7 +92,7 @@ const (
 	_special_begin = EOF
 	_special_end   = Comment
 
-	_primary_begin = Ident
+	_primary_begin = LowercaseIdent
 	_primary_end   = String
 
 	_punctuation_begin = LParen

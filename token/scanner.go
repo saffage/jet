@@ -103,21 +103,30 @@ func (s *Scanner) NextToken() Token {
 
 		case IsIdentifierStartChar(s.Peek()):
 			identifier := s.TakeWhile(IsIdentifierChar)
+			kind := KindFrom(identifier)
 
-			if kind := KindFrom(identifier); kind != Illegal {
-				tok = Token{Kind: kind}
-			} else {
-				tok = Token{
-					Kind: Ident,
-					Data: identifier,
-				}
+			switch {
+			case kind != Illegal:
+				// Keyword.
+				tok.Kind = kind
+
+			case unicode.IsLower(rune(identifier[0])):
+				tok.Kind = LowercaseIdent
+				tok.Data = identifier
 
 				if s.Match('"', '\'') {
 					strTok := s.scanString()
-					strTok.Span.From = tok.Span.From
-					strTok.Data = tok.Data + strTok.Data
-					tok = strTok
+					tok.Data += strTok.Data
+					tok.Span.To = strTok.Span.To
 				}
+
+			case unicode.IsUpper(rune(identifier[0])):
+				tok.Kind = UppercaseIdent
+				tok.Data = identifier
+
+			case identifier[0] == '_':
+				tok.Kind = IdentPlaceholder
+				tok.Data = identifier
 			}
 
 		case s.Match('"', '\''):
