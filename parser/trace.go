@@ -18,7 +18,7 @@ func printTrace(p *parser, args ...any) {
 	// 	fmt.Printf("%6d:%4d: ", pos.Line, pos.Char)
 	// }
 
-	for i := 0; i < p.indent; i++ {
+	for range p.traceIndent {
 		fmt.Print("  ")
 	}
 
@@ -55,10 +55,8 @@ func trace(p *parser) *parser {
 	}
 
 	printTrace(p, caller)
-	p.indent++
+	p.traceIndent++
 	return p
 }
 
-func un(p *parser) {
-	p.indent--
-}
+func un(p *parser) { p.traceIndent-- }

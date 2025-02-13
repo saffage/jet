@@ -249,6 +249,30 @@ func (node *When) Render(buf *strings.Builder) {
 	node.Body.Render(buf)
 }
 
+func (node *Case) Render(buf *strings.Builder) {
+	node.Pattern.Render(buf)
+
+	buf.WriteString(" -> ")
+
+	node.Expr.Render(buf)
+}
+
+func (node *Spread) Render(buf *strings.Builder) {
+	buf.WriteString("..")
+
+	if node.Expr != nil {
+		node.Expr.Render(buf)
+	}
+}
+
+func (node *As) Render(buf *strings.Builder) {
+	node.Lhs.Render(buf)
+
+	buf.WriteString(" as ")
+
+	node.Rhs.Render(buf)
+}
+
 func (node *Extern) Render(buf *strings.Builder) {
 	buf.WriteString("extern")
 

@@ -44,5 +44,8 @@ type (
 	ParensVisitor interface{ VisitParens(*Parens) }
 
 	WhenVisitor   interface{ VisitWhen(*When) }
+	CaseVisitor   interface{ VisitCase(*Case) }
+	SpreadVisitor interface{ VisitSpread(*Spread) }
+	AsVisitor     interface{ VisitAs(*As) }
 	ExternVisitor interface{ VisitExtern(*Extern) }
 )

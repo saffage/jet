@@ -11,111 +11,101 @@ import (
 )
 
 var (
-	ErrorInvalidBinaryOperator  = errors.New("invalid binary operator")
-	ErrorBracketIsNeverClosed   = errors.New("bracket is never closed")
-	ErrorUnterminatedExpr       = errors.New("unterminated expression")
-	ErrorUnexpectedToken        = errors.New("unexpected token")
-	ErrorExpectedExpr           = errors.New("expected expression")
-	ErrorExpectedOperand        = errors.New("expected operand")
-	ErrorExpectedBlock          = errors.New("expected block")
-	ErrorExpectedBlockOrIf      = errors.New("expected block of 'if' clause")
-	ErrorExpectedType           = errors.New("expected type")
-	ErrorExpectedTypeName       = errors.New("expected type name")
-	ErrorExpectedTypeOrValue    = errors.New("expected type or value")
-	ErrorExpectedDecl           = errors.New("expected declaration")
-	ErrorExpectedDeclAfterAttrs = errors.New("expected declaration after attribute list")
-	ErrorExpectedIdent          = errors.New("expected identifier")
-	ErrorExpectedIdentAfterMut  = errors.New("expected identifier after 'mut'")
+	ErrExpectedBlock   = errors.New("expected block")
+	ErrExpectedDecl    = errors.New("expected declaration")
+	ErrExpectedExpr    = errors.New("expected expression")
+	ErrExpectedIdent   = errors.New("expected identifier")
+	ErrExpectedOperand = errors.New("expected operand")
+	ErrExpectedPattern = errors.New("expected pattern")
+	ErrExpectedType    = errors.New("expected type")
+	// ErrExpectedTypeOrBlockError = errors.New("expected type or block")
+	// ErrExpectedTypeVar          = errors.New("expected type variable")
+	ErrUnexpectedToken      = errors.New("unexpected token")
+	ErrUnimplementedFeature = errors.New("unimplemented feature")
+	ErrUnterminatedExpr     = errors.New("unterminated expression")
+	ErrUnterminatedList     = errors.New("unterminated list, bracket is never closed")
+	// ErrInvalidBinaryOperator    = errors.New("invalid binary operator")
 )
 
-type Error struct {
-	err error
+func errExpectedBlock(span text.Span) error                { return nil }
+func errExpectedDecl(span text.Span) error                 { return nil }
+func errExpectedExpr(span text.Span) error                 { return nil }
+func errExpectedOperand(span text.Span) error              { return nil }
+func errExpectedPattern(span text.Span, pattern int) error { return nil }
+func errExpectedType(span text.Span) error                 { return nil }
 
-	Message        string
-	SelectionRange text.Span
-	Warning        bool
-}
-
-func (e *Error) Error() string {
-	return e.Message
-}
-
-func (e *Error) Is(target error) bool {
-	return e.err == target
-}
-
-func (e *Error) Info() *report.Info {
-	level := report.LevelError
-
-	if e.Warning {
-		level = report.LevelWarning
-	}
-
-	return &report.Info{
-		Tag:       "parse",
-		Title:     e.Error(),
-		Selection: report.Selection{Range: e.SelectionRange},
-		Level:     level,
-	}
-}
-
-func (p *parser) lastErrorIs(err error) bool {
-	if len(p.errors) > 0 {
-		return errors.Is(p.errors[len(p.errors)-1], err)
-	}
-
-	return false
-}
-
-func (p *parser) appendError(err error) {
-	if p.flags&Trace != 0 {
-		defer un(trace(p))
-	}
-
-	p.errors = append(p.errors, err)
-}
-
-func (p *parser) error(err error) {
-	p.errorAt(err, p.tok.Span.From, p.tok.Span.To)
-}
-
-func (p *parser) errorf(err error, format string, args ...any) {
-	p.errorfAt(err, p.tok.Span.From, p.tok.Span.To, format, args...)
-}
-
-func (p *parser) errorExpectedToken(tokens ...token.Kind) {
-	p.errorExpectedTokenAt(p.tok.Span.From, p.tok.Span.To, tokens...)
-}
-
-func (p *parser) errorAt(err error, start, end text.Pos) {
-	p.appendError(&Error{
-		err:            err,
-		SelectionRange: text.Span{From: start, To: end},
-	})
-}
-
-func (p *parser) errorfAt(err error, start, end text.Pos, format string, args ...any) {
-	p.appendError(&Error{
-		err:            err,
-		SelectionRange: text.Span{From: start, To: end},
-		Message:        fmt.Sprintf(format, args...),
-	})
-}
-
-func (p *parser) errorExpectedTokenAt(start, end text.Pos, tokens ...token.Kind) {
-	if len(tokens) < 1 {
-		panic("required at least 1 token")
-	}
+func errUnexpectedToken(span text.Span, expected ...any) error {
 	buf := strings.Builder{}
-	for i, tok := range tokens {
-		if i != 0 {
-			buf.WriteString(" or ")
+
+	switch {
+	case len(expected) > 1:
+		n := len(expected) - 1
+
+		for i, item := range expected[:n] {
+			if i > 0 {
+				buf.WriteString(", ")
+			}
+			buf.WriteString(fmt.Sprint(item))
 		}
-		buf.WriteString(tok.String())
+
+		buf.WriteString(" or ")
+		buf.WriteString(fmt.Sprint(expected[n]))
+
+	case len(expected) == 1:
+		buf.WriteString(fmt.Sprint(expected[0]))
 	}
-	p.appendError(&Error{
-		err:            ErrorUnexpectedToken,
-		SelectionRange: text.Span{From: start, To: end},
-		Message:        fmt.Sprintf("want %s, got %s instead", buf.String(), p.tok.Kind.String()),
-	})
+
+	message := ""
+
+	if buf.Len() > 0 {
+		message = "expected " + buf.String() + " here"
+	}
+
+	return report.Build(ErrUnexpectedToken).
+		Tag("parse").
+		Selection(span, message)
 }
+
+func errUnimplementedFeature(span text.Span, featureName string) error   { return nil }
+func errUnterminatedExpr(span text.Span, delimiters ...token.Kind) error { return nil }
+func errUnterminatedList(span text.Span) error                           { return nil }
+
+// func (p *parser) lastErrorIs(err error) bool {
+// 	if len(p.errors) > 0 {
+// 		return errors.Is(p.errors[len(p.errors)-1], err)
+// 	}
+
+// 	return false
+// }
+
+// func (p *parser) appendError(err error) {
+// 	if p.flags&Trace != 0 {
+// 		defer un(trace(p))
+// 	}
+
+// 	p.errors = append(p.errors, err)
+// }
+
+// func (p *parser) error(err error) {
+// 	p.errorAt(err, p.span)
+// }
+
+// func (p *parser) errorf(err error, format string, args ...any) {
+// 	p.errorfAt(err, p.span, fmt.Sprintf(format, args...))
+// }
+
+// func (p *parser) errorAt(err error, span text.Span, message ...any) {
+// 	p.appendError(&Error{
+// 		Message:   fmt.Sprint(message...),
+// 		err:       err,
+// 		Selection: span,
+// 	})
+// }
+
+// func (p *parser) errorfAt(err error, span text.Span, format string, args ...any) {
+// 	p.appendError(&Error{
+// 		err:       err,
+// 		Selection: span,
+// 		Message:   fmt.Sprintf(format, args...),
+// 	})
+// }

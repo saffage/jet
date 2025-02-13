@@ -4,6 +4,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"iter"
+	"slices"
 	"strings"
 	"unicode"
 
@@ -58,19 +60,17 @@ func New(input []byte, id text.FileID, flags ScannerFlags) *Scanner {
 
 func Scan(input []byte, id text.FileID, flags ScannerFlags) ([]Token, error) {
 	s := New(input, id, flags)
-	return s.AllTokens(), errors.Join(s.errors...)
+	return slices.Collect(s.Tokens()), errors.Join(s.errors...)
 }
 
-func (s *Scanner) AllTokens() (tokens []Token) {
-	for {
-		tok := s.NextToken()
-		tokens = append(tokens, tok)
-
-		if tok.Kind == EOF {
-			break
+func (s *Scanner) Tokens() iter.Seq[Token] {
+	return func(yield func(Token) bool) {
+		for {
+			if tok := s.NextToken(); !yield(tok) || tok.Kind == EOF {
+				return
+			}
 		}
 	}
-	return
 }
 
 func (s *Scanner) NextToken() Token {

@@ -55,8 +55,8 @@ const (
 	PercentEq  // operator '%='
 	Amp        // operator '&'
 	AmpEq      // operator '&='
-	Pipe       // operator '|'
-	PipeEq     // operator '|='
+	Bar        // operator '|'
+	BarEq      // operator '|='
 	Caret      // operator '^'
 	CaretEq    // operator '^='
 
@@ -71,20 +71,28 @@ const (
 	Dot2Less // operator '..<'
 	Ellipsis // operator '...'
 
+	KwExtern // keyword 'extern'
+	KwFn     // keyword 'fn'
+	KwLet    // keyword 'let'
+	KwType   // keyword 'type'
+	KwVal    // keyword 'val'
+	KwVar    // keyword 'var'
+	KwWhen   // keyword 'when'
+
+	// Reserved keywords.
+
 	KwAnd      // keyword 'and'
 	KwAs       // keyword 'as'
 	KwBreak    // keyword 'break'
 	KwContinue // keyword 'continue'
 	KwDefer    // keyword 'defer'
 	KwElse     // keyword 'else'
-	KwEnum     // keyword 'enum'
 	KwFor      // keyword 'for'
 	KwIf       // keyword 'if'
 	KwIn       // keyword 'in'
-	KwMut      // keyword 'mut'
+	KwOf       // keyword 'of'
 	KwOr       // keyword 'or'
 	KwReturn   // keyword 'return'
-	KwStruct   // keyword 'struct'
 	KwWhile    // keyword 'while'
 )
 
@@ -101,8 +109,11 @@ const (
 	_operator_begin = Eq
 	_operator_end   = Ellipsis
 
-	_keywords_begin = KwAnd
+	_keywords_begin = KwExtern
 	_keywords_end   = KwWhile
+
+	_reserved_begin = KwAnd
+	_reserved_end   = KwWhile
 
 	_kinds_last = _keywords_end
 )
@@ -122,11 +133,12 @@ func KindFrom[T stringLike](s T) Kind {
 	return Illegal
 }
 
-func (kind Kind) IsSpecial() bool     { return _special_begin <= kind && kind <= _special_end }
-func (kind Kind) IsPrimary() bool     { return _primary_begin <= kind && kind <= _primary_end }
-func (kind Kind) IsPunctuation() bool { return _punctuation_begin <= kind && kind <= _punctuation_end }
-func (kind Kind) IsOperator() bool    { return _operator_begin <= kind && kind <= _operator_end }
-func (kind Kind) IsKeyword() bool     { return _keywords_begin <= kind && kind <= _keywords_end }
+func (kind Kind) IsSpecial() bool         { return _special_begin <= kind && kind <= _special_end }
+func (kind Kind) IsPrimary() bool         { return _primary_begin <= kind && kind <= _primary_end }
+func (kind Kind) IsPunctuation() bool     { return _punctuation_begin <= kind && kind <= _punctuation_end }
+func (kind Kind) IsOperator() bool        { return _operator_begin <= kind && kind <= _operator_end }
+func (kind Kind) IsKeyword() bool         { return _keywords_begin <= kind && kind <= _keywords_end }
+func (kind Kind) IsReservedKeyword() bool { return _reserved_begin <= kind && kind <= _reserved_end }
 
 // TODO rename to `Render`, maybe add `Renderer` interface to [report] package?
 func (kind Kind) Repr() string {
@@ -174,8 +186,8 @@ var representableKinds = map[Kind]string{
 	PercentEq:  "%=",
 	Amp:        "&",
 	AmpEq:      "&=",
-	Pipe:       "|",
-	PipeEq:     "|=",
+	Bar:        "|",
+	BarEq:      "|=",
 	Caret:      "^",
 	CaretEq:    "^=",
 
@@ -188,19 +200,25 @@ var representableKinds = map[Kind]string{
 	Dot2Less: "..<",
 	Ellipsis: "...",
 
+	KwExtern: "extern",
+	KwFn:     "fn",
+	KwLet:    "let",
+	KwType:   "type",
+	KwVal:    "val",
+	KwVar:    "var",
+	KwWhen:   "when",
+
 	KwAnd:      "and",
 	KwAs:       "as",
 	KwBreak:    "break",
 	KwContinue: "continue",
 	KwDefer:    "defer",
 	KwElse:     "else",
-	KwEnum:     "enum",
 	KwFor:      "for",
 	KwIf:       "if",
 	KwIn:       "in",
-	KwMut:      "mut",
+	KwOf:       "of",
 	KwOr:       "or",
 	KwReturn:   "return",
-	KwStruct:   "struct",
 	KwWhile:    "while",
 }

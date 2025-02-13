@@ -230,6 +230,36 @@ func (walk TopDownWalker) Walk(n Node, v Visitor) {
 			walk.When(n, v)
 		}
 
+	case *Case:
+		switch v := v.(type) {
+		case CaseVisitor:
+			v.VisitCase(n)
+		case NodeVisitor:
+			v.Visit(n)
+		default:
+			walk.Case(n, v)
+		}
+
+	case *Spread:
+		switch v := v.(type) {
+		case SpreadVisitor:
+			v.VisitSpread(n)
+		case NodeVisitor:
+			v.Visit(n)
+		default:
+			walk.Spread(n, v)
+		}
+
+	case *As:
+		switch v := v.(type) {
+		case AsVisitor:
+			v.VisitAs(n)
+		case NodeVisitor:
+			v.Visit(n)
+		default:
+			walk.As(n, v)
+		}
+
 	case *Extern:
 		switch v := v.(type) {
 		case ExternVisitor:
@@ -373,6 +403,22 @@ func (walk TopDownWalker) When(node *When, v Visitor) {
 	for _, node := range node.Body.Stmts.Items {
 		WalkTopDown(node, v)
 	}
+}
+
+func (walk TopDownWalker) Case(node *Case, v Visitor) {
+	WalkTopDown(node.Pattern, v)
+	WalkTopDown(node.Expr, v)
+}
+
+func (walk TopDownWalker) Spread(node *Spread, v Visitor) {
+	if node.Expr != nil {
+		WalkTopDown(node.Expr, v)
+	}
+}
+
+func (walk TopDownWalker) As(node *As, v Visitor) {
+	WalkTopDown(node.Lhs, v)
+	WalkTopDown(node.Rhs, v)
 }
 
 func (walk TopDownWalker) Extern(node *Extern, v Visitor) {

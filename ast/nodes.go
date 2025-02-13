@@ -4,6 +4,7 @@ import "github.com/saffage/jet/text"
 
 type Node interface {
 	Range() text.Span
+	// Valid() bool
 	Renderer
 }
 
@@ -307,7 +308,7 @@ type (
 
 	// Represents '{ a; b; c }'.
 	Block struct {
-		Stmts Stmts
+		Stmts *Stmts
 		Span  text.Span
 	}
 
@@ -343,6 +344,23 @@ type (
 		WhenTok text.Pos
 	}
 
+	Case struct {
+		Pattern  Node
+		Expr     Node
+		ArrowTok text.Pos
+	}
+
+	Spread struct {
+		Expr      Node `yaml:",omitempty"`
+		SpreadTok text.Pos
+	}
+
+	As struct {
+		Lhs   Node
+		Rhs   Node
+		AsTok text.Pos
+	}
+
 	Extern struct {
 		Args      *Parens `yaml:",omitempty"`
 		ExternTok text.Pos
@@ -353,6 +371,27 @@ func (node *When) Range() text.Span {
 	return text.Span{
 		From: node.WhenTok,
 		To:   node.Body.Range().To,
+	}
+}
+
+func (node *Case) Range() text.Span {
+	return text.Span{
+		From: node.Pattern.Range().From,
+		To:   node.Expr.Range().To,
+	}
+}
+
+func (node *Spread) Range() text.Span {
+	return text.Span{
+		From: node.SpreadTok,
+		To:   node.Expr.Range().To,
+	}
+}
+
+func (node *As) Range() text.Span {
+	return text.Span{
+		From: node.Lhs.Range().From,
+		To:   node.Rhs.Range().To,
 	}
 }
 
@@ -394,6 +433,7 @@ var (
 	_ Node = (*Parens)(nil)
 
 	_ Node = (*When)(nil)
+	_ Node = (*Case)(nil)
 	_ Node = (*Extern)(nil)
 )
 
