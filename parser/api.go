@@ -18,7 +18,7 @@ const (
 	DefaultFlags = NoFlags
 )
 
-func Parse(file *text.File, scannerFlags token.ScannerFlags, flags Flags) (*ast.Stmts, error) {
+func ParseFile(file *text.File, scannerFlags token.ScannerFlags, flags Flags) (*ast.Stmts, error) {
 	return File(file, scannerFlags, flags).Parse()
 }
 

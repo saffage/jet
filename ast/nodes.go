@@ -1,11 +1,14 @@
 package ast
 
-import "github.com/saffage/jet/text"
+import (
+	"github.com/saffage/jet/report"
+	"github.com/saffage/jet/text"
+)
 
 type Node interface {
 	Range() text.Span
 	// Valid() bool
-	Renderer
+	report.Renderer
 }
 
 type Ident interface {
@@ -75,7 +78,7 @@ type (
 
 	// Represents 'type Name = Type' or 'type Name(params) = Type'.
 	TypeAlias struct {
-		Name    *Upper
+		Ident   *Upper
 		Args    *Parens `yaml:",omitempty"`
 		Expr    Node
 		TypeTok text.Pos
@@ -84,7 +87,7 @@ type (
 
 	// Represents 'type Name { fields and variants }' or 'type Name(params) { fields and variants }'.
 	TypeDef struct {
-		Name    *Upper
+		Ident   *Upper
 		Args    *Parens `yaml:",omitempty"`
 		Body    *Block
 		TypeTok text.Pos
@@ -92,7 +95,7 @@ type (
 
 	// Represents `name T`, `name`, `type name T`, `type name`.
 	Decl struct {
-		Name    Ident    ``
+		Ident   Ident    ``
 		Type    Node     `yaml:",omitempty"`
 		TypeTok text.Pos `yaml:",omitempty"`
 	}
@@ -140,13 +143,13 @@ func (node *Decl) Range() (span text.Span) {
 	if node.TypeTok.IsValid() {
 		span.From = node.TypeTok
 	} else {
-		span.From = node.Name.Range().From
+		span.From = node.Ident.Range().From
 	}
 
 	if node.Type != nil {
 		span.To = node.Type.Range().To
 	} else {
-		span.To = node.Name.Range().To
+		span.To = node.Ident.Range().To
 	}
 
 	return
@@ -176,9 +179,8 @@ type (
 
 	// Represents '() T with Effects'.
 	Signature struct {
-		Params  *Parens
-		Result  Node `yaml:",omitempty"` // can be nil in some cases
-		WithTok text.Pos
+		Params *Parens
+		Result Node `yaml:",omitempty"` // can be nil in some cases
 	}
 
 	// Represents 'fn() R = expr'
@@ -228,7 +230,7 @@ func (node *Label) Label() *Lower {
 		return x
 
 	case *Decl:
-		if name, _ := x.Name.(*Lower); name != nil {
+		if name, _ := x.Ident.(*Lower); name != nil {
 			return name
 		}
 	}

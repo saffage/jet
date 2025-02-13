@@ -8,8 +8,6 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/saffage/jet/cgen"
-	"github.com/saffage/jet/checker"
 	"github.com/saffage/jet/config"
 	"github.com/saffage/jet/report"
 	"github.com/saffage/jet/text"
@@ -83,50 +81,52 @@ func actionBuild(ctx *cli.Context) error {
 	return Build(file)
 }
 
-func build(file *text.File) error {
-	if err := checker.CheckBuiltInPackage(); err != nil {
-		return err
-	}
-
-	m, err := checker.CheckFile(file)
-	if err != nil {
-		return err
-	}
-
-	fileDir := filepath.Dir(file.Path)
-	dir := filepath.Join(fileDir, config.CacheDirName)
-
-	err = os.Mkdir(dir, os.ModePerm)
-	if err != nil && !os.IsExist(err) {
-		return err
-	}
-
-	for _, importedModule := range m.Imports {
-		if err := genModule(importedModule, dir); err != nil {
-			return err
-		}
-	}
-
-	return genModule(m, dir)
-}
-
-func genModule(m *checker.Module, dir string) error {
-	filename := filepath.Join(dir, m.Name()+".c")
-	f, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	report.Hint("generating module '%s'", m.Name())
-	report.DebugX("gen", "module file is '%s'", filename)
-
-	if err := cgen.Generate(f, m); err != nil {
-		return err
-	}
+func build(*text.File) error {
+	// if err := checker.CheckBuiltInPackage(); err != nil {
+	// 	return err
+	// }
+	//
+	// m, err := checker.CheckFile(file)
+	// if err != nil {
+	// 	return err
+	// }
+	//
+	// fileDir := filepath.Dir(file.Path)
+	// dir := filepath.Join(fileDir, config.CacheDirName)
+	//
+	// err = os.Mkdir(dir, os.ModePerm)
+	// if err != nil && !os.IsExist(err) {
+	// 	return err
+	// }
+	//
+	// for _, importedModule := range m.Imports {
+	// 	if err := genModule(importedModule, dir); err != nil {
+	// 		return err
+	// 	}
+	// }
+	//
+	// return genModule(m, dir)
 
 	return nil
 }
+
+// func genModule(m *checker.Module, dir string) error {
+// 	filename := filepath.Join(dir, m.Name()+".c")
+// 	f, err := os.Create(filename)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	defer f.Close()
+//
+// 	report.Hint("generating module '%s'", m.Name())
+// 	report.DebugX("gen", "module file is '%s'", filename)
+//
+// 	if err := cgen.Generate(f, m); err != nil {
+// 		return err
+// 	}
+//
+// 	return nil
+// }
 
 func compileToC(dir, name string) error {
 	file := filepath.Join(dir, config.CacheDirName, name+".c")

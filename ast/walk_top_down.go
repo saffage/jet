@@ -276,7 +276,7 @@ func (walk TopDownWalker) Walk(n Node, v Visitor) {
 }
 
 func (walk TopDownWalker) LetDecl(node *LetDecl, v Visitor) {
-	WalkTopDown(node.Decl.Name, v)
+	WalkTopDown(node.Decl.Ident, v)
 
 	if node.Decl.Type != nil {
 		WalkTopDown(node.Decl.Type, v)
@@ -286,7 +286,7 @@ func (walk TopDownWalker) LetDecl(node *LetDecl, v Visitor) {
 }
 
 func (walk TopDownWalker) TypeAlias(node *TypeAlias, v Visitor) {
-	WalkTopDown(node.Name, v)
+	WalkTopDown(node.Ident, v)
 
 	if node.Args != nil {
 		for _, node := range node.Args.Nodes {
@@ -298,7 +298,7 @@ func (walk TopDownWalker) TypeAlias(node *TypeAlias, v Visitor) {
 }
 
 func (walk TopDownWalker) TypeDef(node *TypeDef, v Visitor) {
-	WalkTopDown(node.Name, v)
+	WalkTopDown(node.Ident, v)
 
 	if node.Args != nil {
 		for _, node := range node.Args.Nodes {
@@ -310,7 +310,7 @@ func (walk TopDownWalker) TypeDef(node *TypeDef, v Visitor) {
 }
 
 func (walk TopDownWalker) Decl(node *Decl, v Visitor) {
-	WalkTopDown(node.Name, v)
+	WalkTopDown(node.Ident, v)
 
 	if node.Type != nil {
 		WalkTopDown(node.Type, v)

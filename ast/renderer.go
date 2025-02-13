@@ -68,7 +68,7 @@ func (node *LetDecl) Render(buf *strings.Builder) {
 func (node *TypeAlias) Render(buf *strings.Builder) {
 	buf.WriteString("let ")
 
-	node.Name.Render(buf)
+	node.Ident.Render(buf)
 
 	if node.Args != nil {
 		node.Args.Render(buf)
@@ -82,7 +82,7 @@ func (node *TypeAlias) Render(buf *strings.Builder) {
 func (node *TypeDef) Render(buf *strings.Builder) {
 	buf.WriteString("let ")
 
-	node.Name.Render(buf)
+	node.Ident.Render(buf)
 
 	if node.Args != nil {
 		node.Args.Render(buf)
@@ -98,7 +98,7 @@ func (node *Decl) Render(buf *strings.Builder) {
 		buf.WriteString("type ")
 	}
 
-	node.Name.Render(buf)
+	node.Ident.Render(buf)
 
 	if node.Type != nil {
 		buf.WriteByte(' ')

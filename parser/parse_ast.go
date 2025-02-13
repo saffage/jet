@@ -2,7 +2,6 @@ package parser
 
 import (
 	"github.com/saffage/jet/ast"
-	"github.com/saffage/jet/text"
 	"github.com/saffage/jet/token"
 )
 
@@ -53,7 +52,7 @@ func (parse *parser) variable() (ast.Node, error) {
 		}
 	}
 
-	return &ast.Decl{Name: name, Type: ty}, nil
+	return &ast.Decl{Ident: name, Type: ty}, nil
 }
 
 func (parse *parser) variant() (ast.Node, error) {
@@ -95,7 +94,7 @@ func (parse *parser) typeVariable() (ast.Node, error) {
 		}
 	}
 
-	decl := &ast.Decl{Name: name, Type: ty}
+	decl := &ast.Decl{Ident: name, Type: ty}
 
 	if tok, ok := parse.consume(token.Eq); ok {
 		var tyDefault ast.Node
@@ -249,7 +248,7 @@ func (parse *parser) typeDecl() (ast.Node, error) {
 		return &ast.TypeAlias{
 			TypeTok: typeTok.Span.From,
 			EqTok:   eqTok.Span.From,
-			Name:    name,
+			Ident:   name,
 			Args:    args,
 			Expr:    expr,
 		}, nil
@@ -263,7 +262,7 @@ func (parse *parser) typeDecl() (ast.Node, error) {
 
 		return &ast.TypeDef{
 			TypeTok: typeTok.Span.From,
-			Name:    name,
+			Ident:   name,
 			Args:    args,
 			Body:    body,
 		}, nil
@@ -536,7 +535,6 @@ func (parse *parser) signature(parseParamFunc parseFunc) parseFunc {
 		}
 
 		var result ast.Node
-		var withToken text.Pos
 
 		if parse.isTypeStart() {
 			if result, err = parse.typeExpr(); err != nil {
@@ -545,9 +543,8 @@ func (parse *parser) signature(parseParamFunc parseFunc) parseFunc {
 		}
 
 		return &ast.Signature{
-			Params:  params,
-			Result:  result,
-			WithTok: withToken,
+			Params: params,
+			Result: result,
 		}, nil
 	}
 }
@@ -694,7 +691,7 @@ func (parse *parser) casePattern() (ast.Node, error) {
 				return nil, err
 			}
 
-			node = &ast.Decl{Name: name, Type: ty}
+			node = &ast.Decl{Ident: name, Type: ty}
 		} else {
 			node = name
 		}

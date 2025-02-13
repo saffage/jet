@@ -7,6 +7,10 @@ import (
 	"strings"
 )
 
+type Renderer interface {
+	Render(buf *strings.Builder)
+}
+
 // If the error implements the [Informer] interface, it will be used instead
 // of the usual [Error] function.
 //

@@ -3,7 +3,7 @@ module github.com/saffage/jet
 go 1.24
 
 require (
-	github.com/elliotchance/orderedmap/v2 v2.2.0
+	github.com/emirpasic/gods/v2 v2.0.0-alpha
 	github.com/fatih/color v1.16.0
 	github.com/urfave/cli/v2 v2.27.2
 )
