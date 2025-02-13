@@ -17,7 +17,7 @@ Currently it looks more like a transpiler than a compiler. The syntax of the lan
 
 - [ ] new syntax
   - [ ] port parser, AST and type system from the `new-syntax-2` branch
-    - [ ] scanner
+    - [x] scanner
       - [ ] tests
     - [ ] parser
       - [ ] tests
@@ -42,6 +42,7 @@ Currently it looks more like a transpiler than a compiler. The syntax of the lan
 
 - [ ] misc
   - [ ] fault tolerant scanner
+    - [ ] ensure that scanner don't fall in endless loop (somehow)
   - [ ] fault tolerant parser
     - [ ] `let`
       - [ ] tests
