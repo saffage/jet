@@ -29,9 +29,17 @@ var (
 	// Compiler cache directory.
 	CacheDirName string = ".jet"
 
-	CC      string // Path to a C compiler executable.
-	CCFlags string // Flags that must be passed to a C compiler.
-	LDFlags string // Flags that must be passed to a linker.
+	Target  BuildTarget = TargetC
+	CC      string      // Path to a C compiler executable.
+	CCFlags string      // Flags that must be passed to a C compiler.
+	LDFlags string      // Flags that must be passed to a linker.
+)
+
+//go:generate stringer -type=BuildTarget -linecomment -output=build_target_string.go
+type BuildTarget byte
+
+const (
+	TargetC BuildTarget = iota // c
 )
 
 func NewFile(path string, content []byte) (*text.File, error) {
@@ -68,7 +76,7 @@ func File(id text.FileID) *text.File {
 	filesMutex.RLock()
 	defer filesMutex.RUnlock()
 
-	if len(files) <= int(id) {
+	if len(files) <= int(id) && id != 0 {
 		return files[id-1]
 	}
 

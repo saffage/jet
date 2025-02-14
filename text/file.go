@@ -78,7 +78,8 @@ func ReadFile(id FileID, path string) (*File, error) {
 	fileInfo, err := os.Stat(path)
 
 	if err != nil {
-		return nil, err
+		err := err.(*os.PathError)
+		return nil, fmt.Errorf("failed to read file: '%s', %w", err.Path, err.Err)
 	}
 
 	if !fileInfo.Mode().IsRegular() {

@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/saffage/jet/config"
 	"github.com/saffage/jet/report"
 	"github.com/urfave/cli/v2"
@@ -26,8 +28,26 @@ func Run(args []string) error {
 		},
 		&cli.PathFlag{
 			Name:  "cc",
-			Usage: "path to a C compiler executable",
+			Usage: "path to a C compiler executable `COMMAND`",
 			Value: "gcc",
+		},
+		&cli.StringFlag{
+			Name:        "target",
+			Usage:       "build `TARGET`",
+			DefaultText: "c",
+			Action: func(ctx *cli.Context, value string) error {
+				switch value {
+				case "c":
+					config.Target = config.TargetC
+					return nil
+
+				default:
+					return fmt.Errorf(
+						"unknown build target: '%s', available options is: c",
+						value,
+					)
+				}
+			},
 		},
 		&cli.StringFlag{
 			Name:        "cc-flags",
