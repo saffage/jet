@@ -82,7 +82,7 @@ func NewVariant(
 		local:       local,
 		variant:     variant,
 		params:      params,
-		value:       &Value{T: NewFunction(tParams, variant.Type(), nil)},
+		value:       &Value{T: NewFn(tParams, variant.Type(), nil)},
 		node:        decl,
 		variantNode: node,
 	}
@@ -153,7 +153,7 @@ func (sym *Binding) ParamTypes() TypeList {
 }
 
 func (sym *Binding) Variadic() Type {
-	if fn, _ := As[*Function](sym.value.T); fn != nil {
+	if fn, _ := As[*Fn](sym.value.T); fn != nil {
 		return fn.Variadic()
 	}
 	return nil

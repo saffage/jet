@@ -186,23 +186,23 @@ func SkipDescriptor(t Type) Type {
 // Function Type
 //------------------------------------------------
 
-type Function struct {
+type Fn struct {
 	params   TypeList
 	labels   map[string]Type
 	result   Type
 	variadic Type
 }
 
-func NewFunction(params TypeList, result, variadic Type) *Function {
-	return &Function{
+func NewFn(params TypeList, result, variadic Type) *Fn {
+	return &Fn{
 		params:   params,
 		result:   result,
 		variadic: variadic,
 	}
 }
 
-func (t *Function) Equal(expected Type) bool {
-	if expected, _ := As[*Function](expected); expected != nil {
+func (t *Fn) Equal(expected Type) bool {
+	if expected, _ := As[*Fn](expected); expected != nil {
 		return (t.variadic != nil && t.variadic.Equal(expected.variadic) ||
 			t.variadic == nil && expected.variadic == nil) &&
 			t.result.Equal(expected.result) && t.params.Equal(expected.params)
@@ -211,7 +211,7 @@ func (t *Function) Equal(expected Type) bool {
 	return false
 }
 
-func (t *Function) Render(buf *strings.Builder) {
+func (t *Fn) Render(buf *strings.Builder) {
 	buf.WriteString("fn(")
 
 	if t.params != nil {
@@ -227,11 +227,11 @@ func (t *Function) Render(buf *strings.Builder) {
 	}
 }
 
-func (t *Function) Result() Type     { return t.result }
-func (t *Function) Params() TypeList { return t.params }
-func (t *Function) Variadic() Type   { return t.variadic }
+func (t *Fn) Result() Type     { return t.result }
+func (t *Fn) Params() TypeList { return t.params }
+func (t *Fn) Variadic() Type   { return t.variadic }
 
-func (t *Function) CheckArgValues(values []*Value) (idx int, err error) {
+func (t *Fn) CheckArgValues(values []*Value) (idx int, err error) {
 	args := make(TypeList, len(values))
 
 	for i := range args {
@@ -241,7 +241,7 @@ func (t *Function) CheckArgValues(values []*Value) (idx int, err error) {
 	return -1, t.CheckArgs(args)
 }
 
-func (t *Function) CheckArgs(args TypeList, argsNode ...*ast.Parens) error {
+func (t *Fn) CheckArgs(args TypeList, argsNode ...*ast.Parens) error {
 	assert(args != nil)
 	assert(len(argsNode) < 2, "`argsNode` it's an optional parameter, not variadic")
 
@@ -486,7 +486,7 @@ func IsResolved(t Type) bool {
 	// case *Array:
 	// 	return isTypeResolved(t.elem)
 
-	case *Function:
+	case *Fn:
 		for _, param := range t.params {
 			if !IsResolved(param) {
 				return false

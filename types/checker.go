@@ -432,7 +432,7 @@ func (check *checker) resolveTypeAlias(node *ast.TypeAlias) {
 //
 //
 
-func (check *checker) resolveSignature(sig *ast.Signature) (*Function, *Env, error) {
+func (check *checker) resolveSignature(sig *ast.Signature) (*Fn, *Env, error) {
 	tParams := make([]Type, len(sig.Params.Nodes))
 	tResult := Type(nil) // &Parameter{}
 
@@ -485,7 +485,7 @@ func (check *checker) resolveSignature(sig *ast.Signature) (*Function, *Env, err
 	}
 
 	// check.env here is parameter scope
-	return NewFunction(tParams, tResult, nil), check.env, err
+	return NewFn(tParams, tResult, nil), check.env, err
 }
 
 func (check *checker) resolveParam(
@@ -646,7 +646,7 @@ func (check *checker) resolveExternTypeAlias(
 //
 //
 
-func (check *checker) resolveCall(node *ast.Call, fn *Function) (Type, error) {
+func (check *checker) resolveCall(node *ast.Call, fn *Fn) (Type, error) {
 	assert(fn != nil)
 	assert(node != nil)
 	assert(node.X != nil)
@@ -674,7 +674,7 @@ func (check *checker) resolveCall(node *ast.Call, fn *Function) (Type, error) {
 	return fn.Result(), err
 }
 
-func (check *checker) resolveArgs(args *ast.Parens, fn *Function) (TypeList, error) {
+func (check *checker) resolveArgs(args *ast.Parens, fn *Fn) (TypeList, error) {
 	if err := check.resolveArgsArity(args, fn); err != nil {
 		return nil, err
 	}
@@ -724,7 +724,7 @@ func (check *checker) resolveArgs(args *ast.Parens, fn *Function) (TypeList, err
 	return tArgs, errors.Join(errs...)
 }
 
-func (check *checker) resolveArgsArity(args *ast.Parens, fn *Function) error {
+func (check *checker) resolveArgsArity(args *ast.Parens, fn *Fn) error {
 	// Example:
 	//
 	//	params  args    diff    idx
@@ -746,7 +746,7 @@ func (check *checker) resolveArgsArity(args *ast.Parens, fn *Function) error {
 }
 
 func (check *checker) elideDefaultArgs(
-	fn *Function,
+	fn *Fn,
 	unlabeledArgs []*Value,
 	labeledArgs map[*ast.Lower]*Value,
 	unlabeledArgNodes []ast.Node,
@@ -798,7 +798,7 @@ func (check *checker) resolveLetDecl(node *ast.LetDecl) {
 
 	// TODO: move it somewhere else
 	_, discarded := node.Decl.Ident.(*ast.Placeholder)
-	if discarded && Is[*Function](t) {
+	if discarded && Is[*Fn](t) {
 		check.error(warnDiscardedFuncDef(node.Decl.Ident.Range()))
 	}
 
@@ -822,7 +822,7 @@ func (check *checker) resolveBindingValue(
 
 		report.Debug("env path: %s", check.env.Path())
 
-		tDecl = tDecl.(*Function).result
+		tDecl = tDecl.(*Fn).result
 		tDeclNode = tDeclNode.(*ast.Signature).Result
 	}
 

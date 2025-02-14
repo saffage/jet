@@ -198,7 +198,7 @@ func (check *checker) evalCall(node *ast.Call) (*Value, error) {
 
 		}
 
-	case *Function:
+	case *Fn:
 		fn, err := check.resolveCall(node, t)
 		return &Value{T: fn}, err
 	}
