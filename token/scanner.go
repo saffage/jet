@@ -51,7 +51,7 @@ type Token struct {
 	Span text.Span
 }
 
-func New(input []byte, id text.FileID, flags ScannerFlags) *Scanner {
+func NewScanner(input []byte, id text.FileID, flags ScannerFlags) *Scanner {
 	return &Scanner{
 		Scanner: *text.NewScanner(input, id),
 		flags:   flags,
@@ -59,7 +59,7 @@ func New(input []byte, id text.FileID, flags ScannerFlags) *Scanner {
 }
 
 func Scan(input []byte, id text.FileID, flags ScannerFlags) ([]Token, error) {
-	s := New(input, id, flags)
+	s := NewScanner(input, id, flags)
 	return slices.Collect(s.Tokens()), errors.Join(s.errors...)
 }
 
@@ -75,96 +75,110 @@ func (s *Scanner) Tokens() iter.Seq[Token] {
 
 func (s *Scanner) NextToken() Token {
 	if !s.Match('\000') {
-		startPos, tok := s.Pos(), Token{Kind: Illegal}
-
 		s.SkipWhile(isSpace)
+
+		kind := Illegal
+		data := ""
+		span := text.Span{From: s.Pos()}
+
+		if !span.IsValid() {
+			panic("unreachable")
+		}
 
 		switch {
 		case s.Match('#'):
-			tok = Token{
-				Kind: Comment,
-				Data: s.TakeUntil(isNewLine),
-			}
+			kind = Comment
+			data = s.TakeUntil(isNewLine)
 
 			if s.flags&SkipComments != 0 {
 				return s.NextToken()
 			}
 
 		case s.Consumed('@'):
-			tok = Token{Kind: At}
+			kind = At
 
 		case s.Consumed('$'):
-			tok = Token{Kind: Dollar}
+			kind = Dollar
 
 		case s.Match('\n', '\r'):
 			s.TakeWhile(isNewLine)
 
-			tok = Token{
-				Kind: Semicolon,
-				Data: "\n",
-			}
+			kind = Semicolon
+			data = "\n"
 
 		case isDigit(s.Peek()):
-			tok = s.scanNumber()
+			ok := true
+			kind, data, span, ok = s.scanNumber()
+
+			if !ok {
+				kind = Illegal
+			}
 
 		case IsIdentifierStartChar(s.Peek()):
 			identifier := s.TakeWhile(IsIdentifierChar)
-			kind := KindFrom(identifier)
+			kind = KindFrom(identifier)
 
-			switch {
-			case kind != Illegal:
-				// Keyword.
-				tok.Kind = kind
+			if kind == Illegal {
+				data = identifier
+				first := []rune(identifier)[0]
 
-			case unicode.IsLower(rune(identifier[0])):
-				tok.Kind = LowercaseIdent
-				tok.Data = identifier
+				switch {
+				case first == '_':
+					kind = IdentPlaceholder
 
-				if s.Match('"', '\'') {
-					strTok := s.scanString()
-					tok.Data += strTok.Data
-					tok.Span.To = strTok.Span.To
+				case unicode.IsUpper(first):
+					kind = UppercaseIdent
+
+				case unicode.IsLower(first):
+					kind = LowercaseIdent
+
+					if s.Match('"', '\'') {
+						strData, strSpan, ok := s.scanString()
+						if ok {
+							data += strData
+							span.To = strSpan.To
+							kind = String
+						} else {
+							kind = Illegal
+						}
+					}
 				}
-
-			case unicode.IsUpper(rune(identifier[0])):
-				tok.Kind = UppercaseIdent
-				tok.Data = identifier
-
-			case identifier[0] == '_':
-				tok.Kind = IdentPlaceholder
-				tok.Data = identifier
 			}
 
 		case s.Match('"', '\''):
-			tok = s.scanString()
+			ok := true
+			data, span, ok = s.scanString()
+			kind = String
+
+			if !ok {
+				kind = Illegal
+			}
 
 		case s.Consumed('.'):
-			kind := Dot
+			kind = Dot
 
 			if s.Consumed('.') {
 				if s.Consumed('.') {
 					kind = Ellipsis
-				} else if s.Consumed('<') {
-					kind = Dot2Less
 				} else {
 					kind = Dot2
 				}
 			}
 
-			tok = Token{Kind: kind}
-
 		case s.Match('!', '+', '*', '/', '%', '&', '|', '^'):
-			// NOTE This tokens is order dependent
-			kind := KindFrom(s.Advance())
+			kind = KindFrom(s.Advance())
 
+			if kind == Illegal {
+				panic("unreachable")
+			}
+
+			// NOTE This tokens is order dependent
 			if s.Consumed('=') {
 				kind += 1
 			}
 
-			tok = Token{Kind: kind}
-
 		case s.Consumed('<'):
-			kind := LtOp
+			kind = LtOp
 
 			if s.Consumed('<') {
 				kind = Shl
@@ -172,10 +186,8 @@ func (s *Scanner) NextToken() Token {
 				kind = LeOp
 			}
 
-			tok = Token{Kind: kind}
-
 		case s.Consumed('>'):
-			kind := GtOp
+			kind = GtOp
 
 			if s.Consumed('>') {
 				kind = Shr
@@ -183,10 +195,8 @@ func (s *Scanner) NextToken() Token {
 				kind = GeOp
 			}
 
-			tok = Token{Kind: kind}
-
 		case s.Consumed('-'):
-			kind := Minus
+			kind = Minus
 
 			if s.Consumed('=') {
 				kind = MinusEq
@@ -194,10 +204,8 @@ func (s *Scanner) NextToken() Token {
 				kind = Arrow
 			}
 
-			tok = Token{Kind: kind}
-
 		case s.Consumed('='):
-			kind := Eq
+			kind = Eq
 
 			if s.Consumed('=') {
 				kind = EqOp
@@ -205,109 +213,95 @@ func (s *Scanner) NextToken() Token {
 				kind = FatArrow
 			}
 
-			tok = Token{Kind: kind}
-
 		case s.Match(',', ':', ';', '(', ')', '[', ']', '{', '}'):
-			kind := KindFrom(s.Advance())
+			kind = KindFrom(s.Advance())
 
 			if kind == Illegal {
 				panic("unreachable")
 			}
 
-			tok = Token{Kind: kind}
-
 		default:
 			s.error(ErrIllegalCharacter, s.Pos())
-
-			tok = Token{
-				Kind: Illegal,
-				Data: string(s.Advance()),
-			}
+			data = string(s.Advance())
 		}
 
-		if !tok.Span.From.IsValid() {
-			tok.Span.From = startPos
+		if pos := s.Pos(); span.From != pos {
+			span.To = text.PosFrom(pos.ID(), pos.Offset()-1)
 		}
 
-		if !tok.Span.To.IsValid() {
-			pos := s.Pos()
-			tok.Span.To = text.PosFrom(pos.ID(), pos.Offset()-1)
-		}
-
-		if s.flags&SkipIllegal != 0 && tok.Kind == Illegal {
+		if s.flags&SkipIllegal != 0 && kind == Illegal {
 			return s.NextToken()
 		}
 
-		return tok
+		if span.From == span.To {
+			span.To = text.NoPos
+		}
+
+		return Token{Kind: kind, Data: data, Span: span}
 	}
 
 	return Token{
 		Kind: EOF,
-		Span: text.Span{From: s.Pos(), To: s.Pos()},
+		Span: text.Span{From: s.Pos()},
 	}
 }
 
-func (s *Scanner) scanString() Token {
-	openingQuotePos := s.Pos()
+func (s *Scanner) scanString() (data string, span text.Span, ok bool) {
+	span.From = s.Pos()
 	quote := s.ExpectChar('"', '\'')
-	data := strings.Builder{}
+	buf := strings.Builder{}
+	buf.WriteRune(quote)
 
 	for {
 		switch char := s.Peek(); char {
 		case quote:
-			closingQuotePos := s.Pos()
-			s.NextToken()
-			data.WriteRune(quote)
-
-			return Token{
-				Kind: String,
-				Data: data.String(),
-				Span: text.Span{From: openingQuotePos, To: closingQuotePos},
-			}
+			span.To = s.Pos()
+			s.Advance()
+			buf.WriteRune(quote)
+			data = buf.String()
+			ok = true
+			return
 
 		case '\000', '\n', '\r':
-			s.error(ErrUnterminatedStringLit, openingQuotePos)
-
-			return Token{
-				Kind: Illegal,
-				Data: data.String(),
-				Span: text.Span{From: openingQuotePos, To: s.Pos()},
-			}
+			s.error(ErrUnterminatedStringLit, span.From)
+			data = buf.String()
+			span.To = s.Pos()
+			return
 
 		case '\\':
 			backslashPos := s.Pos()
 
 			switch char = s.Next(); char {
 			case 'n':
-				data.WriteByte('\n')
+				buf.WriteByte('\n')
 
 			case 'r':
-				data.WriteByte('\r')
+				buf.WriteByte('\r')
 
 			case 't':
-				data.WriteByte('\t')
+				buf.WriteByte('\t')
 
 			case '\\':
-				data.WriteByte('\\')
+				buf.WriteByte('\\')
 
 			case '\'':
-				data.WriteByte('\'')
+				buf.WriteByte('\'')
 
 			case '"':
-				data.WriteByte('"')
+				buf.WriteByte('"')
 
 			case 'x':
-				if !s.parseBytes(&data, 2) {
+				if !s.parseBytes(&buf, 2) {
 					// TODO error
 				}
 
 			case 'u':
-				if !s.parseBytes(&data, 4) {
+				if !s.parseBytes(&buf, 4) {
 					// TODO error
 				}
 
 			case 'U':
-				if !s.parseBytes(&data, 8) {
+				if !s.parseBytes(&buf, 8) {
 					// TODO error
 				}
 
@@ -315,23 +309,23 @@ func (s *Scanner) scanString() Token {
 				s.error(ErrInvalidEscape, backslashPos)
 
 				// NOTE not sure if invalid escape needs to be present in token
-				data.WriteByte('\\')
-				data.WriteRune(char)
+				buf.WriteByte('\\')
+				buf.WriteRune(char)
 			}
 
 		case '$':
 			// TODO interpolated string
 
 		default:
-			data.WriteRune(s.Advance())
+			buf.WriteRune(s.Advance())
 		}
 	}
 }
 
-func (s *Scanner) scanNumber() Token {
+func (s *Scanner) scanNumber() (kind Kind, data string, span text.Span, ok bool) {
 	buf := strings.Builder{}
-	tok := Token{Kind: Int}
-	begin := s.Pos()
+	kind = Int
+	span.From = s.Pos()
 
 	if s.Consumed('0') {
 		if char, consumed := s.Consume('x', 'X', 'b', 'B', 'o', 'O'); consumed {
@@ -362,15 +356,16 @@ func (s *Scanner) scanNumber() Token {
 				panic("unreachable")
 			}
 
-			tok.Data = buf.String()
-			return tok
+			data = buf.String()
+			ok = true
+			return
 		}
 
 		s.parseNumber(nil, isZero, nil)
 
 		if s.SkipWhile(isZero) > 0 {
 			// TODO warning?
-			s.error(ErrFirstDigitIsZero, begin)
+			s.error(ErrFirstDigitIsZero, span.From)
 		}
 
 		s.ConsumeFunc(isDigit)
@@ -378,38 +373,40 @@ func (s *Scanner) scanNumber() Token {
 		switch {
 		case isDigit(s.Peek()):
 			// TODO parse it like regular number
-			s.error(ErrFirstDigitIsZero, begin)
-			return Token{
-				Kind: Illegal,
-				Data: "0",
-			}
+			s.error(ErrFirstDigitIsZero, span.From)
+			kind = Illegal
+			data = "0"
+			return
 
 		default:
 			buf.WriteByte('0')
 		}
 	} else if !s.parseDecNumber(&buf) {
-		return Token{Kind: Illegal}
+		kind = Illegal
+		return
 	}
 
 	if s.Consumed('.') {
 		buf.WriteByte('.')
-		tok.Kind = Float
+		kind = Float
 
 		if !s.parseNumber(&buf, isDigit, ErrExpectedDigitAfterPoint) {
-			return Token{Kind: Illegal}
+			kind = Illegal
+			return
 		}
 	}
 
 	if s.Match('e', 'E') {
 		buf.WriteRune(s.Advance())
-		tok.Kind = Float
+		kind = Float
 
 		if s.Match('+', '-') {
 			buf.WriteRune(s.Advance())
 		}
 
 		if !s.parseDecNumber(&buf) {
-			return Token{Kind: Illegal}
+			kind = Illegal
+			return
 		}
 	}
 
@@ -427,8 +424,10 @@ func (s *Scanner) scanNumber() Token {
 	// 	}
 	// }
 
-	tok.Data = buf.String()
-	return tok
+	span.To = s.Pos()
+	data = buf.String()
+	ok = true
+	return
 }
 
 // Returns false when:

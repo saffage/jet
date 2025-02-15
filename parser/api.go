@@ -1,8 +1,6 @@
 package parser
 
 import (
-	"iter"
-
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/text"
 	"github.com/saffage/jet/token"
@@ -27,10 +25,6 @@ func ParseFile(file *text.File, scannerFlags token.ScannerFlags, flags Flags) (*
 // }
 
 type parser struct {
-	// tokens iter.Seq[token.Token]
-	// nextToken func() (token.Token, bool)
-	// stop      func()
-
 	scanner *token.Scanner
 	errors  []error
 
@@ -55,18 +49,25 @@ type parser struct {
 // }
 
 func File(file *text.File, scannerFlags token.ScannerFlags, flags Flags) *parser {
-	return NewFrom(token.New(file.Content, file.ID, scannerFlags), flags)
+	return NewFrom(token.NewScanner(file.Content, file.ID, scannerFlags), flags)
 }
 
 func NewFrom(s *token.Scanner, flags Flags) *parser {
-	return &parser{
+	p := &parser{
 		scanner: s,
 		flags:   flags,
 		trace:   flags&Trace != 0,
 	}
+	p.next()
+	return p
 }
 
 func (parse *parser) Parse() (*ast.Stmts, error) {
+	if parse.flags&AllowTopLevelCode != 0 {
+		decls, err := parse.sequence(parse.declOrExpr, token.Semicolon)
+		return &ast.Stmts{Items: decls}, err
+	}
+
 	decls, err := parse.sequence(parse.decl, token.Semicolon)
 	return &ast.Stmts{Items: decls}, err
 }

@@ -15,12 +15,12 @@ var (
 
 func IsIdentifierStartChar(char rune) bool {
 	return char == '_' ||
-		'a' <= char && char <= 'f' ||
-		'A' <= char && char <= 'F'
+		('a' <= char && char <= 'z') ||
+		('A' <= char && char <= 'Z')
 }
 
 func IsIdentifierChar(char rune) bool {
-	return IsIdentifierStartChar(char) || '0' <= char && char <= '9'
+	return IsIdentifierStartChar(char) || ('0' <= char && char <= '9')
 }
 
 func IsValidIdent(s string) (int, error) {

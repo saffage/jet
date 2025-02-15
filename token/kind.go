@@ -68,7 +68,6 @@ const (
 	FatArrow // operator '=>'
 	Dot      // operator '.'
 	Dot2     // operator '..'
-	Dot2Less // operator '..<'
 	Ellipsis // operator '...'
 
 	KwExtern // keyword 'extern'
@@ -197,7 +196,6 @@ var representableKinds = map[Kind]string{
 	FatArrow: "=>",
 	Dot:      ".",
 	Dot2:     "..",
-	Dot2Less: "..<",
 	Ellipsis: "...",
 
 	KwExtern: "extern",

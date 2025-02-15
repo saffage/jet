@@ -24,7 +24,7 @@ type Span struct {
 }
 
 func (s Span) ID() FileID    { return s.From.ID() }
-func (s Span) IsPos() bool   { return s.From.IsValid() && (!s.To.IsValid() || s.To == s.From) }
+func (s Span) IsPos() bool   { return !s.To.IsValid() || s.To == s.From }
 func (s Span) IsValid() bool { return s.From.IsValid() }
 
 func PosFrom(id FileID, offset int) Pos {
@@ -36,6 +36,9 @@ func PosFrom(id FileID, offset int) Pos {
 	}
 	if id > fileid_mask {
 		panic("fileid overflow")
+	}
+	if id <= 0 {
+		panic("invalid fileid")
 	}
 	return Pos(
 		uint64(id)&fileid_mask |

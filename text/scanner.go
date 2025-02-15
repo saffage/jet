@@ -17,17 +17,20 @@ type UnexpectedCharError struct {
 }
 
 type Scanner struct {
-	fileID FileID
-	offset int
-	peeked rune
 	reader bytes.Reader
+	fileID FileID
+	peeked rune
+	index  int
+	size   int
 }
 
 func NewScanner(input []byte, id FileID) *Scanner {
-	return &Scanner{
-		fileID: id,
+	s := &Scanner{
 		reader: *bytes.NewReader(input),
+		fileID: id,
 	}
+	s.Peek()
+	return s
 }
 
 func (s *Scanner) Next() (peeked rune) {
@@ -35,7 +38,11 @@ func (s *Scanner) Next() (peeked rune) {
 
 	if err != nil {
 		if err == io.EOF {
-			s.peeked = eof
+			if s.peeked != eof {
+				s.peeked = eof
+				s.index += 1
+				s.size = 0
+			}
 			return eof
 		}
 		// Unreachable because [bytes.Reader.ReadRune] can't return other error.
@@ -43,7 +50,8 @@ func (s *Scanner) Next() (peeked rune) {
 	}
 
 	s.peeked = char
-	s.offset += size
+	s.index += s.size
+	s.size = size
 	return char
 }
 
@@ -65,9 +73,8 @@ func (s *Scanner) Peek() (peeked rune) {
 
 func (s *Scanner) ExpectFunc(predicate func(peeked rune) (expected string, ok bool)) rune {
 	char := s.Peek()
-	expected, ok := predicate(char)
 
-	if !ok {
+	if expected, ok := predicate(char); !ok {
 		panic(UnexpectedCharError{
 			Range:    Span{From: s.Pos()},
 			Found:    char,
@@ -152,10 +159,10 @@ func (s *Scanner) Match(chars ...rune) bool {
 func (s *Scanner) Chars() iter.Seq[rune] {
 	return func(yield func(rune) bool) {
 		for {
-			char := s.Advance()
-			if !yield(char) || char == eof {
+			if char := s.Peek(); !yield(char) || char == eof {
 				return
 			}
+			s.Advance()
 		}
 	}
 }
@@ -219,5 +226,8 @@ func wrapPredicate(s *Scanner, predicate func(rune) bool, truth bool) func() (st
 }
 
 func (s *Scanner) Pos() Pos {
-	return PosFrom(s.fileID, s.offset)
+	if s.fileID == 0 {
+		panic("scanner: called Pos() with invalid file ID")
+	}
+	return PosFrom(s.fileID, s.index)
 }
