@@ -3,10 +3,10 @@ package text
 const NoPos Pos = 0
 
 type Position struct {
-	Pos
 	Path string
 	Line int
 	Char int
+	Pos
 }
 
 func (p *Position) IsValid() bool { return p != nil && *p != Position{} }

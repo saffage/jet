@@ -20,15 +20,14 @@ var (
 type FileID uint16
 
 type File struct {
-	ID      FileID
-	Flags   FileFlags
-	Options FileOptions
-
 	Name    string // File name without extension.
 	Path    string // Path to the file.
 	Content []byte // File content.
+	lines   []int  // Line begin indices.
 
-	lines []int
+	ID      FileID
+	Flags   FileFlags
+	Options FileOptions
 }
 
 // Reserved

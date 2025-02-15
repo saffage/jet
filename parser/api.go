@@ -27,16 +27,18 @@ func ParseFile(file *text.File, scannerFlags token.ScannerFlags, flags Flags) (*
 // }
 
 type parser struct {
-	tokens iter.Seq[token.Token]
+	// tokens iter.Seq[token.Token]
 	// nextToken func() (token.Token, bool)
 	// stop      func()
 
 	scanner *token.Scanner
 	errors  []error
-	flags   Flags
 
-	// Quick access
+	// quick access
 	token.Token
+
+	// parser configuration
+	flags Flags
 
 	// debug
 	trace       bool

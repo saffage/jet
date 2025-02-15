@@ -19,9 +19,9 @@ type Informer interface {
 
 type Info struct {
 	Title       string
-	Tag         string       // Optional
-	Selection   Selection    // Optional
-	Suggestions []Suggestion // Optional
+	Tag         string
+	Suggestions []Suggestion
+	Selection   Selection
 	Level       Level
 }
 

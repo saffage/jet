@@ -39,15 +39,15 @@ var (
 )
 
 type Scanner struct {
-	text.Scanner
 	errors []error
-	flags  ScannerFlags
+	text.Scanner
+	flags ScannerFlags
 }
 
 // TODO remove it
 type Token struct {
-	Kind Kind
 	Data string
+	Kind Kind
 	Span text.Span
 }
 
