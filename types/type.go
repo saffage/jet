@@ -1,7 +1,6 @@
 package types
 
 import (
-	"errors"
 	"fmt"
 	"iter"
 	"slices"
@@ -148,7 +147,7 @@ type Descriptor struct {
 
 func NewDescriptor(t Type) Descriptor {
 	if !IsResolved(t) {
-		panic(fmt.Sprintf("type %s is not resolved", t))
+		panic(fmt.Sprintf("type %s is not resolved", Render(t)))
 	}
 
 	if desc, _ := t.(Descriptor); desc.base != nil {
@@ -267,7 +266,7 @@ func (t *Fn) CheckArgs(args TypeList, argsNode ...*ast.Parens) error {
 	var diff = len(t.params) - len(args)
 
 	if diff > 0 || diff < 0 && t.variadic == nil {
-		return errIncorrectArity(node.Range(), len(t.params), len(args))
+		return errIncorrectArity(node, len(t.params), len(args))
 	}
 
 	var errs []error
@@ -283,7 +282,7 @@ func (t *Fn) CheckArgs(args TypeList, argsNode ...*ast.Parens) error {
 		var actual = args[i]
 
 		if !actual.Equal(expected) {
-			err := errArgTypeMismatch(arg(i).Range(), actual, expected, i, false)
+			err := errArgTypeMismatch(arg(i), actual, expected, i, false)
 			errs = append(errs, err)
 		}
 	}
@@ -292,7 +291,7 @@ func (t *Fn) CheckArgs(args TypeList, argsNode ...*ast.Parens) error {
 	for i, tArg := range args[len(t.params):] {
 		if !tArg.Equal(t.variadic) {
 			i += len(t.params)
-			err := errArgTypeMismatch(arg(i).Range(), tArg, t.variadic, i, true)
+			err := errArgTypeMismatch(arg(i), tArg, t.variadic, i, true)
 			errs = append(errs, err)
 		}
 	}

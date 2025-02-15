@@ -677,7 +677,7 @@ func (check *checker) resolveArgs(args *ast.Parens, fn *Fn) (TypeList, error) {
 
 		if actual != nil && !actual.T.Equal(expected) {
 			errs = append(errs, errArgTypeMismatch(
-				args.Nodes[i].Range(),
+				args.Nodes[i],
 				actual.T,
 				expected,
 				i,
@@ -697,7 +697,7 @@ func (check *checker) resolveArgs(args *ast.Parens, fn *Fn) (TypeList, error) {
 
 		if value.T != nil && !value.T.Equal(fn.variadic) {
 			errs = append(errs, errArgTypeMismatch(
-				args.Nodes[i].Range(),
+				args.Nodes[i],
 				value.T,
 				fn.variadic,
 				i,
@@ -720,11 +720,11 @@ func (check *checker) resolveArgsArity(args *ast.Parens, fn *Fn) error {
 	var diff = len(fn.params) - len(args.Nodes)
 
 	if diff < 0 && fn.variadic == nil {
-		return errIncorrectArity(args.Range(), len(fn.params), len(args.Nodes))
+		return errIncorrectArity(args, len(fn.params), len(args.Nodes))
 	}
 
 	if diff > 0 {
-		return errIncorrectArity(args.Range(), len(fn.params), len(args.Nodes))
+		return errIncorrectArity(args, len(fn.params), len(args.Nodes))
 	}
 
 	return nil

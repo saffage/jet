@@ -44,19 +44,13 @@ func (info *Info) Error() string {
 	buf := bytes.Buffer{}
 	buf.Grow(len(info.Title))
 
-	if info.Tag != "" {
-		buf.WriteString(info.Tag)
-		buf.WriteString(": ")
-		buf.WriteByte(' ')
-	}
-
 	if strings.TrimSpace(info.Title) == "" {
 		buf.WriteString(emptyMessage)
 	} else {
 		buf.WriteString(info.Title)
 	}
 
-	if info.Selection.IsValid() && info.Selection.Hint != "" {
+	if info.Selection.Hint != "" {
 		buf.WriteString(" (")
 		buf.WriteString(info.Selection.Hint)
 		buf.WriteString(")")

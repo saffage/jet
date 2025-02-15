@@ -1,7 +1,6 @@
 package types
 
 import (
-	"errors"
 	"strings"
 
 	"github.com/saffage/jet/ast"
@@ -9,15 +8,12 @@ import (
 )
 
 type Env struct {
+	symbols  map[string]Symbol
 	children []*Env
 	parent   *Env
 	parentID int
-
-	symbols map[string]Symbol
-	kind    EnvKind
-
-	// for debugging
-	name string
+	name     string // for debugging
+	kind     EnvKind
 }
 
 //go:generate stringer -type=EnvKind -linecomment -output=env_kind_string.go

@@ -17,36 +17,47 @@ var (
 	ErrUndefinedIdent          = errors.New("identifier is undefined")
 )
 
-func errIncorrectArity(args text.Span, expected, got int) report.Builder {
+func errIncorrectArity(args *ast.Parens, expected, got int) report.Builder {
 	err := ErrIncorrectArityNotEnough
 
 	if expected < got {
 		err = ErrIncorrectArityTooMany
 	}
 
+	span := text.Span{}
+
+	if args != nil {
+		span = args.Range()
+	}
+
 	return report.Build(err).
 		Tag("checker").
-		SelectionF(args, "Expected %d arguments, got %d", expected, got)
+		SelectionF(span, "expected %d arguments, got %d", expected, got)
 }
 
 func errArgTypeMismatch(
-	arg text.Span,
+	arg ast.Node,
 	argType, expectedType Type,
 	index int,
 	variadic bool,
 ) report.Builder {
 	b := report.Build(ErrArgTypeMismatch).Tag("checker")
+	span := text.Span{}
+
+	if arg != nil {
+		span = arg.Range()
+	}
 
 	if variadic {
-		b.SelectionF(
-			arg,
+		b = b.SelectionF(
+			span,
 			"expected `%s` for variadic argument, got `%s`",
 			Render(expectedType),
 			Render(argType),
 		)
 	} else {
-		b.SelectionF(
-			arg,
+		b = b.SelectionF(
+			span,
 			"expected `%s` for %d-%s argument, got `%s`",
 			Render(expectedType),
 			index+1,

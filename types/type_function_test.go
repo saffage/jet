@@ -1,6 +1,10 @@
 package types
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/saffage/jet/report"
+)
 
 func TestCheckArgs(t *testing.T) {
 	checkArgs(
@@ -114,10 +118,15 @@ func checkArgs(
 	errStr := ""
 
 	if err != nil {
-		errStr = err.Error()
+		if i, _ := err.(report.Informer); i != nil {
+			errStr = i.Info().Error()
+		} else {
+			errStr = err.Error()
+		}
 	}
 
 	if expectedErrStr != errStr {
+		t.Logf("err type: %T", err)
 		t.Errorf(
 			"failed to check args\nwant err: '%s'\ngot err: '%s'",
 			expectedErrStr,
