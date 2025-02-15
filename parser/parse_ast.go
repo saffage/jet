@@ -731,9 +731,9 @@ func (parse *parser) casePattern() (ast.Node, error) {
 		}
 
 		return &ast.As{
-			Lhs:   node,
-			Rhs:   name,
-			AsTok: tok.Span.From,
+			Expr:    node,
+			NewName: name,
+			AsTok:   tok.Span.From,
 		}, nil
 	}
 

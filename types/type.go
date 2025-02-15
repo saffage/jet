@@ -36,20 +36,20 @@ var (
 	StringType Type = String{}
 )
 
-func (None) Render(buf *strings.Builder) { buf.WriteString("None") }
-func (None) Equal(target Type) bool      { return Is[None](target) }
+func (None) Render(buf *strings.Builder) error { buf.WriteString("None"); return nil }
+func (None) Equal(target Type) bool            { return Is[None](target) }
 
-func (Never) Render(buf *strings.Builder) { buf.WriteString("Never") }
-func (Never) Equal(target Type) bool      { return true }
+func (Never) Render(buf *strings.Builder) error { buf.WriteString("Never"); return nil }
+func (Never) Equal(target Type) bool            { return true }
 
-func (Int) Render(buf *strings.Builder) { buf.WriteString("Int") }
-func (Int) Equal(target Type) bool      { return Is[Int](target) }
+func (Int) Render(buf *strings.Builder) error { buf.WriteString("Int"); return nil }
+func (Int) Equal(target Type) bool            { return Is[Int](target) }
 
-func (Float) Render(buf *strings.Builder) { buf.WriteString("Float") }
-func (Float) Equal(target Type) bool      { return Is[Float](target) }
+func (Float) Render(buf *strings.Builder) error { buf.WriteString("Float"); return nil }
+func (Float) Equal(target Type) bool            { return Is[Float](target) }
 
-func (String) Render(buf *strings.Builder) { buf.WriteString("String") }
-func (String) Equal(target Type) bool      { return Is[String](target) }
+func (String) Render(buf *strings.Builder) error { buf.WriteString("String"); return nil }
+func (String) Equal(target Type) bool            { return Is[String](target) }
 
 //------------------------------------------------
 // Module type (used as a placeholder in the checker)
@@ -59,8 +59,8 @@ type module struct{}
 
 var moduleType Type = module{}
 
-func (module) Render(buf *strings.Builder) { buf.WriteString("module") }
-func (module) Equal(target Type) bool      { return false }
+func (module) Render(buf *strings.Builder) error { buf.WriteString("module"); return nil }
+func (module) Equal(target Type) bool            { return false }
 
 //------------------------------------------------
 // Type Alias
@@ -92,7 +92,7 @@ func (t *Alias) Equal(other Type) bool {
 	return t.actual.Equal(SkipAlias(other))
 }
 
-func (t *Alias) Render(buf *strings.Builder) {
+func (t *Alias) Render(buf *strings.Builder) error {
 	buf.WriteString(t.name)
 
 	// You can't ref non-alias primitive type other way than through compiler.
@@ -101,6 +101,8 @@ func (t *Alias) Render(buf *strings.Builder) {
 
 		SkipDescriptor(t.base).Render(buf)
 	}
+
+	return nil
 }
 
 func SkipAlias(t Type) Type {
@@ -164,10 +166,11 @@ func (t Descriptor) Equal(other Type) bool {
 	return false
 }
 
-func (t Descriptor) Render(buf *strings.Builder) {
+func (t Descriptor) Render(buf *strings.Builder) error {
 	buf.WriteString("type ")
 
 	t.base.Render(buf)
+	return nil
 }
 
 func (t Descriptor) Base() Type {
@@ -211,7 +214,7 @@ func (t *Fn) Equal(expected Type) bool {
 	return false
 }
 
-func (t *Fn) Render(buf *strings.Builder) {
+func (t *Fn) Render(buf *strings.Builder) error {
 	buf.WriteString("fn(")
 
 	if t.params != nil {
@@ -225,6 +228,8 @@ func (t *Fn) Render(buf *strings.Builder) {
 
 		t.result.Render(buf)
 	}
+
+	return nil
 }
 
 func (t *Fn) Result() Type     { return t.result }
@@ -315,7 +320,7 @@ func (list TypeList) Equal(target []Type) bool {
 	return true
 }
 
-func (list TypeList) Render(buf *strings.Builder) string {
+func (list TypeList) Render(buf *strings.Builder) error {
 	buf.WriteByte('(')
 
 	for i, param := range list {
@@ -327,7 +332,7 @@ func (list TypeList) Render(buf *strings.Builder) string {
 	}
 
 	buf.WriteByte(')')
-	return buf.String()
+	return nil
 }
 
 //------------------------------------------------
@@ -381,8 +386,8 @@ func NewCustom(name string, fields []Field, variants []Variant) *Custom {
 	return t
 }
 
-func (t *Custom) Equal(target Type) bool      { return t == target }
-func (t *Custom) Render(buf *strings.Builder) { buf.WriteString(t.name) }
+func (t *Custom) Equal(target Type) bool            { return t == target }
+func (t *Custom) Render(buf *strings.Builder) error { buf.WriteString(t.name); return nil }
 
 func (t *Custom) Field(i int) *Field { return &t.fields[i] }
 func (t *Custom) Fields() []Field    { return t.fields }
@@ -434,7 +439,12 @@ func (v *Variant) Index() int          { return v.index }
 
 func Render(t Type) string {
 	buf := strings.Builder{}
-	t.Render(&buf)
+	err := t.Render(&buf)
+
+	if err != nil {
+		buf.WriteString("<invalid-type>")
+	}
+
 	return buf.String()
 }
 

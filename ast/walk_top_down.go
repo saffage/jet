@@ -417,8 +417,8 @@ func (walk TopDownWalker) Spread(node *Spread, v Visitor) {
 }
 
 func (walk TopDownWalker) As(node *As, v Visitor) {
-	WalkTopDown(node.Lhs, v)
-	WalkTopDown(node.Rhs, v)
+	WalkTopDown(node.Expr, v)
+	WalkTopDown(node.NewName, v)
 }
 
 func (walk TopDownWalker) Extern(node *Extern, v Visitor) {

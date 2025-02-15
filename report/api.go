@@ -8,7 +8,7 @@ import (
 )
 
 type Renderer interface {
-	Render(buf *strings.Builder)
+	Render(buf *strings.Builder) error
 }
 
 // If the error implements the [Informer] interface, it will be used instead

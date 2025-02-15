@@ -7,7 +7,9 @@ import (
 
 type Node interface {
 	Range() text.Span
-	// Valid() bool
+
+	// String representation of the node. This string must be equal to the
+	// code from which this tree can be parsed.
 	report.Renderer
 }
 
@@ -22,28 +24,28 @@ type Ident interface {
 
 type (
 	BadNode struct {
-		DesiredPos text.Pos
+		DesiredPos text.Pos `json:"desired_pos,omitzero"`
 	}
 
 	Lower struct {
-		Data string
-		Span text.Span
+		Data string    `json:"data,omitempty"`
+		Span text.Span `json:"span,omitzero"`
 	}
 
 	Upper struct {
-		Data string
-		Span text.Span
+		Data string    `json:"data,omitempty"`
+		Span text.Span `json:"span,omitzero"`
 	}
 
 	Placeholder struct {
-		Data string
-		Span text.Span
+		Data string    `json:"data,omitempty"`
+		Span text.Span `json:"span,omitzero"`
 	}
 
 	Literal struct {
-		Value string
-		Kind  LiteralKind
-		Span  text.Span
+		Value string      `json:"value,omitempty"`
+		Kind  LiteralKind `json:"kind,omitempty"`
+		Span  text.Span   `json:"span,omitzero"`
 	}
 )
 
@@ -71,39 +73,39 @@ type (
 
 	// Represents 'let name Type = value'.
 	LetDecl struct {
-		LetTok text.Pos
-		Decl   *Decl
-		Value  Node
+		Decl   *Decl    `json:"decl,omitempty"`
+		Value  Node     `json:"value,omitempty"`
+		LetTok text.Pos `json:"let_tok,omitzero"`
 	}
 
 	// Represents 'type Name = Type' or 'type Name(params) = Type'.
 	TypeAlias struct {
-		Ident   *Upper
-		Args    *Parens `yaml:",omitempty"`
-		Expr    Node
-		TypeTok text.Pos
-		EqTok   text.Pos
+		Ident   *Upper   `json:"ident,omitempty"`
+		Args    *Parens  `json:"args,omitempty"`
+		Expr    Node     `json:"expr,omitempty"`
+		TypeTok text.Pos `json:"type_tok,omitzero"`
+		EqTok   text.Pos `json:"eq_tok,omitzero"`
 	}
 
 	// Represents 'type Name { fields and variants }' or 'type Name(params) { fields and variants }'.
 	TypeDef struct {
-		Ident   *Upper
-		Args    *Parens `yaml:",omitempty"`
-		Body    *Block
-		TypeTok text.Pos
+		Ident   *Upper   `json:"ident,omitempty"`
+		Args    *Parens  `json:"args,omitempty"`
+		Body    *Block   `json:"body,omitempty"`
+		TypeTok text.Pos `json:"type_tok,omitzero"`
 	}
 
 	// Represents `name T`, `name`, `type name T`, `type name`.
 	Decl struct {
-		Ident   Ident    ``
-		Type    Node     `yaml:",omitempty"`
-		TypeTok text.Pos `yaml:",omitempty"`
+		Ident   Ident    `json:"ident,omitempty"`
+		Type    Node     `json:"type,omitempty"`
+		TypeTok text.Pos `json:"type_tok,omitzero"`
 	}
 
 	// Represents 'Name' or 'Name(T)'.
 	Variant struct {
-		Name   *Upper
-		Params *Parens `yaml:",omitempty"` // Optional.
+		Name   *Upper  `json:"name,omitempty"`
+		Params *Parens `json:"params,omitempty"` // Optional.
 	}
 )
 
@@ -173,43 +175,43 @@ func (node *Variant) Range() (span text.Span) {
 
 type (
 	Label struct {
-		Name *Lower
-		X    Node
+		Name *Lower `json:"name,omitempty"`
+		X    Node   `json:"x,omitempty"`
 	}
 
 	// Represents '() T with Effects'.
 	Signature struct {
-		Params *Parens
-		Result Node `yaml:",omitempty"` // can be nil in some cases
+		Params *Parens `json:"params,omitempty"`
+		Result Node    `json:"result,omitempty"` // can be nil in some cases
 	}
 
 	// Represents 'fn() R = expr'
 	Function struct {
-		Signature *Signature
-		Body      Node
-		FnTok     text.Pos
-		EqTok     text.Pos
+		Signature *Signature `json:"signature,omitempty"`
+		Body      Node       `json:"body,omitempty"`
+		FnTok     text.Pos   `json:"fn_tok,omitzero"`
+		EqTok     text.Pos   `json:"eq_tok,omitzero"`
 	}
 
 	// Represents 'x(...args)'.
 	Call struct {
-		X    Node
-		Args *Parens
+		X    Node    `json:"x,omitempty"`
+		Args *Parens `json:"args,omitempty"`
 	}
 
 	// Represents 'x.y'.
 	Dot struct {
-		X      Node
-		Y      Node
-		DotPos text.Pos
+		X      Node     `json:"x,omitempty"`
+		Y      Node     `json:"y,omitempty"`
+		DotPos text.Pos `json:"dot_pos,omitzero"`
 	}
 
 	// Represents 'x OP y, where 'OP' is an operator.
 	Op struct {
-		X    Node `yaml:",omitempty"`
-		Y    Node `yaml:",omitempty"`
-		Span text.Span
-		Kind OperatorKind
+		X    Node         `json:"x,omitempty"`
+		Y    Node         `json:"y,omitempty"`
+		Span text.Span    `json:"span,omitzero"`
+		Kind OperatorKind `json:"kind,omitzero"`
 	}
 )
 
@@ -299,25 +301,25 @@ func (node *Op) IsName() bool    { return node.X == nil && node.Y == nil }
 type (
 	// Represents '[a, b, c]'.
 	List struct {
-		Nodes []Node
-		Span  text.Span
+		Nodes []Node    `json:"nodes,omitempty"`
+		Span  text.Span `json:"span,omitzero"`
 	}
 
 	Stmts struct {
-		Items      []Node
-		DesiredPos text.Pos
+		Items      []Node   `json:"items,omitempty"`
+		DesiredPos text.Pos `json:"desired_pos,omitzero"`
 	}
 
 	// Represents '{ a; b; c }'.
 	Block struct {
-		Stmts *Stmts
-		Span  text.Span
+		Stmts *Stmts    `json:"stmts,omitempty"`
+		Span  text.Span `json:"span,omitzero"`
 	}
 
 	// Represents '(a, b, c)'.
 	Parens struct {
-		Nodes []Node
-		Span  text.Span
+		Nodes []Node    `json:"nodes,omitempty"`
+		Span  text.Span `json:"span,omitzero"`
 	}
 )
 
@@ -341,31 +343,31 @@ func (stmts *Stmts) Range() text.Span {
 
 type (
 	When struct {
-		Expr    Node `yaml:",omitempty"`
-		Body    *Block
-		WhenTok text.Pos
+		Expr    Node     `json:"expr,omitempty"`
+		Body    *Block   `json:"body,omitempty"`
+		WhenTok text.Pos `json:"when_tok,omitzero"`
 	}
 
 	Case struct {
-		Pattern  Node
-		Expr     Node
-		ArrowTok text.Pos
+		Pattern  Node     `json:"pattern,omitempty"`
+		Expr     Node     `json:"expr,omitempty"`
+		ArrowTok text.Pos `json:"arrow_tok,omitzero"`
 	}
 
 	Spread struct {
-		Expr      Node `yaml:",omitempty"`
-		SpreadTok text.Pos
+		Expr      Node     `json:"expr,omitempty"`
+		SpreadTok text.Pos `json:"spread_tok,omitzero"`
 	}
 
 	As struct {
-		Lhs   Node
-		Rhs   Node
-		AsTok text.Pos
+		Expr    Node     `json:"expr,omitempty"`
+		NewName Ident    `json:"new_name,omitempty"`
+		AsTok   text.Pos `json:"as_tok,omitzero"`
 	}
 
 	Extern struct {
-		Args      *Parens `yaml:",omitempty"`
-		ExternTok text.Pos
+		Args      *Parens  `json:"args,omitempty"`
+		ExternTok text.Pos `json:"extern_tok,omitzero"`
 	}
 )
 
@@ -392,8 +394,8 @@ func (node *Spread) Range() text.Span {
 
 func (node *As) Range() text.Span {
 	return text.Span{
-		From: node.Lhs.Range().From,
-		To:   node.Rhs.Range().To,
+		From: node.Expr.Range().From,
+		To:   node.NewName.Range().To,
 	}
 }
 
