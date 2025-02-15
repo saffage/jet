@@ -85,21 +85,7 @@ func (check *checker) newUse(ident ast.Ident, sym Symbol) {
 	_, isDef := check.module.Defs.Get(ident)
 	assert(!isDef)
 
-	var symStr string
-
-	if debugPrinter, ok := sym.(debugPrinter); ok {
-		symStr = debugPrinter.debug()
-	} else {
-		symStr = symbolTypeNoQualifier(sym)
-	}
-
-	report.Debug(
-		"use of %s `%s` in `%s` at %s",
-		color.HiBlueString(symStr),
-		sym.Ident(),
-		ident,
-		ident.Range().From,
-	)
+	// TODO CLI command to get all symbols usages
 	check.module.Uses[ident] = sym
 }
 
@@ -955,7 +941,7 @@ func (check *checker) assignable(node ast.Node) bool {
 				return false
 			}
 
-			report.DebugX("checker", "assign '%s' at '%s'", varSym.Name(), operand)
+			// report.DebugX("checker", "assign '%s' at '%s'", varSym.Name(), operand)
 			check.newUse(operand, varSym)
 			return true
 		}
