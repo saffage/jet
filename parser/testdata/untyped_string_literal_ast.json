@@ -1,10 +1,9 @@
 {
-	"Nodes": [
+	"items": [
 		{
-			"Value": "\"hi\"",
-			"Kind": "string",
-			"Start": 1,
-			"End": 196609
+			"value": "\"hi\"",
+			"kind": "string",
+			"span": "123,0,3"
 		}
 	]
 }
