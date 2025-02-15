@@ -1,7 +1,6 @@
 package types
 
 import (
-	"errors"
 	"fmt"
 	"math/big"
 	"strings"
@@ -298,7 +297,7 @@ func (check *checker) evalWhen(node *ast.When) (*Value, error) {
 		// TODO implement pattern exhaustiveness checking
 	}
 
-	return expr, errors.Join(errs...)
+	return expr, report.Join(errs...)
 }
 
 func (check *checker) evalBlock(node *ast.Block) (*Value, error) {
@@ -367,5 +366,5 @@ loop:
 // 	}
 
 // 	size := len(node.Nodes)
-// 	return &Value{T: NewFixedArray(size, tListElem)}, errors.Join(errs...)
+// 	return &Value{T: NewFixedArray(size, tListElem)}, report.Join(errs...)
 // }

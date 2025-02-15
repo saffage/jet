@@ -1,9 +1,8 @@
 package parser
 
 import (
-	"errors"
-
 	"github.com/saffage/jet/ast"
+	"github.com/saffage/jet/report"
 	"github.com/saffage/jet/text"
 	"github.com/saffage/jet/token"
 )
@@ -110,5 +109,5 @@ func (parse *parser) listUntil(
 		errs = append(errs, errUnterminatedList(begin))
 	}
 
-	return nodes, errors.Join(errs...)
+	return nodes, report.Join(errs...)
 }

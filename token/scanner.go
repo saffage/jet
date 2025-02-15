@@ -9,6 +9,7 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/saffage/jet/report"
 	"github.com/saffage/jet/text"
 )
 
@@ -60,7 +61,7 @@ func NewScanner(input []byte, id text.FileID, flags ScannerFlags) *Scanner {
 
 func Scan(input []byte, id text.FileID, flags ScannerFlags) ([]Token, error) {
 	s := NewScanner(input, id, flags)
-	return slices.Collect(s.Tokens()), errors.Join(s.errors...)
+	return slices.Collect(s.Tokens()), report.Join(s.errors...)
 }
 
 func (s *Scanner) Tokens() iter.Seq[Token] {

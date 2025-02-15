@@ -15,7 +15,7 @@ type Renderer interface {
 // of the usual [Error] function.
 //
 // Note that errors joined using [errors.Join] will not be shown as separate
-// errors.
+// errors, use [Join] instead.
 func Report(errs ...error) {
 	for _, err := range errs {
 		switch err := err.(type) {

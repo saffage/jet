@@ -159,7 +159,7 @@ func (env *Env) Use(other *Env, names ...ast.Ident) error {
 		}
 	}
 
-	return errors.Join(errs...)
+	return report.Join(errs...)
 }
 
 func (env *Env) Path() string {

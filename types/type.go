@@ -297,7 +297,7 @@ func (t *Fn) CheckArgs(args TypeList, argsNode ...*ast.Parens) error {
 		}
 	}
 
-	return errors.Join(errs...)
+	return report.Join(errs...)
 }
 
 //------------------------------------------------

@@ -74,5 +74,5 @@ func (parse *parser) Parse() (*ast.Stmts, error) {
 
 // func (p *parser) ParseExpr() (ast.Node, error) {
 // 	expr := p.parseExpr()
-// 	return expr, errors.Join(p.errors...)
+// 	return expr, report.Join(p.errors...)
 // }

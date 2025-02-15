@@ -1,7 +1,6 @@
 package types
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 
@@ -707,7 +706,7 @@ func (check *checker) resolveArgs(args *ast.Parens, fn *Fn) (TypeList, error) {
 		}
 	}
 
-	return tArgs, errors.Join(errs...)
+	return tArgs, report.Join(errs...)
 }
 
 func (check *checker) resolveArgsArity(args *ast.Parens, fn *Fn) error {
@@ -900,7 +899,7 @@ func (check *checker) infix(node *ast.Op, x, y *Value) (*Value, error) {
 		}
 
 		// check.setType(node.Y, x)
-		return &Value{T: NoneType}, errors.Join(errs...)
+		return &Value{T: NoneType}, report.Join(errs...)
 	}
 
 	for _, opTypes := range operatorTypes[node.Kind] {

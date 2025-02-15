@@ -1,7 +1,6 @@
 package types
 
 import (
-	"errors"
 	"sync"
 
 	"github.com/saffage/jet/ast"
@@ -47,7 +46,7 @@ loop:
 	}
 
 	module.completed = true
-	return check.module, errors.Join(check.errors...)
+	return check.module, report.Join(check.errors...)
 }
 
 func CheckFile(f *text.File) (*Module, error) {
