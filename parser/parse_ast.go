@@ -849,8 +849,8 @@ func (parse *parser) primary() (ast.Node, error) {
 
 func (parse *parser) operand() (ast.Node, error) {
 	switch parse.Kind {
-	case token.LowercaseIdent:
-		return parse.lowerNode()
+	case token.LowercaseIdent, token.IdentPlaceholder:
+		return parse.ident()
 
 	case token.UppercaseIdent:
 		return parse.upperNode()
