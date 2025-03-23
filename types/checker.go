@@ -7,6 +7,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/report"
+	"github.com/saffage/jet/text"
 )
 
 type checkerFlags byte
@@ -425,11 +426,17 @@ func (check *checker) resolveSignature(sig *ast.Signature) (*Fn, *Env, error) {
 	check.env = NewEnv(FnParamsEnv, check.env)
 
 	for i, param := range sig.Params.Nodes {
-		label := (*ast.Lower)(nil)
+		label, _ := param.(*ast.Label)
 
-		if labelNode, ok := param.(*ast.Label); ok {
-			label = labelNode.Name
-			param = labelNode.X
+		if label != nil {
+			check.error(errUnimplementedFeature(
+				"labeled parameters",
+				"",
+				text.Span{
+					From: label.Name.Span.From,
+					To:   label.ColonTok,
+				},
+			))
 		}
 
 		decl, ok := param.(*ast.Decl)
@@ -437,7 +444,7 @@ func (check *checker) resolveSignature(sig *ast.Signature) (*Fn, *Env, error) {
 			panic(errIllFormedAst(param))
 		}
 
-		sym, err := check.resolveParam(decl, label)
+		sym, err := check.resolveParam(decl, nil)
 		check.error(err)
 		tParams[i] = sym.Type()
 

@@ -175,8 +175,9 @@ func (node *Variant) Range() (span text.Span) {
 
 type (
 	Label struct {
-		Name *Lower `json:"name,omitempty"`
-		X    Node   `json:"x,omitempty"`
+		Name     *Lower   `json:"name,omitempty"`
+		X        Node     `json:"x,omitempty"`
+		ColonTok text.Pos `json:"colon_tok,omitzero"`
 	}
 
 	// Represents '() T with Effects'.

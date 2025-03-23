@@ -117,12 +117,14 @@ func (parse *parser) typeVariable() (ast.Node, error) {
 func (parse *parser) labeled(f parseFunc) parseFunc {
 	return func() (ast.Node, error) {
 		var (
-			label   *ast.Lower
-			expr    ast.Node
-			err     error
-			isShort bool
+			label    *ast.Lower
+			expr     ast.Node
+			colonTok token.Token
+			err      error
+			isShort  bool
 		)
 
+		// TODO: allow `ident: f` if `f` can parse `ident`
 		switch {
 		// case parse.matchSeq(token.LowercaseIdent, token.Colon):
 		// 	label = parse.LowercaseIdent()
@@ -130,7 +132,7 @@ func (parse *parser) labeled(f parseFunc) parseFunc {
 
 		case parse.match(token.Colon):
 			isShort = true
-			parse.next()
+			colonTok = parse.next()
 
 		default:
 			return f()
@@ -140,7 +142,11 @@ func (parse *parser) labeled(f parseFunc) parseFunc {
 			return nil, err
 		}
 
-		node := &ast.Label{Name: label, X: expr}
+		node := &ast.Label{
+			Name:     label,
+			X:        expr,
+			ColonTok: colonTok.Span.From,
+		}
 
 		if isShort && node.Label() == nil {
 			return nil, errUnexpectedToken(
