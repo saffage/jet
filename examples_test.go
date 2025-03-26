@@ -2,6 +2,7 @@ package main_test
 
 import (
 	"io/fs"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -13,7 +14,9 @@ import (
 const stopAfterFirstError = true
 
 func TestExamples(t *testing.T) {
-	t.Skip("local test")
+	if os.Getenv("CI_SKIP_LOCAL_TEST") == "true" {
+		t.Skip("Local test")
+	}
 
 	err := filepath.WalkDir("examples/", dirWalker(t))
 
@@ -53,7 +56,7 @@ func dirWalker(t *testing.T) fs.WalkDirFunc {
 		t.Logf("building: '%s'", path)
 		if buildErr := cmd.Build(file); buildErr != nil {
 			t.Error("error!")
-			report.Report(buildErr)
+			report.Render(buildErr)
 
 			if stopAfterFirstError {
 				return buildErr
