@@ -15,7 +15,7 @@ type parseFunc func() (ast.Node, error)
 func (parse *parser) sequence(f parseFunc, sep token.Kind) ([]ast.Node, error) {
 	var nodes []ast.Node
 
-	for {
+	for parse.Kind != token.EOF {
 		node, err := f()
 
 		if err != nil {
