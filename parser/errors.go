@@ -27,12 +27,41 @@ var (
 	// ErrInvalidBinaryOperator    = errors.New("invalid binary operator")
 )
 
-func errExpectedBlock(span text.Span) error                { return nil }
-func errExpectedDecl(span text.Span) error                 { return nil }
-func errExpectedExpr(span text.Span) error                 { return nil }
-func errExpectedOperand(span text.Span) error              { return nil }
-func errExpectedPattern(span text.Span, pattern int) error { return nil }
-func errExpectedType(span text.Span) error                 { return nil }
+func errExpectedBlock(span text.Span) error {
+	return report.Build(ErrExpectedBlock).
+		Tag("parse").
+		Selection(span, "")
+}
+
+func errExpectedDecl(span text.Span) error {
+	return report.Build(ErrExpectedDecl).
+		Tag("parse").
+		Selection(span, "")
+}
+
+func errExpectedExpr(span text.Span) error {
+	return report.Build(ErrExpectedExpr).
+		Tag("parse").
+		Selection(span, "")
+}
+
+func errExpectedOperand(span text.Span) error {
+	return report.Build(ErrExpectedOperand).
+		Tag("parse").
+		Selection(span, "")
+}
+
+func errExpectedPattern(span text.Span, pattern int) error {
+	return report.Build(ErrExpectedPattern).
+		Tag("parse").
+		Selection(span, "")
+}
+
+func errExpectedType(span text.Span) error {
+	return report.Build(ErrExpectedType).
+		Tag("parse").
+		Selection(span, "")
+}
 
 func errUnexpectedToken(span text.Span, expected ...any) error {
 	buf := strings.Builder{}
@@ -66,9 +95,23 @@ func errUnexpectedToken(span text.Span, expected ...any) error {
 		Selection(span, message)
 }
 
-func errUnimplementedFeature(span text.Span, featureName string) error   { return nil }
-func errUnterminatedExpr(span text.Span, delimiters ...token.Kind) error { return nil }
-func errUnterminatedList(span text.Span) error                           { return nil }
+func errUnimplementedFeature(span text.Span, featureName string) error {
+	return report.Build(ErrUnimplementedFeature).
+		Tag("parse").
+		Selection(span, fmt.Sprintf("feature '%s' is not implemented", featureName))
+}
+
+func errUnterminatedExpr(span text.Span, delimiters ...token.Kind) error {
+	return report.Build(ErrUnterminatedExpr).
+		Tag("parse").
+		Selection(span, "")
+}
+
+func errUnterminatedList(span text.Span) error {
+	return report.Build(ErrUnterminatedList).
+		Tag("parse").
+		Selection(span, "")
+}
 
 // func (p *parser) lastErrorIs(err error) bool {
 // 	if len(p.errors) > 0 {
