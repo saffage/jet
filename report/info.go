@@ -285,16 +285,13 @@ func writeFilepath(buf *strings.Builder, position text.Position) {
 
 	path := filepath.Clean(position.Path)
 
-	switch LineInfoStyle {
-	default: // LineInfoUnix
-		filepathStyle.Fprintf(
-			buf,
-			"%s:%d:%d",
-			path,
-			position.Line,
-			position.Char,
-		)
-	}
+	filepathStyle.Fprintf(
+		buf,
+		"%s:%d:%d",
+		path,
+		position.Line,
+		position.Char,
+	)
 }
 
 func numLen(num int) (len int) {

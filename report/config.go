@@ -19,8 +19,6 @@ var MinDisplayLevel = LevelTrace
 // Specifies output.
 var Output io.Writer = os.Stderr
 
-var LineInfoStyle = LineInfoUnix
-
 //go:generate stringer -type=Level -linecomment
 type Level byte
 
@@ -30,11 +28,4 @@ const (
 	LevelHint                 // hint
 	LevelDebug                // debug
 	LevelTrace                // trace
-)
-
-//go:generate stringer -type=LineInfo -linecomment
-type LineInfo byte
-
-const (
-	LineInfoUnix LineInfo = iota // unix
 )
