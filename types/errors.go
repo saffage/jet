@@ -253,11 +253,32 @@ func suggestionGuessTypeVariant(
 		))
 	}
 
-	b.SuggestionV(report.Suggestion{
-		Message: "type `%s` have the following variants",
-		Selection: report.Selection{
-			CustomContent: strings.Join(guesses, "\n"),
-		},
-	})
+	return b.SuggestionC(
+		"type `%s` have the following variants",
+		strings.Join(guesses, "\n"),
+	)
+}
+
+func suggestionLocalSymbols(
+	b report.Builder,
+	env *Env,
+) report.Builder {
+	symbols := []string{}
+
+	for symbol := range env.OnSymbols() {
+		symbols = append(symbols, fmt.Sprintf(
+			"%s %s",
+			symbol.Name(),
+			Render(symbol.Type()),
+		))
+	}
+
+	if len(symbols) > 0 {
+		b = b.SuggestionC(
+			"at this position the next symbols are in scope",
+			strings.Join(symbols, "\n"),
+		)
+	}
+
 	return b
 }

@@ -81,13 +81,19 @@ func (b Builder) SuggestionF(format string, args ...any) Builder {
 	return b
 }
 
+func (b Builder) SuggestionC(message, content string) Builder {
+	b.info.Suggestions = append(b.info.Suggestions, Suggestion{
+		Message: message,
+		Content: content,
+	})
+	return b
+}
+
 func (b Builder) SuggestionV(suggestion Suggestion) Builder {
 	b.info.Suggestions = append(b.info.Suggestions, suggestion)
 	return b
 }
 
+func (b Builder) Info() *Info   { return b.info }
 func (b Builder) Error() string { return b.info.Title }
-
-func (b Builder) Info() *Info { return b.info }
-
 func (b Builder) Unwrap() error { return b.inner }
