@@ -901,6 +901,10 @@ func (parse *parser) binaryExpr(precedence int) (x ast.Node, err error) {
 		}
 	}
 
+	if x == nil {
+		panic("unreachable")
+	}
+
 	return x, nil
 }
 

@@ -53,7 +53,7 @@ func TestExprs(t *testing.T) {
 	for _, c := range testCases {
 		t.Run(c.name, func(t *testing.T) {
 			scanner := token.NewScanner([]byte(c.input), fileID, c.scannerFlags)
-			parser := NewFrom(scanner, c.parserFlags)
+			parser := New(scanner, c.parserFlags)
 
 			stmts, err := parser.Parse()
 

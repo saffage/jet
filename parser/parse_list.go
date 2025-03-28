@@ -24,6 +24,10 @@ func (parse *parser) sequence(f parseFunc, sep token.Kind) (nodes []ast.Node, er
 			return nodes, err
 		}
 
+		if node == nil {
+			panic("unreachable")
+		}
+
 		nodes = append(nodes, node)
 
 		if !parse.skip(sep) {
@@ -97,6 +101,10 @@ func (parse *parser) listUntil(
 		node, err := f()
 
 		if err == nil {
+			if node == nil {
+				panic("unreachable")
+			}
+
 			if parse.skip(separator) || parse.match(delimiter) {
 				nodes = append(nodes, node)
 				continue
