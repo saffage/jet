@@ -101,12 +101,12 @@ func checkError(t *testing.T, got, want error) bool {
 	if want == nil {
 		if got != nil {
 			t.Errorf("parsing failed with unexpected error: '%s'", got.Error())
-			report.Report(got)
+			report.Render(got)
 			return false
 		}
 	} else if got == nil {
 		t.Errorf("expected an error: '%s', got nothing", want.Error())
-		report.Report(want)
+		report.Render(want)
 		return false
 	}
 

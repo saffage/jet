@@ -5,9 +5,6 @@ import (
 	"os"
 )
 
-// Specifies whether colors will be used when printing messages.
-var UseColors = true
-
 // Specifies whether to output the actual code from the file.
 var ShowCodeSnapshot = true
 
@@ -17,7 +14,7 @@ var ShowCodeSnapshot = true
 var UseUnicode = true
 
 // Specifies a level of messages to be displayed.
-var MinDisplayLevel = LevelHint
+var MinDisplayLevel = LevelTrace
 
 // Specifies output.
 var Output io.Writer = os.Stderr
@@ -32,6 +29,7 @@ const (
 	LevelWarning              // warning
 	LevelHint                 // hint
 	LevelDebug                // debug
+	LevelTrace                // trace
 )
 
 //go:generate stringer -type=LineInfo -linecomment

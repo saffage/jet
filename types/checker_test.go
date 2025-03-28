@@ -8,11 +8,18 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/config"
+	"github.com/saffage/jet/parser"
 	"github.com/saffage/jet/report"
+	"github.com/saffage/jet/token"
 )
 
 func TestFunctions(t *testing.T) {
+	t.Run("placeholder", checkExprCodeSnapshotOutput(`let _a = _`))
+
+	t.Skip("todo")
+
 	t.Run("ok_int_fn_return_int", checkCodeSnapshotOutput(
 		`let foo() Int = 0`,
 	))
@@ -37,10 +44,14 @@ let foo() Int = {
 }
 
 func checkCodeSnapshotOutput(code string) func(t *testing.T) {
-	return assertErrorConfig(code)
+	return assertErrorConfig(code, false)
 }
 
-func assertErrorConfig(code string) func(t *testing.T) {
+func checkExprCodeSnapshotOutput(code string) func(t *testing.T) {
+	return assertErrorConfig(code, true)
+}
+
+func assertErrorConfig(code string, isExpr bool) func(t *testing.T) {
 	return func(t *testing.T) {
 		testName := t.Name()
 
@@ -49,13 +60,6 @@ func assertErrorConfig(code string) func(t *testing.T) {
 			testName = testName[idx+1:]
 		}
 
-		defer func(outFile io.Writer, minDisplayLevel report.Level) {
-			report.Output = outFile
-		}(report.Output, report.MinDisplayLevel)
-
-		buf := new(bytes.Buffer)
-		report.Output = buf
-
 		f, _ := config.NewFile(testName+".jet", []byte(code))
 		// fileID := config.NextFileID()
 		// cfg.Files[fileID] = config.FileInfo{
@@ -63,11 +67,29 @@ func assertErrorConfig(code string) func(t *testing.T) {
 		// 	Buf:  bytes.NewBuffer([]byte(code)),
 		// }
 
-		_, checkErr := CheckFile(f)
+		parserFlags := parser.DefaultFlags
+
+		if isExpr {
+			parserFlags |= parser.AllowTopLevelCode
+		}
+
+		stmts, parseErr := parser.ParseFile(f, token.DefaultFlags, parserFlags)
+
+		if parseErr != nil {
+			t.Errorf("unexpected parse error: %s", parseErr)
+		}
+
+		t.Logf("parsed AST: %s", ast.Render(stmts))
+
+		_, checkErr := Check(f, stmts)
 		snapshotPath := filepath.Join("./snapshots/", testName+".out")
 
 		// Generate file report.
-		report.Report(checkErr)
+		defer func(output io.Writer) { report.Output = output }(report.Output)
+		buf := new(bytes.Buffer)
+		report.Output = buf
+		report.Render(checkErr)
+		t.Logf("%T", checkErr)
 
 		if snapshot, err := os.ReadFile(snapshotPath); err != nil {
 			// No error expected. Checker output must is empty.

@@ -30,18 +30,18 @@ func (b Builder) Tag(tag string) Builder {
 
 func (b Builder) CustomSelection(span text.Span, content, hint string) Builder {
 	b.info.Selection = Selection{
-		CustomContent: content,
-		Hint:          hint,
-		Range:         span,
+		Code:  content,
+		Hint:  hint,
+		Range: span,
 	}
 	return b
 }
 
 func (b Builder) CustomSelectionF(span text.Span, content, format string, args ...any) Builder {
 	b.info.Selection = Selection{
-		CustomContent: content,
-		Hint:          fmt.Sprintf(format, args...),
-		Range:         span,
+		Code:  content,
+		Hint:  fmt.Sprintf(format, args...),
+		Range: span,
 	}
 	return b
 }

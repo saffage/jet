@@ -1,50 +1,73 @@
 package report
 
 import (
-	"bytes"
 	"fmt"
 	"runtime"
 	"strings"
 )
 
 type Renderer interface {
-	Render(buf *strings.Builder) error
+	Render(buf *strings.Builder)
 }
 
-// If the error implements the [Informer] interface, it will be used instead
-// of the usual [Error] function.
+type Validator interface {
+	IsValid() bool
+}
+
+// Render renders the error for a user, writing it into the specified [Output].
+//
+// If the error implements the [Renderer] or [Informer] interfaces, it will be
+// used instead of the usual [Error] method.
 //
 // Note that errors joined using [errors.Join] will not be shown as separate
 // errors, use [Join] instead.
-func Report(errs ...error) {
-	for _, err := range errs {
-		switch err := err.(type) {
-		case nil:
-			// Ignore
+func Render(err error) {
+	buf := strings.Builder{}
+	render(&buf, err)
+	Output.Write([]byte(buf.String()))
+}
 
-		case Informer:
-			if info := err.Info(); info != nil {
-				info.Report()
-			}
+func render(buf *strings.Builder, err error) {
+	if e, ok := err.(Validator); ok && e != nil && !e.IsValid() {
+		return
+	}
 
-			switch err := err.(type) {
-			case interface{ Unwrap() error }:
-				Report(err.Unwrap())
+	switch err := err.(type) {
+	case nil:
+		// Ignore
 
-			case interface{ Unwrap() []error }:
-				Report(err.Unwrap()...)
-			}
+	case Renderer:
+		err.Render(buf)
 
-		default:
-			info := Info{Title: err.Error()}
-			info.Report()
+	case Informer:
+		if info := err.Info(); info != nil {
+			info.Render(buf)
+			return
 		}
+
+		switch err := err.(type) {
+		case interface{ Unwrap() error }:
+			render(buf, err.Unwrap())
+
+		case interface{ Unwrap() []error }:
+			for _, err := range err.Unwrap() {
+				render(buf, err)
+			}
+		}
+
+	default:
+		info := Info{Title: err.Error()}
+		info.Render(buf)
 	}
 }
 
 func Debug(format string, args ...any) {
 	_, file, line, _ := runtime.Caller(1)
-	report(LevelDebug, fmt.Sprintf("%s:%d", file, line), fmt.Sprintf(format, args...))
+	report(
+		LevelDebug,
+		fmt.Sprintf("%s:%d", file, line),
+		fmt.Sprintf(format, args...),
+	)
 }
 
 func DebugX(tag, format string, args ...any) {
@@ -88,7 +111,7 @@ func report(level Level, tag, message string) {
 
 	const labelBufferSize = 10
 
-	buf := bytes.Buffer{}
+	buf := strings.Builder{}
 	buf.Grow(len(message) + len(tag) + labelBufferSize)
 	writeLabel(&buf, level, tag)
 	titleStyle.Fprint(&buf, message)

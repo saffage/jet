@@ -6,12 +6,12 @@ import (
 )
 
 func Render(node Node) string {
-	buf := strings.Builder{}
-	err := node.Render(&buf)
+	const initialBufferSize = 256
 
-	if err != nil {
-		buf.WriteString("<invalid-node>")
-	}
+	buf := strings.Builder{}
+	buf.Grow(initialBufferSize)
+
+	node.Render(&buf)
 
 	return buf.String()
 }
@@ -20,27 +20,23 @@ func Render(node Node) string {
 // Atoms
 //------------------------------------------------
 
-func (node *BadNode) Render(buf *strings.Builder) error {
+func (node *BadNode) Render(buf *strings.Builder) {
 	buf.WriteString("#[bad_node]#")
-	return nil
 }
 
-func (node *Lower) Render(buf *strings.Builder) error {
+func (node *Lower) Render(buf *strings.Builder) {
 	buf.WriteString(node.Data)
-	return nil
 }
 
-func (node *Upper) Render(buf *strings.Builder) error {
+func (node *Upper) Render(buf *strings.Builder) {
 	buf.WriteString(node.Data)
-	return nil
 }
 
-func (node *Placeholder) Render(buf *strings.Builder) error {
+func (node *Placeholder) Render(buf *strings.Builder) {
 	buf.WriteString(node.Data)
-	return nil
 }
 
-func (node *Literal) Render(buf *strings.Builder) error {
+func (node *Literal) Render(buf *strings.Builder) {
 	switch node.Kind {
 	case IntLiteral, FloatLiteral:
 		buf.WriteString(node.Value)
@@ -53,14 +49,13 @@ func (node *Literal) Render(buf *strings.Builder) error {
 		panic("unreachable")
 	}
 
-	return nil
 }
 
 //------------------------------------------------
 // Declaration
 //------------------------------------------------
 
-func (node *LetDecl) Render(buf *strings.Builder) error {
+func (node *LetDecl) Render(buf *strings.Builder) {
 	buf.WriteString("let ")
 
 	node.Decl.Render(buf)
@@ -68,10 +63,9 @@ func (node *LetDecl) Render(buf *strings.Builder) error {
 	buf.WriteString(" = ")
 
 	node.Value.Render(buf)
-	return nil
 }
 
-func (node *TypeAlias) Render(buf *strings.Builder) error {
+func (node *TypeAlias) Render(buf *strings.Builder) {
 	buf.WriteString("let ")
 
 	node.Ident.Render(buf)
@@ -83,10 +77,9 @@ func (node *TypeAlias) Render(buf *strings.Builder) error {
 	buf.WriteString(" = ")
 
 	node.Expr.Render(buf)
-	return nil
 }
 
-func (node *TypeDef) Render(buf *strings.Builder) error {
+func (node *TypeDef) Render(buf *strings.Builder) {
 	buf.WriteString("let ")
 
 	node.Ident.Render(buf)
@@ -98,10 +91,9 @@ func (node *TypeDef) Render(buf *strings.Builder) error {
 	buf.WriteByte(' ')
 
 	node.Body.Render(buf)
-	return nil
 }
 
-func (node *Decl) Render(buf *strings.Builder) error {
+func (node *Decl) Render(buf *strings.Builder) {
 	if node.TypeTok.IsValid() {
 		buf.WriteString("type ")
 	}
@@ -114,24 +106,22 @@ func (node *Decl) Render(buf *strings.Builder) error {
 		node.Type.Render(buf)
 	}
 
-	return nil
 }
 
-func (node *Variant) Render(buf *strings.Builder) error {
+func (node *Variant) Render(buf *strings.Builder) {
 	node.Name.Render(buf)
 
 	if node.Params != nil {
 		node.Params.Render(buf)
 	}
 
-	return nil
 }
 
 //------------------------------------------------
 // Composite nodes
 //------------------------------------------------
 
-func (node *Label) Render(buf *strings.Builder) error {
+func (node *Label) Render(buf *strings.Builder) {
 	if node.Name != nil {
 		node.Name.Render(buf)
 
@@ -141,10 +131,9 @@ func (node *Label) Render(buf *strings.Builder) error {
 	}
 
 	node.X.Render(buf)
-	return nil
 }
 
-func (node *Signature) Render(buf *strings.Builder) error {
+func (node *Signature) Render(buf *strings.Builder) {
 	node.Params.Render(buf)
 
 	if node.Result != nil {
@@ -153,10 +142,9 @@ func (node *Signature) Render(buf *strings.Builder) error {
 		node.Result.Render(buf)
 	}
 
-	return nil
 }
 
-func (node *Function) Render(buf *strings.Builder) error {
+func (node *Function) Render(buf *strings.Builder) {
 	buf.WriteString("fn")
 
 	node.Signature.Render(buf)
@@ -167,25 +155,22 @@ func (node *Function) Render(buf *strings.Builder) error {
 		node.Body.Render(buf)
 	}
 
-	return nil
 }
 
-func (node *Call) Render(buf *strings.Builder) error {
+func (node *Call) Render(buf *strings.Builder) {
 	node.X.Render(buf)
 	node.Args.Render(buf)
-	return nil
 }
 
-func (node *Dot) Render(buf *strings.Builder) error {
+func (node *Dot) Render(buf *strings.Builder) {
 	node.X.Render(buf)
 
 	buf.WriteByte('.')
 
 	node.Y.Render(buf)
-	return nil
 }
 
-func (node *Op) Render(buf *strings.Builder) error {
+func (node *Op) Render(buf *strings.Builder) {
 	if node.X != nil {
 		node.X.Render(buf)
 	}
@@ -198,14 +183,13 @@ func (node *Op) Render(buf *strings.Builder) error {
 		node.Y.Render(buf)
 	}
 
-	return nil
 }
 
 //------------------------------------------------
 // Lists
 //------------------------------------------------
 
-func (node *List) Render(buf *strings.Builder) error {
+func (node *List) Render(buf *strings.Builder) {
 	buf.WriteByte('[')
 
 	for i, node := range node.Nodes {
@@ -217,10 +201,9 @@ func (node *List) Render(buf *strings.Builder) error {
 	}
 
 	buf.WriteByte(']')
-	return nil
 }
 
-func (stmts Stmts) Render(buf *strings.Builder) error {
+func (stmts Stmts) Render(buf *strings.Builder) {
 	for i, stmt := range stmts.Items {
 		if i > 0 {
 			buf.WriteString("; ")
@@ -229,10 +212,9 @@ func (stmts Stmts) Render(buf *strings.Builder) error {
 		stmt.Render(buf)
 	}
 
-	return nil
 }
 
-func (node *Block) Render(buf *strings.Builder) error {
+func (node *Block) Render(buf *strings.Builder) {
 	if len(node.Stmts.Items) == 0 {
 		buf.WriteString("{}")
 	} else {
@@ -243,10 +225,9 @@ func (node *Block) Render(buf *strings.Builder) error {
 		buf.WriteString(" }")
 	}
 
-	return nil
 }
 
-func (node *Parens) Render(buf *strings.Builder) error {
+func (node *Parens) Render(buf *strings.Builder) {
 	buf.WriteByte('(')
 
 	for i, node := range node.Nodes {
@@ -258,14 +239,13 @@ func (node *Parens) Render(buf *strings.Builder) error {
 	}
 
 	buf.WriteByte(')')
-	return nil
 }
 
 //------------------------------------------------
 // Language constructions
 //------------------------------------------------
 
-func (node *When) Render(buf *strings.Builder) error {
+func (node *When) Render(buf *strings.Builder) {
 	buf.WriteString("when ")
 
 	node.Expr.Render(buf)
@@ -273,41 +253,36 @@ func (node *When) Render(buf *strings.Builder) error {
 	buf.WriteByte(' ')
 
 	node.Body.Render(buf)
-	return nil
 }
 
-func (node *Case) Render(buf *strings.Builder) error {
+func (node *Case) Render(buf *strings.Builder) {
 	node.Pattern.Render(buf)
 
 	buf.WriteString(" -> ")
 
 	node.Expr.Render(buf)
-	return nil
 }
 
-func (node *Spread) Render(buf *strings.Builder) error {
+func (node *Spread) Render(buf *strings.Builder) {
 	buf.WriteString("..")
 
 	if node.Expr != nil {
 		node.Expr.Render(buf)
 	}
-	return nil
 }
 
-func (node *As) Render(buf *strings.Builder) error {
+func (node *As) Render(buf *strings.Builder) {
 	node.Expr.Render(buf)
 
 	buf.WriteString(" as ")
 
 	node.NewName.Render(buf)
-	return nil
 }
 
-func (node *Extern) Render(buf *strings.Builder) error {
+func (node *Extern) Render(buf *strings.Builder) {
 	buf.WriteString("extern")
 
 	if node.Args != nil {
 		node.Args.Render(buf)
 	}
-	return nil
 }

@@ -24,9 +24,9 @@ func (s Span) String() string {
 	return string(text)
 }
 
-func (s Span) Render(buf *strings.Builder) error {
+func (s Span) Render(buf *strings.Builder) {
 	if !s.IsValid() {
-		return ErrInvalidPos
+		panic("invalid pos")
 	}
 
 	buf.Grow(16)
@@ -38,14 +38,18 @@ func (s Span) Render(buf *strings.Builder) error {
 		buf.WriteByte(',')
 		buf.WriteString(strconv.Itoa(s.To.Offset()))
 	}
-
-	return nil
 }
 
 func (s Span) MarshalText() ([]byte, error) {
+	if !s.IsValid() {
+		return nil, ErrInvalidPos
+	}
+
 	buf := strings.Builder{}
-	err := s.Render(&buf)
-	return []byte(buf.String()), err
+
+	s.Render(&buf)
+
+	return []byte(buf.String()), nil
 }
 
 func (s *Span) UnmarshalText(text []byte) error {
@@ -110,22 +114,27 @@ func (p Pos) String() string {
 	return string(text)
 }
 
-func (p Pos) Render(buf *strings.Builder) error {
+func (p Pos) Render(buf *strings.Builder) {
 	if !p.IsValid() {
-		return ErrInvalidPos
+		panic("invalid pos")
 	}
 
 	buf.Grow(10)
 	buf.WriteString(strconv.Itoa(int(p.ID())))
 	buf.WriteByte(',')
 	buf.WriteString(strconv.Itoa(p.Offset()))
-	return nil
 }
 
 func (p Pos) MarshalText() ([]byte, error) {
+	if !p.IsValid() {
+		return nil, ErrInvalidPos
+	}
+
 	buf := strings.Builder{}
-	err := p.Render(&buf)
-	return []byte(buf.String()), err
+
+	p.Render(&buf)
+
+	return []byte(buf.String()), nil
 }
 
 func (p *Pos) UnmarshalText(text []byte) error {

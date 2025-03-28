@@ -9,7 +9,7 @@ import (
 
 func main() {
 	if err := cmd.Run(os.Args); err != nil {
-		report.Report(err)
+		report.Render(err)
 		os.Exit(1)
 	}
 }

@@ -10,8 +10,6 @@ import (
 	"github.com/saffage/jet/text"
 )
 
-const initialReportBufferSize = 512
-
 // Informer is an interface used to inform reporter how to report a problem.
 type Informer interface {
 	Info() *Info
@@ -26,13 +24,14 @@ type Info struct {
 }
 
 type Selection struct {
-	CustomContent string
-	Hint          string
-	Range         text.Span
+	Code  string
+	Hint  string
+	Range text.Span
 }
 
 type Suggestion struct {
 	Message   string
+	Content   string
 	Selection Selection
 }
 
@@ -59,29 +58,28 @@ func (info *Info) Error() string {
 	return buf.String()
 }
 
-func (info *Info) Report() {
+func (info *Info) Render(buf *strings.Builder) {
+	const initialReportBufferSize = 512
+
 	if info.Level > MinDisplayLevel {
 		return
 	}
 
-	buf := bytes.Buffer{}
 	buf.Grow(initialReportBufferSize)
 
-	writeLabel(&buf, info.Level, info.Tag)
+	writeLabel(buf, info.Level, info.Tag)
 
 	if info.Title != "" {
-		titleStyle.Fprint(&buf, info.Title, "\n")
+		titleStyle.Fprint(buf, info.Title, "\n")
 	} else {
-		titleStyle.Fprint(&buf, emptyMessage, "\n")
+		titleStyle.Fprint(buf, emptyMessage, "\n")
 	}
 
-	writeSelection(&buf, info.Selection, levelColor(info.Level))
+	writeSelection(buf, info.Selection, levelColor(info.Level))
 
 	for _, suggestion := range info.Suggestions {
-		writeSuggestion(&buf, suggestion)
+		writeSuggestion(buf, suggestion)
 	}
-
-	Output.Write(buf.Bytes())
 }
 
 func (info *Info) Info() *Info {
@@ -93,7 +91,7 @@ func (info *Info) With(suggestion Suggestion) *Info {
 	return info
 }
 
-func writeLabel(buf *bytes.Buffer, level Level, tag string) {
+func writeLabel(buf *strings.Builder, level Level, tag string) {
 	color := levelColor(level)
 
 	if tag != "" {
@@ -122,11 +120,12 @@ func levelColor(level Level) *color.Color {
 	}
 }
 
-func writeSelection(buf *bytes.Buffer, selection Selection, color *color.Color) {
-	// TODO handle custom content
-	file := config.File(selection.Range.ID())
-
-	if file == nil {
+func writeSelection(
+	buf *strings.Builder,
+	selection Selection,
+	color *color.Color,
+) {
+	if !ShowCodeSnapshot || !selection.Range.IsValid() {
 		if selection.Hint != "" {
 			buf.WriteString(" (")
 			buf.WriteString(selection.Hint)
@@ -136,25 +135,44 @@ func writeSelection(buf *bytes.Buffer, selection Selection, color *color.Color) 
 		return
 	}
 
-	if position, valid := file.GetPosition(selection.Range.From); valid {
-		buf.WriteByte('\n')
-		writePosition(buf, position)
-		buf.WriteByte('\n')
+	file := config.File(selection.Range.ID())
+	code := ""
 
-		if ShowCodeSnapshot {
-			endPosition, valid := file.GetPosition(selection.Range.To)
-
-			if !valid {
-				panic("selection range is corrupted, invalid right bound position")
-			}
-
-			code := file.Line(position.Pos)
-			writeCodeSnapshot(buf, color, code, selection.Hint, position, endPosition)
+	if selection.Code != "" {
+		if nl := strings.IndexByte(selection.Code, '\n'); nl < 0 {
+			code = selection.Code
+		} else {
+			code = selection.Code[:nl]
 		}
+	} else if file != nil {
+		code = file.Line(selection.Range.From)
 	}
+
+	if code == "" {
+		// Can't render selection on the empty line, ignore it.
+		return
+	}
+
+	from, fromIsValid := file.GetPosition(selection.Range.From)
+	to, toIsValid := file.GetPosition(selection.Range.To)
+
+	if !fromIsValid || !toIsValid {
+		panic("selection range is corrupted, invalid selection bounds")
+	}
+
+	writeFilepath(buf, from)
+
+	buf.WriteByte('\n')
+
+	writeCodeSnapshot(buf, color, code, selection.Hint, from, to)
 }
 
-func writeCodeSnapshot(buf *bytes.Buffer, color *color.Color, code, hint string, start, end text.Position) {
+func writeCodeSnapshot(
+	buf *strings.Builder,
+	color *color.Color,
+	code, hint string,
+	start, end text.Position,
+) {
 	left, right := start.Char-1, end.Char-1
 
 	if end.Line > start.Line {
@@ -180,10 +198,7 @@ func writeCodeSnapshot(buf *bytes.Buffer, color *color.Color, code, hint string,
 
 		underlineLen := max(1, right-left+1)
 
-		buf.WriteByte('^')
-		for range underlineLen - 1 {
-			buf.WriteByte('~')
-		}
+		color.Fprint(buf, "^", strings.Repeat("~", underlineLen-1))
 	}
 
 	if hint != "" {
@@ -194,20 +209,22 @@ func writeCodeSnapshot(buf *bytes.Buffer, color *color.Color, code, hint string,
 	buf.WriteByte('\n')
 }
 
-func writeSuggestion(buf *bytes.Buffer, suggestion Suggestion) {
+func writeSuggestion(buf *strings.Builder, suggestion Suggestion) {
 	if suggestion.Message == "" {
 		return
 	}
 
 	suggestionStyle.Fprint(buf, suggestion.Message, "\n")
 
-	// TODO content must be indented
-	const hintIndent = "\t"
-	// hintIndent + strings.ReplaceAll(hint.Suggestion, "\n", "\n"+hintIndent)
-	writeSelection(buf, suggestion.Selection, suggestionStyle)
+	if suggestion.Content != "" {
+		content := "\t" + strings.ReplaceAll(suggestion.Content, "\n", "\n\t")
+		suggestionContentStyle.Fprintln(buf, content)
+	} else {
+		writeSelection(buf, suggestion.Selection, suggestionStyle)
+	}
 }
 
-func writeLineNumber(buf *bytes.Buffer, line int, empty bool) {
+func writeLineNumber(buf *strings.Builder, line int, empty bool) {
 	if empty {
 		for range numLen(line) {
 			buf.WriteByte(' ')
@@ -223,7 +240,12 @@ func writeLineNumber(buf *bytes.Buffer, line int, empty bool) {
 	}
 }
 
-func writeColoredRange(buf *bytes.Buffer, text string, selection, rest *color.Color, i, j int) {
+func writeColoredRange(
+	buf *strings.Builder,
+	text string,
+	selection, rest *color.Color,
+	i, j int,
+) {
 	if len(text) == 0 {
 		return
 	}
@@ -244,7 +266,7 @@ func writeColoredRange(buf *bytes.Buffer, text string, selection, rest *color.Co
 	rest.Fprint(buf, textAfter)
 }
 
-func writePosition(buf *bytes.Buffer, position text.Position) {
+func writeFilepath(buf *strings.Builder, position text.Position) {
 	for range numLen(position.Line) {
 		buf.WriteByte(' ')
 	}
@@ -265,7 +287,13 @@ func writePosition(buf *bytes.Buffer, position text.Position) {
 
 	switch LineInfoStyle {
 	default: // LineInfoUnix
-		filepathStyle.Fprintf(buf, "%s:%d:%d", path, position.Line, position.Char)
+		filepathStyle.Fprintf(
+			buf,
+			"%s:%d:%d",
+			path,
+			position.Line,
+			position.Char,
+		)
 	}
 }
 
@@ -281,10 +309,11 @@ func numLen(num int) (len int) {
 }
 
 var (
-	titleStyle      = color.New(color.FgWhite)
-	lineNumStyle    = color.New(color.FgHiCyan, color.Bold)
-	separatorStyle  = color.New(color.FgBlack, color.Bold)
-	filepathStyle   = color.New(color.FgCyan)
-	codeStyle       = color.New(color.FgHiMagenta)
-	suggestionStyle = color.New(color.FgWhite)
+	titleStyle             = color.New(color.FgWhite)
+	lineNumStyle           = color.New(color.FgHiCyan, color.Bold)
+	separatorStyle         = color.New(color.FgBlack, color.Bold)
+	filepathStyle          = color.New(color.FgCyan)
+	codeStyle              = color.New(color.FgHiMagenta)
+	suggestionStyle        = color.New(color.FgWhite)
+	suggestionContentStyle = color.New(color.FgWhite, color.Italic)
 )
