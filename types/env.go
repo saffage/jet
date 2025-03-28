@@ -1,6 +1,7 @@
 package types
 
 import (
+	"iter"
 	"strings"
 
 	"github.com/saffage/jet/ast"
@@ -156,6 +157,34 @@ func (env *Env) Use(other *Env, names ...ast.Ident) error {
 	}
 
 	return report.Join(errs...)
+}
+
+func (env *Env) OnSymbols() iter.Seq[Symbol] {
+	return func(yield func(Symbol) bool) {
+		for symbol := range env.OnLocalSymbols() {
+			if !yield(symbol) {
+				return
+			}
+		}
+
+		if env.parent != nil {
+			for symbol := range env.parent.OnSymbols() {
+				if !yield(symbol) {
+					return
+				}
+			}
+		}
+	}
+}
+
+func (env *Env) OnLocalSymbols() iter.Seq[Symbol] {
+	return func(yield func(Symbol) bool) {
+		for _, symbol := range env.symbols {
+			if !yield(symbol) {
+				return
+			}
+		}
+	}
 }
 
 func (env *Env) Path() string {
