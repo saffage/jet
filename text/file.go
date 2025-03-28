@@ -49,12 +49,13 @@ func NewFile(id FileID, path string, content []byte) (*File, error) {
 
 	lines := []int{0}
 
+loop:
 	for i, char := range content {
 		switch char {
 		case '\000':
 			// This is fix for a file that contains single line.
 			lines = append(lines, i)
-			break
+			break loop
 		case '\n':
 			lines = append(lines, i+1)
 		}
