@@ -11,40 +11,24 @@ import (
 	"github.com/saffage/jet/config"
 	"github.com/saffage/jet/report"
 	"github.com/saffage/jet/text"
+	"github.com/saffage/jet/types"
 	"github.com/urfave/cli/v2"
 )
 
 func Build(file *text.File) error {
-	report.Debug("set file '%s' as main module", file.Path)
-
-	if err := build(file); err != nil {
-		return err
+	if buildError := build(file); buildError != nil {
+		return buildError
 	}
 
-	if err := compileToC(filepath.Dir(file.Path), file.Name); err != nil {
-		return err
-	}
-
-	if config.Run {
-		exePath := "." + string(filepath.Separator) + file.Name
-
-		if runtime.GOOS == "windows" {
-			exePath += ".exe"
-		}
-
-		report.Hint("running: '%s'", exePath)
-
-		cmd := exec.Command(exePath)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		cmd.Stdin = os.Stdin
-
-		if err := cmd.Run(); err != nil {
-			wd, _ := os.Getwd()
-			report.Hint("%s", wd)
-			report.ErrorX("run", "%s", err.Error())
-		}
-	}
+	// filename, ccError := cc(filepath.Dir(file.Path), file.Name)
+	//
+	// if ccError != nil {
+	// 	return ccError
+	// }
+	//
+	// if config.Run {
+	// 	run(filename)
+	// }
 
 	return nil
 }
@@ -81,54 +65,31 @@ func actionBuild(ctx *cli.Context) error {
 	return Build(file)
 }
 
-func build(*text.File) error {
-	// if err := checker.CheckBuiltInPackage(); err != nil {
-	// 	return err
-	// }
-	//
-	// m, err := checker.CheckFile(file)
-	// if err != nil {
-	// 	return err
-	// }
-	//
-	// fileDir := filepath.Dir(file.Path)
-	// dir := filepath.Join(fileDir, config.CacheDirName)
-	//
-	// err = os.Mkdir(dir, os.ModePerm)
-	// if err != nil && !os.IsExist(err) {
-	// 	return err
-	// }
-	//
-	// for _, importedModule := range m.Imports {
-	// 	if err := genModule(importedModule, dir); err != nil {
-	// 		return err
-	// 	}
-	// }
-	//
-	// return genModule(m, dir)
-
-	return nil
+func build(file *text.File) error {
+	_, err := types.CheckFile(file)
+	return err
 }
 
-// func genModule(m *checker.Module, dir string) error {
-// 	filename := filepath.Join(dir, m.Name()+".c")
-// 	f, err := os.Create(filename)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	defer f.Close()
-//
-// 	report.Hint("generating module '%s'", m.Name())
-// 	report.DebugX("gen", "module file is '%s'", filename)
-//
-// 	if err := cgen.Generate(f, m); err != nil {
-// 		return err
-// 	}
-//
-// 	return nil
-// }
+func run(filename string) {
+	if runtime.GOOS == "windows" {
+		filename += ".exe"
+	}
 
-func compileToC(dir, name string) error {
+	report.HintX("run", "running: '%s'", filename)
+
+	cmd := exec.Command(filename)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
+
+	if err := cmd.Run(); err != nil {
+		wd, _ := os.Getwd()
+		report.HintX("run", "%s", wd)
+		report.ErrorX("run", "%s", err.Error())
+	}
+}
+
+func cc(dir, name string) (filename string, err error) {
 	file := filepath.Join(dir, config.CacheDirName, name+".c")
 	args := []string{"-o", name, file}
 
@@ -142,8 +103,14 @@ func compileToC(dir, name string) error {
 	report.HintX("cc", "%s", cmd.String())
 
 	if err := cmd.Run(); err != nil {
-		return err
+		return "", err
 	}
 
-	return nil
+	filename = filepath.Join(".", name)
+
+	if runtime.GOOS == "windows" {
+		filename += ".exe"
+	}
+
+	return filename, nil
 }
