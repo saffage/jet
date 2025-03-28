@@ -60,7 +60,7 @@ func (parse *parser) listOpenClose(
 		return
 	}
 
-	span.To = closeTok.Span.To
+	span.To = closeTok.Span.From
 	return
 }
 
