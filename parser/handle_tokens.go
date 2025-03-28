@@ -9,19 +9,14 @@ import (
 
 func (parse *parser) next() (previous token.Token) {
 	if parse.Kind != token.EOF {
-		var tok token.Token
-
 		for {
-			tok = parse.scanner.NextToken()
+			tok := parse.scanner.NextToken()
 
-			if tok.Kind != token.Illegal {
+			if tok.Kind != token.Illegal && tok.Kind != token.Comment {
+				previous, parse.Token = parse.Token, tok
 				break
 			}
 		}
-
-		previous.Kind, parse.Kind = parse.Kind, tok.Kind
-		previous.Data, parse.Data = parse.Data, tok.Data
-		previous.Span, parse.Span = parse.Span, tok.Span
 	}
 
 	// if p.kind == token.Comment {

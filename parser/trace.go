@@ -9,54 +9,69 @@ import (
 	"github.com/saffage/jet/report"
 )
 
-func printTrace(p *parser, args ...any) {
-	// pos := p.tok.Span.From
-
-	// if report.UseColors {
-	// 	fmt.Print(color.HiCyanString("%6d:%4d: ", pos.Line, pos.Char))
-	// } else {
-	// 	fmt.Printf("%6d:%4d: ", pos.Line, pos.Char)
-	// }
-
-	for range p.traceIndent {
-		fmt.Print("  ")
-	}
-
-	if report.UseColors {
-		fmt.Print(color.HiGreenString("- "))
-		fmt.Println(color.YellowString(fmt.Sprint(args...)))
-	} else {
-		fmt.Printf("- %s", fmt.Sprint(args...))
-	}
+type tracer struct {
+	enabled bool
+	stack   []traceEntry
 }
 
-func trace(p *parser) *parser {
-	caller := "unknown caller"
+type traceEntry struct {
+	caller      string
+	error       *error
+	indentation int
+}
+
+const indentation = "⁝ "
+
+func (t *tracer) trace(error *error) *traceEntry {
+	if !t.enabled {
+		return nil
+	}
+
+	caller := "untracked caller"
 
 	if pc, _, _, ok := runtime.Caller(1); ok {
 		if details := runtime.FuncForPC(pc); details != nil {
-			// Remove type arguments.
-			caller = strings.TrimSuffix(details.Name(), "[...]")
+			const parserPrefix = "(*parser)."
 
-			i := strings.LastIndex(caller, "parse")
-			dot := strings.LastIndex(caller, ".")
+			caller = details.Name()
+			i := strings.LastIndex(caller, parserPrefix)
 
-			if i != -1 && i == dot+1 {
-				caller = caller[i+len("parse"):]
-			} else {
-				caller = caller[dot+1:]
-			}
-
-			if strings.HasPrefix(strings.ToLower(caller), "error") ||
-				strings.HasSuffix(strings.ToLower(caller), "error") {
-				caller = color.RedString("error")
+			if i >= 0 {
+				caller = caller[len(parserPrefix)+i:]
 			}
 		}
 	}
 
-	printTrace(p, caller)
-	p.traceIndent++
-	return p
+	fmt.Fprintf(
+		report.Output,
+		"%s%s%s\n",
+		strings.Repeat(indentation, len(t.stack)),
+		color.HiGreenString("- "),
+		color.YellowString(caller),
+	)
+
+	t.stack = append(t.stack, traceEntry{
+		caller:      caller,
+		error:       error,
+		indentation: len(t.stack),
+	})
+	return &t.stack[len(t.stack)-1]
 }
 
-func un(p *parser) { p.traceIndent-- }
+func (t *tracer) un(entry *traceEntry) {
+	if !t.enabled {
+		return
+	}
+
+	if entry.error != nil && *entry.error != nil {
+		fmt.Fprintf(
+			report.Output,
+			"%s%s%s\n",
+			strings.Repeat(indentation, entry.indentation),
+			color.HiGreenString("- "),
+			color.RedString("%s", *entry.error),
+		)
+	}
+
+	t.stack = t.stack[:len(t.stack)-1]
+}

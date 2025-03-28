@@ -9,7 +9,11 @@ import (
 // Primitives
 //------------------------------------------------
 
-func (parse *parser) decl() (ast.Node, error) {
+func (parse *parser) decl() (_ ast.Node, err error) {
+	if parse.tracer.enabled {
+		defer parse.un(parse.trace(&err))
+	}
+
 	switch parse.Kind {
 	case token.KwLet:
 		return parse.letDecl()
@@ -22,7 +26,11 @@ func (parse *parser) decl() (ast.Node, error) {
 	}
 }
 
-func (parse *parser) declOrExpr() (ast.Node, error) {
+func (parse *parser) declOrExpr() (_ ast.Node, err error) {
+	if parse.tracer.enabled {
+		defer parse.un(parse.trace(&err))
+	}
+
 	switch parse.Kind {
 	case token.KwLet:
 		return parse.letDecl()
@@ -35,11 +43,14 @@ func (parse *parser) declOrExpr() (ast.Node, error) {
 	}
 }
 
-func (parse *parser) variable() (ast.Node, error) {
+func (parse *parser) variable() (_ ast.Node, err error) {
+	if parse.tracer.enabled {
+		defer parse.un(parse.trace(&err))
+	}
+
 	var (
 		name ast.Ident
 		ty   ast.Node
-		err  error
 	)
 
 	if name, err = parse.ident(); err != nil {
@@ -55,17 +66,18 @@ func (parse *parser) variable() (ast.Node, error) {
 	return &ast.Decl{Ident: name, Type: ty}, nil
 }
 
-func (parse *parser) variant() (ast.Node, error) {
+func (parse *parser) variant() (_ ast.Node, err error) {
+	if parse.tracer.enabled {
+		defer parse.un(parse.trace(&err))
+	}
+
 	name := parse.UppercaseIdent()
 
 	if name == nil {
 		return nil, errUnexpectedToken(parse.Span, token.UppercaseIdent)
 	}
 
-	var (
-		params *ast.Parens
-		err    error
-	)
+	var params *ast.Parens
 
 	if parse.match(token.LParen) {
 		if params, err = parse.parens(parse.labeled(parse.typeExpr)); err != nil {
@@ -76,11 +88,14 @@ func (parse *parser) variant() (ast.Node, error) {
 	return &ast.Variant{Name: name, Params: params}, nil
 }
 
-func (parse *parser) typeVariable() (ast.Node, error) {
+func (parse *parser) typeVariable() (_ ast.Node, err error) {
+	if parse.tracer.enabled {
+		defer parse.un(parse.trace(&err))
+	}
+
 	var (
 		name ast.Ident
 		ty   ast.Node
-		err  error
 	)
 
 	if name, err = parse.lowerNode(); err != nil {
@@ -115,12 +130,15 @@ func (parse *parser) typeVariable() (ast.Node, error) {
 }
 
 func (parse *parser) labeled(f parseFunc) parseFunc {
-	return func() (ast.Node, error) {
+	return func() (_ ast.Node, err error) {
+		if parse.tracer.enabled {
+			defer parse.un(parse.trace(&err))
+		}
+
 		var (
 			label    *ast.Lower
 			expr     ast.Node
 			colonTok token.Token
-			err      error
 			isShort  bool
 		)
 
@@ -160,7 +178,11 @@ func (parse *parser) labeled(f parseFunc) parseFunc {
 }
 
 func (parse *parser) externOr(f parseFunc) parseFunc {
-	return func() (ast.Node, error) {
+	return func() (_ ast.Node, err error) {
+		if parse.tracer.enabled {
+			defer parse.un(parse.trace(&err))
+		}
+
 		if tok, ok := parse.consume(token.KwExtern); ok {
 			var args *ast.Parens
 
@@ -182,12 +204,15 @@ func (parse *parser) externOr(f parseFunc) parseFunc {
 	}
 }
 
-func (parse *parser) letDecl() (ast.Node, error) {
+func (parse *parser) letDecl() (_ ast.Node, err error) {
+	if parse.tracer.enabled {
+		defer parse.un(parse.trace(&err))
+	}
+
 	var (
 		letTok token.Token
 		decl   *ast.Decl
 		expr   ast.Node
-		err    error
 	)
 
 	if letTok, err = parse.expect(token.KwLet); err != nil {
@@ -215,12 +240,15 @@ func (parse *parser) letDecl() (ast.Node, error) {
 	}, nil
 }
 
-func (parse *parser) typeDecl() (ast.Node, error) {
+func (parse *parser) typeDecl() (_ ast.Node, err error) {
+	if parse.tracer.enabled {
+		defer parse.un(parse.trace(&err))
+	}
+
 	var (
 		typeTok token.Token
 		name    *ast.Upper
 		args    *ast.Parens
-		err     error
 	)
 
 	if typeTok, err = parse.expect(token.KwType); err != nil {
@@ -279,7 +307,11 @@ func (parse *parser) typeDecl() (ast.Node, error) {
 	}
 }
 
-func (parse *parser) typeVariantOrField() (ast.Node, error) {
+func (parse *parser) typeVariantOrField() (_ ast.Node, err error) {
+	if parse.tracer.enabled {
+		defer parse.un(parse.trace(&err))
+	}
+
 	switch parse.Kind {
 	case token.LowercaseIdent, token.IdentPlaceholder, token.Colon:
 		return parse.labeled(parse.variable)()
@@ -297,7 +329,11 @@ func (parse *parser) typeVariantOrField() (ast.Node, error) {
 	}
 }
 
-func (parse *parser) IdentPlaceholder() (ast.Ident, error) {
+func (parse *parser) IdentPlaceholder() (_ ast.Ident, err error) {
+	if parse.tracer.enabled {
+		defer parse.un(parse.trace(&err))
+	}
+
 	tok, err := parse.expect(token.IdentPlaceholder)
 
 	if err != nil {
@@ -307,7 +343,11 @@ func (parse *parser) IdentPlaceholder() (ast.Ident, error) {
 	return &ast.Placeholder{Data: tok.Data, Span: tok.Span}, nil
 }
 
-func (parse *parser) lowerNode() (ast.Ident, error) {
+func (parse *parser) lowerNode() (_ ast.Ident, err error) {
+	if parse.tracer.enabled {
+		defer parse.un(parse.trace(&err))
+	}
+
 	tok, err := parse.expect(token.LowercaseIdent)
 
 	if err != nil {
@@ -318,6 +358,10 @@ func (parse *parser) lowerNode() (ast.Ident, error) {
 }
 
 func (parse *parser) LowercaseIdent() *ast.Lower {
+	if parse.tracer.enabled {
+		defer parse.un(parse.trace(nil))
+	}
+
 	tok, ok := parse.consume(token.LowercaseIdent)
 
 	if !ok {
@@ -327,7 +371,11 @@ func (parse *parser) LowercaseIdent() *ast.Lower {
 	return &ast.Lower{Data: tok.Data, Span: tok.Span}
 }
 
-func (parse *parser) upperNode() (ast.Ident, error) {
+func (parse *parser) upperNode() (_ ast.Ident, err error) {
+	if parse.tracer.enabled {
+		defer parse.un(parse.trace(&err))
+	}
+
 	tok, err := parse.expect(token.UppercaseIdent)
 
 	if err != nil {
@@ -338,6 +386,10 @@ func (parse *parser) upperNode() (ast.Ident, error) {
 }
 
 func (parse *parser) UppercaseIdent() *ast.Upper {
+	if parse.tracer.enabled {
+		defer parse.un(parse.trace(nil))
+	}
+
 	tok, ok := parse.consume(token.UppercaseIdent)
 
 	if !ok {
@@ -347,7 +399,7 @@ func (parse *parser) UppercaseIdent() *ast.Upper {
 	return &ast.Upper{Data: tok.Data, Span: tok.Span}
 }
 
-func (parse *parser) literal() (ast.Node, error) {
+func (parse *parser) literal() (_ ast.Node, err error) {
 	tok, ok := parse.consumeAny(token.Int, token.Float, token.String)
 
 	if !ok {
@@ -361,7 +413,11 @@ func (parse *parser) literal() (ast.Node, error) {
 	}, nil
 }
 
-func (parse *parser) ident() (ast.Ident, error) {
+func (parse *parser) ident() (_ ast.Ident, err error) {
+	if parse.tracer.enabled {
+		defer parse.un(parse.trace(&err))
+	}
+
 	switch parse.Kind {
 	case token.LowercaseIdent:
 		return parse.lowerNode()
@@ -378,11 +434,19 @@ func (parse *parser) ident() (ast.Ident, error) {
 	}
 }
 
-func (parse *parser) block() (ast.Node, error) {
+func (parse *parser) block() (_ ast.Node, err error) {
+	if parse.tracer.enabled {
+		defer parse.un(parse.trace(&err))
+	}
+
 	return parse.blockFunc(parse.declOrExpr)
 }
 
-func (parse *parser) blockFunc(f parseFunc) (*ast.Block, error) {
+func (parse *parser) blockFunc(f parseFunc) (_ *ast.Block, err error) {
+	if parse.tracer.enabled {
+		defer parse.un(parse.trace(&err))
+	}
+
 	if !parse.match(token.LCurly) {
 		return nil, errExpectedBlock(parse.Span)
 	}
@@ -417,7 +481,11 @@ func (parse *parser) parens(f parseFunc) (*ast.Parens, error) {
 	}, nil
 }
 
-func (parse *parser) brackets(f parseFunc) (*ast.List, error) {
+func (parse *parser) brackets(f parseFunc) (_ *ast.List, err error) {
+	if parse.tracer.enabled {
+		defer parse.un(parse.trace(&err))
+	}
+
 	nodes, span, err := parse.listOpenClose(
 		f,
 		token.LBracket,
@@ -435,11 +503,11 @@ func (parse *parser) brackets(f parseFunc) (*ast.List, error) {
 	}, nil
 }
 
-func (parse *parser) args() (ast.Node, error) {
+func (parse *parser) args() (_ ast.Node, err error) {
 	return parse.parens(parse.expr)
 }
 
-func (parse *parser) typeArgs() (ast.Node, error) {
+func (parse *parser) typeArgs() (_ ast.Node, err error) {
 	return parse.parens(parse.typeExpr)
 }
 
@@ -452,8 +520,10 @@ func (parse *parser) isTypeStartOrSignature() bool {
 }
 
 // `T | U | ...`
-func (parse *parser) typeExpr() (ast.Node, error) {
-	var expr ast.Node
+func (parse *parser) typeExpr() (_ ast.Node, err error) {
+	if parse.tracer.enabled {
+		defer parse.un(parse.trace(&err))
+	}
 
 	expr, err := parse.simpleTypeExpr()
 
@@ -490,7 +560,11 @@ func (parse *parser) typeExpr() (ast.Node, error) {
 	return expr, nil
 }
 
-func (parse *parser) simpleTypeExpr() (ast.Node, error) {
+func (parse *parser) simpleTypeExpr() (_ ast.Node, err error) {
+	if parse.tracer.enabled {
+		defer parse.un(parse.trace(&err))
+	}
+
 	switch parse.Kind {
 	case token.UppercaseIdent:
 		node, _ := parse.upperNode()
@@ -533,7 +607,11 @@ func (parse *parser) simpleTypeExpr() (ast.Node, error) {
 }
 
 func (parse *parser) signature(parseParamFunc parseFunc) parseFunc {
-	return func() (ast.Node, error) {
+	return func() (_ ast.Node, err error) {
+		if parse.tracer.enabled {
+			defer parse.un(parse.trace(&err))
+		}
+
 		params, err := parse.parens(parseParamFunc)
 
 		if err != nil {
@@ -555,7 +633,11 @@ func (parse *parser) signature(parseParamFunc parseFunc) parseFunc {
 	}
 }
 
-func (parse *parser) typeOrSignature() (ast.Node, error) {
+func (parse *parser) typeOrSignature() (_ ast.Node, err error) {
+	if parse.tracer.enabled {
+		defer parse.un(parse.trace(&err))
+	}
+
 	switch {
 	case parse.match(token.LParen):
 		return parse.signature(parse.labeled(parse.variable))()
@@ -574,7 +656,11 @@ func (parse *parser) typeOrSignature() (ast.Node, error) {
 	}
 }
 
-func (parse *parser) functionType() (ast.Node, error) {
+func (parse *parser) functionType() (_ ast.Node, err error) {
+	if parse.tracer.enabled {
+		defer parse.un(parse.trace(&err))
+	}
+
 	if _, err := parse.expect(token.KwFn); err != nil {
 		return nil, err
 	}
@@ -588,7 +674,11 @@ func (parse *parser) functionType() (ast.Node, error) {
 	return &ast.Function{Signature: signature.(*ast.Signature)}, nil
 }
 
-func (parse *parser) function() (ast.Node, error) {
+func (parse *parser) function() (_ ast.Node, err error) {
+	if parse.tracer.enabled {
+		defer parse.un(parse.trace(&err))
+	}
+
 	fnType, err := parse.functionType()
 
 	if err != nil {
@@ -612,7 +702,11 @@ func (parse *parser) function() (ast.Node, error) {
 	return fn, nil
 }
 
-func (parse *parser) expr() (ast.Node, error) {
+func (parse *parser) expr() (_ ast.Node, err error) {
+	if parse.tracer.enabled {
+		defer parse.un(parse.trace(&err))
+	}
+
 	switch {
 	case parse.match(token.KwWhen):
 		return parse.whenExpr()
@@ -625,12 +719,15 @@ func (parse *parser) expr() (ast.Node, error) {
 	}
 }
 
-func (parse *parser) whenExpr() (ast.Node, error) {
+func (parse *parser) whenExpr() (_ ast.Node, err error) {
+	if parse.tracer.enabled {
+		defer parse.un(parse.trace(&err))
+	}
+
 	var (
 		whenTok token.Token
 		expr    ast.Node
 		body    *ast.Block
-		err     error
 	)
 
 	if whenTok, err = parse.expect(token.KwWhen); err != nil {
@@ -652,12 +749,15 @@ func (parse *parser) whenExpr() (ast.Node, error) {
 	}, nil
 }
 
-func (parse *parser) case_() (ast.Node, error) {
+func (parse *parser) case_() (_ ast.Node, err error) {
+	if parse.tracer.enabled {
+		defer parse.un(parse.trace(&err))
+	}
+
 	var (
 		arrowTok token.Token
 		pattern  ast.Node
 		expr     ast.Node
-		err      error
 	)
 
 	if pattern, err = parse.casePattern(); err != nil {
@@ -679,9 +779,10 @@ func (parse *parser) case_() (ast.Node, error) {
 	}, nil
 }
 
-func (parse *parser) casePattern() (ast.Node, error) {
-	var node ast.Node
-	var err error
+func (parse *parser) casePattern() (node ast.Node, err error) {
+	if parse.tracer.enabled {
+		defer parse.un(parse.trace(&err))
+	}
 
 	switch {
 	case parse.matchAny(token.Int, token.Float, token.String):
@@ -747,7 +848,11 @@ func (parse *parser) casePattern() (ast.Node, error) {
 }
 
 func (parse *parser) dot2(fallback parseFunc) parseFunc {
-	return func() (ast.Node, error) {
+	return func() (_ ast.Node, err error) {
+		if parse.tracer.enabled {
+			defer parse.un(parse.trace(&err))
+		}
+
 		if tok, ok := parse.consume(token.Dot2); ok {
 			var ident ast.Ident
 
@@ -769,9 +874,10 @@ func (parse *parser) dot2(fallback parseFunc) parseFunc {
 	}
 }
 
-func (parse *parser) binaryExpr(precedence int) (ast.Node, error) {
-	var err error
-	var x ast.Node
+func (parse *parser) binaryExpr(precedence int) (x ast.Node, err error) {
+	if parse.tracer.enabled {
+		defer parse.un(parse.trace(&err))
+	}
 
 	if x, err = parse.prefix(); err != nil {
 		return nil, err
@@ -798,7 +904,11 @@ func (parse *parser) binaryExpr(precedence int) (ast.Node, error) {
 	return x, nil
 }
 
-func (parse *parser) prefix() (ast.Node, error) {
+func (parse *parser) prefix() (_ ast.Node, err error) {
+	if parse.tracer.enabled {
+		defer parse.un(parse.trace(&err))
+	}
+
 	if tok, ok := parse.consume(token.Minus); ok {
 		y, err := parse.prefix()
 
@@ -816,8 +926,12 @@ func (parse *parser) prefix() (ast.Node, error) {
 	return parse.primary()
 }
 
-func (parse *parser) primary() (ast.Node, error) {
-	x, err := parse.operand()
+func (parse *parser) primary() (x ast.Node, err error) {
+	if parse.tracer.enabled {
+		defer parse.un(parse.trace(&err))
+	}
+
+	x, err = parse.operand()
 
 	if err != nil {
 		return nil, err
@@ -847,7 +961,11 @@ func (parse *parser) primary() (ast.Node, error) {
 	}
 }
 
-func (parse *parser) operand() (ast.Node, error) {
+func (parse *parser) operand() (_ ast.Node, err error) {
+	if parse.tracer.enabled {
+		defer parse.un(parse.trace(&err))
+	}
+
 	switch parse.Kind {
 	case token.LowercaseIdent, token.IdentPlaceholder:
 		return parse.ident()
@@ -873,7 +991,11 @@ func (parse *parser) operand() (ast.Node, error) {
 ///
 ///
 
-func (parse *parser) dotExpr(x ast.Node) (ast.Node, error) {
+func (parse *parser) dotExpr(x ast.Node) (_ ast.Node, err error) {
+	if parse.tracer.enabled {
+		defer parse.un(parse.trace(&err))
+	}
+
 	dotTok, err := parse.expect(token.Dot)
 
 	if err != nil {
@@ -937,8 +1059,8 @@ type comparableIdent interface {
 	ast.Ident
 }
 
-func node[T comparableNode](f func() (T, error)) func() (ast.Node, error) {
-	return func() (ast.Node, error) {
+func node[T comparableNode](f func() (T, error)) func() (_ ast.Node, err error) {
+	return func() (_ ast.Node, err error) {
 		var zero T
 		node, err := f()
 
@@ -954,8 +1076,8 @@ func node[T comparableNode](f func() (T, error)) func() (ast.Node, error) {
 	}
 }
 
-func ident[T comparableIdent](f func() (T, error)) func() (ast.Ident, error) {
-	return func() (ast.Ident, error) {
+func ident[T comparableIdent](f func() (T, error)) func() (_ ast.Ident, err error) {
+	return func() (_ ast.Ident, err error) {
 		var zero T
 		node, err := f()
 

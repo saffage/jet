@@ -12,8 +12,10 @@ type parseFunc func() (ast.Node, error)
 // Grammar:
 //
 //	f {sep f}
-func (parse *parser) sequence(f parseFunc, sep token.Kind) ([]ast.Node, error) {
-	var nodes []ast.Node
+func (parse *parser) sequence(f parseFunc, sep token.Kind) (nodes []ast.Node, err error) {
+	if parse.tracer.enabled {
+		defer parse.un(parse.trace(&err))
+	}
 
 	for parse.Kind != token.EOF {
 		node, err := f()
@@ -39,6 +41,10 @@ func (parse *parser) listOpenClose(
 	f parseFunc,
 	open, close, sep token.Kind,
 ) (nodes []ast.Node, span text.Span, err error) {
+	if parse.tracer.enabled {
+		defer parse.un(parse.trace(&err))
+	}
+
 	openTok, ok := parse.consume(open)
 
 	if !ok {
@@ -73,7 +79,11 @@ func (parse *parser) listUntil(
 	f parseFunc,
 	delimiter, separator token.Kind,
 	begin text.Span,
-) ([]ast.Node, error) {
+) (_ []ast.Node, err error) {
+	if parse.tracer.enabled {
+		defer parse.un(parse.trace(&err))
+	}
+
 	var nodes []ast.Node
 	var errs []error
 
