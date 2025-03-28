@@ -291,9 +291,10 @@ func (sym *TypeDef) Ident() ast.Ident {
 //------------------------------------------------
 
 type TypeAlias struct {
-	owner *Env
-	node  *ast.TypeAlias
-	alias *Alias
+	owner  *Env
+	node   *ast.TypeAlias
+	alias  *Alias
+	extern Type // Always [IsAtom] or nil.
 }
 
 func NewTypeAlias(owner *Env, alias *Alias, node *ast.TypeAlias) *TypeAlias {
@@ -309,12 +310,19 @@ func NewExternTypeAlias(owner *Env, extern Type) *TypeAlias {
 	assert(IsAtom(extern))
 
 	return &TypeAlias{
-		owner: owner,
-		alias: &Alias{base: extern, name: Render(extern)},
+		owner:  owner,
+		extern: extern,
 	}
 }
 
-func (sym *TypeAlias) Type() Type     { return NewDescriptor(sym.alias) }
+func (sym *TypeAlias) Type() Type {
+	if sym.alias != nil {
+		return NewDescriptor(sym.alias)
+	}
+
+	return sym.extern
+}
+
 func (sym *TypeAlias) Node() ast.Node { return sym.node }
 func (sym *TypeAlias) Value() *Value  { return &Value{T: sym.Type()} }
 func (sym *TypeAlias) Owner() *Env    { return sym.owner }
@@ -324,7 +332,11 @@ func (sym *TypeAlias) Name() string {
 		return sym.node.Ident.Name()
 	}
 
-	return sym.alias.name
+	if sym.alias != nil {
+		return sym.alias.name
+	}
+
+	return Render(sym.extern)
 }
 
 func (sym *TypeAlias) Ident() ast.Ident {
@@ -332,7 +344,7 @@ func (sym *TypeAlias) Ident() ast.Ident {
 		return sym.node.Ident
 	}
 
-	return &ast.Upper{Data: sym.alias.name}
+	return &ast.Upper{Data: sym.Name()}
 }
 
 //------------------------------------------------
