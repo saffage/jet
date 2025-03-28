@@ -18,9 +18,10 @@ type ScannerFlags int
 const (
 	SkipIllegal ScannerFlags = 1 << iota
 	SkipComments
+	SkipSemicolons
 
 	NoFlags      ScannerFlags = 0
-	DefaultFlags ScannerFlags = NoFlags
+	DefaultFlags ScannerFlags = SkipComments | SkipSemicolons
 )
 
 var (
@@ -104,11 +105,22 @@ func (s *Scanner) NextToken() Token {
 		case s.Match('\n', '\r'):
 			s.TakeWhile(isNewLine)
 
+			if s.flags&SkipSemicolons != 0 {
+				return s.NextToken()
+			}
+
 			kind = Semicolon
 			data = "\n"
 
+		case s.Consumed(';'):
+			if s.flags&SkipSemicolons != 0 {
+				return s.NextToken()
+			}
+
+			kind = Semicolon
+
 		case isDigit(s.Peek()):
-			ok := true
+			var ok bool
 			kind, data, span, ok = s.scanNumber()
 
 			if !ok {
@@ -147,7 +159,7 @@ func (s *Scanner) NextToken() Token {
 			}
 
 		case s.Match('"', '\''):
-			ok := true
+			var ok bool
 			data, span, ok = s.scanString()
 			kind = String
 
@@ -214,7 +226,7 @@ func (s *Scanner) NextToken() Token {
 				kind = FatArrow
 			}
 
-		case s.Match(',', ':', ';', '(', ')', '[', ']', '{', '}'):
+		case s.Match(',', ':', '(', ')', '[', ']', '{', '}'):
 			kind = KindFrom(s.Advance())
 
 			if kind == Illegal {
