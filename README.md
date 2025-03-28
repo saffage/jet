@@ -27,10 +27,10 @@ Currently it looks more like a transpiler than a compiler. The syntax of the lan
     - [ ] rework code generator to work with new AST & type system
   - [ ] fix interpolated strings parsing (this must be done with additional scanner pass)
 
-- [ ] cleanup
+- [x] cleanup
   - [x] remove unused API from `scanner`, `parser`, `checker` packages
     - [x] functions named `Must...()` are redundant
-  - [ ] remove `constant` package
+  - [x] remove `constant` package
 
 - [ ] error reporting
   - [ ] generalize errors, maybe using builder pattern
