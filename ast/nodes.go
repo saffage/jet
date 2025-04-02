@@ -223,22 +223,72 @@ func (node *Label) Range() text.Span {
 	}
 }
 
+// # Short labels
+//
+// Short labels are syntactic sugar for specifying a label with the same name as
+// in the expression. For example this…
+//
+//	label: label
+//
+// … can be written as this…
+//
+//	:label
+//
+// There are only a few cases when a short label is used.
+//
+// 1. lowercase identifier. Basically, any value.
+//
+//	:foo
+//
+// 2. Arbitrarily nested member access. Takes the last part of the expression as
+// a label.
+//
+//	:foo.bar // label is 'bar'
+//	:foo().bar // label will be 'bar' regardless of the operand.
+//
+// 3. Declaration of a value. This may be a field, a parameter, or a property.
+//
+//	:foo T
+//
+// In any other case, the label must be specified as a separate lowercase
+// identifier before the colon.
+//
+//	label: ...
 func (node *Label) Label() *Lower {
 	if node.Name != nil {
 		return node.Name
 	}
 
-	switch x := node.X.(type) {
+	switch labeledExpr := node.X.(type) {
 	case *Lower:
-		return x
+		return labeledExpr
 
 	case *Decl:
-		if name, _ := x.Ident.(*Lower); name != nil {
+		if name, _ := labeledExpr.Ident.(*Lower); name != nil {
 			return name
+		}
+
+	case *Dot:
+		y := labeledExpr.Y
+		for {
+			switch member := y.(type) {
+			case *Lower:
+				return member
+
+			case *Dot:
+				y = member.Y
+
+			default:
+				return nil
+			}
 		}
 	}
 
 	return nil
+}
+
+func (node *Label) IsShort() bool {
+	return node.Name == nil
 }
 
 func (node *Signature) Range() (span text.Span) {
