@@ -48,7 +48,7 @@ func errExpectedExpr(span text.Span) error {
 func errExpectedOperand(span text.Span) error {
 	return report.Build(ErrExpectedOperand).
 		Tag("parse").
-		Selection(span, "")
+		Selection(span, "this must be an operand")
 }
 
 func errExpectedPattern(span text.Span, pattern int) error {
@@ -64,30 +64,11 @@ func errExpectedType(span text.Span) error {
 }
 
 func errUnexpectedToken(span text.Span, expected ...any) error {
-	buf := strings.Builder{}
-
-	switch {
-	case len(expected) > 1:
-		n := len(expected) - 1
-
-		for i, item := range expected[:n] {
-			if i > 0 {
-				buf.WriteString(", ")
-			}
-			buf.WriteString(fmt.Sprint(item))
-		}
-
-		buf.WriteString(" or ")
-		buf.WriteString(fmt.Sprint(expected[n]))
-
-	case len(expected) == 1:
-		buf.WriteString(fmt.Sprint(expected[0]))
-	}
-
 	message := ""
+	tokens := prettyJoinAny(expected)
 
-	if buf.Len() > 0 {
-		message = "expected " + buf.String() + " here"
+	if len(expected) > 0 {
+		message = "expected " + tokens + " here"
 	}
 
 	return report.Build(ErrUnexpectedToken).
@@ -98,13 +79,19 @@ func errUnexpectedToken(span text.Span, expected ...any) error {
 func errUnimplementedFeature(span text.Span, featureName string) error {
 	return report.Build(ErrUnimplementedFeature).
 		Tag("parse").
-		Selection(span, fmt.Sprintf("feature '%s' is not implemented", featureName))
+		Selection(
+			span,
+			fmt.Sprintf("feature '%s' is not implemented", featureName),
+		)
 }
 
 func errUnterminatedExpr(span text.Span, delimiters ...token.Kind) error {
 	return report.Build(ErrUnterminatedExpr).
 		Tag("parse").
-		Selection(span, "")
+		Selection(
+			span,
+			fmt.Sprintf("expected %s after this", prettyJoin(delimiters)),
+		)
 }
 
 func errUnterminatedList(span text.Span) error {
@@ -152,3 +139,51 @@ func errUnterminatedList(span text.Span) error {
 // 		Message:   fmt.Sprintf(format, args...),
 // 	})
 // }
+
+func prettyJoinAny(items []any) string {
+	buf := strings.Builder{}
+
+	switch {
+	case len(items) > 1:
+		n := len(items) - 1
+
+		for i, item := range items[:n] {
+			if i > 0 {
+				buf.WriteString(", ")
+			}
+			buf.WriteString(fmt.Sprint(item))
+		}
+
+		buf.WriteString(" or ")
+		buf.WriteString(fmt.Sprint(items[n]))
+
+	case len(items) == 1:
+		buf.WriteString(fmt.Sprint(items[0]))
+	}
+
+	return buf.String()
+}
+
+func prettyJoin[T fmt.Stringer](items []T) string {
+	buf := strings.Builder{}
+
+	switch {
+	case len(items) > 1:
+		n := len(items) - 1
+
+		for i, item := range items[:n] {
+			if i > 0 {
+				buf.WriteString(", ")
+			}
+			buf.WriteString(item.String())
+		}
+
+		buf.WriteString(" or ")
+		buf.WriteString(items[n].String())
+
+	case len(items) == 1:
+		buf.WriteString(items[0].String())
+	}
+
+	return buf.String()
+}
