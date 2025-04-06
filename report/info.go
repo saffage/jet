@@ -145,7 +145,8 @@ func writeSelection(
 			code = selection.Code[:nl]
 		}
 	} else if file != nil {
-		code = file.LineContent(selection.Range.From)
+		// TODO: it could be optimized.
+		code = file.LineContent(file.PositionOf(selection.Range.From).Line)
 	}
 
 	from := file.PositionOf(selection.Range.From)

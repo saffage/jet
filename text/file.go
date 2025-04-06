@@ -102,25 +102,35 @@ func ReadFile(id FileID, path string) (*File, error) {
 }
 
 func (file *File) LineStart(line int) Pos {
-	Assert(line > 0)
-	Assert(line <= len(file.lines))
+	Assert(line > 0 && line <= len(file.lines), fmt.Sprintf(
+		"line %d is not in valid range [1, %d]",
+		line,
+		len(file.lines),
+	))
 
 	return PosFrom(file.ID, file.lines[line-1])
 }
 
-func (file *File) LineContent(pos Pos) string {
-	line := file.searchForOffset(file.fix(pos.Offset())) + 1
+func (file *File) LineEnd(line int) Pos {
+	Assert(line > 0 && line <= len(file.lines), fmt.Sprintf(
+		"line %d is not in valid range [1, %d]",
+		line,
+		len(file.lines),
+	))
 
-	if line == 0 {
-		return ""
+	if line == len(file.lines) {
+		if file.Content[len(file.Content)-1] == '\n' {
+			return PosFrom(file.ID, len(file.Content)-1)
+		}
+		return PosFrom(file.ID, len(file.Content))
 	}
 
+	return PosFrom(file.ID, file.lines[line]-1)
+}
+
+func (file *File) LineContent(line int) string {
 	startIndex := file.LineStart(line).Offset()
-	endIndex := len(file.Content)
-
-	if line+1 < len(file.lines) {
-		endIndex = file.LineStart(line+1).Offset() - 1
-	}
+	endIndex := file.LineEnd(line).Offset()
 
 	return string(file.Content[startIndex:endIndex])
 }
@@ -140,6 +150,29 @@ func (file *File) PositionOf(pos Pos) Position {
 		Line:     line,
 		Char:     char,
 	}
+}
+
+func (file *File) ByteAt(offset int) byte {
+	Assert(offset >= 0 && offset <= len(file.Content), fmt.Sprintf(
+		"offset %d is not in valid range [0, %d]",
+		offset,
+		len(file.Content),
+	))
+
+	if offset == len(file.Content) {
+		return '\000'
+	}
+
+	return file.Content[offset]
+}
+
+func (file *File) ByteOf(pos Pos) byte {
+	if pos.ID() != file.ID {
+		// NOTE: not sure that is a correct behavior.
+		return '\000'
+	}
+
+	return file.ByteAt(file.fix(pos.Offset()))
 }
 
 func (file *File) fix(offset int) int {
