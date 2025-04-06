@@ -13,6 +13,7 @@ const (
 
 	EOF     // end of file
 	Comment // comment
+	Newline // newline
 
 	LowercaseIdent   // lowercase identifier
 	UppercaseIdent   // uppercase identifier
@@ -100,7 +101,7 @@ const (
 
 const (
 	_special_begin = EOF
-	_special_end   = Comment
+	_special_end   = Newline
 
 	_primary_begin = LowercaseIdent
 	_primary_end   = String

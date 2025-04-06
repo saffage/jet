@@ -19,9 +19,10 @@ const (
 	SkipIllegal ScannerFlags = 1 << iota
 	SkipComments
 	SkipSemicolons
+	SkipNewlines
 
 	NoFlags      ScannerFlags = 0
-	DefaultFlags ScannerFlags = SkipComments | SkipSemicolons
+	DefaultFlags ScannerFlags = SkipComments
 )
 
 var (
@@ -44,6 +45,8 @@ type Scanner struct {
 	errors []error
 	text.Scanner
 	flags ScannerFlags
+
+	emitNewLine bool
 }
 
 // TODO remove it
@@ -53,9 +56,16 @@ type Token struct {
 	Span text.Span
 }
 
-func NewScanner(input []byte, id text.FileID, flags ScannerFlags) *Scanner {
+func NewScanner(content []byte, id text.FileID, flags ScannerFlags) *Scanner {
 	return &Scanner{
-		Scanner: *text.NewScanner(input, id),
+		Scanner: *text.NewScanner(content, id),
+		flags:   flags,
+	}
+}
+
+func NewScannerFromFile(file *text.File, flags ScannerFlags) *Scanner {
+	return &Scanner{
+		Scanner: *text.NewScannerFromFile(file),
 		flags:   flags,
 	}
 }
@@ -106,12 +116,11 @@ func (s *Scanner) NextToken() Token {
 		case s.Match('\n', '\r'):
 			s.TakeWhile(isNewLine)
 
-			if s.flags&SkipSemicolons != 0 {
+			if s.flags&SkipNewlines != 0 || !s.emitNewLine {
 				return s.NextToken()
 			}
 
-			kind = Semicolon
-			data = "\n"
+			kind = Newline
 
 		case s.Consumed(';'):
 			if s.flags&SkipSemicolons != 0 {
@@ -251,6 +260,7 @@ func (s *Scanner) NextToken() Token {
 			span.To = text.NoPos
 		}
 
+		s.emitNewLine = kind != Semicolon && kind != Newline
 		return Token{Kind: kind, Data: data, Span: span}
 	}
 
