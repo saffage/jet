@@ -1,0 +1,7 @@
+## Reference to a data, that can be possibly unavailable.
+##
+## ![NOTE]: This is a strong reference.
+type Ref(t) {
+    Nil
+    Ref(value: t)
+}

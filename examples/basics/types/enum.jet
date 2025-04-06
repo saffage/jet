@@ -1,0 +1,18 @@
+# Custom type definition, it may contain any amount of enum values, and every
+# value can have payload (see in [examples/basics/types/tagged_union.jet].
+type Direction {
+    South
+    North
+    West
+    East
+}
+
+val s Direction = South
+println(s) # output: `South`
+
+val w Direction = West
+println(w) # output: `West`
+
+# TODO: allow this
+#val x = Int(East)
+#assert(x == 3)

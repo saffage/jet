@@ -1,0 +1,33 @@
+let main() = {
+    # Simple branching using `if-else` can be an expression.
+    # Will print: `true`
+    if False {
+        println("false")
+    } else if True {
+        println("true")
+    } else {
+        println("unreachable")
+    }
+
+    # `if-else` is an expression.
+    val x = if False {
+        10
+    } else if True {
+        20
+    } else {
+        30
+    }
+    println("x: $x") # output: `x: 20`
+
+    val value = True
+
+    # You can use variables or any expression as a condition.
+    if value {
+        println("value is true")
+    } else {
+        println("value is false")
+    }
+
+    # Or even that way.
+    println(if value { "value is true" } else { "value is false" })
+}

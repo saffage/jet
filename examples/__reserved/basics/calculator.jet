@@ -1,0 +1,40 @@
+let scanf(c_const! format String) Int =
+    external(c: "exit", c_vararg: True)
+
+let main() = {
+    print("
+1: +
+2: -
+3: *
+4: /
+Select operation: ")
+
+    val op     = 0
+    val num1   = 0.0
+    val num2   = 0.0
+    val result = 0.0
+    val error  = scanf("%d", addr! op)
+    if error == 0 or op < 1 or op > 4 {
+        panic("Invalid operation!")
+    }
+
+    val num1_error = scanf("%lf", addr! num1)
+    if num1_error == 0 {
+        panic("Invalid operation!")
+    }
+
+    val num2_error = scanf("%lf", addr! num2)
+    if num2_error == 0 {
+        panic("Invalid operation!")
+    }
+
+    result = when op {
+        1 -> num1 + num2
+        2 -> num1 - num2
+        3 -> num1 * num2
+        4 -> num1 / num2
+        _ -> println("Invalid operation!")
+    }
+
+    println("Result: $result")
+}

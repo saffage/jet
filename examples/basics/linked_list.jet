@@ -1,0 +1,35 @@
+type Node {
+    # `Ref(Node)` is required because of recursive type definition.
+    # Otherwise the type will have an infinite size.
+    next Ref(Node)
+    data Int
+}
+
+let print_tree(tree Ref(Node)) = {
+    let print_node(node Ref(Node)) = {
+        if node is Ref(node) {
+            print(" -> ${node.data}")
+            print_node(node.next)
+        }
+    }
+
+    if node is Ref(node) {
+        print("${node.data}")
+        print_node(node.next)
+    }
+}
+
+# Associated value (i.e. method).
+# Can be accessed using the `node.show()` syntax.
+let print(self Node) = {
+    print_node(self)
+}
+
+let main() = {
+    # The `ref` it's a built-in function for creating a new references.
+    val tree = ref(Node(data: 3, next: Nil))
+    val two  = ref(Node(data: 2, next: tree))
+    val one  = ref(Node(data: 1, next: two))
+
+    print_node(one)
+}

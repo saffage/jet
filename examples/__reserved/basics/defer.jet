@@ -1,0 +1,19 @@
+let main() = {
+    defer println("deferred main 1")
+    defer println("deferred main 2")
+    println("main")
+
+    {
+        defer println("deferred nested")
+        println("nested")
+    }
+
+    for i in 0..5 {
+        println(i)
+
+        defer {
+            print("deferred for: ")
+            println(i)
+        }
+    }
+}

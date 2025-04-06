@@ -1,0 +1,446 @@
+type Color {
+    r Nat8
+    g Nat8
+    b Nat8
+    a Nat8
+}
+
+type Rectangle {
+    x      Float
+    y      Float
+    width  Float
+    height Float
+}
+
+let gray       = Color(130, 130, 130, 255)
+let line_color = Color(200, 200, 200, 255)
+
+#
+# raylib bindings
+#
+
+# Windows
+ld_flags! "-lraylib -lgdi32 -lwinmm"
+
+# Linux
+#ld_flags! "-lraylib"
+
+type CString = Ptr(Char)
+
+val init_window(width Int, height Int, title CString) None = extern("InitWindow")
+val close_window() None  = extern("CloseWindow")
+val begin_drawing() None = extern("BeginDrawing")
+val end_drawing() None   = extern("EndDrawing")
+val window_should_close() Bool         = extern("WindowShouldClose")
+val clear_background(color Color) None = extern("ClearBackground")
+val set_target_fps(fps Int) None       = extern("SetTargetFPS")
+val draw_line(start_pos_x Int, start_pos_y Int, end_pos_x Int, end_pos_y Int, color Color) None = extern("DrawLine")
+val draw_text(text CString, pos_x Int, pos_y Int, font_size Int, color Color) Bool              = extern("DrawText")
+val draw_rectangle_rec(rec Rectangle, color Color) None = extern("DrawRectangleRec")
+val get_time() Float64                                  = extern("GetTime")
+val measure_text(text CString, font_size Int) Int       = extern("MeasureText")
+val is_key_pressed(key Int) Bool                        = extern("IsKeyPressed")
+
+let key_space = 32
+let key_w     = 87
+let key_a     = 65
+let key_s     = 83
+let key_d     = 68
+let key_r     = 82
+let key_down  = 264
+let key_up    = 265
+let key_left  = 263
+let key_right = 262
+
+#
+# libc bindings
+#
+
+cc_flags!(include: ["stdlib.h"])
+
+val alloc(size Nat64) Pointer = extern("malloc")
+val free(p Pointer) None = extern("free")
+val random_int() Int = extern("rand")
+
+#
+# game code
+#
+
+let cell_size              = 30
+let play_field_hidden_rows = 40
+let play_field_rows        = 20
+let play_field_cols        = 10
+let padding_x              = 12
+let padding_y              = 22
+let header_height          = 60
+
+let screen_width  = cell_size * play_field_cols + 2 * padding_x
+let screen_height = cell_size * play_field_rows + 2 * padding_y + header_height
+
+let num_tetraminoes    = 7
+let auto_drop_duration = 0.5
+
+type CellState {
+    Empty
+    Cyan
+    Blue
+    Red
+    Orange
+    Yellow
+    Green
+    Purple
+}
+
+type GameState {
+    Paused
+    Playing
+}
+
+type Action {
+    None
+    Drop
+    AutoDrop
+    HardDrop
+    Left
+    Right
+    Rotate
+    Restart
+}
+
+type Tetramino {
+    rotations [4]Nat32
+    color     Color
+    index     Nat8
+}
+
+type TetraminoInstance {
+    tetramino Tetramino
+    rotation  Int
+    x         Int
+    y         Int
+}
+
+type Timer {
+    last_tick Float
+    duration  Float
+}
+
+type Shuffler {
+    index Nat8
+    order [num_tetraminoes]Nat8
+}
+
+type Game {
+    current_tetramino *TetraminoInstance
+    score             Nat64
+    state             GameState
+    auto_drop_timer   Timer
+    shuffler          Shuffler
+}
+
+let cyan_color   = Color(0x06, 0xB6, 0xD4, 0xFF)
+let blue_color   = Color(0x25, 0x63, 0xEB, 0xFF)
+let orange_color = Color(0xEA, 0x58, 0x0C, 0xFF)
+let yellow_color = Color(0xFA, 0xCC, 0x15, 0xFF)
+let green_color  = Color(0x22, 0xC5, 0x5E, 0xFF)
+let purple_color = Color(0x93, 0x33, 0xEA, 0xFF)
+let red_color    = Color(0xDC, 0x26, 0x26, 0xFF)
+
+val tetramino_colors [num_tetraminoes]Color = [
+    cyan_color,
+    blue_color,
+    red_color,
+    orange_color,
+    yellow_color,
+    green_color,
+    purple_color,
+]
+
+var play_field [play_field_hidden_rows][play_field_cols]CellState
+
+val tetraminoes [num_tetraminoes]Tetramino = [
+    Tetramino(
+        rotations: [0x0F00, 0x2222, 0x00F0, 0x4444],
+        color:     cyan_color,
+        index:     0,
+    ),
+    Tetramino(
+        rotations: [0x0660, 0x0660, 0x0660, 0x0660],
+        color:     yellow_color,
+        index:     4,
+    ),
+    Tetramino(
+        rotations: [0x0E40, 0x4C40, 0x4E00, 0x4640],
+        color:     purple_color,
+        index:     6,
+    ),
+    Tetramino(
+        rotations: [0x06C0, 0x8C40, 0x06C0, 0x8C40],
+        color:     green_color,
+        index:     5,
+    ),
+    Tetramino(
+        rotations: [0x0C60, 0x4C80, 0x0C60, 0x4C80],
+        color:     red_color,
+        index:     2,
+    ),
+    Tetramino(
+        rotations: [0x44C0, 0x8E00, 0x6440, 0x0E20],
+        color:     blue_color,
+        index:     1,
+    ),
+    Tetramino(
+        rotations: [0x4460, 0x0E80, 0xC440, 0x2E00],
+        color:     orange_color,
+        index:     3,
+    ),
+]
+
+fn(timer Timer) has_elapsed() Bool {
+    val now = get_time()
+
+    if now - timer.last_tick >= timer.duration {
+        timer.last_tick = now
+        True
+    } else {
+        False
+    }
+}
+
+fn(shuffler Shuffler) shuffle() {
+    for i in 0..<num_tetraminoes {
+        shuffler.order[i] = i
+    }
+    for i in 0..<num_tetraminoes {
+        val x = random_int(0, num_tetraminoes)
+        shuffler.order.swap(i, x)
+    }
+}
+
+fn new_timer(duration Float) Timer {
+    Timer(
+        last_tick: get_time(),
+        duration:  duration,
+    )
+}
+
+fn new_game() {
+    var game = Game(
+        current_tetramino: new(TetraminoInstance),
+        score:             0,
+        state:             GameState.Paused,
+        auto_drop_timer:   init_timer(auto_drop_duration),
+        shuffler:          Shuffler(index: 0, order: [0, 0, 0, 0, 0, 0, 0]),
+    )
+
+    shuffle(game.shuffler)
+    next_tetramino(game.current_tetramino, game.shuffler)
+    init_play_field()
+    game
+}
+
+fn init_play_field() {
+    for i in 0..<play_field_hidden_rows {
+        for j in 0..<play_field_cols {
+            play_field[i][j] = CellState.Empty
+        }
+    }
+}
+
+fn render_score(score: Nat64) {
+    val text       = "Score: $score"
+    val text_width = measure_text(text.raw_data(), 24)
+    val x          = (screen_width - text_width) / 2
+    val y          = padding_y
+
+    draw_text(text.raw_data(), x, y, 24, gray)
+}
+
+fn render_cell(x Int, y Int, color Color) {
+    assert x in 0..<play_field_cols
+    assert y in 0..<play_field_rows
+
+    val cell_x = padding_x + x * cell_size
+    val cell_y = screen_height - padding_y - (y + 1) * cell_size
+    val cell   = Rectangle(
+        x:      cell_x + 0.5,
+        y:      cell_y + 0.5,
+        width:  cell_size - 0.5,
+        height: cell_size - 0.5,
+    )
+
+    draw_rectangle_rec(cell, color)
+}
+
+fn render_grid() {
+    for i in 0..play_field_rows {
+        val y = screen_height - padding_y - i*cell_size
+        draw_line(padding_x, y, screen_width - padding_x, y, line_color)
+    }
+    for i in 0..play_field_cols {
+        val x = padding_x + i*cell_size
+        draw_line(x, padding_y + header_height, x, screen_height - padding_y, line_color)
+    }
+    for i in 0..<play_field_rows {
+        for j in 0..<play_field_cols {
+            if play_field[i][j] != CellState.Empty {
+                render_cell(j, i, tetramino_colors[play_field[i][j] - 1])
+            }
+        }
+    }
+}
+
+fn(instance TetraminoInstance) get_coords() [8]Nat8 {
+    var coords [8]Nat8
+    var i = 0
+
+    for y in 0..<4 {
+        val row Nat32 = instance.tetramino.rotations[instance.rotation] >> y*4
+
+        for x in 0..<4 {
+            if row&0x1 != 0 {
+                val x = instance.x + x
+                val y = instance.y - y
+                coords[i] = x
+                coords[i + 1] = y
+                i += 2
+            }
+            row >>= 1
+        }
+    }
+
+    assert i == 8
+    coords
+}
+
+fn(instance TetraminoInstance) can_render() Bool {
+    val render_coords = instance.get_coords()
+    var can_render    = True
+
+    for i in 0..2..<8 {
+        val x = render_coords[i]
+        val y = render_coords[i + 1]
+
+        if x !in 0..<play_field_cols or
+           y !in 0..<play_field_rows or
+           play_field[y][x] != CellState.Empty
+        {
+            can_render = False
+            break!
+        }
+    }
+
+    can_render
+}
+
+fn(instance TetraminoInstance) render() {
+    if instance.can_render() {
+        for i in 0..2..<8 {
+            val render_coords = instance.get_coords()
+            val x = render_coords[i]
+            val y = render_coords[i + 1]
+
+            render_cell(x, y, instance.tetramino.color)
+        }
+    }
+}
+
+fn(instance TetraminoInstance) render_ghost() {
+    if instance.can_render() {
+        val ghost = instance # TODO: copy
+        ghost.tetramino.color.a = 120
+
+        for ghost.can_render() {
+            ghost.y -= 1
+        }
+
+        ghost.y += 1
+        ghost.render()
+    }
+}
+
+fn(instance TetraminoInstance) lock(game Game) {
+    if instance.can_render() {
+        val render_coords = instance.get_coords()
+
+        for i in 0..2..<8 {
+            val x = render_coords[i]
+            val y = render_coords[i + 1]
+
+            play_field[y][x] = CallState.from_int(instance.tetramino.index + 1)
+        }
+
+        game.resolve_clears()
+        game.current_tetramino.next_tetramino(game.shuffler)
+    }
+}
+
+fn(instance TetraminoInstance) next_tetramino(shuffler Shuffler) {
+    if shuffler.index == num_tetraminoes {
+        shuffler.shuffle()
+        shuffler.index = 0
+    }
+
+    instance.rotation  = 0
+    instance.x         = 3
+    instance.y         = 20
+    instance.tetramino = tetraminoes[shuffler.order[shuffler.index]]
+
+    shuffler.index += 1
+}
+
+
+fn(game Game) resolve_clears()             { todo! }
+fn(game Game) handle_input() Action        { todo! }
+fn(game Game) handle_action(action Action) { todo! }
+
+fn(game Game) destroy() {
+    free(game.current_tetramino)
+    game.current_tetramino = None
+}
+
+fn draw_game_over() {
+    val text_width = measure_text("Game Over", 48)
+    val x          = (screen_width - text_width) / 2
+    val y          = screen_height / 2
+
+    draw_text("Game Over", x, y - 110, 48, gray)
+    draw_text("Press R to restart", x, y - 50, 24, gray)
+}
+
+fn check_game_over() {
+    for i in 0..<play_field_cols {
+        if play_field[play_field_rows - 1][i] != CellState.Empty {
+            draw_game_over()
+            game.state = GameState.Paused
+        }
+    }
+}
+
+fn main() {
+    init_window(screen_width, screen_height, "Jet Tetris")
+    set_target_fps(60)
+
+    var background_color = Color(r: 240, g: 240, b: 240, a: 255)
+    var game             = new_game()
+
+    game.state = GameState.Playing
+
+    for !window_should_close() {
+        begin_drawing()
+        clear_background(bg_color)
+
+        # Game related stuff
+        render_score(game.score)
+        render_grid()
+        handle_action(handle_input(game), game)
+        check_game_over(game)
+        render_tetromino_instance(game.current_tetramino)
+        render_ghost_tetromino_instance(game.current_tetramino)
+
+        end_drawing()
+    }
+
+    close_window()
+    game.destroy()
+}
