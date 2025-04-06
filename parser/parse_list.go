@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/saffage/jet/ast"
+	"github.com/saffage/jet/report"
 	"github.com/saffage/jet/text"
 	"github.com/saffage/jet/token"
 )
@@ -141,8 +142,8 @@ func (parse *parser) listUntil(
 func catch(item func() ast.Node) (node ast.Node, err error) {
 	defer func() {
 		if p := recover(); p != nil {
-			if e, _ := p.(error); e != nil {
-				err = e
+			if b, ok := p.(report.Builder); ok {
+				err = b
 			} else {
 				panic(p)
 			}
