@@ -26,6 +26,7 @@ Currently it looks more like a transpiler than a compiler. The syntax of the lan
     - [ ] rework checker to work with new AST & type system
     - [ ] rework code generator to work with new AST & type system
   - [ ] fix interpolated strings parsing (this must be done with additional scanner pass)
+  - [ ] update EBNF grammar
 
 - [x] cleanup
   - [x] remove unused API from `scanner`, `parser`, `checker` packages
@@ -35,6 +36,10 @@ Currently it looks more like a transpiler than a compiler. The syntax of the lan
 - [ ] error reporting
   - [ ] generalize errors, maybe using builder pattern
   - [ ] fix a case when single error may be shown several times
+    - [ ] errors, occurred while scanning
+    - [x] errors, occurred while parsing
+    - [ ] errors, occurred while type checking
+    - [ ] errors, occurred while code generation
 
 - [ ] code generation
   - [ ] fix invalid evaluation order of complex expressions
@@ -52,7 +57,7 @@ Currently it looks more like a transpiler than a compiler. The syntax of the lan
       - [ ] tests
     - [ ] `when`
       - [ ] tests
-    - [ ] lists
+    - [x] lists
       - [ ] tests
     - [ ] expressions
       - [ ] tests
