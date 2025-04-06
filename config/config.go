@@ -27,7 +27,7 @@ var (
 	BuiltinPackagePath string = "lib/builtin/"
 
 	// Compiler cache directory.
-	CacheDirName string = ".jet"
+	CacheDirName string = ".jet-cache"
 
 	Target  BuildTarget = TargetC
 	CC      string      // Path to a C compiler executable.
