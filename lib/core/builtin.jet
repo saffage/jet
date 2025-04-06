@@ -1,25 +1,36 @@
-Bool    := $builtin("Bool")
-Int     := $builtin("I32")
-Int8    := $builtin("I8")
-Int16   := $builtin("I16")
-Int32   := $builtin("I32")
-Int64   := $builtin("I64")
-Nat     := $builtin("U32")
-Nat8    := $builtin("U8")
-Nat16   := $builtin("U16")
-Nat32   := $builtin("U32")
-Nat64   := $builtin("U64")
-Float   := $builtin("F32")
-Float32 := $builtin("F32")
-Float64 := $builtin("F64")
-String  := $builtin("String")
-Char    := $builtin("Char")
-Pointer := $builtin("Pointer")
+type Int     = external(builtin: "Int")
+type Int8    = external(builtin: "Int8")
+type Int16   = external(builtin: "Int16")
+type Int32   = external(builtin: "Int32")
+type Int64   = external(builtin: "Int64")
+type Nat     = external(builtin: "Nat")
+type Nat8    = external(builtin: "Nat8")
+type Nat16   = external(builtin: "Nat16")
+type Nat32   = external(builtin: "Nat32")
+type Nat64   = external(builtin: "Nat64")
+type Float   = external(builtin: "Float")
+type Float32 = external(builtin: "Float32")
+type Float64 = external(builtin: "Float64")
+type String  = external(builtin: "String")
+type Char    = external(builtin: "Char")
 
-# TODO make it works
-# Int   := if $size_of(Pointer) == 32 { $builtin("I32") } else { $builtin("I64") }
-# Nat   := if $size_of(Pointer) == 32 { $builtin("U32") } else { $builtin("U64") }
-# Float := if $size_of(Pointer) == 32 { $builtin("F32") } else { $builtin("F64") }
+## {Result} that represents the outcome of an operation.
+## It can either be a {Success} or a {Failure}.
+type Result(
+    success, ## The type representing a successful result.
+    failure, ## The type representing a failure or error.
+) {
+    Failure(failure)
+    Success(success)
+}
 
-False := 0 != 0
-True  := 0 == 0
+type Bool { False; True }
+
+## Represents a state that will never be reached.
+type Never = external(builtin: "never")
+
+## Built-in function that causes panic in the current thread.
+##
+## After its call the control thread will not be returned to the
+## caller and stack unwinding will start.
+let panic(with: message String) Never = external(builtin: "panic")
