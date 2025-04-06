@@ -23,7 +23,7 @@ type File struct {
 	Name    string // File name without extension.
 	Path    string // Path to the file.
 	Content []byte // File content.
-	lines   []int  // Line begin indices.
+	lines   []int  // Line start offsets.
 
 	ID      FileID
 	Flags   FileFlags
@@ -47,18 +47,19 @@ func NewFile(id FileID, path string, content []byte) (*File, error) {
 		return nil, ErrInvalidExt
 	}
 
-	lines := []int{0}
+	linesCountGuess := max(16, len(content)/30)
+	lines := make([]int, 1, linesCountGuess)
+	wasLF := false
 
-loop:
-	for i, char := range content {
-		switch char {
-		case '\000':
-			// This is fix for a file that contains single line.
+	for i := 0; i < len(content) && content[i] != '\000'; i++ {
+		// Fixes a case when LF is the last character in the input.
+		// For example "…\n\0" will not add the line start index
+		// but "…\n…" will.
+		if wasLF {
 			lines = append(lines, i)
-			break loop
-		case '\n':
-			lines = append(lines, i+1)
 		}
+
+		wasLF = content[i] == '\n'
 	}
 
 	return &File{
