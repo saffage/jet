@@ -18,6 +18,16 @@ type Ident interface {
 	Name() string
 }
 
+type SomeNode interface {
+	comparable
+	Node
+}
+
+type SomeIdent interface {
+	comparable
+	Ident
+}
+
 //------------------------------------------------
 // Atoms
 //------------------------------------------------
@@ -78,6 +88,20 @@ type (
 		LetTok text.Pos `json:"let_tok,omitzero"`
 	}
 
+	// Represents 'val name Type = value'.
+	ValDecl struct {
+		Decl   *Decl    `json:"decl,omitempty"`
+		Value  Node     `json:"value,omitempty"`
+		ValTok text.Pos `json:"val_tok,omitzero"`
+	}
+
+	// Represents 'var name Type = value'.
+	VarDecl struct {
+		Decl   *Decl    `json:"decl,omitempty"`
+		Value  Node     `json:"value,omitempty"`
+		VarTok text.Pos `json:"var_tok,omitzero"`
+	}
+
 	// Represents 'type Name = Type' or 'type Name(params) = Type'.
 	TypeAlias struct {
 		Ident   *Upper   `json:"ident,omitempty"`
@@ -123,6 +147,20 @@ type (
 func (node *LetDecl) Range() text.Span {
 	return text.Span{
 		From: node.LetTok,
+		To:   node.Value.Range().To,
+	}
+}
+
+func (node *ValDecl) Range() text.Span {
+	return text.Span{
+		From: node.ValTok,
+		To:   node.Value.Range().To,
+	}
+}
+
+func (node *VarDecl) Range() text.Span {
+	return text.Span{
+		From: node.VarTok,
 		To:   node.Value.Range().To,
 	}
 }
@@ -416,9 +454,9 @@ type (
 		AsTok   text.Pos `json:"as_tok,omitzero"`
 	}
 
-	Extern struct {
-		Args      *Parens  `json:"args,omitempty"`
-		ExternTok text.Pos `json:"extern_tok,omitzero"`
+	External struct {
+		Args        *Parens  `json:"args,omitempty"`
+		ExternalTok text.Pos `json:"external_tok,omitzero"`
 	}
 )
 
@@ -450,13 +488,13 @@ func (node *As) Range() text.Span {
 	}
 }
 
-func (node *Extern) Range() text.Span {
-	span := text.Span{From: node.ExternTok}
+func (node *External) Range() text.Span {
+	span := text.Span{From: node.ExternalTok}
 
 	if node.Args != nil {
 		span.To = node.Args.Range().To
 	} else {
-		span.To = node.ExternTok.WithOffset(len("extern") - 1)
+		span.To = node.ExternalTok.WithOffset(len("extern") - 1)
 	}
 
 	return span
@@ -470,6 +508,8 @@ var (
 	_ Node = (*Literal)(nil)
 
 	_ Node = (*LetDecl)(nil)
+	_ Node = (*ValDecl)(nil)
+	_ Node = (*VarDecl)(nil)
 	_ Node = (*TypeAlias)(nil)
 	_ Node = (*TypeDef)(nil)
 	_ Node = (*Decl)(nil)
@@ -489,7 +529,7 @@ var (
 
 	_ Node = (*When)(nil)
 	_ Node = (*Case)(nil)
-	_ Node = (*Extern)(nil)
+	_ Node = (*External)(nil)
 )
 
 var (

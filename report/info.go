@@ -10,11 +10,6 @@ import (
 	"github.com/saffage/jet/text"
 )
 
-// Informer is an interface used to inform reporter how to report a problem.
-type Informer interface {
-	Info() *Info
-}
-
 type Info struct {
 	Title       string
 	Tag         string
@@ -80,6 +75,10 @@ func (info *Info) Render(buf *strings.Builder) {
 	for _, suggestion := range info.Suggestions {
 		writeSuggestion(buf, suggestion)
 	}
+}
+
+func (info *Info) Renderable() bool {
+	return true
 }
 
 func (info *Info) Info() *Info {

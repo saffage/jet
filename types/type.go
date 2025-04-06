@@ -10,8 +10,11 @@ import (
 	"github.com/saffage/jet/report"
 )
 
+// Type represents an interface for types that can be compared for equality
+// and rendered into a string buffer.
 type Type interface {
 	Equal(target Type) bool
+
 	report.Renderer
 }
 
@@ -36,22 +39,27 @@ var (
 )
 
 func (None) Render(buf *strings.Builder) { buf.WriteString("None") }
+func (None) Renderable() bool            { return true }
 func (None) String() string              { return Render(NoneType) }
 func (None) Equal(target Type) bool      { return Is[None](target) }
 
 func (Never) Render(buf *strings.Builder) { buf.WriteString("Never") }
+func (Never) Renderable() bool            { return true }
 func (Never) String() string              { return Render(NeverType) }
 func (Never) Equal(target Type) bool      { return true }
 
 func (Int) Render(buf *strings.Builder) { buf.WriteString("Int") }
+func (Int) Renderable() bool            { return true }
 func (Int) String() string              { return Render(IntType) }
 func (Int) Equal(target Type) bool      { return Is[Int](target) }
 
 func (Float) Render(buf *strings.Builder) { buf.WriteString("Float") }
+func (Float) Renderable() bool            { return true }
 func (Float) String() string              { return Render(FloatType) }
 func (Float) Equal(target Type) bool      { return Is[Float](target) }
 
 func (String) Render(buf *strings.Builder) { buf.WriteString("String") }
+func (String) Renderable() bool            { return true }
 func (String) String() string              { return Render(StringType) }
 func (String) Equal(target Type) bool      { return Is[String](target) }
 
@@ -64,6 +72,7 @@ type module struct{}
 var moduleType Type = module{}
 
 func (module) Render(buf *strings.Builder) { buf.WriteString("module") }
+func (module) Renderable() bool            { return true }
 func (module) String() string              { return "module" }
 func (module) Equal(target Type) bool      { return false }
 
@@ -97,7 +106,13 @@ func (t *Alias) Equal(other Type) bool {
 	return t.actual.Equal(SkipAlias(other))
 }
 
-func (t *Alias) String() string { return Render(t) }
+func (t *Alias) String() string {
+	return Render(t)
+}
+
+func (t *Alias) Renderable() bool {
+	return true
+}
 
 func (t *Alias) Render(buf *strings.Builder) {
 	buf.WriteString(t.name)
@@ -171,7 +186,13 @@ func (t Descriptor) Equal(other Type) bool {
 	return false
 }
 
-func (t Descriptor) String() string { return Render(t) }
+func (t Descriptor) String() string {
+	return Render(t)
+}
+
+func (t Descriptor) Renderable() bool {
+	return true
+}
 
 func (t Descriptor) Render(buf *strings.Builder) {
 	buf.WriteString("type ")
@@ -220,7 +241,13 @@ func (t *Fn) Equal(expected Type) bool {
 	return false
 }
 
-func (t *Fn) String() string { return Render(t) }
+func (t *Fn) String() string {
+	return Render(t)
+}
+
+func (t *Fn) Renderable() bool {
+	return true
+}
 
 func (t *Fn) Render(buf *strings.Builder) {
 	buf.WriteString("fn(")
@@ -326,6 +353,10 @@ func (list TypeList) Equal(target []Type) bool {
 	return true
 }
 
+func (list TypeList) Renderable() bool {
+	return true
+}
+
 func (list TypeList) Render(buf *strings.Builder) {
 	for i, param := range list {
 		if i > 0 {
@@ -387,9 +418,10 @@ func NewCustom(name string, fields []Field, variants []Variant) *Custom {
 	return t
 }
 
-func (t *Custom) Equal(target Type) bool      { return t == target }
 func (t *Custom) Render(buf *strings.Builder) { buf.WriteString(t.name) }
+func (t *Custom) Renderable() bool            { return true }
 func (t *Custom) String() string              { return Render(t) }
+func (t *Custom) Equal(target Type) bool      { return t == target }
 
 func (t *Custom) Field(i int) *Field { return &t.fields[i] }
 func (t *Custom) Fields() []Field    { return t.fields }

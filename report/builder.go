@@ -2,6 +2,7 @@ package report
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/saffage/jet/text"
 )
@@ -12,11 +13,21 @@ type Builder struct {
 }
 
 func Build(inner error) Builder {
+	if inner == nil {
+		panic("the error must be specified for report.Builder")
+	}
+
 	return Builder{
 		inner: inner,
 		info:  &Info{Title: inner.Error()},
 	}
 }
+
+func (b Builder) Info() *Info                 { return b.info }
+func (b Builder) Error() string               { return b.info.Title }
+func (b Builder) Unwrap() error               { return b.inner }
+func (b Builder) Renderable() bool            { return b.inner != nil || b.info != nil }
+func (b Builder) Render(buf *strings.Builder) { b.Info().Render(buf) }
 
 func (b Builder) Level(level Level) Builder {
 	b.info.Level = level
@@ -93,7 +104,3 @@ func (b Builder) SuggestionV(suggestion Suggestion) Builder {
 	b.info.Suggestions = append(b.info.Suggestions, suggestion)
 	return b
 }
-
-func (b Builder) Info() *Info   { return b.info }
-func (b Builder) Error() string { return b.info.Title }
-func (b Builder) Unwrap() error { return b.inner }

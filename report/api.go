@@ -6,12 +6,18 @@ import (
 	"strings"
 )
 
+// Renderer is an interface for rendering content into a buffer.
+//
+// There are also a method to check if the content is renderable and can
+// perform the rendering without any errors.
 type Renderer interface {
 	Render(buf *strings.Builder)
+	Renderable() bool
 }
 
-type Validator interface {
-	IsValid() bool
+// Informer is an interface used to inform reporter how to report a problem.
+type Informer interface {
+	Info() *Info
 }
 
 // Render renders the error for a user, writing it into the specified [Output].
@@ -25,40 +31,6 @@ func Render(err error) {
 	buf := strings.Builder{}
 	render(&buf, err)
 	Output.Write([]byte(buf.String()))
-}
-
-func render(buf *strings.Builder, err error) {
-	if e, ok := err.(Validator); ok && e != nil && !e.IsValid() {
-		return
-	}
-
-	switch err := err.(type) {
-	case nil:
-		// Ignore
-
-	case Renderer:
-		err.Render(buf)
-
-	case Informer:
-		if info := err.Info(); info != nil {
-			info.Render(buf)
-			return
-		}
-
-		switch err := err.(type) {
-		case interface{ Unwrap() error }:
-			render(buf, err.Unwrap())
-
-		case interface{ Unwrap() []error }:
-			for _, err := range err.Unwrap() {
-				render(buf, err)
-			}
-		}
-
-	default:
-		info := Info{Title: err.Error()}
-		info.Render(buf)
-	}
 }
 
 func Debug(format string, args ...any) {
@@ -117,4 +89,41 @@ func report(level Level, tag, message string) {
 	titleStyle.Fprint(&buf, message)
 
 	fmt.Fprintln(Output, buf.String())
+}
+
+func render(buf *strings.Builder, err error) {
+	switch err := err.(type) {
+	case nil:
+		// Ignore
+
+	case Renderer:
+		if err.Renderable() {
+			err.Render(buf)
+		} else {
+			renderUnwrappedError(buf, err)
+		}
+
+	case Informer:
+		if info := err.Info(); info != nil {
+			info.Render(buf)
+		} else {
+			renderUnwrappedError(buf, err)
+		}
+
+	default:
+		info := Info{Title: err.Error()}
+		info.Render(buf)
+	}
+}
+
+func renderUnwrappedError(buf *strings.Builder, err any) {
+	switch err := err.(type) {
+	case interface{ Unwrap() error }:
+		render(buf, err.Unwrap())
+
+	case interface{ Unwrap() []error }:
+		for _, err := range err.Unwrap() {
+			render(buf, err)
+		}
+	}
 }

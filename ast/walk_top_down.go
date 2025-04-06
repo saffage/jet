@@ -260,14 +260,14 @@ func (walk TopDownWalker) Walk(n Node, v Visitor) {
 			walk.As(n, v)
 		}
 
-	case *Extern:
+	case *External:
 		switch v := v.(type) {
-		case ExternVisitor:
-			v.VisitExtern(n)
+		case ExternalVisitor:
+			v.VisitExternal(n)
 		case NodeVisitor:
 			v.Visit(n)
 		default:
-			walk.Extern(n, v)
+			walk.External(n, v)
 		}
 
 	default:
@@ -421,7 +421,7 @@ func (walk TopDownWalker) As(node *As, v Visitor) {
 	WalkTopDown(node.NewName, v)
 }
 
-func (walk TopDownWalker) Extern(node *Extern, v Visitor) {
+func (walk TopDownWalker) External(node *External, v Visitor) {
 	if node.Args != nil {
 		for _, node := range node.Args.Nodes {
 			WalkTopDown(node, v)

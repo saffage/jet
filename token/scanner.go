@@ -129,7 +129,7 @@ func (s *Scanner) NextToken() Token {
 
 		case IsIdentifierStartChar(s.Peek()):
 			identifier := s.TakeWhile(IsIdentifierChar)
-			kind = KindFrom(identifier)
+			kind = FromRepresentation(identifier)
 
 			if kind == Illegal {
 				data = identifier
@@ -179,7 +179,7 @@ func (s *Scanner) NextToken() Token {
 			}
 
 		case s.Match('!', '+', '*', '/', '%', '&', '|', '^'):
-			kind = KindFrom(s.Advance())
+			kind = FromRepresentation(s.Advance())
 
 			if kind == Illegal {
 				panic("unreachable")
@@ -227,7 +227,7 @@ func (s *Scanner) NextToken() Token {
 			}
 
 		case s.Match(',', ':', '(', ')', '[', ']', '{', '}'):
-			kind = KindFrom(s.Advance())
+			kind = FromRepresentation(s.Advance())
 
 			if kind == Illegal {
 				panic("unreachable")

@@ -1,6 +1,9 @@
 package token
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 //go:generate stringer -type=Kind -linecomment
 type Kind byte
@@ -118,11 +121,10 @@ const (
 )
 
 type stringLike interface {
-	~[]byte | ~string | ~rune | ~byte
+	~[]byte | ~[]rune | ~string | ~rune | ~byte
 }
 
-// Returns `Illegal` if `s` is not a kind name.
-func KindFrom[T stringLike](s T) Kind {
+func FromRepresentation[T stringLike](s T) Kind {
 	x := string(s)
 	for kind, str := range representableKinds {
 		if str == x {
@@ -132,22 +134,26 @@ func KindFrom[T stringLike](s T) Kind {
 	return Illegal
 }
 
+func Representation(kind Kind) string {
+	return representableKinds[kind]
+}
+
 func (kind Kind) IsSpecial() bool         { return _special_begin <= kind && kind <= _special_end }
 func (kind Kind) IsPrimary() bool         { return _primary_begin <= kind && kind <= _primary_end }
 func (kind Kind) IsPunctuation() bool     { return _punctuation_begin <= kind && kind <= _punctuation_end }
 func (kind Kind) IsOperator() bool        { return _operator_begin <= kind && kind <= _operator_end }
 func (kind Kind) IsKeyword() bool         { return _keywords_begin <= kind && kind <= _keywords_end }
 func (kind Kind) IsReservedKeyword() bool { return _reserved_begin <= kind && kind <= _reserved_end }
+func (kind Kind) Renderable() bool        { return _punctuation_begin <= kind && kind <= _reserved_end }
 
-// TODO rename to `Render`, maybe add `Renderer` interface to [report] package?
-func (kind Kind) Repr() string {
-	s, ok := representableKinds[kind]
+func (kind Kind) Render(buf *strings.Builder) {
+	representation, ok := representableKinds[kind]
 
 	if !ok {
 		panic(fmt.Sprintf("%s cannot be represented as string (not enough data)", kind))
 	}
 
-	return s
+	buf.WriteString(representation)
 }
 
 var representableKinds = map[Kind]string{

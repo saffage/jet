@@ -24,6 +24,10 @@ func (s Span) String() string {
 	return string(text)
 }
 
+func (s Span) Renderable() bool {
+	return s.IsValid()
+}
+
 func (s Span) Render(buf *strings.Builder) {
 	if !s.IsValid() {
 		panic("invalid pos")
@@ -112,6 +116,10 @@ func (p Pos) String() string {
 	}
 
 	return string(text)
+}
+
+func (p Pos) Renderable() bool {
+	return p.IsValid()
 }
 
 func (p Pos) Render(buf *strings.Builder) {
