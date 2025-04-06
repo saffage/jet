@@ -79,9 +79,10 @@ func (s *Scanner) NextToken() Token {
 	if !s.Match('\000') {
 		s.SkipWhile(isSpace)
 
+		pos := s.Pos()
 		kind := Illegal
 		data := ""
-		span := text.Span{From: s.Pos()}
+		span := text.Span{From: pos, To: pos}
 
 		if !span.IsValid() {
 			panic("unreachable")
@@ -238,7 +239,7 @@ func (s *Scanner) NextToken() Token {
 			data = string(s.Advance())
 		}
 
-		if pos := s.Pos(); span.From != pos {
+		if pos := s.Pos(); span.To != pos {
 			span.To = text.PosFrom(pos.ID(), pos.Offset()-1)
 		}
 
@@ -260,7 +261,7 @@ func (s *Scanner) NextToken() Token {
 }
 
 func (s *Scanner) scanString() (data string, span text.Span, ok bool) {
-	span.From = s.Pos()
+	span = text.Span{From: s.Pos(), To: s.Pos()}
 	quote := s.ExpectChar('"', '\'')
 	buf := strings.Builder{}
 	buf.WriteRune(quote)
@@ -338,7 +339,7 @@ func (s *Scanner) scanString() (data string, span text.Span, ok bool) {
 func (s *Scanner) scanNumber() (kind Kind, data string, span text.Span, ok bool) {
 	buf := strings.Builder{}
 	kind = Int
-	span.From = s.Pos()
+	span = text.Span{From: s.Pos(), To: s.Pos()}
 
 	if s.Consumed('0') {
 		if char, consumed := s.Consume('x', 'X', 'b', 'B', 'o', 'O'); consumed {
