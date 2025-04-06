@@ -2,6 +2,7 @@ package parser
 
 import (
 	"github.com/saffage/jet/ast"
+	"github.com/saffage/jet/text"
 	"github.com/saffage/jet/token"
 )
 
@@ -9,31 +10,16 @@ import (
 // Primitives
 //------------------------------------------------
 
-func (parse *parser) decl() (_ ast.Node, err error) {
-	if parse.tracer.enabled {
-		defer parse.un(parse.trace(&err))
+func (parse *parser) declOrExpr() ast.Node {
+	if parse.pushTrace() {
+		defer parse.popTrace()
 	}
+
+	parse.skipNewLines()
 
 	switch parse.Kind {
-	case token.KwLet:
-		return parse.letDecl()
-
-	case token.KwType:
-		return parse.typeDecl()
-
-	default:
-		return nil, errExpectedDecl(parse.Span)
-	}
-}
-
-func (parse *parser) declOrExpr() (_ ast.Node, err error) {
-	if parse.tracer.enabled {
-		defer parse.un(parse.trace(&err))
-	}
-
-	switch parse.Kind {
-	case token.KwLet:
-		return parse.letDecl()
+	case token.KwLet, token.KwVal, token.KwVar:
+		return parse.valueDecl()
 
 	case token.KwType:
 		return parse.typeDecl()
@@ -43,241 +29,163 @@ func (parse *parser) declOrExpr() (_ ast.Node, err error) {
 	}
 }
 
-func (parse *parser) variable() (_ ast.Node, err error) {
-	if parse.tracer.enabled {
-		defer parse.un(parse.trace(&err))
+func (parse *parser) variable() ast.Node {
+	if parse.pushTrace() {
+		defer parse.popTrace()
 	}
 
-	var (
-		name ast.Ident
-		ty   ast.Node
-	)
-
-	if name, err = parse.ident(); err != nil {
-		return nil, err
-	}
+	name := parse.ident()
+	ty := ast.Node(nil)
 
 	if parse.isTypeStartOrSignature() {
-		if ty, err = parse.typeOrSignature(); err != nil {
-			return nil, err
-		}
+		ty = parse.typeOrSignature()
 	}
 
-	return &ast.Decl{Ident: name, Type: ty}, nil
+	return &ast.Decl{
+		Ident:   name,
+		Type:    ty,
+		TypeTok: text.NoPos,
+	}
 }
 
-func (parse *parser) variant() (_ ast.Node, err error) {
-	if parse.tracer.enabled {
-		defer parse.un(parse.trace(&err))
+func (parse *parser) variant() ast.Node {
+	if parse.pushTrace() {
+		defer parse.popTrace()
 	}
 
 	name := parse.UppercaseIdent()
-
-	if name == nil {
-		return nil, errUnexpectedToken(parse.Span, token.UppercaseIdent)
-	}
-
-	var params *ast.Parens
+	params := (*ast.Parens)(nil)
 
 	if parse.match(token.LParen) {
-		if params, err = parse.parens(parse.labeled(parse.typeExpr)); err != nil {
-			return nil, err
-		}
-	}
+		params = parse.parens(
+			parse.labeled(
+				func(label *ast.Lower, colon text.Pos) ast.Node {
+					switch {
+					case colon.IsValid():
+						variable := parse.try(parse.variable)
 
-	return &ast.Variant{Name: name, Params: params}, nil
-}
+						return &ast.Label{
+							Name:     label,
+							X:        variable,
+							ColonTok: colon,
+						}
 
-func (parse *parser) typeVariable() (_ ast.Node, err error) {
-	if parse.tracer.enabled {
-		defer parse.un(parse.trace(&err))
-	}
+					case label != nil:
+						decl := &ast.Decl{Ident: label}
 
-	var (
-		name ast.Ident
-		ty   ast.Node
-	)
+						if parse.isTypeStart() {
+							decl.Type = parse.typeExpr()
+						}
 
-	if name, err = parse.lowerNode(); err != nil {
-		return nil, err
-	}
+						return decl
+					}
 
-	if parse.isTypeStart() {
-		// type constraint
-		if ty, err = parse.typeExpr(); err != nil {
-			return nil, err
-		}
-	}
-
-	decl := &ast.Decl{Ident: name, Type: ty}
-
-	if tok, ok := parse.consume(token.Eq); ok {
-		var tyDefault ast.Node
-
-		if tyDefault, err = parse.typeExpr(); err != nil {
-			return nil, err
-		}
-
-		return &ast.Op{
-			X:    decl,
-			Y:    tyDefault,
-			Span: tok.Span,
-			Kind: ast.OperatorAssign,
-		}, nil
-	}
-
-	return decl, nil
-}
-
-func (parse *parser) labeled(f parseFunc) parseFunc {
-	return func() (_ ast.Node, err error) {
-		if parse.tracer.enabled {
-			defer parse.un(parse.trace(&err))
-		}
-
-		var (
-			label    *ast.Lower
-			expr     ast.Node
-			colonTok token.Token
-			isShort  bool
+					return parse.typeExpr()
+				},
+			),
 		)
+	}
 
-		// TODO: allow `ident: f` if `f` can parse `ident`
-		switch {
-		// case parse.matchSeq(token.LowercaseIdent, token.Colon):
-		// 	label = parse.LowercaseIdent()
-		// 	parse.next()
-
-		case parse.match(token.Colon):
-			isShort = true
-			colonTok = parse.next()
-
-		default:
-			return f()
-		}
-
-		if expr, err = f(); err != nil {
-			return nil, err
-		}
-
-		node := &ast.Label{
-			Name:     label,
-			X:        expr,
-			ColonTok: colonTok.Span.From,
-		}
-
-		if isShort && node.Label() == nil {
-			return nil, errUnexpectedToken(
-				parse.Span,
-				"label name after the colon",
-			)
-		}
-
-		return node, nil
+	return &ast.Variant{
+		Name:   name,
+		Params: params,
 	}
 }
 
-func (parse *parser) externOr(f parseFunc) parseFunc {
-	return func() (_ ast.Node, err error) {
-		if parse.tracer.enabled {
-			defer parse.un(parse.trace(&err))
+func (parse *parser) typeVariable() ast.Node {
+	if parse.pushTrace() {
+		defer parse.popTrace()
+	}
+
+	name := parse.lowerNode()
+	ty := ast.Node(nil)
+
+	// type constraint
+	// if parse.isTypeStart() {
+	// 	ty = parse.typeExpr()
+	// }
+
+	decl := &ast.Decl{
+		Ident:   name,
+		Type:    ty,
+		TypeTok: text.NoPos,
+	}
+
+	// if tok, ok := parse.consume(token.Eq); ok {
+	// 	var tyDefault ast.Node
+	//
+	// 	if tyDefault, err = parse.typeExpr(); err != nil {
+	// 		return nil, err
+	// 	}
+	//
+	// 	return &ast.Op{
+	// 		X:    decl,
+	// 		Y:    tyDefault,
+	// 		Span: tok.Span,
+	// 		Kind: ast.OperatorAssign,
+	// 	}, nil
+	// }
+
+	return decl
+}
+
+func (parse *parser) valueDecl() ast.Node {
+	if parse.pushTrace() {
+		defer parse.popTrace()
+	}
+
+	tok := parse.expectAny(token.KwLet, token.KwVal, token.KwVar)
+	decl := parse.variable().(*ast.Decl)
+
+	parse.expect(token.Eq)
+	parse.skipNewLines()
+
+	expr := parse.externalOr(parse.expr)()
+
+	switch tok.Kind {
+	case token.KwLet:
+		return &ast.LetDecl{
+			LetTok: tok.Span.From,
+			Decl:   decl,
+			Value:  expr,
 		}
 
-		if tok, ok := parse.consume(token.KwExtern); ok {
-			var args *ast.Parens
-
-			if parse.match(token.LParen) {
-				parens, err := parse.args()
-				if err != nil {
-					return nil, err
-				}
-				args = parens.(*ast.Parens)
-			}
-
-			return &ast.Extern{
-				ExternTok: tok.Span.From,
-				Args:      args,
-			}, nil
+	case token.KwVal:
+		return &ast.ValDecl{
+			ValTok: tok.Span.From,
+			Decl:   decl,
+			Value:  expr,
 		}
 
-		return f()
+	case token.KwVar:
+		return &ast.VarDecl{
+			VarTok: tok.Span.From,
+			Decl:   decl,
+			Value:  expr,
+		}
+
+	default:
+		panic("unreachable")
 	}
 }
 
-func (parse *parser) letDecl() (_ ast.Node, err error) {
-	if parse.tracer.enabled {
-		defer parse.un(parse.trace(&err))
+func (parse *parser) typeDecl() ast.Node {
+	if parse.pushTrace() {
+		defer parse.popTrace()
 	}
 
-	var (
-		letTok token.Token
-		decl   *ast.Decl
-		expr   ast.Node
-	)
+	typeTok := parse.expect(token.KwType)
+	name := parse.UppercaseIdent()
+	args := (*ast.Parens)(nil)
 
-	if letTok, err = parse.expect(token.KwLet); err != nil {
-		return nil, err
-	}
-
-	if x, err := parse.variable(); err != nil {
-		return nil, err
-	} else {
-		decl = x.(*ast.Decl)
-	}
-
-	if _, err = parse.expect(token.Eq); err != nil {
-		return nil, err
-	}
-
-	if expr, err = parse.externOr(parse.expr)(); err != nil {
-		return nil, err
-	}
-
-	return &ast.LetDecl{
-		LetTok: letTok.Span.From,
-		Decl:   decl,
-		Value:  expr,
-	}, nil
-}
-
-func (parse *parser) typeDecl() (_ ast.Node, err error) {
-	if parse.tracer.enabled {
-		defer parse.un(parse.trace(&err))
-	}
-
-	var (
-		typeTok token.Token
-		name    *ast.Upper
-		args    *ast.Parens
-	)
-
-	if typeTok, err = parse.expect(token.KwType); err != nil {
-		return nil, err
-	}
-
-	if name = parse.UppercaseIdent(); name == nil {
-		return nil, errUnexpectedToken(parse.Span, token.UppercaseIdent)
-	}
-
-	if parse.Kind == token.LParen {
-		var parenList ast.Node
-
-		if parenList, err = parse.parens(parse.typeVariable); err != nil {
-			return nil, err
-		}
-
-		args = parenList.(*ast.Parens)
+	if parse.match(token.LParen) {
+		args = parse.parens(parse.typeVariable)
 	}
 
 	switch parse.Kind {
 	case token.Eq:
-		var expr ast.Node
-
 		eqTok := parse.next()
-
-		if expr, err = parse.externOr(parse.typeExpr)(); err != nil {
-			return nil, err
-		}
+		expr := parse.externalOr(parse.typeExpr)()
 
 		return &ast.TypeAlias{
 			TypeTok: typeTok.Span.From,
@@ -285,81 +193,83 @@ func (parse *parser) typeDecl() (_ ast.Node, err error) {
 			Ident:   name,
 			Args:    args,
 			Expr:    expr,
-		}, nil
+		}
 
 	case token.LCurly:
-		var body *ast.Block
-
-		if body, err = parse.blockFunc(parse.typeVariantOrField); err != nil {
-			return nil, err
-		}
+		body := parse.blockFunc(parse.typeVariantOrField)
 
 		return &ast.TypeDef{
 			TypeTok: typeTok.Span.From,
 			Ident:   name,
 			Args:    args,
 			Body:    body,
-		}, nil
+		}
 
 	default:
-		panic("todo")
-		// return nil, errExpectedTypeOrBlock(parse.Span)
+		parse.error(errUnexpectedToken(
+			parse.Span,
+			parse.Kind,
+			token.Eq.String(),
+			"type definition block",
+		))
+		panic("unreachable")
 	}
 }
 
-func (parse *parser) typeVariantOrField() (_ ast.Node, err error) {
-	if parse.tracer.enabled {
-		defer parse.un(parse.trace(&err))
+func (parse *parser) typeVariantOrField() ast.Node {
+	if parse.pushTrace() {
+		defer parse.popTrace()
 	}
+
+	parse.skipNewLines()
 
 	switch parse.Kind {
 	case token.LowercaseIdent, token.IdentPlaceholder, token.Colon:
-		return parse.labeled(parse.variable)()
+		return parse.labeled(parse.variableFromLabel)()
 
 	case token.UppercaseIdent:
 		return parse.variant()
 
 	default:
-		return nil, errUnexpectedToken(
+		parse.error(errUnexpectedToken(
 			parse.Span,
-			token.LowercaseIdent,
-			token.UppercaseIdent,
-			token.Colon,
-		)
+			parse.Kind,
+			"field",
+			"variant",
+		))
+		panic("unreachable")
 	}
 }
 
-func (parse *parser) IdentPlaceholder() (_ ast.Ident, err error) {
-	if parse.tracer.enabled {
-		defer parse.un(parse.trace(&err))
+func (parse *parser) IdentPlaceholder() ast.Ident {
+	if parse.pushTrace() {
+		defer parse.popTrace()
 	}
 
-	tok, err := parse.expect(token.IdentPlaceholder)
+	tok := parse.expect(token.IdentPlaceholder)
 
-	if err != nil {
-		return nil, err
+	return &ast.Placeholder{
+		Data: tok.Data,
+		Span: tok.Span,
 	}
-
-	return &ast.Placeholder{Data: tok.Data, Span: tok.Span}, nil
 }
 
-func (parse *parser) lowerNode() (_ ast.Ident, err error) {
-	if parse.tracer.enabled {
-		defer parse.un(parse.trace(&err))
+func (parse *parser) lowerNode() ast.Ident {
+	if parse.pushTrace() {
+		defer parse.popTrace()
 	}
 
-	tok, err := parse.expect(token.LowercaseIdent)
+	tok := parse.expect(token.LowercaseIdent)
 
-	if err != nil {
-		return nil, errUnexpectedToken(parse.Span, token.LowercaseIdent)
+	return &ast.Lower{
+		Data: tok.Data,
+		Span: tok.Span,
 	}
-
-	return &ast.Lower{Data: tok.Data, Span: tok.Span}, nil
 }
 
 func (parse *parser) LowercaseIdent() *ast.Lower {
-	if parse.tracer.enabled {
-		defer parse.un(parse.trace(nil))
+	if parse.pushTrace() {
+		defer parse.popTrace()
 	}
 
 	tok, ok := parse.consume(token.LowercaseIdent)
@@ -371,23 +281,22 @@ func (parse *parser) LowercaseIdent() *ast.Lower {
 	return &ast.Lower{Data: tok.Data, Span: tok.Span}
 }
 
-func (parse *parser) upperNode() (_ ast.Ident, err error) {
-	if parse.tracer.enabled {
-		defer parse.un(parse.trace(&err))
+func (parse *parser) upperNode() ast.Ident {
+	if parse.pushTrace() {
+		defer parse.popTrace()
 	}
 
-	tok, err := parse.expect(token.UppercaseIdent)
+	tok := parse.expect(token.UppercaseIdent)
 
-	if err != nil {
-		return nil, errUnexpectedToken(parse.Span, token.UppercaseIdent)
+	return &ast.Upper{
+		Data: tok.Data,
+		Span: tok.Span,
 	}
-
-	return &ast.Upper{Data: tok.Data, Span: tok.Span}, nil
 }
 
 func (parse *parser) UppercaseIdent() *ast.Upper {
-	if parse.tracer.enabled {
-		defer parse.un(parse.trace(nil))
+	if parse.pushTrace() {
+		defer parse.popTrace()
 	}
 
 	tok, ok := parse.consume(token.UppercaseIdent)
@@ -396,26 +305,30 @@ func (parse *parser) UppercaseIdent() *ast.Upper {
 		return nil
 	}
 
-	return &ast.Upper{Data: tok.Data, Span: tok.Span}
+	return &ast.Upper{
+		Data: tok.Data,
+		Span: tok.Span,
+	}
 }
 
-func (parse *parser) literal() (_ ast.Node, err error) {
+func (parse *parser) literal() ast.Node {
 	tok, ok := parse.consumeAny(token.Int, token.Float, token.String)
 
 	if !ok {
-		return nil, errExpectedOperand(parse.Span)
+		parse.error(errExpectedOperand(parse.Span))
+		panic("unreachable")
 	}
 
 	return &ast.Literal{
 		Value: tok.Data,
 		Span:  tok.Span,
 		Kind:  literals[tok.Kind],
-	}, nil
+	}
 }
 
-func (parse *parser) ident() (_ ast.Ident, err error) {
-	if parse.tracer.enabled {
-		defer parse.un(parse.trace(&err))
+func (parse *parser) ident() ast.Ident {
+	if parse.pushTrace() {
+		defer parse.popTrace()
 	}
 
 	switch parse.Kind {
@@ -426,110 +339,102 @@ func (parse *parser) ident() (_ ast.Ident, err error) {
 		return parse.IdentPlaceholder()
 
 	default:
-		return nil, errUnexpectedToken(
+		parse.error(errUnexpectedToken(
 			parse.Span,
+			parse.Kind,
 			token.LowercaseIdent,
 			token.IdentPlaceholder,
-		)
+		))
+		panic("unreachable")
 	}
 }
 
-func (parse *parser) block() (_ ast.Node, err error) {
-	if parse.tracer.enabled {
-		defer parse.un(parse.trace(&err))
+func (parse *parser) identOrNil() ast.Ident {
+	if parse.pushTrace() {
+		defer parse.popTrace()
+	}
+
+	switch parse.Kind {
+	case token.LowercaseIdent:
+		return parse.lowerNode()
+
+	case token.IdentPlaceholder:
+		return parse.IdentPlaceholder()
+
+	default:
+		return nil
+	}
+}
+
+func (parse *parser) block() ast.Node {
+	if parse.pushTrace() {
+		defer parse.popTrace()
 	}
 
 	return parse.blockFunc(parse.declOrExpr)
 }
 
-func (parse *parser) blockFunc(f parseFunc) (_ *ast.Block, err error) {
-	if parse.tracer.enabled {
-		defer parse.un(parse.trace(&err))
+func (parse *parser) args() *ast.Parens {
+	if parse.pushTrace() {
+		defer parse.popTrace()
 	}
 
-	if !parse.match(token.LCurly) {
-		return nil, errExpectedBlock(parse.Span)
-	}
+	return parse.parens(
+		parse.labeled(
+			func(label *ast.Lower, colon text.Pos) ast.Node {
+				switch {
+				case colon.IsValid():
+					expr := ast.Node(nil)
 
-	nodes, span, err := parse.listOpenClose(f, token.LCurly, token.RCurly, 0)
+					if label == nil {
+						expr = parse.try(func() ast.Node {
+							// TODO: this must be a valid short label expression.
+							return parse.ident()
+						})
+					} else {
+						expr = parse.try(parse.expr)
+					}
 
-	if err != nil {
-		return nil, err
-	}
+					return &ast.Label{
+						Name:     label,
+						X:        expr,
+						ColonTok: colon,
+					}
 
-	return &ast.Block{
-		Stmts: &ast.Stmts{Items: nodes},
-		Span:  span,
-	}, nil
-}
+				case label != nil:
+					return parse.binaryExprFrom(parse.primaryFrom(label), 1)
+				}
 
-func (parse *parser) parens(f parseFunc) (*ast.Parens, error) {
-	nodes, span, err := parse.listOpenClose(
-		f,
-		token.LParen,
-		token.RParen,
-		token.Comma,
+				return parse.expr()
+			},
+		),
 	)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &ast.Parens{
-		Nodes: nodes,
-		Span:  span,
-	}, nil
 }
 
-func (parse *parser) brackets(f parseFunc) (_ *ast.List, err error) {
-	if parse.tracer.enabled {
-		defer parse.un(parse.trace(&err))
-	}
-
-	nodes, span, err := parse.listOpenClose(
-		f,
-		token.LBracket,
-		token.RBracket,
-		token.Comma,
-	)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &ast.List{
-		Nodes: nodes,
-		Span:  span,
-	}, nil
-}
-
-func (parse *parser) args() (_ ast.Node, err error) {
-	return parse.parens(parse.expr)
-}
-
-func (parse *parser) typeArgs() (_ ast.Node, err error) {
+func (parse *parser) typeArgs() ast.Node {
 	return parse.parens(parse.typeExpr)
 }
 
 func (parse *parser) isTypeStart() bool {
-	return parse.matchAny(token.UppercaseIdent, token.LowercaseIdent, token.KwFn)
+	return parse.matchAny(token.UppercaseIdent, token.LowercaseIdent, token.LParen)
 }
 
 func (parse *parser) isTypeStartOrSignature() bool {
-	return parse.matchAny(token.UppercaseIdent, token.LowercaseIdent, token.KwFn, token.LParen)
+	return parse.matchAny(
+		token.UppercaseIdent,
+		token.LowercaseIdent,
+		token.KwFn,
+		token.LParen,
+	)
 }
 
-// `T | U | ...`
-func (parse *parser) typeExpr() (_ ast.Node, err error) {
-	if parse.tracer.enabled {
-		defer parse.un(parse.trace(&err))
+// `A | B | C | ...`
+func (parse *parser) typeExpr() ast.Node {
+	if parse.pushTrace() {
+		defer parse.popTrace()
 	}
 
-	expr, err := parse.simpleTypeExpr()
-
-	if err != nil {
-		return nil, err
-	}
+	expr := parse.simpleTypeExpr()
 
 	for {
 		pipeTok, ok := parse.consume(token.Bar)
@@ -538,12 +443,7 @@ func (parse *parser) typeExpr() (_ ast.Node, err error) {
 			break
 		}
 
-		nodeStart := parse.Span.From
-		node, err := parse.simpleTypeExpr()
-
-		if err != nil {
-			node = &ast.BadNode{DesiredPos: nodeStart}
-		}
+		node := parse.try(parse.simpleTypeExpr)
 
 		expr = &ast.Op{
 			X:    expr,
@@ -551,38 +451,30 @@ func (parse *parser) typeExpr() (_ ast.Node, err error) {
 			Kind: ast.OperatorBitOr,
 			Span: pipeTok.Span,
 		}
-
-		if err != nil {
-			break
-		}
 	}
 
-	return expr, nil
+	return expr
 }
 
-func (parse *parser) simpleTypeExpr() (_ ast.Node, err error) {
-	if parse.tracer.enabled {
-		defer parse.un(parse.trace(&err))
+func (parse *parser) simpleTypeExpr() ast.Node {
+	if parse.pushTrace() {
+		defer parse.popTrace()
 	}
 
 	switch parse.Kind {
 	case token.UppercaseIdent:
-		node, _ := parse.upperNode()
+		node := parse.upperNode()
 
 		if parse.match(token.LParen) {
-			typeArgs, err := parse.typeArgs()
-
-			if err != nil {
-				return nil, err
-			}
+			typeArgs := parse.parens(parse.typeExpr)
 
 			return &ast.Call{
 				X:    node,
-				Args: typeArgs.(*ast.Parens),
-			}, nil
+				Args: typeArgs,
+			}
 		}
 
-		return node, nil
+		return node
 
 	case token.LowercaseIdent:
 		// TODO: allow type arguments?
@@ -591,212 +483,176 @@ func (parse *parser) simpleTypeExpr() (_ ast.Node, err error) {
 		return &ast.Lower{
 			Data: tok.Data,
 			Span: tok.Span,
-		}, nil
+		}
 
 	case token.KwFn:
 		return parse.functionType()
 
 	default:
-		return nil, errUnexpectedToken(
+		parse.error(errUnexpectedToken(
 			parse.Span,
+			parse.Kind,
 			token.UppercaseIdent,
 			token.LowercaseIdent,
 			token.KwFn,
-		)
+		))
+		panic("unreachable")
 	}
 }
 
-func (parse *parser) signature(parseParamFunc parseFunc) parseFunc {
-	return func() (_ ast.Node, err error) {
-		if parse.tracer.enabled {
-			defer parse.un(parse.trace(&err))
-		}
-
-		params, err := parse.parens(parseParamFunc)
-
-		if err != nil {
-			return nil, err
-		}
-
-		var result ast.Node
-
-		if parse.isTypeStart() {
-			if result, err = parse.typeExpr(); err != nil {
-				return nil, err
-			}
-		}
-
-		return &ast.Signature{
-			Params: params,
-			Result: result,
-		}, nil
-	}
-}
-
-func (parse *parser) typeOrSignature() (_ ast.Node, err error) {
-	if parse.tracer.enabled {
-		defer parse.un(parse.trace(&err))
+func (parse *parser) typeOrSignature() ast.Node {
+	if parse.pushTrace() {
+		defer parse.popTrace()
 	}
 
 	switch {
 	case parse.match(token.LParen):
-		return parse.signature(parse.labeled(parse.variable))()
+		return parse.signature(
+			parse.labeled(parse.variableFromLabel),
+		)()
 
 	case parse.isTypeStart():
 		return parse.typeExpr()
 
 	default:
-		return nil, errUnexpectedToken(
+		parse.error(errUnexpectedToken(
 			parse.Span,
-			token.UppercaseIdent,
-			token.LowercaseIdent,
-			token.KwFn,
+			parse.Kind.String(),
+			token.UppercaseIdent.String(),
+			token.LowercaseIdent.String(),
+			token.KwFn.String(),
 			"'(' for function signature",
-		)
+		))
+		panic("unreachable")
 	}
 }
 
-func (parse *parser) functionType() (_ ast.Node, err error) {
-	if parse.tracer.enabled {
-		defer parse.un(parse.trace(&err))
+func (parse *parser) variableFromLabel(
+	label *ast.Lower,
+	colon text.Pos,
+) ast.Node {
+	if parse.pushTrace() {
+		defer parse.popTrace()
 	}
 
-	if _, err := parse.expect(token.KwFn); err != nil {
-		return nil, err
+	switch {
+	case colon.IsValid():
+		variable := parse.try(parse.variable)
+
+		return &ast.Label{
+			Name:     label,
+			X:        variable,
+			ColonTok: colon,
+		}
+
+	case label != nil:
+		decl := &ast.Decl{Ident: label}
+
+		if parse.isTypeStart() {
+			decl.Type = parse.typeExpr()
+		}
+
+		return decl
 	}
 
-	signature, err := parse.signature(parse.typeExpr)()
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &ast.Function{Signature: signature.(*ast.Signature)}, nil
+	return parse.variable()
 }
 
-func (parse *parser) function() (_ ast.Node, err error) {
-	if parse.tracer.enabled {
-		defer parse.un(parse.trace(&err))
+func (parse *parser) functionType() ast.Node {
+	if parse.pushTrace() {
+		defer parse.popTrace()
 	}
 
-	fnType, err := parse.functionType()
+	parse.expect(token.KwFn)
 
-	if err != nil {
-		return nil, err
+	signature := parse.signature(parse.typeExpr)()
+
+	return &ast.Function{
+		Signature: signature.(*ast.Signature),
+		Body:      nil,
+		FnTok:     text.NoPos,
+		EqTok:     text.NoPos,
+	}
+}
+
+func (parse *parser) function() ast.Node {
+	if parse.pushTrace() {
+		defer parse.popTrace()
 	}
 
-	tok, err := parse.expect(token.Eq)
-
-	if err != nil {
-		return nil, err
-	}
-
-	fn := fnType.(*ast.Function)
+	fn := parse.functionType().(*ast.Function)
+	tok := parse.expect(token.Eq)
 	fn.EqTok = tok.Span.From
-	fn.Body, err = parse.expr()
+	fn.Body = parse.expr()
 
-	if err != nil {
-		return nil, err
-	}
-
-	return fn, nil
+	return fn
 }
 
-func (parse *parser) expr() (_ ast.Node, err error) {
-	if parse.tracer.enabled {
-		defer parse.un(parse.trace(&err))
+func (parse *parser) expr() ast.Node {
+	if parse.pushTrace() {
+		defer parse.popTrace()
 	}
 
 	switch {
 	case parse.match(token.KwWhen):
 		return parse.whenExpr()
 
-	case parse.match(token.KwFn):
-		return parse.function()
+	// case parse.match(token.KwFn):
+	// 	return parse.function()
 
 	default:
-		return parse.binaryExpr(2)
+		return parse.binaryExpr(1)
 	}
 }
 
-func (parse *parser) whenExpr() (_ ast.Node, err error) {
-	if parse.tracer.enabled {
-		defer parse.un(parse.trace(&err))
+func (parse *parser) whenExpr() ast.Node {
+	if parse.pushTrace() {
+		defer parse.popTrace()
 	}
 
-	var (
-		whenTok token.Token
-		expr    ast.Node
-		body    *ast.Block
-	)
-
-	if whenTok, err = parse.expect(token.KwWhen); err != nil {
-		return nil, err
-	}
-
-	if expr, err = parse.expr(); err != nil {
-		return nil, err
-	}
-
-	if body, err = parse.blockFunc(parse.case_); err != nil {
-		return nil, err
-	}
+	whenTok := parse.expect(token.KwWhen)
+	expr := parse.expr()
+	body := parse.blockFunc(parse.case_)
 
 	return &ast.When{
 		Expr:    expr,
 		Body:    body,
 		WhenTok: whenTok.Span.From,
-	}, nil
+	}
 }
 
-func (parse *parser) case_() (_ ast.Node, err error) {
-	if parse.tracer.enabled {
-		defer parse.un(parse.trace(&err))
+func (parse *parser) case_() ast.Node {
+	if parse.pushTrace() {
+		defer parse.popTrace()
 	}
 
-	var (
-		arrowTok token.Token
-		pattern  ast.Node
-		expr     ast.Node
-	)
-
-	if pattern, err = parse.casePattern(); err != nil {
-		return nil, err
-	}
-
-	if arrowTok, err = parse.expect(token.Arrow); err != nil {
-		return nil, err
-	}
-
-	if expr, err = parse.expr(); err != nil {
-		return nil, err
-	}
+	pattern := parse.casePattern()
+	arrowTok := parse.expect(token.Arrow)
+	expr := parse.expr()
 
 	return &ast.Case{
 		Pattern:  pattern,
 		Expr:     expr,
 		ArrowTok: arrowTok.Span.From,
-	}, nil
+	}
 }
 
-func (parse *parser) casePattern() (node ast.Node, err error) {
-	if parse.tracer.enabled {
-		defer parse.un(parse.trace(&err))
+func (parse *parser) casePattern() ast.Node {
+	if parse.pushTrace() {
+		defer parse.popTrace()
 	}
+
+	node := ast.Node(nil)
 
 	switch {
 	case parse.matchAny(token.Int, token.Float, token.String):
-		node, _ = parse.literal()
+		node = parse.literal()
 
 	case parse.matchAny(token.LowercaseIdent, token.IdentPlaceholder):
-		name, _ := parse.ident()
+		name := parse.ident()
 
 		if parse.isTypeStart() {
-			ty, err := parse.typeExpr()
-
-			if err != nil {
-				return nil, err
-			}
+			ty := parse.typeExpr()
 
 			node = &ast.Decl{Ident: name, Type: ty}
 		} else {
@@ -804,170 +660,165 @@ func (parse *parser) casePattern() (node ast.Node, err error) {
 		}
 
 	case parse.match(token.UppercaseIdent):
-		node, _ = parse.upperNode()
+		node = parse.upperNode()
 
 		if parse.match(token.LParen) {
-			dot2OrLabeledExpr := parse.dot2(parse.labeled(parse.casePattern))
+			spreadOrLabeledExpr := parse.spread(
+				parse.labeled(
+					func(label *ast.Lower, colon text.Pos) ast.Node {
+						switch {
+						case label != nil && colon.IsValid():
+							x := parse.try(parse.casePattern)
 
-			if list, err := parse.parens(dot2OrLabeledExpr); err != nil {
-				return nil, err
-			} else {
-				node = &ast.Call{X: node, Args: list}
-			}
+							return &ast.Label{
+								Name:     label,
+								X:        x,
+								ColonTok: colon,
+							}
+
+						case label != nil && !colon.IsValid():
+							if parse.isTypeStart() {
+								ty := parse.typeExpr()
+
+								node = &ast.Decl{Ident: label, Type: ty}
+							} else {
+								node = label
+							}
+
+						case label == nil && colon.IsValid():
+							if ident := parse.LowercaseIdent(); ident != nil {
+								return &ast.Label{
+									X:        ident,
+									ColonTok: colon,
+								}
+							}
+						}
+						return parse.casePattern()
+					},
+				),
+			)
+
+			list := parse.parens(spreadOrLabeledExpr)
+			node = &ast.Call{X: node, Args: list}
 		}
 
 	case parse.match(token.LBracket):
-		node, err = parse.brackets(parse.dot2(parse.casePattern))
+		node = parse.brackets(parse.spread(parse.casePattern))
 
 	case parse.match(token.LParen):
-		node, err = parse.parens(parse.casePattern)
+		node = parse.parens(parse.casePattern)
 
 	default:
-		return nil, errExpectedPattern(parse.Span, 0)
-	}
-
-	if err != nil {
-		return nil, err
+		parse.error(errExpectedPattern(parse.Span, 0))
+		panic("unreachable")
 	}
 
 	if tok, ok := parse.consume(token.KwAs); ok {
-		name, err := parse.lowerNode()
-
-		if err != nil {
-			return nil, err
-		}
+		name := parse.lowerNode()
 
 		return &ast.As{
 			Expr:    node,
 			NewName: name,
 			AsTok:   tok.Span.From,
-		}, nil
+		}
 	}
 
-	return node, nil
+	return node
 }
 
-func (parse *parser) dot2(fallback parseFunc) parseFunc {
-	return func() (_ ast.Node, err error) {
-		if parse.tracer.enabled {
-			defer parse.un(parse.trace(&err))
-		}
-
-		if tok, ok := parse.consume(token.Dot2); ok {
-			var ident ast.Ident
-
-			if parse.matchAny(token.LowercaseIdent, token.IdentPlaceholder) {
-				var err error
-
-				if ident, err = parse.ident(); err != nil {
-					return nil, err
-				}
-			}
-
-			return &ast.Spread{
-				Expr:      ident,
-				SpreadTok: tok.Span.From,
-			}, nil
-		}
-
-		return fallback()
+func (parse *parser) binaryExpr(precedence int) ast.Node {
+	if parse.pushTrace() {
+		defer parse.popTrace()
 	}
+
+	return parse.binaryExprFrom(parse.prefix(), precedence)
 }
 
-func (parse *parser) binaryExpr(precedence int) (x ast.Node, err error) {
-	if parse.tracer.enabled {
-		defer parse.un(parse.trace(&err))
-	}
-
-	if x, err = parse.prefix(); err != nil {
-		return nil, err
-	}
-
-	for oprKind, ok := operators[parse.Kind]; ok &&
-		precedences[parse.Kind] >= precedence; {
-
-		oprTok := parse.next()
-		y, err := parse.binaryExpr(precedences[oprTok.Kind] + 1)
-
-		if err != nil {
-			return nil, err
-		}
-
-		x = &ast.Op{
-			X:    x,
-			Y:    y,
-			Span: oprTok.Span,
-			Kind: oprKind,
-		}
+func (parse *parser) binaryExprFrom(x ast.Node, precedence int) ast.Node {
+	if parse.pushTrace() {
+		defer parse.popTrace()
 	}
 
 	if x == nil {
 		panic("unreachable")
 	}
 
-	return x, nil
+	for oprKind, ok := operators[parse.Kind]; ok &&
+		precedences[parse.Kind] >= precedence; {
+
+		operatorTok := parse.next()
+		y := parse.binaryExpr(precedences[operatorTok.Kind] + 1)
+
+		x = &ast.Op{
+			X:    x,
+			Y:    y,
+			Span: operatorTok.Span,
+			Kind: oprKind,
+		}
+	}
+
+	return x
 }
 
-func (parse *parser) prefix() (_ ast.Node, err error) {
-	if parse.tracer.enabled {
-		defer parse.un(parse.trace(&err))
+func (parse *parser) prefix() ast.Node {
+	if parse.pushTrace() {
+		defer parse.popTrace()
 	}
 
 	if tok, ok := parse.consume(token.Minus); ok {
-		y, err := parse.prefix()
-
-		if err != nil {
-			return nil, err
-		}
+		y := parse.prefix()
 
 		return &ast.Op{
 			Y:    y,
 			Span: tok.Span,
 			Kind: ast.OperatorNeg,
-		}, nil
+		}
 	}
 
 	return parse.primary()
 }
 
-func (parse *parser) primary() (x ast.Node, err error) {
-	if parse.tracer.enabled {
-		defer parse.un(parse.trace(&err))
+func (parse *parser) primary() ast.Node {
+	return parse.primaryFrom(parse.operand())
+}
+
+func (parse *parser) primaryFrom(operand ast.Node) ast.Node {
+	if parse.pushTrace() {
+		defer parse.popTrace()
 	}
 
-	x, err = parse.operand()
-
-	if err != nil {
-		return nil, err
+	if operand == nil {
+		panic("unreachable")
 	}
 
 	for {
-		if err != nil {
-			return nil, err
-		}
-
 		switch parse.Kind {
 		case token.Dot:
-			x, err = parse.dotExpr(x)
+			dotTok := parse.next()
 
-		case token.LParen:
-			var args ast.Node
+			parse.skipNewLines()
 
-			if args, err = parse.args(); err != nil {
-				return nil, err
+			operand = &ast.Dot{
+				X:      operand,
+				Y:      parse.try(parse.selector),
+				DotPos: dotTok.Span.From,
 			}
 
-			x = &ast.Call{X: x, Args: args.(*ast.Parens)}
+		case token.LParen:
+			operand = &ast.Call{
+				X:    operand,
+				Args: parse.args(),
+			}
 
 		default:
-			return x, nil
+			return operand
 		}
 	}
 }
 
-func (parse *parser) operand() (_ ast.Node, err error) {
-	if parse.tracer.enabled {
-		defer parse.un(parse.trace(&err))
+func (parse *parser) operand() ast.Node {
+	if parse.pushTrace() {
+		defer parse.popTrace()
 	}
 
 	switch parse.Kind {
@@ -987,116 +838,192 @@ func (parse *parser) operand() (_ ast.Node, err error) {
 		return parse.brackets(parse.expr)
 
 	default:
-		return nil, errExpectedOperand(parse.Span)
+		parse.error(errExpectedOperand(parse.Span))
+		panic("unreachable")
 	}
 }
 
-///
-///
-///
+//
+//
+//
 
-func (parse *parser) dotExpr(x ast.Node) (_ ast.Node, err error) {
-	if parse.tracer.enabled {
-		defer parse.un(parse.trace(&err))
+func (parse *parser) selector() ast.Node {
+	if parse.pushTrace() {
+		defer parse.popTrace()
 	}
-
-	dotTok, err := parse.expect(token.Dot)
-
-	if err != nil {
-		return nil, err
-	}
-
-	var selector ast.Node
 
 	switch parse.Kind {
 	case token.LowercaseIdent:
-		selector, _ = parse.lowerNode()
+		return parse.lowerNode()
 
 	case token.UppercaseIdent:
-		selector, _ = parse.upperNode()
+		return parse.upperNode()
 
 	case token.LCurly:
-		if selector, err = parse.block(); err != nil {
-			return nil, err
-		}
+		return parse.block()
 
 	case token.LParen:
-		if selector, err = parse.parens(parse.expr); err != nil {
-			return nil, err
-		}
+		return parse.parens(parse.expr)
 
 	case token.LBracket:
-		if selector, err = parse.brackets(parse.expr); err != nil {
-			return nil, err
-		}
+		return parse.brackets(parse.expr)
 
 	default:
-		return nil, errUnexpectedToken(
+		parse.error(errUnexpectedToken(
 			parse.Span,
+			parse.Kind,
 			token.LowercaseIdent,
 			token.UppercaseIdent,
 			token.LCurly,
 			token.LParen,
 			token.LBracket,
-		)
+		))
+		panic("unreachable")
 	}
-
-	return &ast.Dot{
-		X:      x,
-		Y:      selector,
-		DotPos: dotTok.Span.From,
-	}, nil
 }
 
 //
 //
 //
 
-/*
-type comparableNode interface {
-	comparable
-	ast.Node
-}
-
-type comparableIdent interface {
-	comparable
-	ast.Ident
-}
-
-func node[T comparableNode](f func() (T, error)) func() (_ ast.Node, err error) {
-	return func() (_ ast.Node, err error) {
-		var zero T
-		node, err := f()
-
-		if err != nil {
-			return nil, err
+func (parse *parser) labeled(f parseLabeledFunc) parseFunc {
+	return func() ast.Node {
+		if parse.pushTrace() {
+			defer parse.popTrace()
 		}
 
-		if node == zero {
-			return nil, nil
-		}
+		// f   ->   nil, nil 	- no ident
+		// :f  ->   nil, colon 	- short ident, 'f' must be able to parse an ident
+		// l:f -> ident, colon 	- regular ident, followed by 'f'
+		// l   -> ident, nil 	- 'f' must be able to parse an ident
+		ident := parse.LowercaseIdent()
+		colon, _ := parse.consume(token.Colon)
 
-		return node, nil
+		return f(ident, colon.Span.From)
 	}
 }
 
-func ident[T comparableIdent](f func() (T, error)) func() (_ ast.Ident, err error) {
-	return func() (_ ast.Ident, err error) {
-		var zero T
-		node, err := f()
-
-		if err != nil {
-			return nil, err
+func (parse *parser) externalOr(f parseFunc) parseFunc {
+	return func() ast.Node {
+		if parse.pushTrace() {
+			defer parse.popTrace()
 		}
 
-		if node == zero {
-			return nil, nil
+		if tok, ok := parse.consume(token.KwExternal); ok {
+			args := (*ast.Parens)(nil)
+
+			if parse.match(token.LParen) {
+				args = parse.args()
+			}
+
+			return &ast.External{
+				ExternalTok: tok.Span.From,
+				Args:        args,
+			}
 		}
 
-		return node, nil
+		return f()
 	}
 }
-*/
+
+func (parse *parser) signature(parseParamFunc parseFunc) parseFunc {
+	return func() ast.Node {
+		if parse.pushTrace() {
+			defer parse.popTrace()
+		}
+
+		params := parse.parens(parseParamFunc)
+		result := ast.Node(nil)
+
+		if parse.isTypeStart() {
+			result = parse.typeExpr()
+		}
+
+		return &ast.Signature{
+			Params: params,
+			Result: result,
+		}
+	}
+}
+
+func (parse *parser) spread(fallback parseFunc) parseFunc {
+	return func() ast.Node {
+		if parse.pushTrace() {
+			defer parse.popTrace()
+		}
+
+		if tok, ok := parse.consume(token.Dot2); ok {
+			ident := parse.identOrNil()
+
+			return &ast.Spread{
+				Expr:      ident,
+				SpreadTok: tok.Span.From,
+			}
+		}
+
+		return fallback()
+	}
+}
+
+func (parse *parser) blockFunc(f parseFunc) *ast.Block {
+	if parse.pushTrace() {
+		defer parse.popTrace()
+	}
+
+	if !parse.match(token.LCurly) {
+		parse.error(errExpectedBlock(parse.Span))
+		panic("unreachable")
+	}
+
+	nodes, span := parse.listOpenClose(
+		f,
+		token.LCurly,
+		token.RCurly,
+		token.Semicolon,
+		token.Newline,
+	)
+
+	return &ast.Block{
+		Stmts: &ast.Stmts{Items: nodes},
+		Span:  span,
+	}
+}
+
+func (parse *parser) parens(f parseFunc) *ast.Parens {
+	if parse.pushTrace() {
+		defer parse.popTrace()
+	}
+
+	nodes, span := parse.listOpenClose(
+		f,
+		token.LParen,
+		token.RParen,
+		token.Comma,
+	)
+
+	return &ast.Parens{
+		Nodes: nodes,
+		Span:  span,
+	}
+}
+
+func (parse *parser) brackets(f parseFunc) *ast.List {
+	if parse.pushTrace() {
+		defer parse.popTrace()
+	}
+
+	nodes, span := parse.listOpenClose(
+		f,
+		token.LBracket,
+		token.RBracket,
+		token.Comma,
+	)
+
+	return &ast.List{
+		Nodes: nodes,
+		Span:  span,
+	}
+}
 
 var precedences = map[token.Kind]int{
 	token.Asterisk: 10,

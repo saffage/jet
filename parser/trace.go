@@ -9,69 +9,99 @@ import (
 	"github.com/saffage/jet/report"
 )
 
+const indentation = ": "
+
 type tracer struct {
-	enabled bool
-	stack   []traceEntry
+	stack      []traceEntry
+	enabled    bool
+	tokenIndex int
 }
 
 type traceEntry struct {
 	caller      string
-	error       *error
+	err         error
 	indentation int
 }
 
-const indentation = "⁝ "
+func (parse *parser) pushTrace(args ...string) bool {
+	if parse.tracer.enabled {
+		caller := "untracked caller"
 
-func (t *tracer) trace(error *error) *traceEntry {
-	if !t.enabled {
-		return nil
-	}
+		if pc, _, _, ok := runtime.Caller(1); ok {
+			if details := runtime.FuncForPC(pc); details != nil {
+				const parserPrefix = "(*parser)."
 
-	caller := "untracked caller"
+				caller = details.Name()
+				i := strings.LastIndex(caller, parserPrefix)
 
-	if pc, _, _, ok := runtime.Caller(1); ok {
-		if details := runtime.FuncForPC(pc); details != nil {
-			const parserPrefix = "(*parser)."
-
-			caller = details.Name()
-			i := strings.LastIndex(caller, parserPrefix)
-
-			if i >= 0 {
-				caller = caller[len(parserPrefix)+i:]
+				if i >= 0 {
+					caller = caller[len(parserPrefix)+i:]
+				}
 			}
 		}
-	}
 
-	fmt.Fprintf(
-		report.Output,
-		"%s%s%s\n",
-		strings.Repeat(indentation, len(t.stack)),
-		color.HiGreenString("- "),
-		color.YellowString(caller),
-	)
-
-	t.stack = append(t.stack, traceEntry{
-		caller:      caller,
-		error:       error,
-		indentation: len(t.stack),
-	})
-	return &t.stack[len(t.stack)-1]
-}
-
-func (t *tracer) un(entry *traceEntry) {
-	if !t.enabled {
-		return
-	}
-
-	if entry.error != nil && *entry.error != nil {
+		pos, _ := parse.scanner.GetPosition(parse.Span.From)
 		fmt.Fprintf(
 			report.Output,
-			"%s%s%s\n",
-			strings.Repeat(indentation, entry.indentation),
+			"%s%s%s[%s]\n",
+			color.HiBlackString("%s", strings.Repeat(indentation, len(parse.tracer.stack))),
 			color.HiGreenString("- "),
-			color.RedString("%s", *entry.error),
+			color.YellowString("%s %s ", caller, strings.Join(args, ", ")),
+			color.HiBlackString(
+				"%d: %s (%s)",
+				parse.tracer.tokenIndex,
+				parse.Kind,
+				fmt.Sprintf(
+					"%s:%d:%d",
+					pos.Path,
+					pos.Line,
+					pos.Char,
+				),
+			),
 		)
+
+		parse.tracer.stack = append(parse.tracer.stack, traceEntry{
+			caller:      caller,
+			indentation: len(parse.tracer.stack),
+		})
 	}
 
-	t.stack = t.stack[:len(t.stack)-1]
+	return parse.tracer.enabled
+}
+
+func (parse *parser) popTrace() {
+	entry := &parse.tracer.stack[len(parse.tracer.stack)-1]
+	parse.tracer.stack = parse.tracer.stack[:len(parse.tracer.stack)-1]
+
+	if entry.err != nil {
+		pos, _ := parse.scanner.GetPosition(parse.Span.From)
+
+		fmt.Fprintf(
+			report.Output,
+			"%s%s%s [%s]\n",
+			color.HiBlackString("%s", strings.Repeat(indentation, entry.indentation)),
+			color.HiGreenString("- "),
+			color.RedString("%s", entry.err),
+			color.HiBlackString(
+				"%d: %s (%s)",
+				parse.tracer.tokenIndex,
+				parse.Kind,
+				fmt.Sprintf(
+					"%s:%d:%d",
+					pos.Path,
+					pos.Line,
+					pos.Char,
+				),
+			),
+		)
+	}
+}
+
+func (parse *parser) error(err error) {
+	if parse.tracer.enabled {
+		entry := &parse.tracer.stack[len(parse.tracer.stack)-1]
+		entry.err = err
+	}
+
+	panic(err)
 }

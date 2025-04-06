@@ -13,27 +13,13 @@ func (parse *parser) next() (previous token.Token) {
 			tok := parse.scanner.NextToken()
 
 			if tok.Kind != token.Illegal && tok.Kind != token.Comment {
-				previous, parse.Token = parse.Token, tok
+				previous = parse.Token
+				parse.Token = tok
+				parse.tracer.tokenIndex++
 				break
 			}
 		}
 	}
-
-	// if p.kind == token.Comment {
-	// 		if strings.HasPrefix(p.tok.Data, "##") {
-	// 			if p.commentGroup == nil {
-	// 				p.commentGroup = &ast.CommentGroup{}
-	// 			}
-	//
-	// 			p.commentGroup.Comments = append(p.commentGroup.Comments, &ast.Comment{
-	// 				Data:  p.tok.Data[2:],
-	// 				Start: p.tok.Start,
-	// 				End:   p.tok.End,
-	// 			})
-	// 		}
-	//
-	// 	p.next()
-	// }
 
 	return
 }
@@ -93,6 +79,13 @@ func (parse *parser) skipUntil(kinds ...token.Kind) (skipped text.Span) {
 	return
 }
 
+// Skips newline tokens.
+func (parse *parser) skipNewLines() {
+	for parse.Kind == token.Newline {
+		parse.next()
+	}
+}
+
 // Consumes a specified token or returns false without emitting error.
 func (parse *parser) consume(kind token.Kind) (token.Token, bool) {
 	if parse.match(kind) {
@@ -130,10 +123,22 @@ func (parse *parser) consumeSeq(kinds ...token.Kind) ([]token.Token, bool) {
 	return tokens, consumedAll
 }
 
-func (parse *parser) expect(kind token.Kind) (token.Token, error) {
-	if tok, ok := parse.consume(kind); ok {
-		return tok, nil
+func (parse *parser) expect(kind token.Kind) token.Token {
+	tok, ok := parse.consume(kind)
+
+	if !ok {
+		panic(errUnexpectedToken(parse.Span, parse.Kind, kind))
 	}
 
-	return token.Token{}, errUnexpectedToken(parse.Span, kind)
+	return tok
+}
+
+func (parse *parser) expectAny(kinds ...token.Kind) token.Token {
+	tok, ok := parse.consumeAny(kinds...)
+
+	if !ok {
+		panic(errUnexpectedToken(parse.Span, parse.Kind, kinds...))
+	}
+
+	return tok
 }

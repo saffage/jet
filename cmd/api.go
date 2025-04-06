@@ -72,6 +72,11 @@ func Run(args []string) error {
 			DisableDefaultText: true,
 		},
 		&cli.BoolFlag{
+			Name:               "trace-parser",
+			Usage:              "trace parser calls (used for debugging)",
+			DisableDefaultText: true,
+		},
+		&cli.BoolFlag{
 			Name:               "no-hints",
 			Usage:              "disable compiler hints",
 			DisableDefaultText: true,
@@ -114,6 +119,12 @@ func Run(args []string) error {
 				ArgsUsage: " <FILEPATH>",
 				Flags:     checkFlags,
 				Action:    actionCheck,
+			},
+			{
+				Name:      "parse-ast",
+				Args:      true,
+				ArgsUsage: " <FILEPATH>",
+				Action:    actionParseAst,
 			},
 		},
 	}

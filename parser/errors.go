@@ -63,12 +63,19 @@ func errExpectedType(span text.Span) error {
 		Selection(span, "")
 }
 
-func errUnexpectedToken(span text.Span, expected ...any) error {
+func errUnexpectedToken[Found, Expected any](
+	span text.Span,
+	found Found,
+	expected ...Expected,
+) error {
 	message := ""
-	tokens := prettyJoinAny(expected)
 
 	if len(expected) > 0 {
-		message = "expected " + tokens + " here"
+		message = fmt.Sprintf(
+			"expected %s here instead of %v",
+			prettyJoin(expected),
+			found,
+		)
 	}
 
 	return report.Build(ErrUnexpectedToken).
@@ -90,7 +97,7 @@ func errUnterminatedExpr(span text.Span, delimiters ...token.Kind) error {
 		Tag("parse").
 		Selection(
 			span,
-			fmt.Sprintf("expected %s after this", prettyJoin(delimiters)),
+			fmt.Sprintf("expected %s after this", prettyJoinString(delimiters)),
 		)
 }
 
@@ -100,47 +107,7 @@ func errUnterminatedList(span text.Span) error {
 		Selection(span, "")
 }
 
-// func (p *parser) lastErrorIs(err error) bool {
-// 	if len(p.errors) > 0 {
-// 		return errors.Is(p.errors[len(p.errors)-1], err)
-// 	}
-
-// 	return false
-// }
-
-// func (p *parser) appendError(err error) {
-// 	if p.flags&Trace != 0 {
-// 		defer un(trace(p))
-// 	}
-
-// 	p.errors = append(p.errors, err)
-// }
-
-// func (p *parser) error(err error) {
-// 	p.errorAt(err, p.span)
-// }
-
-// func (p *parser) errorf(err error, format string, args ...any) {
-// 	p.errorfAt(err, p.span, fmt.Sprintf(format, args...))
-// }
-
-// func (p *parser) errorAt(err error, span text.Span, message ...any) {
-// 	p.appendError(&Error{
-// 		Message:   fmt.Sprint(message...),
-// 		err:       err,
-// 		Selection: span,
-// 	})
-// }
-
-// func (p *parser) errorfAt(err error, span text.Span, format string, args ...any) {
-// 	p.appendError(&Error{
-// 		err:       err,
-// 		Selection: span,
-// 		Message:   fmt.Sprintf(format, args...),
-// 	})
-// }
-
-func prettyJoinAny(items []any) string {
+func prettyJoin[T any](items []T) string {
 	buf := strings.Builder{}
 
 	switch {
@@ -164,7 +131,7 @@ func prettyJoinAny(items []any) string {
 	return buf.String()
 }
 
-func prettyJoin[T fmt.Stringer](items []T) string {
+func prettyJoinString[T fmt.Stringer](items []T) string {
 	buf := strings.Builder{}
 
 	switch {

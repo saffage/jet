@@ -1,131 +1,198 @@
 package parser
 
 import (
+	"fmt"
+
 	"github.com/saffage/jet/ast"
-	"github.com/saffage/jet/report"
 	"github.com/saffage/jet/text"
 	"github.com/saffage/jet/token"
 )
 
-type parseFunc func() (ast.Node, error)
+type (
+	parseFunc        func() ast.Node
+	parseLabeledFunc func(label *ast.Lower, colon text.Pos) ast.Node
+)
 
 // Grammar:
 //
-//	f {sep f}
-func (parse *parser) sequence(f parseFunc, sep token.Kind) (nodes []ast.Node, err error) {
-	if parse.tracer.enabled {
-		defer parse.un(parse.trace(&err))
+//	item {separator item}
+func (parse *parser) sequence(item parseFunc, separator ...token.Kind) []ast.Node {
+	if parse.pushTrace(stringify(separator)...) {
+		defer parse.popTrace()
 	}
+
+	nodes := []ast.Node{}
 
 	for parse.Kind != token.EOF {
-		node, err := f()
+		// TODO: Determine a reliable way to recover the parser state to allow
+		// parsing subsequent items without skipping too many tokens.
+		//
+		// For example, this would be parsed correctly:
+		//
+		//	a, b., c
+		//
+		// But this is not:
+		//
+		// 	a, b * , c
+		nodes = append(nodes, parse.try(item))
 
-		if err != nil {
-			return nodes, err
-		}
-
-		if node == nil {
-			panic("unreachable")
-		}
-
-		nodes = append(nodes, node)
-
-		if !parse.skip(sep) {
+		if !parse.skipAny(separator...) {
 			break
 		}
+
+		parse.skipNewLines()
 	}
 
-	return nodes, nil
+	return nodes
 }
 
 // Grammar:
 //
-//	open f {sep f} [sep] close
+//	open [item {separator item} [separator]] close
 func (parse *parser) listOpenClose(
-	f parseFunc,
-	open, close, sep token.Kind,
-) (nodes []ast.Node, span text.Span, err error) {
-	if parse.tracer.enabled {
-		defer parse.un(parse.trace(&err))
+	item parseFunc,
+	open, close token.Kind,
+	separator ...token.Kind,
+) ([]ast.Node, text.Span) {
+	if parse.pushTrace(stringify(append([]token.Kind{open, close}, separator...))...) {
+		defer parse.popTrace()
 	}
 
-	openTok, ok := parse.consume(open)
+	openTok := parse.expect(open)
 
-	if !ok {
-		err = errUnexpectedToken(parse.Span, open)
-		return
+	parse.skipNewLines()
+
+	nodes := parse.listUntil(item, openTok.Span, close, separator...)
+	closeTok := parse.expect(close)
+
+	return nodes, text.Span{
+		From: openTok.Span.From,
+		To:   closeTok.Span.From,
 	}
-
-	span.From = openTok.Span.From
-	nodes, err = parse.listUntil(f, close, sep, openTok.Span)
-
-	if err != nil {
-		return
-	}
-
-	closeTok, ok := parse.consume(close)
-
-	if !ok {
-		err = errUnexpectedToken(parse.Span, close)
-		return
-	}
-
-	span.To = closeTok.Span.From
-	return
 }
 
 // The begin parameter is used if EOF was reached (i.e. delimiter wasn't found).
 //
 // Grammar:
 //
-//	f {sep f} [sep] delim
+//	[item {separator item} [separator]] delimiter
 func (parse *parser) listUntil(
-	f parseFunc,
-	delimiter, separator token.Kind,
+	item parseFunc,
 	begin text.Span,
-) (_ []ast.Node, err error) {
-	if parse.tracer.enabled {
-		defer parse.un(parse.trace(&err))
+	delimiter token.Kind,
+	separator ...token.Kind,
+) []ast.Node {
+	delimiters := append([]token.Kind{delimiter}, separator...)
+
+	if parse.pushTrace(stringify(delimiters)...) {
+		defer parse.popTrace()
 	}
 
-	var nodes []ast.Node
-	var errs []error
+	nodes := []ast.Node{}
 
 	// Possible cases:
-	//  - empty list `{}`
-	//  - regular list `{..., f}`
-	//  - with trailing separator `{..., f,}`
-	//  - unterminated list `{... EOF`
+	//  - empty list `DELIM`
+	//  - regular list `... DELIM`
+	//  - with trailing separator `..., DELIM`
+	//  - unterminated list `... EOF`
 	for !parse.matchAny(delimiter, token.EOF) {
+		tracing := parse.pushTrace("item")
 		nodeStart := parse.Span.From
-		node, err := f()
+		node, err := catch(item)
 
 		if err == nil {
-			if node == nil {
-				panic("unreachable")
-			}
+			if parse.skipAny(separator...) || parse.match(delimiter) {
+				parse.skipNewLines()
 
-			if parse.skip(separator) || parse.match(delimiter) {
+				if tracing {
+					parse.popTrace()
+				}
+
 				nodes = append(nodes, node)
 				continue
 			}
 
 			// The node is correct, but no separator\delimiter was found.
-			err = errUnterminatedExpr(node.Range(), separator, delimiter)
+			err = errUnterminatedExpr(node.Range(), delimiters...)
+			node = &ast.BadNode{DesiredPos: nodeStart}
 		}
 
 		// Something went wrong, advance to separator\delimiter and continue
 		// parsing elements until we find the delimiter.
-		parse.skipUntil(separator, delimiter)
-		parse.consume(separator)
+		parse.skipUntil(append(delimiters, token.Newline)...)
+		parse.consumeAny(append(separator, token.Newline)...)
+		parse.handleError(err)
+		parse.popTrace()
 
-		errs = append(errs, err)
 		nodes = append(nodes, &ast.BadNode{DesiredPos: nodeStart})
 	}
 
 	if parse.match(token.EOF) && delimiter != token.EOF {
-		errs = append(errs, errUnterminatedList(begin))
+		parse.handleError(errUnterminatedList(begin))
 	}
 
-	return nodes, report.Join(errs...)
+	return nodes
+}
+
+// The catch function catches any error panic while parsing the item. If the
+// panic value is not an error, it re-panics with the original value.
+//
+// The item must return a non-nil node, otherwise this function will panic.
+func catch(item func() ast.Node) (node ast.Node, err error) {
+	defer func() {
+		if p := recover(); p != nil {
+			if e, _ := p.(error); e != nil {
+				err = e
+			} else {
+				panic(p)
+			}
+		}
+	}()
+
+	if node = item(); node != nil {
+		return node, nil
+	}
+
+	panic("the error was not emitted while parsing a term, nil node produced")
+}
+
+// The try function catches any error panic while parsing the item and
+// replaces node with [ast.BadNode] in case of error.
+//
+// This function always return not-nil node.
+func (parse *parser) try(item func() ast.Node) ast.Node {
+	start := parse.Span.From
+	node, err := catch(item)
+
+	if err != nil {
+		parse.handleError(err)
+		node = &ast.BadNode{DesiredPos: start}
+	}
+
+	return node
+}
+
+// The ensure function catches any error panic while parsing the item and
+// replaces node with nil in case of error.
+//
+// This function always return not-nil node.
+func (parse *parser) ensure(item func() ast.Node) ast.Node {
+	node, err := catch(item)
+
+	if err != nil {
+		parse.handleError(err)
+		node = nil
+	}
+
+	return node
+}
+
+func stringify[T fmt.Stringer](items []T) []string {
+	stringified := make([]string, 0, len(items))
+
+	for _, item := range items {
+		stringified = append(stringified, item.String())
+	}
+
+	return stringified
 }
