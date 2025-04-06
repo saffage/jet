@@ -2,6 +2,7 @@ package report
 
 import (
 	"bytes"
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -144,17 +145,22 @@ func writeSelection(
 			code = selection.Code[:nl]
 		}
 	} else if file != nil {
-		code = file.Line(selection.Range.From)
+		code = file.LineContent(selection.Range.From)
 	}
 
-	from, fromIsValid := file.GetPosition(selection.Range.From)
-	to, toIsValid := file.GetPosition(selection.Range.To)
+	from := file.PositionOf(selection.Range.From)
+	to := file.PositionOf(selection.Range.To)
 
-	if !toIsValid {
-		if fromIsValid {
+	if !to.IsValid() {
+		if from.IsValid() {
 			to = from
 		} else {
-			panic("selection range is corrupted, invalid selection bounds")
+			panic(fmt.Sprintf(
+				"selection range is corrupted, invalid selection bounds (%s to %s), file context length is %d",
+				selection.Range.From,
+				selection.Range.To,
+				len(config.File(selection.Range.ID()).Content),
+			))
 		}
 	}
 
@@ -287,7 +293,7 @@ func writeFilepath(buf *strings.Builder, position text.Position, withSnapshot bo
 		}
 	}
 
-	path := filepath.Clean(position.Path)
+	path := filepath.Clean(position.Filepath)
 
 	filepathStyle.Fprintf(
 		buf,

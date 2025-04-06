@@ -40,7 +40,8 @@ func (parse *parser) pushTrace(args ...string) bool {
 			}
 		}
 
-		pos, _ := parse.scanner.GetPosition(parse.Span.From)
+		pos := parse.scanner.PositionOf(parse.Span.From)
+
 		fmt.Fprintf(
 			report.Output,
 			"%s%s%s[%s]\n",
@@ -51,12 +52,7 @@ func (parse *parser) pushTrace(args ...string) bool {
 				"%d: %s (%s)",
 				parse.tracer.tokenIndex,
 				parse.Kind,
-				fmt.Sprintf(
-					"%s:%d:%d",
-					pos.Path,
-					pos.Line,
-					pos.Char,
-				),
+				pos,
 			),
 		)
 
@@ -74,7 +70,7 @@ func (parse *parser) popTrace() {
 	parse.tracer.stack = parse.tracer.stack[:len(parse.tracer.stack)-1]
 
 	if entry.err != nil {
-		pos, _ := parse.scanner.GetPosition(parse.Span.From)
+		pos := parse.scanner.PositionOf(parse.Span.From)
 
 		fmt.Fprintf(
 			report.Output,
@@ -86,12 +82,7 @@ func (parse *parser) popTrace() {
 				"%d: %s (%s)",
 				parse.tracer.tokenIndex,
 				parse.Kind,
-				fmt.Sprintf(
-					"%s:%d:%d",
-					pos.Path,
-					pos.Line,
-					pos.Char,
-				),
+				pos,
 			),
 		)
 	}

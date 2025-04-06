@@ -6,6 +6,9 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
+
+	. "github.com/saffage/jet/internal/debug"
 )
 
 var (
@@ -13,11 +16,6 @@ var (
 	ErrInvalidFilepath = errors.New("argument is not a valid filepath")
 	ErrPathNotFile     = errors.New("path is not a file")
 )
-
-// Represents an ID of the file, processed by a config.
-//
-// Zero value its an invalid ID.
-type FileID uint16
 
 type File struct {
 	Name    string // File name without extension.
@@ -29,6 +27,11 @@ type File struct {
 	Flags   FileFlags
 	Options FileOptions
 }
+
+// Represents an ID of the file, processed by a config.
+//
+// Zero value its an invalid ID.
+type FileID uint16
 
 // Reserved
 type FileFlags struct{}
@@ -98,63 +101,93 @@ func ReadFile(id FileID, path string) (*File, error) {
 	return NewFile(id, path, content)
 }
 
-func lineOffsetOfPos(file *File, pos Pos) (offset, index int, found bool) {
-	if pos.ID() != file.ID {
-		return 0, 0, false
-	}
+func (file *File) LineStart(line int) Pos {
+	Assert(line > 0)
+	Assert(line <= len(file.lines))
 
-	for i, lineOffset := range file.lines {
-		if lineOffset > pos.Offset() {
-			found = true
-			break
-		}
-		offset = lineOffset
-		index = i
-	}
-	return
+	return PosFrom(file.ID, file.lines[line-1])
 }
 
-func getLineEndOffset(file *File, line int) (offset int) {
-	switch {
-	case len(file.lines) < line:
-		return -1
+func (file *File) LineContent(pos Pos) string {
+	line := file.searchForOffset(file.fix(pos.Offset())) + 1
 
-	case len(file.lines) > line:
-		return file.lines[line+1] - 1
+	if line == 0 {
+		return ""
+	}
+
+	startIndex := file.LineStart(line).Offset()
+	endIndex := len(file.Content)
+
+	if line+1 < len(file.lines) {
+		endIndex = file.LineStart(line+1).Offset() - 1
+	}
+
+	return string(file.Content[startIndex:endIndex])
+}
+
+func (file *File) PositionOf(pos Pos) Position {
+	if pos.ID() != file.ID {
+		return Position{}
+	}
+
+	offset := file.fix(pos.Offset())
+	line, char := file.position(offset)
+
+	return Position{
+		Filepath: file.Path,
+		ID:       file.ID,
+		Offset:   offset,
+		Line:     line,
+		Char:     char,
+	}
+}
+
+func (file *File) fix(offset int) int {
+	switch {
+	case offset < 0:
+		if !Debug {
+			return 0
+		}
+
+	case offset > len(file.Content):
+		if !Debug {
+			return len(file.Content)
+		}
 
 	default:
-		return len(file.Content)
+		return offset
 	}
+
+	if Debug {
+		panic(fmt.Sprintf("offset %d out of bounds [%d, %d)",
+			offset,
+			0,
+			len(file.Content),
+		))
+	}
+
+	return 0
 }
 
-func (file *File) Line(pos Pos) string {
-	if lineOffset, lineIndex, found := lineOffsetOfPos(file, pos); found {
-		endOffset := getLineEndOffset(file, lineIndex)
-		return string(file.Content[lineOffset:endOffset])
+func (file *File) position(offset int) (line, char int) {
+	if offset >= len(file.Content) {
+		return len(file.lines), len(file.Content) - file.lines[len(file.lines)-1] + 1
 	}
-
-	return ""
-}
-
-func (file *File) GetPosition(pos Pos) (position Position, valid bool) {
-	if lineOffset, lineIndex, found := lineOffsetOfPos(file, pos); found {
-		offset := pos.Offset()
-		columnOffset := offset - lineOffset
-
-		valid = true
-		position = Position{
-			Pos:  pos,
-			Path: file.Path,
-			Line: lineIndex + 1,
-		}
-
-		for i := range file.Content {
-			if i >= columnOffset {
-				position.Char = i + 1
-				break
-			}
-		}
+	if i := file.searchForOffset(offset); i >= 0 {
+		line = i + 1
+		char = offset - file.lines[i] + 1
 	}
-
 	return
+}
+
+func (file *File) searchForOffset(offset int) (lineIndex int) {
+	if offset > file.lines[len(file.lines)-1] && offset < len(file.Content) {
+		return len(file.lines) - 1
+	}
+
+	lineIndex, found := slices.BinarySearch(file.lines, offset)
+	if !found {
+		return -1
+	}
+	return lineIndex
 }

@@ -1,15 +1,22 @@
 package text
 
+import "fmt"
+
 const NoPos Pos = 0
 
 type Position struct {
-	Path string
-	Line int
-	Char int
-	Pos
+	Filepath string
+	ID       FileID
+	Offset   int
+	Line     int
+	Char     int
 }
 
-func (p *Position) IsValid() bool { return p != nil && *p != Position{} }
+func (p Position) IsValid() bool { return p != Position{} }
+
+func (p Position) String() string {
+	return fmt.Sprintf("%s:%d:%d", p.Filepath, p.Line, p.Char)
+}
 
 type Pos uint64
 
