@@ -373,7 +373,7 @@ func (check *checker) resolveTypeAlias(node *ast.TypeAlias) {
 
 	var sym *TypeAlias
 
-	if extern, _ := node.Expr.(*ast.Extern); extern != nil {
+	if extern, _ := node.Expr.(*ast.External); extern != nil {
 		var err error
 
 		sym, err = check.resolveExternTypeAlias(extern, node)
@@ -589,7 +589,7 @@ func (check *checker) resolveSelector(node *ast.Dot) (*Value, error) {
 //
 
 func (check *checker) resolveExternTypeAlias(
-	extern *ast.Extern,
+	extern *ast.External,
 	node *ast.TypeAlias,
 ) (*TypeAlias, error) {
 	if extern.Args != nil {

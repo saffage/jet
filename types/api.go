@@ -50,7 +50,9 @@ loop:
 }
 
 func CheckFile(f *text.File) (*Module, error) {
-	stmts, err := parser.ParseFile(f, token.DefaultFlags, parser.DefaultFlags)
+	stmts, err := parser.
+		FromFile(f, token.DefaultFlags, parser.DefaultFlags, nil).
+		ParseOrError()
 
 	if err != nil {
 		return nil, err

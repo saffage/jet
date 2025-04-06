@@ -73,7 +73,9 @@ func assertErrorConfig(code string, isExpr bool) func(t *testing.T) {
 			parserFlags |= parser.AllowTopLevelCode
 		}
 
-		stmts, parseErr := parser.ParseFile(f, token.DefaultFlags, parserFlags)
+		stmts, parseErr := parser.
+			FromFile(f, token.DefaultFlags, parserFlags, nil).
+			ParseOrError()
 
 		if parseErr != nil {
 			t.Errorf("unexpected parse error: %s", parseErr)
