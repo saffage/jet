@@ -17,9 +17,9 @@ const (
 	LowercaseIdent   // lowercase identifier
 	UppercaseIdent   // uppercase identifier
 	IdentPlaceholder // identifier placeholder
-	Int              // untyped int
-	Float            // untyped float
-	String           // untyped string
+	Int              // int literal
+	Float            // float literal
+	String           // string literal
 
 	LParen    // '('
 	RParen    // ')'
@@ -65,21 +65,21 @@ const (
 
 	// End of position dependent tokens.
 
-	At       // operator '@'
-	Dollar   // operator '$'
-	Arrow    // operator '->'
-	FatArrow // operator '=>'
-	Dot      // operator '.'
-	Dot2     // operator '..'
-	Ellipsis // operator '...'
+	At       // '@'
+	Dollar   // '$'
+	Arrow    // '->'
+	FatArrow // '=>'
+	Dot      // '.'
+	Dot2     // '..'
+	Ellipsis // '...'
 
-	KwExtern // keyword 'extern'
-	KwFn     // keyword 'fn'
-	KwLet    // keyword 'let'
-	KwType   // keyword 'type'
-	KwVal    // keyword 'val'
-	KwVar    // keyword 'var'
-	KwWhen   // keyword 'when'
+	KwExternal // keyword 'external'
+	KwFn       // keyword 'fn'
+	KwLet      // keyword 'let'
+	KwType     // keyword 'type'
+	KwVal      // keyword 'val'
+	KwVar      // keyword 'var'
+	KwWhen     // keyword 'when'
 
 	// Reserved keywords.
 
@@ -111,13 +111,14 @@ const (
 	_operator_begin = Eq
 	_operator_end   = Ellipsis
 
-	_keywords_begin = KwExtern
+	_keywords_begin = KwExternal
 	_keywords_end   = KwWhile
 
 	_reserved_begin = KwAnd
 	_reserved_end   = KwWhile
 
-	_kinds_last = _keywords_end
+	_kinds_first = _special_begin
+	_kinds_last  = _reserved_end
 )
 
 type stringLike interface {
@@ -204,13 +205,13 @@ var representableKinds = map[Kind]string{
 	Dot2:     "..",
 	Ellipsis: "...",
 
-	KwExtern: "extern",
-	KwFn:     "fn",
-	KwLet:    "let",
-	KwType:   "type",
-	KwVal:    "val",
-	KwVar:    "var",
-	KwWhen:   "when",
+	KwExternal: "external",
+	KwFn:       "fn",
+	KwLet:      "let",
+	KwType:     "type",
+	KwVal:      "val",
+	KwVar:      "var",
+	KwWhen:     "when",
 
 	KwAnd:      "and",
 	KwAs:       "as",
