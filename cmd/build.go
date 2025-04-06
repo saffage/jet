@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -11,12 +10,11 @@ import (
 	"github.com/saffage/jet/config"
 	"github.com/saffage/jet/report"
 	"github.com/saffage/jet/text"
-	"github.com/saffage/jet/types"
 	"github.com/urfave/cli/v2"
 )
 
 func Build(file *text.File) error {
-	if buildError := build(file); buildError != nil {
+	if buildError := Check(file); buildError != nil {
 		return buildError
 	}
 
@@ -34,11 +32,6 @@ func Build(file *text.File) error {
 }
 
 func beforeBuild(ctx *cli.Context) error {
-	config.Run = ctx.Bool("run")
-	config.DumpCheckerState = ctx.Bool("dump-checker-state")
-	config.ParseAst = ctx.Bool("parse-ast")
-	config.TraceParser = ctx.Bool("trace-parser")
-
 	config.CC = ctx.String("cc")
 	config.CCFlags = ctx.String("cc-flags")
 	config.LDFlags = ctx.String("ld-flags")
@@ -47,27 +40,13 @@ func beforeBuild(ctx *cli.Context) error {
 }
 
 func actionBuild(ctx *cli.Context) error {
-	if !ctx.Args().Present() {
-		return errors.New("expected path to a file")
-	}
-
-	if ctx.Args().Len() != 1 {
-		return errors.New("invalid arguments count (expected 1)")
-	}
-
-	argument := ctx.Args().Get(0)
-	file, err := config.ReadFile(argument)
+	file, err := fileArgument(ctx)
 
 	if err != nil {
 		return err
 	}
 
 	return Build(file)
-}
-
-func build(file *text.File) error {
-	_, err := types.CheckFile(file)
-	return err
 }
 
 func run(filename string) {

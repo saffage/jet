@@ -9,18 +9,15 @@ import (
 var (
 	filesMutex sync.RWMutex
 	files      []*text.File
+)
 
+var (
 	CompilerFilepath string // Path to the compiler executable.
 
-	Run              bool // Run a compiled executable.
+	TraceParser      bool // Trace parser calls (used for debugging).
 	Debug            bool // Enable debug information.
 	NoHints          bool // Disable compiler hints.
-	DumpCheckerState bool // Dump the checker state after checking a specified module.
-	ParseAst         bool // Display program AST of the specified module and exit.
-	TraceParser      bool // Trace parser calls (used for debugging).
-
-	// Disable checking of 'builtin' package
-	NoBuiltinPackage bool
+	NoBuiltinPackage bool // Disable checking of 'builtin' package
 
 	// Path to the 'builtin' package directory,
 	// relative to the compiler executable.
@@ -41,6 +38,15 @@ type BuildTarget byte
 const (
 	TargetC BuildTarget = iota // c
 )
+
+func BuildTargetFromString(s string) (BuildTarget, bool) {
+	switch s {
+	case "c":
+		return TargetC, true
+	default:
+		return 0, false
+	}
+}
 
 func NewFile(path string, content []byte) (*text.File, error) {
 	filesMutex.Lock()
