@@ -17,24 +17,30 @@ type UnexpectedCharError struct {
 }
 
 type Scanner struct {
-	reader bytes.Reader
-	fileID FileID
+	*File
+
+	buffer *bytes.Buffer
 	peeked rune
 	index  int
 	size   int
 }
 
-func NewScanner(input []byte, id FileID) *Scanner {
+func NewScanner(content []byte, id FileID) *Scanner {
+	file, _ := NewFile(id, "", content)
+	return NewScannerFromFile(file)
+}
+
+func NewScannerFromFile(file *File) *Scanner {
 	s := &Scanner{
-		reader: *bytes.NewReader(input),
-		fileID: id,
+		File:   file,
+		buffer: bytes.NewBuffer(file.Content),
 	}
 	s.Peek()
 	return s
 }
 
 func (s *Scanner) Next() (peeked rune) {
-	char, size, err := s.reader.ReadRune()
+	char, size, err := s.buffer.ReadRune()
 
 	if err != nil {
 		if err == io.EOF {
@@ -226,8 +232,8 @@ func wrapPredicate(s *Scanner, predicate func(rune) bool, truth bool) func() (st
 }
 
 func (s *Scanner) Pos() Pos {
-	if s.fileID == 0 {
+	if s.ID == 0 {
 		panic("scanner: called Pos() with invalid file ID")
 	}
-	return PosFrom(s.fileID, s.index)
+	return PosFrom(s.ID, s.index)
 }
