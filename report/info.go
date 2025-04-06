@@ -70,7 +70,7 @@ func (info *Info) Render(buf *strings.Builder) {
 	writeLabel(buf, info.Level, info.Tag)
 
 	if info.Title != "" {
-		titleStyle.Fprint(buf, info.Title, "\n")
+		titleStyle.Fprint(buf, capitalize(info.Title), "\n")
 	} else {
 		titleStyle.Fprint(buf, emptyMessage, "\n")
 	}
@@ -148,23 +148,24 @@ func writeSelection(
 		code = file.Line(selection.Range.From)
 	}
 
-	if code == "" {
-		// Can't render selection on the empty line, ignore it.
-		return
-	}
-
 	from, fromIsValid := file.GetPosition(selection.Range.From)
 	to, toIsValid := file.GetPosition(selection.Range.To)
 
-	if !fromIsValid || !toIsValid {
-		panic("selection range is corrupted, invalid selection bounds")
+	if !toIsValid {
+		if fromIsValid {
+			to = from
+		} else {
+			panic("selection range is corrupted, invalid selection bounds")
+		}
 	}
 
-	writeFilepath(buf, from)
+	writeFilepath(buf, from, code != "")
 
 	buf.WriteByte('\n')
 
-	writeCodeSnapshot(buf, color, code, selection.Hint, from, to)
+	if code != "" {
+		writeCodeSnapshot(buf, color, code, selection.Hint, from, to)
+	}
 }
 
 func writeCodeSnapshot(
@@ -181,6 +182,7 @@ func writeCodeSnapshot(
 
 	writeLineNumber(buf, start.Line, false)
 	writeColoredRange(buf, code, color, codeStyle, left, right)
+
 	buf.WriteByte('\n')
 
 	writeLineNumber(buf, start.Line, true)
@@ -203,7 +205,7 @@ func writeCodeSnapshot(
 
 	if hint != "" {
 		buf.WriteByte(' ')
-		buf.WriteString(hint)
+		color.Fprint(buf, capitalize(hint))
 	}
 
 	buf.WriteByte('\n')
@@ -214,7 +216,7 @@ func writeSuggestion(buf *strings.Builder, suggestion Suggestion) {
 		return
 	}
 
-	suggestionStyle.Fprint(buf, suggestion.Message, "\n")
+	suggestionStyle.Fprint(buf, capitalize(suggestion.Message), "\n")
 
 	if suggestion.Content != "" {
 		content := "\t" + strings.ReplaceAll(suggestion.Content, "\n", "\n\t")
@@ -246,7 +248,8 @@ func writeColoredRange(
 	selection, rest *color.Color,
 	i, j int,
 ) {
-	if len(text) == 0 {
+	if len(text) == 0 || i >= len(text) || j >= len(text) {
+		rest.Fprint(buf, text)
 		return
 	}
 
@@ -266,22 +269,24 @@ func writeColoredRange(
 	rest.Fprint(buf, textAfter)
 }
 
-func writeFilepath(buf *strings.Builder, position text.Position) {
+func writeFilepath(buf *strings.Builder, position text.Position, withSnapshot bool) {
 	for range numLen(position.Line) {
 		buf.WriteByte(' ')
 	}
 
-	lineNumStyle.Fprintf(buf, "")
-
-	if UseUnicode {
-		separatorStyle.Fprint(buf, " ┌─ ")
+	if withSnapshot {
+		if UseUnicode {
+			separatorStyle.Fprint(buf, " ┌─ ")
+		} else {
+			separatorStyle.Fprint(buf, "--> ")
+		}
 	} else {
-		separatorStyle.Fprint(buf, "--> ")
+		if UseUnicode {
+			separatorStyle.Fprint(buf, " ↪ ")
+		} else {
+			separatorStyle.Fprint(buf, "--> ")
+		}
 	}
-
-	// if !ShowCodeSnapshot {
-	// 	buf.WriteString(" ↪ ")
-	// }
 
 	path := filepath.Clean(position.Path)
 
@@ -303,6 +308,17 @@ func numLen(num int) (len int) {
 		len += 1
 	}
 	return len
+}
+
+func capitalize(s string) string {
+	firstNonSpace := strings.IndexFunc(s, func(r rune) bool { return r != ' ' })
+
+	if firstNonSpace >= 0 {
+		firstNonSpace++
+		return strings.ToUpper(s[:firstNonSpace]) + s[firstNonSpace:]
+	}
+
+	return s
 }
 
 var (
