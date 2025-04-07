@@ -2,7 +2,7 @@ package text
 
 import "testing"
 
-func TestChars(t *testing.T) {
+func TestTakeWhile(t *testing.T) {
 	buffer := "001"
 	s := NewScanner(([]byte)(buffer), 0)
 
