@@ -350,7 +350,9 @@ func (s *Scanner) scanString() (data string, span text.Span, ok bool) {
 func (s *Scanner) scanNumber() (kind Kind, data string, span text.Span, ok bool) {
 	buf := strings.Builder{}
 	kind = Int
-	span = text.Span{From: s.Pos(), To: s.Pos()}
+	span = text.Span{From: s.Pos()}
+
+	defer func() { span.To = s.Pos().WithOffset(-1) }()
 
 	if s.Consumed('0') {
 		if char, consumed := s.Consume('x', 'X', 'b', 'B', 'o', 'O'); consumed {
@@ -449,7 +451,6 @@ func (s *Scanner) scanNumber() (kind Kind, data string, span text.Span, ok bool)
 	// 	}
 	// }
 
-	span.To = s.Pos()
 	data = buf.String()
 	ok = true
 	return
