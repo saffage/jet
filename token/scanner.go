@@ -339,6 +339,7 @@ func (s *Scanner) scanString() (data string, span text.Span, ok bool) {
 
 		case '$':
 			// TODO interpolated string
+			buf.WriteRune(s.Advance())
 
 		default:
 			buf.WriteRune(s.Advance())
