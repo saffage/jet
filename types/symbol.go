@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/saffage/jet/ast"
+	. "github.com/saffage/jet/internal/debug"
 	"github.com/saffage/jet/text"
 )
 
@@ -135,7 +136,7 @@ func (sym *Binding) Ident() ast.Ident {
 	}
 
 	if sym.IsExtern() {
-		assert(sym.externName != "", "binding without node must have `externName`")
+		Assert(sym.externName != "", "binding without node must have `externName`")
 		return &ast.Lower{Data: sym.externName}
 	}
 
@@ -307,7 +308,7 @@ func NewTypeAlias(owner *Env, alias *Alias, node *ast.TypeAlias) *TypeAlias {
 
 // NOTE: name of the type alias comes from [TypeAlias.alias].
 func NewExternTypeAlias(owner *Env, extern Type) *TypeAlias {
-	assert(IsAtom(extern))
+	Assert(IsAtom(extern))
 
 	return &TypeAlias{
 		owner:  owner,

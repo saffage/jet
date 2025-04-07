@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/saffage/jet/ast"
+	. "github.com/saffage/jet/internal/debug"
 	"github.com/saffage/jet/report"
 )
 
@@ -280,13 +281,13 @@ func (t *Fn) CheckArgValues(values []*Value) (idx int, err error) {
 }
 
 func (t *Fn) CheckArgs(args TypeList, argsNode ...*ast.Parens) error {
-	assert(args != nil)
-	assert(len(argsNode) < 2, "`argsNode` it's an optional parameter, not variadic")
+	Assert(args != nil)
+	Assert(len(argsNode) < 2, "`argsNode` it's an optional parameter, not variadic")
 
 	var node *ast.Parens
 
 	if len(argsNode) == 1 {
-		assert(argsNode[0] != nil)
+		Assert(argsNode[0] != nil)
 		node = argsNode[0]
 	}
 
@@ -589,7 +590,7 @@ func IntoTyped(v *Value, target ...Type) Type {
 
 	if len(target) != 0 {
 		expected = SkipAlias(target[0])
-		assert(expected != nil, "argument is nil")
+		Assert(expected != nil, "argument is nil")
 	}
 
 	t := SkipAlias(v.T)

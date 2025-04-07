@@ -6,6 +6,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/saffage/jet/ast"
+	. "github.com/saffage/jet/internal/debug"
 	"github.com/saffage/jet/report"
 	"github.com/saffage/jet/text"
 )
@@ -35,21 +36,21 @@ func (check *checker) symbolOf(ident ast.Ident) Symbol {
 //	defer check.setEnv(check.env)
 //	check.setEnv(someEnv)
 func (check *checker) setEnv(scope *Env) {
-	assert(scope != nil)
+	Assert(scope != nil)
 	check.env = scope
 }
 
 func (check *checker) setValue(expr ast.Node, value *Value) {
-	assert(expr != nil)
-	assert(value != nil)
-	assert(value.T != nil)
+	Assert(expr != nil)
+	Assert(value != nil)
+	Assert(value.T != nil)
 
 	check.module.Values[expr] = value
 }
 
 func (check *checker) newDef(ident ast.Ident, sym Symbol) {
-	assert(ident != nil)
-	assert(sym != nil)
+	Assert(ident != nil)
+	Assert(sym != nil)
 
 	if _, ok := ident.(*ast.Placeholder); ok {
 		return
@@ -79,11 +80,11 @@ func (check *checker) newDef(ident ast.Ident, sym Symbol) {
 }
 
 func (check *checker) newUse(ident ast.Ident, sym Symbol) {
-	assert(ident != nil)
-	assert(sym != nil)
+	Assert(ident != nil)
+	Assert(sym != nil)
 
 	_, isDef := check.module.Defs.Get(ident)
-	assert(!isDef)
+	Assert(!isDef)
 
 	// TODO CLI command to get all symbols usages
 	check.module.Uses[ident] = sym
@@ -467,12 +468,12 @@ func (check *checker) resolveSignature(sig *ast.Signature) (*Fn, *Env, error) {
 		value, err = check.eval(sig.Result)
 
 		if err == nil {
-			assert(value.T != nil)
-			assert(Is[Descriptor](value.T), fmt.Sprintf("%[1]T - %[1]s", value.T))
+			Assert(value.T != nil)
+			Assert(Is[Descriptor](value.T), fmt.Sprintf("%[1]T - %[1]s", value.T))
 
 			tResult = SkipDescriptor(value.T)
 
-			assert(tResult != nil)
+			Assert(tResult != nil)
 		}
 	}
 
@@ -484,7 +485,7 @@ func (check *checker) resolveParam(
 	param *ast.Decl,
 	label *ast.Lower,
 ) (sym *Binding, err error) {
-	assert(param != nil)
+	Assert(param != nil)
 
 	sym = NewBinding(check.env, nil, &Value{T: nil, V: nil}, param, nil)
 	sym.labelNode = label
@@ -639,10 +640,10 @@ func (check *checker) resolveExternTypeAlias(
 //
 
 func (check *checker) resolveCall(node *ast.Call, fn *Fn) (Type, error) {
-	assert(fn != nil)
-	assert(node != nil)
-	assert(node.X != nil)
-	assert(node.Args != nil)
+	Assert(fn != nil)
+	Assert(node != nil)
+	Assert(node.X != nil)
+	Assert(node.Args != nil)
 
 	// tParens, err := check.typeOfParens(node.Args)
 	//
@@ -660,7 +661,7 @@ func (check *checker) resolveCall(node *ast.Call, fn *Fn) (Type, error) {
 	//
 	// return fn.Result(), fn.CheckArgs(tParens, node.Args)
 
-	assert(fn.Result() != nil, fmt.Sprintf("%+v %+v", fn.params, fn.result))
+	Assert(fn.Result() != nil, fmt.Sprintf("%+v %+v", fn.params, fn.result))
 
 	_, err := check.resolveArgs(node.Args, fn)
 	return fn.Result(), err
@@ -760,7 +761,7 @@ func (check *checker) elideDefaultArgs(
 //
 
 func (check *checker) resolveLetDecl(node *ast.LetDecl) {
-	assert(node.Decl.Ident != nil, "declaration must have a name")
+	Assert(node.Decl.Ident != nil, "declaration must have a name")
 
 	sym := NewBinding(check.env, nil, &Value{}, node.Decl, node)
 	desc, paramsEnv, err := check.resolveDeclType(node.Decl.Type)
