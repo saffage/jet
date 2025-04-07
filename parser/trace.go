@@ -24,48 +24,54 @@ type traceEntry struct {
 }
 
 func (parse *parser) pushTrace(args ...string) bool {
-	if parse.tracer.enabled {
-		caller := "untracked caller"
-
-		if pc, _, _, ok := runtime.Caller(1); ok {
-			if details := runtime.FuncForPC(pc); details != nil {
-				const parserPrefix = "(*parser)."
-
-				caller = details.Name()
-				i := strings.LastIndex(caller, parserPrefix)
-
-				if i >= 0 {
-					caller = caller[len(parserPrefix)+i:]
-				}
-			}
-		}
-
-		pos := parse.scanner.PositionOf(parse.Span.From)
-
-		fmt.Fprintf(
-			report.Output,
-			"%s%s%s[%s]\n",
-			color.HiBlackString("%s", strings.Repeat(indentation, len(parse.tracer.stack))),
-			color.HiGreenString("- "),
-			color.YellowString("%s %s ", caller, strings.Join(args, ", ")),
-			color.HiBlackString(
-				"%d: %s (%s)",
-				parse.tracer.tokenIndex,
-				parse.Kind,
-				pos,
-			),
-		)
-
-		parse.tracer.stack = append(parse.tracer.stack, traceEntry{
-			caller:      caller,
-			indentation: len(parse.tracer.stack),
-		})
+	if !parse.tracer.enabled {
+		return false
 	}
 
-	return parse.tracer.enabled
+	caller := "untracked caller"
+
+	if pc, _, _, ok := runtime.Caller(1); ok {
+		if details := runtime.FuncForPC(pc); details != nil {
+			const parserPrefix = "(*parser)."
+
+			caller = details.Name()
+			i := strings.LastIndex(caller, parserPrefix)
+
+			if i >= 0 {
+				caller = caller[len(parserPrefix)+i:]
+			}
+		}
+	}
+
+	pos := parse.scanner.PositionOf(parse.Span.From)
+
+	fmt.Fprintf(
+		report.Output,
+		"%s%s%s[%s]\n",
+		color.HiBlackString("%s", strings.Repeat(indentation, len(parse.tracer.stack))),
+		color.HiGreenString("- "),
+		color.YellowString("%s %s ", caller, strings.Join(args, ", ")),
+		color.HiBlackString(
+			"%d: %s (%s)",
+			parse.tracer.tokenIndex,
+			parse.Kind,
+			pos,
+		),
+	)
+
+	parse.tracer.stack = append(parse.tracer.stack, traceEntry{
+		caller:      caller,
+		indentation: len(parse.tracer.stack),
+	})
+
+	return true
 }
 
 func (parse *parser) popTrace() {
+	if !parse.tracer.enabled {
+		return
+	}
+
 	entry := &parse.tracer.stack[len(parse.tracer.stack)-1]
 	parse.tracer.stack = parse.tracer.stack[:len(parse.tracer.stack)-1]
 
