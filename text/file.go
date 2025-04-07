@@ -40,14 +40,18 @@ type FileFlags struct{}
 type FileOptions struct{}
 
 func NewFile(id FileID, path string, content []byte) (*File, error) {
-	base, ext := filepath.Base(path), filepath.Ext(path)
-	name := base[:len(base)-len(ext)]
+	name := ""
 
-	switch ext {
-	case ".jet", ".jem":
-		// OK
-	default:
-		return nil, ErrInvalidExt
+	if path != "" {
+		base, ext := filepath.Base(path), filepath.Ext(path)
+		name = base[:len(base)-len(ext)]
+
+		switch ext {
+		case ".jet", ".jem":
+			// OK
+		default:
+			return nil, ErrInvalidExt
+		}
 	}
 
 	linesCountGuess := max(16, len(content)/30)
