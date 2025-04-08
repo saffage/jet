@@ -1,4 +1,4 @@
-let fib(n Int) Int {
+let fib(n Int) Int = {
     if n < 2 {
         n
     } else {
