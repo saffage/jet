@@ -64,7 +64,7 @@ func run(filename string) {
 	if err := cmd.Run(); err != nil {
 		wd, _ := os.Getwd()
 		report.HintX("run", "%s", wd)
-		report.ErrorX("run", "%s", err.Error())
+		report.ErrorX("run", "%s", err)
 	}
 }
 
