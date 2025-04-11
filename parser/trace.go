@@ -18,8 +18,8 @@ type tracer struct {
 }
 
 type traceEntry struct {
-	caller      string
 	err         error
+	caller      string
 	indentation int
 }
 
@@ -43,7 +43,7 @@ func (parse *parser) pushTrace(args ...string) bool {
 		}
 	}
 
-	pos := parse.scanner.PositionOf(parse.Span.From)
+	pos := parse.PositionOf(parse.Span.From)
 
 	fmt.Fprintf(
 		report.Output,
@@ -76,7 +76,7 @@ func (parse *parser) popTrace() {
 	parse.tracer.stack = parse.tracer.stack[:len(parse.tracer.stack)-1]
 
 	if entry.err != nil {
-		pos := parse.scanner.PositionOf(parse.Span.From)
+		pos := parse.PositionOf(parse.Span.From)
 
 		fmt.Fprintf(
 			report.Output,
@@ -94,7 +94,7 @@ func (parse *parser) popTrace() {
 	}
 }
 
-func (parse *parser) error(err error) {
+func (parse *parser) error(err report.Builder) {
 	if parse.tracer.enabled {
 		entry := &parse.tracer.stack[len(parse.tracer.stack)-1]
 		entry.err = err

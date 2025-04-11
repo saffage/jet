@@ -27,37 +27,37 @@ var (
 	// ErrInvalidBinaryOperator    = errors.New("invalid binary operator")
 )
 
-func errExpectedBlock(span text.Span) error {
+func errExpectedBlock(span text.Span) report.Builder {
 	return report.Build(ErrExpectedBlock).
 		Tag("parse").
 		Selection(span, "")
 }
 
-func errExpectedDecl(span text.Span) error {
+func errExpectedDecl(span text.Span) report.Builder {
 	return report.Build(ErrExpectedDecl).
 		Tag("parse").
 		Selection(span, "")
 }
 
-func errExpectedExpr(span text.Span) error {
+func errExpectedExpr(span text.Span) report.Builder {
 	return report.Build(ErrExpectedExpr).
 		Tag("parse").
 		Selection(span, "")
 }
 
-func errExpectedOperand(span text.Span) error {
+func errExpectedOperand(span text.Span) report.Builder {
 	return report.Build(ErrExpectedOperand).
 		Tag("parse").
 		Selection(span, "this must be an operand")
 }
 
-func errExpectedPattern(span text.Span, pattern int) error {
+func errExpectedPattern(span text.Span, pattern int) report.Builder {
 	return report.Build(ErrExpectedPattern).
 		Tag("parse").
 		Selection(span, "")
 }
 
-func errExpectedType(span text.Span) error {
+func errExpectedType(span text.Span) report.Builder {
 	return report.Build(ErrExpectedType).
 		Tag("parse").
 		Selection(span, "")
@@ -67,7 +67,7 @@ func errUnexpectedToken[Found, Expected any](
 	span text.Span,
 	found Found,
 	expected ...Expected,
-) error {
+) report.Builder {
 	message := ""
 
 	if len(expected) > 0 {
@@ -83,7 +83,7 @@ func errUnexpectedToken[Found, Expected any](
 		Selection(span, message)
 }
 
-func errUnimplementedFeature(span text.Span, featureName string) error {
+func errUnimplementedFeature(span text.Span, featureName string) report.Builder {
 	return report.Build(ErrUnimplementedFeature).
 		Tag("parse").
 		Selection(
@@ -92,7 +92,7 @@ func errUnimplementedFeature(span text.Span, featureName string) error {
 		)
 }
 
-func errUnterminatedExpr(span text.Span, delimiters ...token.Kind) error {
+func errUnterminatedExpr(span text.Span, delimiters ...token.Kind) report.Builder {
 	return report.Build(ErrUnterminatedExpr).
 		Tag("parse").
 		Selection(
@@ -101,7 +101,7 @@ func errUnterminatedExpr(span text.Span, delimiters ...token.Kind) error {
 		)
 }
 
-func errUnterminatedList(span text.Span) error {
+func errUnterminatedList(span text.Span) report.Builder {
 	return report.Build(ErrUnterminatedList).
 		Tag("parse").
 		Selection(span, "")

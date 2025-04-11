@@ -19,33 +19,33 @@ const (
 )
 
 type parser struct {
-	scanner      *token.Scanner
-	flags        Flags
-	tracer       tracer
-	errorHandler func(error)
-
+	*token.Scanner
 	token.Token
+
+	tracer tracer
+	flags  Flags
 }
 
 func FromFile(
 	file *text.File,
 	scannerFlags token.ScannerFlags,
 	flags Flags,
-	handler func(error),
+	errorHandler func(error),
 ) *parser {
-	return New(token.NewScannerFromFile(file, scannerFlags), flags, handler)
+	scanner := token.NewScannerFromFile(file, scannerFlags)
+	return New(scanner, flags, errorHandler)
 }
 
-func New(s *token.Scanner, flags Flags, handler func(error)) *parser {
+func New(s *token.Scanner, flags Flags, errorHandler func(error)) *parser {
 	if config.TraceParser {
 		flags |= Trace
 	}
 	p := &parser{
-		scanner:      s,
-		flags:        flags,
-		errorHandler: handler,
-		tracer:       tracer{enabled: flags&Trace != 0, stack: []traceEntry{}},
+		Scanner: s,
+		flags:   flags,
+		tracer:  tracer{enabled: flags&Trace != 0, stack: []traceEntry{}},
 	}
+	p.ErrorHandler = errorHandler
 	p.next()
 	return p
 }
@@ -86,19 +86,13 @@ func (parse *parser) Parse() *ast.Stmts {
 }
 
 func (parse *parser) ParseOrError() (*ast.Stmts, error) {
-	defer func(handler func(error)) {
-		parse.errorHandler = handler
-	}(parse.errorHandler)
+	defer func(errorHandler func(error)) {
+		parse.ErrorHandler = errorHandler
+	}(parse.ErrorHandler)
 
 	errs := []error{}
-	parse.errorHandler = func(err error) { errs = append(errs, err) }
+	parse.ErrorHandler = func(err error) { errs = append(errs, err) }
 	stmts := parse.Parse()
 
 	return stmts, report.Join(errs...)
-}
-
-func (parse *parser) handleError(err error) {
-	if err != nil && parse.errorHandler != nil {
-		parse.errorHandler(err)
-	}
 }

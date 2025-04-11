@@ -42,10 +42,11 @@ var (
 )
 
 type Scanner struct {
-	errors []error
-	text.Scanner
-	flags ScannerFlags
+	ErrorHandler func(error)
 
+	text.Scanner
+
+	flags       ScannerFlags
 	emitNewLine bool
 }
 
@@ -70,9 +71,9 @@ func NewScannerFromFile(file *text.File, flags ScannerFlags) *Scanner {
 	}
 }
 
-func Scan(input []byte, id text.FileID, flags ScannerFlags) ([]Token, error) {
+func Scan(input []byte, id text.FileID, flags ScannerFlags) []Token {
 	s := NewScanner(input, id, flags)
-	return slices.Collect(s.Tokens()), report.Join(s.errors...)
+	return slices.Collect(s.Tokens())
 }
 
 func (s *Scanner) Tokens() iter.Seq[Token] {
@@ -244,7 +245,7 @@ func (s *Scanner) NextToken() Token {
 			}
 
 		default:
-			s.error(ErrIllegalCharacter, s.Pos())
+			s.handleError(ErrIllegalCharacter, s.Pos())
 			data = string(s.Advance())
 		}
 
@@ -287,7 +288,7 @@ func (s *Scanner) scanString() (data string, span text.Span, ok bool) {
 			return
 
 		case '\000', '\n', '\r':
-			s.error(ErrUnterminatedStringLit, span.From)
+			s.handleError(ErrUnterminatedStringLit, span.From)
 			data = buf.String()
 			span.To = s.Pos()
 			return
@@ -330,7 +331,7 @@ func (s *Scanner) scanString() (data string, span text.Span, ok bool) {
 				}
 
 			default:
-				s.error(ErrInvalidEscape, backslashPos)
+				s.handleError(ErrInvalidEscape, backslashPos)
 
 				// NOTE not sure if invalid escape needs to be present in token
 				buf.WriteByte('\\')
@@ -358,7 +359,7 @@ func (s *Scanner) scanNumber() (kind Kind, data string, span text.Span, ok bool)
 		if char, consumed := s.Consume('x', 'X', 'b', 'B', 'o', 'O'); consumed {
 			if unicode.IsUpper(char) {
 				// TODO warning?
-				s.error(
+				s.handleError(
 					ErrIllegalNumericBase,
 					s.Pos(),
 					"uppercase letters in numeric base prefix is not allowed, use lowercase letter instead",
@@ -392,7 +393,7 @@ func (s *Scanner) scanNumber() (kind Kind, data string, span text.Span, ok bool)
 
 		if s.SkipWhile(isZero) > 0 {
 			// TODO warning?
-			s.error(ErrFirstDigitIsZero, span.From)
+			s.handleError(ErrFirstDigitIsZero, span.From)
 		}
 
 		s.ConsumeFunc(isDigit)
@@ -400,7 +401,7 @@ func (s *Scanner) scanNumber() (kind Kind, data string, span text.Span, ok bool)
 		switch {
 		case isDigit(s.Peek()):
 			// TODO parse it like regular number
-			s.error(ErrFirstDigitIsZero, span.From)
+			s.handleError(ErrFirstDigitIsZero, span.From)
 			kind = Illegal
 			data = "0"
 			return
@@ -480,17 +481,17 @@ func (s *Scanner) parseBytes(buf *strings.Builder, n int) bool {
 
 		if !consumed {
 			if wasUnderscore {
-				s.error(ErrInvalidByte, s.Pos(), "unexpected character after underscore")
+				s.handleError(ErrInvalidByte, s.Pos(), "unexpected character after underscore")
 				return false
 			}
 
 			if i == 0 {
-				s.error(ErrExpectedByte, startPos)
+				s.handleError(ErrExpectedByte, startPos)
 				return false
 			}
 
 			if i < n {
-				s.error(ErrInvalidByte, s.Pos(), "expected ", n, " bytes")
+				s.handleError(ErrInvalidByte, s.Pos(), "expected ", n, " bytes")
 				return false
 			}
 
@@ -533,12 +534,12 @@ func (s *Scanner) parseNumber(buf *strings.Builder, predicate func(rune) bool, e
 
 		if !consumed {
 			if wasUnderscore {
-				s.error(err, s.Pos(), "unexpected character after underscore")
+				s.handleError(err, s.Pos(), "unexpected character after underscore")
 				return false
 			}
 
 			if written == 0 {
-				s.error(err, s.Pos())
+				s.handleError(err, s.Pos())
 				return false
 			}
 
@@ -571,13 +572,16 @@ func (s *Scanner) parseHexNumber(buf *strings.Builder) bool {
 }
 
 // Emits an error. Error end is a current scanner position.
-func (s *Scanner) error(err error, start text.Pos, message ...any) {
-	if err != nil {
-		s.errors = append(s.errors, &Error{
-			Message:   fmt.Sprint(message...),
-			Selection: text.Span{From: start, To: s.Pos()},
-			err:       err,
-		})
+func (s *Scanner) handleError(err error, start text.Pos, message ...any) {
+	if err != nil && s.ErrorHandler != nil {
+		s.ErrorHandler(
+			report.Build(err).
+				Tag("scan").
+				Selection(
+					text.Span{From: start, To: s.Pos()},
+					fmt.Sprint(message...),
+				),
+		)
 	}
 }
 

@@ -101,7 +101,7 @@ func (parse *parser) listUntil(
 		nodeStart := parse.Span.From
 		node, err := catch(item)
 
-		if err == nil {
+		if !err.IsValid() {
 			if parse.skipAny(separator...) || parse.match(delimiter) {
 				parse.skipNewLines()
 
@@ -135,26 +135,12 @@ func (parse *parser) listUntil(
 	return nodes
 }
 
-// The catch function catches any error panic while parsing the item. If the
-// panic value is not an error, it re-panics with the original value.
-//
-// The item must return a non-nil node, otherwise this function will panic.
-func catch(item func() ast.Node) (node ast.Node, err error) {
-	defer func() {
-		if p := recover(); p != nil {
-			if b, ok := p.(report.Builder); ok {
-				err = b
-			} else {
-				panic(p)
-			}
-		}
-	}()
-
-	if node = item(); node != nil {
-		return node, nil
+// The handleError invokes the [token.Scanner.ErrorHandler] if the error
+// is valid.
+func (parse *parser) handleError(err report.Builder) {
+	if err.IsValid() && parse.ErrorHandler != nil {
+		parse.ErrorHandler(err)
 	}
-
-	panic("the error was not emitted while parsing a term, nil node produced")
 }
 
 // The try function catches any error panic while parsing the item and
@@ -165,7 +151,7 @@ func (parse *parser) try(item func() ast.Node) ast.Node {
 	start := parse.Span.From
 	node, err := catch(item)
 
-	if err != nil {
+	if err.IsValid() {
 		parse.handleError(err)
 		node = &ast.BadNode{DesiredPos: start}
 	}
@@ -180,12 +166,34 @@ func (parse *parser) try(item func() ast.Node) ast.Node {
 func (parse *parser) ensure(item func() ast.Node) ast.Node {
 	node, err := catch(item)
 
-	if err != nil {
+	if err.IsValid() {
 		parse.handleError(err)
 		node = nil
 	}
 
 	return node
+}
+
+// The catch function catches any error panic while parsing the item. If the
+// panic value is not an error, it re-panics with the original value.
+//
+// The item must return a non-nil node, otherwise this function will panic.
+func catch(item func() ast.Node) (node ast.Node, err report.Builder) {
+	defer func() {
+		if p := recover(); p != nil {
+			if b, ok := p.(report.Builder); ok {
+				err = b
+			} else {
+				panic(p)
+			}
+		}
+	}()
+
+	if node = item(); node != nil {
+		return
+	}
+
+	panic("the error was not emitted while parsing a term, nil node produced")
 }
 
 func stringify[T fmt.Stringer](items []T) []string {

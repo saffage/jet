@@ -10,7 +10,7 @@ import (
 func (parse *parser) next() (previous token.Token) {
 	if parse.Kind != token.EOF {
 		for {
-			tok := parse.scanner.NextToken()
+			tok := parse.NextToken()
 
 			if tok.Kind != token.Illegal && tok.Kind != token.Comment {
 				previous = parse.Token
