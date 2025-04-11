@@ -23,7 +23,7 @@ func IsIdentifierChar(char rune) bool {
 	return IsIdentifierStartChar(char) || ('0' <= char && char <= '9')
 }
 
-func CheckIdent(s string) (int, error) {
+func CheckIdent(s string) (errIndex int, err error) {
 	if !IsIdentifierStartChar(rune(s[0])) {
 		return 0, ErrFirstIsNotLetter
 	}
