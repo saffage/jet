@@ -219,18 +219,6 @@ func (s *Scanner) SkipUntil(predicate func(rune) bool) (skipped int) {
 	return
 }
 
-func wrapPredicate(s *Scanner, predicate func(rune) bool, truth bool) func() (string, bool) {
-	return func() (data string, stop bool) {
-		if predicate(s.Peek()) == truth {
-			data = string(s.peeked)
-			s.Next()
-		} else {
-			stop = true
-		}
-		return
-	}
-}
-
 func (s *Scanner) Pos() Pos {
 	if s.ID == 0 {
 		panic("scanner: called Pos() with invalid file ID")
