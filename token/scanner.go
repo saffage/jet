@@ -474,7 +474,7 @@ func (s *Scanner) parseBytes(buf *strings.Builder, n int) bool {
 	startPos := s.Pos()
 	wasUnderscore := false
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		wasUnderscore = s.Consumed('_')
 		char, consumed := s.ConsumeFunc(isHexDigit)
 
