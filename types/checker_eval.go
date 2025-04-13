@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/saffage/jet/ast"
-	. "github.com/saffage/jet/internal/debug"
+	"github.com/saffage/jet/internal/debug"
 	"github.com/saffage/jet/report"
 	"github.com/saffage/jet/text"
 )
@@ -40,8 +40,8 @@ func (check *checker) evalExpected(
 	}
 
 	const assertMessage = "types.(*checker).eval: cannot resolve type of the expression"
-	Assert(value != nil, assertMessage)
-	Assert(value.T != nil, assertMessage)
+	debug.Assert(value != nil, assertMessage)
+	debug.Assert(value.T != nil, assertMessage)
 
 	check.setValue(node, value)
 

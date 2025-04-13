@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/saffage/jet/ast"
-	. "github.com/saffage/jet/internal/debug"
+	"github.com/saffage/jet/internal/debug"
 	"github.com/saffage/jet/report"
 )
 
@@ -37,7 +37,7 @@ func NewEnv(kind EnvKind, parent *Env) *Env {
 
 func NewNamedEnv(kind EnvKind, parent *Env, name string) *Env {
 	if kind != ModuleEnv {
-		Assert(parent != nil)
+		debug.Assert(parent != nil)
 	}
 
 	env := &Env{kind: kind, parent: parent, name: name}

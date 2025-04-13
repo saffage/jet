@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"slices"
 
-	. "github.com/saffage/jet/internal/debug"
+	"github.com/saffage/jet/internal/debug"
 )
 
 var (
@@ -106,7 +106,7 @@ func ReadFile(id FileID, path string) (*File, error) {
 }
 
 func (file *File) LineStart(line int) Pos {
-	Assert(line > 0 && line <= len(file.lines), fmt.Sprintf(
+	debug.Assert(line > 0 && line <= len(file.lines), fmt.Sprintf(
 		"line %d is not in valid range [1, %d]",
 		line,
 		len(file.lines),
@@ -116,7 +116,7 @@ func (file *File) LineStart(line int) Pos {
 }
 
 func (file *File) LineEnd(line int) Pos {
-	Assert(line > 0 && line <= len(file.lines), fmt.Sprintf(
+	debug.Assert(line > 0 && line <= len(file.lines), fmt.Sprintf(
 		"line %d is not in valid range [1, %d]",
 		line,
 		len(file.lines),
@@ -157,7 +157,7 @@ func (file *File) PositionOf(pos Pos) Position {
 }
 
 func (file *File) ByteAt(offset int) byte {
-	Assert(offset >= 0 && offset <= len(file.Content), fmt.Sprintf(
+	debug.Assert(offset >= 0 && offset <= len(file.Content), fmt.Sprintf(
 		"offset %d is not in valid range [0, %d]",
 		offset,
 		len(file.Content),
@@ -182,12 +182,12 @@ func (file *File) ByteOf(pos Pos) byte {
 func (file *File) fix(offset int) int {
 	switch {
 	case offset < 0:
-		if !Debug {
+		if !debug.Enabled {
 			return 0
 		}
 
 	case offset > len(file.Content):
-		if !Debug {
+		if !debug.Enabled {
 			return len(file.Content)
 		}
 
@@ -195,7 +195,7 @@ func (file *File) fix(offset int) int {
 		return offset
 	}
 
-	if Debug {
+	if debug.Enabled {
 		panic(fmt.Sprintf("offset %d out of bounds [%d, %d)",
 			offset,
 			0,

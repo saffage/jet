@@ -9,6 +9,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/saffage/jet/config"
 	"github.com/saffage/jet/text"
+	"github.com/saffage/jet/internal/debug"
 )
 
 type Info struct {
@@ -146,7 +147,9 @@ func writeSelection(
 		}
 	} else if file != nil {
 		// TODO: it could be optimized.
-		code = file.LineContent(file.PositionOf(selection.Range.From).Line)
+		position := file.PositionOf(selection.Range.From)
+		debug.Assert(position.IsValid(), fmt.Sprintf("%#v",position))
+		code = file.LineContent(position.Line)
 	}
 
 	from := file.PositionOf(selection.Range.From)

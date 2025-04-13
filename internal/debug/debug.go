@@ -2,7 +2,7 @@ package debug
 
 import "fmt"
 
-const Debug = true
+const Enabled = true
 
 func Assert(ok bool, message ...any) {
 	if !ok {
