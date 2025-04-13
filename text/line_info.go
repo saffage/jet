@@ -12,7 +12,10 @@ type Position struct {
 	Char     int
 }
 
-func (p Position) IsValid() bool { return p != Position{} }
+func (p Position) IsValid() bool {
+	// 0 offset is allowed
+	return p.Filepath != "" && p.ID != 0 && p.Line != 0 && p.Char != 0
+}
 
 func (p Position) String() string {
 	return fmt.Sprintf("%s:%d:%d", p.Filepath, p.Line, p.Char)
