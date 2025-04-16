@@ -83,8 +83,18 @@ func assertErrorConfig(code string, isExpr bool) func(t *testing.T) {
 
 		t.Logf("parsed AST: %s", ast.Render(stmts))
 
-		_, checkErr := Check(f, stmts)
+		checkErrs := []error{}
+
+		Check(
+			f,
+			stmts,
+			func(err error) {
+				checkErrs = append(checkErrs, err)
+			},
+		)
+
 		snapshotPath := filepath.Join("./snapshots/", testName+".out")
+		checkErr := report.Join(checkErrs...)
 
 		// Generate file report.
 		defer func(output io.Writer) { report.Output = output }(report.Output)

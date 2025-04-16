@@ -12,53 +12,34 @@ import (
 
 // TODO introduce module hierarchy.
 
-func Check(f *text.File, stmts *ast.Stmts) (*Module, error) {
+func Check(f *text.File, stmts *ast.Stmts, errorHandler func(error)) *Module {
 	InitPrelude()
 
 	var (
 		moduleName = f.Name
-		scope      = NewNamedEnv(ModuleEnv, nil, moduleName)
-		module     = NewModule(scope, moduleName, f, stmts)
-		check      = &checker{module: module, env: scope}
+		env        = NewNamedEnv(ModuleEnv, nil, moduleName)
+		module     = NewModule(env, moduleName, f, stmts)
+		resolver   = &resolver{
+			currentModule: module,
+			currentEnv:    env,
+			errorHandler:  errorHandler,
+		}
 	)
 
-	_ = scope.Use(prelude.Env)
+	_ = env.Use(prelude.Env)
 
 	report.DebugX("types", "checking module '%s'", moduleName)
-
-loop:
-	for _, node := range stmts.Items {
-		switch node := node.(type) {
-		case *ast.LetDecl:
-			check.resolveLetDecl(node)
-
-		case *ast.TypeAlias:
-			check.resolveTypeAlias(node)
-
-		case *ast.TypeDef:
-			check.resolveTypeDef(node)
-
-		default:
-			if _, err := check.eval(node); err != nil {
-				break loop
-			}
-		}
-	}
-
+	ast.WalkTopDown(stmts, resolver)
 	module.completed = true
-	return check.module, report.Join(check.errors...)
+	return module
 }
 
-func CheckFile(f *text.File) (*Module, error) {
-	stmts, err := parser.
-		FromFile(f, token.DefaultFlags, parser.DefaultFlags, nil).
-		ParseOrError()
+func CheckFile(f *text.File, errorHandler func(error)) *Module {
+	stmts := parser.
+		FromFile(f, token.DefaultFlags, parser.DefaultFlags, errorHandler).
+		Parse()
 
-	if err != nil {
-		return nil, err
-	}
-
-	return Check(f, stmts)
+	return Check(f, stmts, errorHandler)
 }
 
 var (

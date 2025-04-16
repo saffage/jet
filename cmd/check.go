@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/saffage/jet/report"
 	"github.com/saffage/jet/text"
 	"github.com/saffage/jet/token"
 	"github.com/saffage/jet/types"
@@ -16,13 +17,10 @@ var (
 )
 
 func Check(file *text.File) error {
-	_, err := types.CheckFile(file)
+	errs := []error{}
+	_ = types.CheckFile(file, func(err error) { errs = append(errs, err) })
 
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return report.Join(errs...)
 }
 
 func actionCheck(ctx *cli.Context) error {
