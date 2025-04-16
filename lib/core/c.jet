@@ -1,3 +1,6 @@
+## This module contains C type declarations and other tools for interacting
+## with C backend.
+
 target! "c"
 
 type Byte       = external(c_type: "char")

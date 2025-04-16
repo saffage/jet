@@ -1,3 +1,5 @@
+## This module contains the declaration of the Jet built-ins.
+
 type Int     = external(builtin: "Int")
 type Int8    = external(builtin: "Int8")
 type Int16   = external(builtin: "Int16")
