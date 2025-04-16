@@ -8,8 +8,8 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/saffage/jet/config"
-	"github.com/saffage/jet/text"
 	"github.com/saffage/jet/internal/debug"
+	"github.com/saffage/jet/text"
 )
 
 type Info struct {
@@ -55,14 +55,16 @@ func (info *Info) Error() string {
 	return buf.String()
 }
 
-func (info *Info) Render(buf *strings.Builder) {
-	const initialReportBufferSize = 512
-
+func (info *Info) Render(buf text.Writer) (rendered bool) {
 	if info.Level > MinDisplayLevel {
-		return
+		return false
 	}
 
-	buf.Grow(initialReportBufferSize)
+	const initialReportBufferSize = 512
+
+	if buf, _ := buf.(*strings.Builder); buf != nil {
+		buf.Grow(initialReportBufferSize)
+	}
 
 	writeLabel(buf, info.Level, info.Tag)
 
@@ -77,6 +79,8 @@ func (info *Info) Render(buf *strings.Builder) {
 	for _, suggestion := range info.Suggestions {
 		writeSuggestion(buf, suggestion)
 	}
+
+	return true
 }
 
 func (info *Info) Renderable() bool {
@@ -92,7 +96,7 @@ func (info *Info) With(suggestion Suggestion) *Info {
 	return info
 }
 
-func writeLabel(buf *strings.Builder, level Level, tag string) {
+func writeLabel(buf text.Writer, level Level, tag string) {
 	color := levelColor(level)
 
 	if tag != "" {
@@ -122,7 +126,7 @@ func levelColor(level Level) *color.Color {
 }
 
 func writeSelection(
-	buf *strings.Builder,
+	buf text.Writer,
 	selection Selection,
 	color *color.Color,
 ) {
@@ -148,7 +152,7 @@ func writeSelection(
 	} else if file != nil {
 		// TODO: it could be optimized.
 		position := file.PositionOf(selection.Range.From)
-		debug.Assert(position.IsValid(), fmt.Sprintf("%#v",position))
+		debug.Assert(position.IsValid(), fmt.Sprintf("%#v", position))
 		code = file.LineContent(position.Line)
 	}
 
@@ -178,7 +182,7 @@ func writeSelection(
 }
 
 func writeCodeSnapshot(
-	buf *strings.Builder,
+	buf text.Writer,
 	color *color.Color,
 	code, hint string,
 	start, end text.Position,
@@ -201,7 +205,7 @@ func writeCodeSnapshot(
 		// keep tabs in the output
 		for _, c := range code[:left] {
 			if c == '\t' {
-				buf.WriteRune('\t')
+				buf.WriteByte('\t')
 			} else {
 				buf.WriteByte(' ')
 			}
@@ -220,7 +224,7 @@ func writeCodeSnapshot(
 	buf.WriteByte('\n')
 }
 
-func writeSuggestion(buf *strings.Builder, suggestion Suggestion) {
+func writeSuggestion(buf text.Writer, suggestion Suggestion) {
 	if suggestion.Message == "" {
 		return
 	}
@@ -235,7 +239,7 @@ func writeSuggestion(buf *strings.Builder, suggestion Suggestion) {
 	}
 }
 
-func writeLineNumber(buf *strings.Builder, line int, empty bool) {
+func writeLineNumber(buf text.Writer, line int, empty bool) {
 	if empty {
 		for range numLen(line) {
 			buf.WriteByte(' ')
@@ -252,7 +256,7 @@ func writeLineNumber(buf *strings.Builder, line int, empty bool) {
 }
 
 func writeColoredRange(
-	buf *strings.Builder,
+	buf text.Writer,
 	text string,
 	selection, rest *color.Color,
 	i, j int,
@@ -278,7 +282,7 @@ func writeColoredRange(
 	rest.Fprint(buf, textAfter)
 }
 
-func writeFilepath(buf *strings.Builder, position text.Position, withSnapshot bool) {
+func writeFilepath(buf text.Writer, position text.Position, withSnapshot bool) {
 	for range numLen(position.Line) {
 		buf.WriteByte(' ')
 	}

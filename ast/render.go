@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/saffage/jet/text"
 	"github.com/saffage/jet/token"
 )
 
@@ -17,35 +18,39 @@ func Render(node Node) string {
 	return buf.String()
 }
 
-func render[T SomeNode](node T, buf *strings.Builder) {
+func render[T SomeNode](node T, buf text.Writer) {
 	var zero T
 
 	if node == zero {
 		buf.WriteString("#[nil-ast-node]#")
-	} else if !node.Renderable() {
+	} else if !node.IsValid() {
 		buf.WriteString("#[ill-formed-ast]#")
 	} else {
 		node.Render(buf)
 	}
 }
 
-func (node *BadNode) Render(buf *strings.Builder) {
+func (node *BadNode) Render(buf text.Writer) (rendered bool) {
 	buf.WriteString("#[bad-ast-node]#")
+	return true
 }
 
-func (node *Lower) Render(buf *strings.Builder) {
+func (node *Lower) Render(buf text.Writer) (rendered bool) {
 	buf.WriteString(node.Data)
+	return true
 }
 
-func (node *Upper) Render(buf *strings.Builder) {
+func (node *Upper) Render(buf text.Writer) (rendered bool) {
 	buf.WriteString(node.Data)
+	return true
 }
 
-func (node *Placeholder) Render(buf *strings.Builder) {
+func (node *Placeholder) Render(buf text.Writer) (rendered bool) {
 	buf.WriteString(node.Data)
+	return true
 }
 
-func (node *Literal) Render(buf *strings.Builder) {
+func (node *Literal) Render(buf text.Writer) (rendered bool) {
 	switch node.Kind {
 	case IntLiteral, FloatLiteral:
 		buf.WriteString(node.Value)
@@ -58,9 +63,10 @@ func (node *Literal) Render(buf *strings.Builder) {
 		panic("unreachable")
 	}
 
+	return true
 }
 
-func (node *LetDecl) Render(buf *strings.Builder) {
+func (node *LetDecl) Render(buf text.Writer) (rendered bool) {
 	buf.WriteString("let ")
 
 	render(node.Decl, buf)
@@ -68,9 +74,10 @@ func (node *LetDecl) Render(buf *strings.Builder) {
 	buf.WriteString(" = ")
 
 	render(node.Value, buf)
+	return true
 }
 
-func (node *ValDecl) Render(buf *strings.Builder) {
+func (node *ValDecl) Render(buf text.Writer) (rendered bool) {
 	buf.WriteString("val ")
 
 	render(node.Decl, buf)
@@ -78,9 +85,10 @@ func (node *ValDecl) Render(buf *strings.Builder) {
 	buf.WriteString(" = ")
 
 	render(node.Value, buf)
+	return true
 }
 
-func (node *VarDecl) Render(buf *strings.Builder) {
+func (node *VarDecl) Render(buf text.Writer) (rendered bool) {
 	buf.WriteString("var ")
 
 	render(node.Decl, buf)
@@ -88,9 +96,10 @@ func (node *VarDecl) Render(buf *strings.Builder) {
 	buf.WriteString(" = ")
 
 	render(node.Value, buf)
+	return true
 }
 
-func (node *TypeAlias) Render(buf *strings.Builder) {
+func (node *TypeAlias) Render(buf text.Writer) (rendered bool) {
 	buf.WriteString("type ")
 
 	render(node.Ident, buf)
@@ -102,9 +111,10 @@ func (node *TypeAlias) Render(buf *strings.Builder) {
 	buf.WriteString(" = ")
 
 	render(node.Expr, buf)
+	return true
 }
 
-func (node *TypeDef) Render(buf *strings.Builder) {
+func (node *TypeDef) Render(buf text.Writer) (rendered bool) {
 	buf.WriteString("type ")
 
 	render(node.Ident, buf)
@@ -116,9 +126,10 @@ func (node *TypeDef) Render(buf *strings.Builder) {
 	buf.WriteByte(' ')
 
 	render(node.Body, buf)
+	return true
 }
 
-func (node *Decl) Render(buf *strings.Builder) {
+func (node *Decl) Render(buf text.Writer) (rendered bool) {
 	if node.TypeTok.IsValid() {
 		buf.WriteString("type ")
 	}
@@ -131,18 +142,20 @@ func (node *Decl) Render(buf *strings.Builder) {
 		render(node.Type, buf)
 	}
 
+	return true
 }
 
-func (node *Variant) Render(buf *strings.Builder) {
+func (node *Variant) Render(buf text.Writer) (rendered bool) {
 	render(node.Name, buf)
 
 	if node.Params != nil {
 		render(node.Params, buf)
 	}
 
+	return true
 }
 
-func (node *Label) Render(buf *strings.Builder) {
+func (node *Label) Render(buf text.Writer) (rendered bool) {
 	if node.Name != nil {
 		render(node.Name, buf)
 
@@ -152,9 +165,10 @@ func (node *Label) Render(buf *strings.Builder) {
 	}
 
 	render(node.X, buf)
+	return true
 }
 
-func (node *Signature) Render(buf *strings.Builder) {
+func (node *Signature) Render(buf text.Writer) (rendered bool) {
 	render(node.Params, buf)
 
 	if node.Result != nil {
@@ -163,9 +177,10 @@ func (node *Signature) Render(buf *strings.Builder) {
 		render(node.Result, buf)
 	}
 
+	return true
 }
 
-func (node *Function) Render(buf *strings.Builder) {
+func (node *Function) Render(buf text.Writer) (rendered bool) {
 	buf.WriteString("fn")
 
 	render(node.Signature, buf)
@@ -176,22 +191,25 @@ func (node *Function) Render(buf *strings.Builder) {
 		render(node.Body, buf)
 	}
 
+	return true
 }
 
-func (node *Call) Render(buf *strings.Builder) {
+func (node *Call) Render(buf text.Writer) (rendered bool) {
 	render(node.X, buf)
 	render(node.Args, buf)
+	return true
 }
 
-func (node *Dot) Render(buf *strings.Builder) {
+func (node *Dot) Render(buf text.Writer) (rendered bool) {
 	render(node.X, buf)
 
 	buf.WriteByte('.')
 
 	render(node.Y, buf)
+	return true
 }
 
-func (node *Op) Render(buf *strings.Builder) {
+func (node *Op) Render(buf text.Writer) (rendered bool) {
 	if node.X != nil {
 		render(node.X, buf)
 	}
@@ -204,9 +222,10 @@ func (node *Op) Render(buf *strings.Builder) {
 		render(node.Y, buf)
 	}
 
+	return true
 }
 
-func (node *List) Render(buf *strings.Builder) {
+func (node *List) Render(buf text.Writer) (rendered bool) {
 	buf.WriteByte('[')
 
 	for i, node := range node.Nodes {
@@ -218,9 +237,10 @@ func (node *List) Render(buf *strings.Builder) {
 	}
 
 	buf.WriteByte(']')
+	return true
 }
 
-func (stmts Stmts) Render(buf *strings.Builder) {
+func (stmts Stmts) Render(buf text.Writer) (rendered bool) {
 	for i, stmt := range stmts.Items {
 		if i > 0 {
 			buf.WriteString("; ")
@@ -229,9 +249,10 @@ func (stmts Stmts) Render(buf *strings.Builder) {
 		render(stmt, buf)
 	}
 
+	return true
 }
 
-func (node *Block) Render(buf *strings.Builder) {
+func (node *Block) Render(buf text.Writer) (rendered bool) {
 	if len(node.Stmts.Items) == 0 {
 		buf.WriteString("{}")
 	} else {
@@ -242,9 +263,10 @@ func (node *Block) Render(buf *strings.Builder) {
 		buf.WriteString(" }")
 	}
 
+	return true
 }
 
-func (node *Parens) Render(buf *strings.Builder) {
+func (node *Parens) Render(buf text.Writer) (rendered bool) {
 	buf.WriteByte('(')
 
 	for i, node := range node.Nodes {
@@ -256,9 +278,10 @@ func (node *Parens) Render(buf *strings.Builder) {
 	}
 
 	buf.WriteByte(')')
+	return true
 }
 
-func (node *When) Render(buf *strings.Builder) {
+func (node *When) Render(buf text.Writer) (rendered bool) {
 	buf.WriteString("when ")
 
 	render(node.Expr, buf)
@@ -266,150 +289,155 @@ func (node *When) Render(buf *strings.Builder) {
 	buf.WriteByte(' ')
 
 	render(node.Body, buf)
+	return true
 }
 
-func (node *Case) Render(buf *strings.Builder) {
+func (node *Case) Render(buf text.Writer) (rendered bool) {
 	render(node.Pattern, buf)
 
 	buf.WriteString(" -> ")
 
 	render(node.Expr, buf)
+	return true
 }
 
-func (node *Spread) Render(buf *strings.Builder) {
+func (node *Spread) Render(buf text.Writer) (rendered bool) {
 	buf.WriteString("..")
 
 	if node.Expr != nil {
 		render(node.Expr, buf)
 	}
+	return true
 }
 
-func (node *As) Render(buf *strings.Builder) {
+func (node *As) Render(buf text.Writer) (rendered bool) {
 	render(node.Expr, buf)
 
 	buf.WriteString(" as ")
 
 	render(node.NewName, buf)
+	return true
 }
 
-func (node *External) Render(buf *strings.Builder) {
+func (node *External) Render(buf text.Writer) (rendered bool) {
 	buf.WriteString("external")
 
 	if node.Args != nil {
 		render(node.Args, buf)
 	}
+	return true
 }
 
 //
 //
 //
 
-func (node *BadNode) Renderable() bool {
+func (node *BadNode) IsValid() bool {
 	return node != nil
 }
 
-func (node *Lower) Renderable() bool {
+func (node *Lower) IsValid() bool {
 	return node != nil && token.IsValidIdent(node.Data)
 }
 
-func (node *Upper) Renderable() bool {
+func (node *Upper) IsValid() bool {
 	return node != nil && token.IsValidIdent(node.Data)
 }
 
-func (node *Placeholder) Renderable() bool {
+func (node *Placeholder) IsValid() bool {
 	return node != nil && token.IsValidIdent(node.Data)
 }
 
-func (node *Literal) Renderable() bool {
+func (node *Literal) IsValid() bool {
 	return node != nil && node.Value != "" && // TODO: check the value
 		(IntLiteral <= node.Kind && node.Kind <= StringLiteral)
 }
 
-func (node *LetDecl) Renderable() bool {
+func (node *LetDecl) IsValid() bool {
 	return node != nil && node.Decl != nil && node.Value != nil
 }
 
-func (node *ValDecl) Renderable() bool {
+func (node *ValDecl) IsValid() bool {
 	return node != nil && node.Decl != nil && node.Value != nil
 }
 
-func (node *VarDecl) Renderable() bool {
+func (node *VarDecl) IsValid() bool {
 	return node != nil && node.Decl != nil && node.Value != nil
 }
 
-func (node *TypeAlias) Renderable() bool {
+func (node *TypeAlias) IsValid() bool {
 	return node != nil && node.Ident != nil && node.Expr != nil
 }
 
-func (node *TypeDef) Renderable() bool {
+func (node *TypeDef) IsValid() bool {
 	return node != nil && node.Ident != nil && node.Body != nil
 }
 
-func (node *Decl) Renderable() bool {
+func (node *Decl) IsValid() bool {
 	return node != nil && node.Ident != nil
 }
 
-func (node *Variant) Renderable() bool {
+func (node *Variant) IsValid() bool {
 	return node != nil && node.Name != nil
 }
 
-func (node *Label) Renderable() bool {
+func (node *Label) IsValid() bool {
 	return node != nil && node.X != nil
 }
 
-func (node *Signature) Renderable() bool {
+func (node *Signature) IsValid() bool {
 	return node != nil && node.Params != nil
 }
 
-func (node *Function) Renderable() bool {
+func (node *Function) IsValid() bool {
 	return node != nil && node.Signature != nil && node.Body != nil
 }
 
-func (node *Call) Renderable() bool {
+func (node *Call) IsValid() bool {
 	return node != nil && node.X != nil && node.Args != nil
 }
 
-func (node *Dot) Renderable() bool {
+func (node *Dot) IsValid() bool {
 	return node != nil && node.X != nil && node.Y != nil
 }
 
-func (node *Op) Renderable() bool {
+func (node *Op) IsValid() bool {
 	return node != nil &&
 		(OperatorNot <= node.Kind && node.Kind <= OperatorBitOr)
 }
 
-func (stmts Stmts) Renderable() bool {
+func (stmts Stmts) IsValid() bool {
 	return true
 }
 
-func (node *Block) Renderable() bool {
+func (node *Block) IsValid() bool {
 	return node != nil && node.Stmts != nil
 }
 
-func (node *Parens) Renderable() bool {
+func (node *Parens) IsValid() bool {
 	return node != nil
 }
 
-func (node *List) Renderable() bool {
+func (node *List) IsValid() bool {
 	return node != nil
 }
 
-func (node *When) Renderable() bool {
+func (node *When) IsValid() bool {
 	return node != nil && node.Expr != nil && node.Body != nil
 }
 
-func (node *Case) Renderable() bool {
+func (node *Case) IsValid() bool {
 	return node != nil && node.Pattern != nil && node.Expr != nil
 }
 
-func (node *Spread) Renderable() bool {
+func (node *Spread) IsValid() bool {
 	return node != nil
 }
 
-func (node *As) Renderable() bool {
+func (node *As) IsValid() bool {
 	return node != nil && node.Expr != nil && node.NewName != nil
 }
 
-func (node *External) Renderable() bool {
+func (node *External) IsValid() bool {
 	return node != nil
 }

@@ -1,16 +1,14 @@
 package ast
 
-import (
-	"github.com/saffage/jet/report"
-	"github.com/saffage/jet/text"
-)
+import "github.com/saffage/jet/text"
 
 type Node interface {
 	Range() text.Span
+	IsValid() bool
 
 	// String representation of the node. This string must be equal to the
 	// code from which this tree can be parsed.
-	report.Renderer
+	text.Renderer
 }
 
 type Ident interface {

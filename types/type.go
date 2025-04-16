@@ -9,6 +9,7 @@ import (
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/internal/debug"
 	"github.com/saffage/jet/report"
+	"github.com/saffage/jet/text"
 )
 
 // Type represents an interface for types that can be compared for equality
@@ -16,7 +17,7 @@ import (
 type Type interface {
 	Equal(target Type) bool
 
-	report.Renderer
+	text.Renderer
 }
 
 //------------------------------------------------
@@ -39,30 +40,45 @@ var (
 	StringType Type = String{}
 )
 
-func (Unit) Render(buf *strings.Builder) { buf.WriteString("Unit") }
-func (Unit) Renderable() bool            { return true }
-func (Unit) String() string              { return Render(UnitType) }
-func (Unit) Equal(target Type) bool      { return Is[Unit](target) }
+func (Unit) String() string         { return Render(UnitType) }
+func (Unit) Equal(target Type) bool { return Is[Unit](target) }
 
-func (Never) Render(buf *strings.Builder) { buf.WriteString("Never") }
-func (Never) Renderable() bool            { return true }
-func (Never) String() string              { return Render(NeverType) }
-func (Never) Equal(target Type) bool      { return true }
+func (Never) String() string         { return Render(NeverType) }
+func (Never) Equal(target Type) bool { return true }
 
-func (Int) Render(buf *strings.Builder) { buf.WriteString("Int") }
-func (Int) Renderable() bool            { return true }
-func (Int) String() string              { return Render(IntType) }
-func (Int) Equal(target Type) bool      { return Is[Int](target) }
+func (Int) String() string         { return Render(IntType) }
+func (Int) Equal(target Type) bool { return Is[Int](target) }
 
-func (Float) Render(buf *strings.Builder) { buf.WriteString("Float") }
-func (Float) Renderable() bool            { return true }
-func (Float) String() string              { return Render(FloatType) }
-func (Float) Equal(target Type) bool      { return Is[Float](target) }
+func (Float) String() string         { return Render(FloatType) }
+func (Float) Equal(target Type) bool { return Is[Float](target) }
 
-func (String) Render(buf *strings.Builder) { buf.WriteString("String") }
-func (String) Renderable() bool            { return true }
-func (String) String() string              { return Render(StringType) }
-func (String) Equal(target Type) bool      { return Is[String](target) }
+func (String) String() string         { return Render(StringType) }
+func (String) Equal(target Type) bool { return Is[String](target) }
+
+func (Unit) Render(buf text.Writer) (rendered bool) {
+	buf.WriteString("Unit")
+	return true
+}
+
+func (Never) Render(buf text.Writer) (rendered bool) {
+	buf.WriteString("Never")
+	return true
+}
+
+func (Int) Render(buf text.Writer) (rendered bool) {
+	buf.WriteString("Int")
+	return true
+}
+
+func (Float) Render(buf text.Writer) (rendered bool) {
+	buf.WriteString("Float")
+	return true
+}
+
+func (String) Render(buf text.Writer) (rendered bool) {
+	buf.WriteString("String")
+	return true
+}
 
 //------------------------------------------------
 // Module type (used as a placeholder in the checker)
@@ -72,10 +88,13 @@ type module struct{}
 
 var moduleType Type = module{}
 
-func (module) Render(buf *strings.Builder) { buf.WriteString("module") }
-func (module) Renderable() bool            { return true }
-func (module) String() string              { return "module" }
-func (module) Equal(target Type) bool      { return false }
+func (module) String() string         { return "module" }
+func (module) Equal(target Type) bool { return false }
+
+func (module) Render(buf text.Writer) (rendered bool) {
+	buf.WriteString("module")
+	return true
+}
 
 //------------------------------------------------
 // Type Alias
@@ -115,7 +134,7 @@ func (t *Alias) Renderable() bool {
 	return true
 }
 
-func (t *Alias) Render(buf *strings.Builder) {
+func (t *Alias) Render(buf text.Writer) (rendered bool) {
 	buf.WriteString(t.name)
 
 	// You can't ref non-alias primitive type other way than through compiler.
@@ -124,6 +143,8 @@ func (t *Alias) Render(buf *strings.Builder) {
 
 		SkipDescriptor(t.base).Render(buf)
 	}
+
+	return true
 }
 
 func SkipAlias(t Type) Type {
@@ -195,10 +216,12 @@ func (t Descriptor) Renderable() bool {
 	return true
 }
 
-func (t Descriptor) Render(buf *strings.Builder) {
+func (t Descriptor) Render(buf text.Writer) (rendered bool) {
 	buf.WriteString("type ")
 
 	t.base.Render(buf)
+
+	return true
 }
 
 func (t Descriptor) Base() Type {
@@ -250,7 +273,7 @@ func (t *Fn) Renderable() bool {
 	return true
 }
 
-func (t *Fn) Render(buf *strings.Builder) {
+func (t *Fn) Render(buf text.Writer) (rendered bool) {
 	buf.WriteString("fn(")
 
 	if t.params != nil {
@@ -264,6 +287,8 @@ func (t *Fn) Render(buf *strings.Builder) {
 
 		t.result.Render(buf)
 	}
+
+	return true
 }
 
 func (t *Fn) Result() Type     { return t.result }
@@ -358,7 +383,7 @@ func (list TypeList) Renderable() bool {
 	return true
 }
 
-func (list TypeList) Render(buf *strings.Builder) {
+func (list TypeList) Render(buf text.Writer) (rendered bool) {
 	for i, param := range list {
 		if i > 0 {
 			buf.WriteString(", ")
@@ -366,6 +391,8 @@ func (list TypeList) Render(buf *strings.Builder) {
 
 		param.Render(buf)
 	}
+
+	return true
 }
 
 //------------------------------------------------
@@ -419,10 +446,8 @@ func NewCustom(name string, fields []Field, variants []Variant) *Custom {
 	return t
 }
 
-func (t *Custom) Render(buf *strings.Builder) { buf.WriteString(t.name) }
-func (t *Custom) Renderable() bool            { return true }
-func (t *Custom) String() string              { return Render(t) }
-func (t *Custom) Equal(target Type) bool      { return t == target }
+func (t *Custom) String() string         { return Render(t) }
+func (t *Custom) Equal(target Type) bool { return t == target }
 
 func (t *Custom) Field(i int) *Field { return &t.fields[i] }
 func (t *Custom) Fields() []Field    { return t.fields }
@@ -434,6 +459,11 @@ func (t *Custom) VariantsLen() int       { return len(t.variants) }
 
 func (t *Custom) OnFields() iter.Seq2[int, Field]     { return slices.All(t.fields) }
 func (t *Custom) OnVariants() iter.Seq2[int, Variant] { return slices.All(t.variants) }
+
+func (t *Custom) Render(buf text.Writer) (rendered bool) {
+	buf.WriteString(t.name)
+	return true
+}
 
 // Field of [Custom] type.
 type Field struct {
@@ -512,7 +542,7 @@ func IsResolved(t Type) bool {
 	case nil:
 		// It's not clear if nil is resolved here or not, it depends on the
 		// context.
-		return false
+		return true
 
 	case Unit, Never, Int, Float, String:
 		// Atom types are always resolved.

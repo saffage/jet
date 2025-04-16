@@ -2,7 +2,6 @@ package report
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/saffage/jet/text"
 )
@@ -23,12 +22,18 @@ func Build(inner error) Builder {
 	}
 }
 
-func (b Builder) Info() *Info                 { return b.info }
-func (b Builder) Error() string               { return b.info.Title }
-func (b Builder) Unwrap() error               { return b.inner }
-func (b Builder) IsValid() bool               { return b.inner != nil && b.info != nil }
-func (b Builder) Renderable() bool            { return b.inner != nil && b.info != nil }
-func (b Builder) Render(buf *strings.Builder) { b.Info().Render(buf) }
+func (b Builder) Info() *Info   { return b.info }
+func (b Builder) Error() string { return b.info.Title }
+func (b Builder) Unwrap() error { return b.inner }
+func (b Builder) IsValid() bool { return b.inner != nil && b.info != nil }
+
+func (b Builder) Render(buf text.Writer) (rendered bool) {
+	if b.inner == nil || b.info == nil {
+		return false
+	}
+	b.Info().Render(buf)
+	return true
+}
 
 func (b Builder) Level(level Level) Builder {
 	b.info.Level = level
