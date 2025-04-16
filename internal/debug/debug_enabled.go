@@ -1,3 +1,5 @@
+//go:build !no_assertions
+
 package debug
 
 import "fmt"
