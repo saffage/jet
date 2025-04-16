@@ -27,19 +27,19 @@ ld_flags! "-lraylib -lgdi32 -lwinmm"
 
 type CString = Ptr(Char)
 
-val init_window(width Int, height Int, title CString) None = extern("InitWindow")
-val close_window() None  = extern("CloseWindow")
-val begin_drawing() None = extern("BeginDrawing")
-val end_drawing() None   = extern("EndDrawing")
-val window_should_close() Bool         = extern("WindowShouldClose")
-val clear_background(color Color) None = extern("ClearBackground")
-val set_target_fps(fps Int) None       = extern("SetTargetFPS")
-val draw_line(start_pos_x Int, start_pos_y Int, end_pos_x Int, end_pos_y Int, color Color) None = extern("DrawLine")
-val draw_text(text CString, pos_x Int, pos_y Int, font_size Int, color Color) Bool              = extern("DrawText")
-val draw_rectangle_rec(rec Rectangle, color Color) None = extern("DrawRectangleRec")
-val get_time() Float64                                  = extern("GetTime")
-val measure_text(text CString, font_size Int) Int       = extern("MeasureText")
-val is_key_pressed(key Int) Bool                        = extern("IsKeyPressed")
+val init_window(width Int, height Int, title CString) None = external("InitWindow")
+val close_window() None  = external("CloseWindow")
+val begin_drawing() None = external("BeginDrawing")
+val end_drawing() None   = external("EndDrawing")
+val window_should_close() Bool         = external("WindowShouldClose")
+val clear_background(color Color) None = external("ClearBackground")
+val set_target_fps(fps Int) None       = external("SetTargetFPS")
+val draw_line(start_pos_x Int, start_pos_y Int, end_pos_x Int, end_pos_y Int, color Color) None = external("DrawLine")
+val draw_text(text CString, pos_x Int, pos_y Int, font_size Int, color Color) Bool              = external("DrawText")
+val draw_rectangle_rec(rec Rectangle, color Color) None = external("DrawRectangleRec")
+val get_time() Float64                                  = external("GetTime")
+val measure_text(text CString, font_size Int) Int       = external("MeasureText")
+val is_key_pressed(key Int) Bool                        = external("IsKeyPressed")
 
 let key_space = 32
 let key_w     = 87
@@ -58,9 +58,9 @@ let key_right = 262
 
 cc_flags!(include: ["stdlib.h"])
 
-val alloc(size Nat64) Pointer = extern("malloc")
-val free(p Pointer) None = extern("free")
-val random_int() Int = extern("rand")
+val alloc(size Nat64) Pointer = external("malloc")
+val free(p Pointer) None = external("free")
+val random_int() Int = external("rand")
 
 #
 # game code

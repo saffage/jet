@@ -24,7 +24,7 @@ type Type interface {
 //------------------------------------------------
 
 type (
-	None   struct{}
+	Unit   struct{}
 	Never  struct{}
 	Int    struct{}
 	Float  struct{}
@@ -32,17 +32,17 @@ type (
 )
 
 var (
-	NoneType   Type = None{}
+	UnitType   Type = Unit{}
 	NeverType  Type = Never{}
 	IntType    Type = Int{}
 	FloatType  Type = Float{}
 	StringType Type = String{}
 )
 
-func (None) Render(buf *strings.Builder) { buf.WriteString("None") }
-func (None) Renderable() bool            { return true }
-func (None) String() string              { return Render(NoneType) }
-func (None) Equal(target Type) bool      { return Is[None](target) }
+func (Unit) Render(buf *strings.Builder) { buf.WriteString("Unit") }
+func (Unit) Renderable() bool            { return true }
+func (Unit) String() string              { return Render(UnitType) }
+func (Unit) Equal(target Type) bool      { return Is[Unit](target) }
 
 func (Never) Render(buf *strings.Builder) { buf.WriteString("Never") }
 func (Never) Renderable() bool            { return true }
@@ -514,7 +514,7 @@ func IsResolved(t Type) bool {
 		// context.
 		return false
 
-	case None, Never, Int, Float, String:
+	case Unit, Never, Int, Float, String:
 		// Atom types are always resolved.
 		return true
 
@@ -571,7 +571,7 @@ func IsResolved(t Type) bool {
 
 func IsAtom(t Type) bool {
 	switch t.(type) {
-	case None, Never, Int, Float, String:
+	case Unit, Never, Int, Float, String:
 		return true
 
 	default:

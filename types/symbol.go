@@ -39,8 +39,8 @@ type Binding struct {
 	labelNode   *ast.Lower   // May be nil.
 	variantNode *ast.Variant // May be nil.
 
-	externName string
-	isParam    bool
+	externalName string
+	isParam      bool
 }
 
 func NewBinding(
@@ -104,19 +104,19 @@ func NewField(
 	}
 }
 
-func (sym *Binding) Type() Type         { return sym.value.T }
-func (sym *Binding) Node() ast.Node     { return sym.node }
-func (sym *Binding) Name() string       { return sym.Ident().Name() }
-func (sym *Binding) Value() *Value      { return sym.value }
-func (sym *Binding) Owner() *Env        { return sym.owner }
-func (sym *Binding) Local() *Env        { return sym.local }
-func (sym *Binding) IsParam() bool      { return sym.isParam }
-func (sym *Binding) IsField() bool      { return sym.field != nil }
-func (sym *Binding) IsVariant() bool    { return sym.variant != nil }
-func (sym *Binding) IsLocal() bool      { return !sym.IsField() && !sym.isParam }
-func (sym *Binding) IsExtern() bool     { return sym.node == nil }
-func (sym *Binding) ExternName() string { return sym.externName }
-func (sym *Binding) Params() []*Binding { return sym.params }
+func (sym *Binding) Type() Type           { return sym.value.T }
+func (sym *Binding) Node() ast.Node       { return sym.node }
+func (sym *Binding) Name() string         { return sym.Ident().Name() }
+func (sym *Binding) Value() *Value        { return sym.value }
+func (sym *Binding) Owner() *Env          { return sym.owner }
+func (sym *Binding) Local() *Env          { return sym.local }
+func (sym *Binding) IsParam() bool        { return sym.isParam }
+func (sym *Binding) IsField() bool        { return sym.field != nil }
+func (sym *Binding) IsVariant() bool      { return sym.variant != nil }
+func (sym *Binding) IsLocal() bool        { return !sym.IsField() && !sym.isParam }
+func (sym *Binding) IsExternal() bool     { return sym.node == nil }
+func (sym *Binding) ExternalName() string { return sym.externalName }
+func (sym *Binding) Params() []*Binding   { return sym.params }
 
 func (sym *Binding) Ident() ast.Ident {
 	if sym.IsVariant() {
@@ -135,9 +135,9 @@ func (sym *Binding) Ident() ast.Ident {
 		return &ast.Lower{Data: sym.field.Name}
 	}
 
-	if sym.IsExtern() {
-		debug.Assert(sym.externName != "", "binding without node must have `externName`")
-		return &ast.Lower{Data: sym.externName}
+	if sym.IsExternal() {
+		debug.Assert(sym.externalName != "", "binding without node must have `externalName`")
+		return &ast.Lower{Data: sym.externalName}
 	}
 
 	return sym.node.Ident
@@ -256,7 +256,7 @@ func NewTypeDef(owner, local *Env, custom *Custom, node *ast.TypeDef) *TypeDef {
 }
 
 // NOTE: name of the type comes from [TypeDef.custom].
-func NewExternTypeDef(owner, local *Env, custom *Custom) *TypeDef {
+func NewExternalTypeDef(owner, local *Env, custom *Custom) *TypeDef {
 	return &TypeDef{
 		owner:  owner,
 		local:  local,
@@ -264,15 +264,15 @@ func NewExternTypeDef(owner, local *Env, custom *Custom) *TypeDef {
 	}
 }
 
-func (sym *TypeDef) Type() Type     { return NewDescriptor(sym.custom) }
-func (sym *TypeDef) Node() ast.Node { return sym.node }
-func (sym *TypeDef) Value() *Value  { return &Value{T: sym.Type()} }
-func (sym *TypeDef) Owner() *Env    { return sym.owner }
-func (sym *TypeDef) Local() *Env    { return sym.local }
-func (sym *TypeDef) IsExtern() bool { return sym.node == nil }
+func (sym *TypeDef) Type() Type       { return NewDescriptor(sym.custom) }
+func (sym *TypeDef) Node() ast.Node   { return sym.node }
+func (sym *TypeDef) Value() *Value    { return &Value{T: sym.Type()} }
+func (sym *TypeDef) Owner() *Env      { return sym.owner }
+func (sym *TypeDef) Local() *Env      { return sym.local }
+func (sym *TypeDef) IsExternal() bool { return sym.node == nil }
 
 func (sym *TypeDef) Name() string {
-	if sym.IsExtern() {
+	if sym.IsExternal() {
 		return sym.custom.name
 	}
 
@@ -280,7 +280,7 @@ func (sym *TypeDef) Name() string {
 }
 
 func (sym *TypeDef) Ident() ast.Ident {
-	if sym.IsExtern() {
+	if sym.IsExternal() {
 		return &ast.Upper{Data: sym.custom.name}
 	}
 
@@ -292,10 +292,10 @@ func (sym *TypeDef) Ident() ast.Ident {
 //------------------------------------------------
 
 type TypeAlias struct {
-	owner  *Env
-	node   *ast.TypeAlias
-	alias  *Alias
-	extern Type // Always [IsAtom] or nil.
+	owner    *Env
+	node     *ast.TypeAlias
+	alias    *Alias
+	external Type // Always [IsAtom] or nil.
 }
 
 func NewTypeAlias(owner *Env, alias *Alias, node *ast.TypeAlias) *TypeAlias {
@@ -307,12 +307,12 @@ func NewTypeAlias(owner *Env, alias *Alias, node *ast.TypeAlias) *TypeAlias {
 }
 
 // NOTE: name of the type alias comes from [TypeAlias.alias].
-func NewExternTypeAlias(owner *Env, extern Type) *TypeAlias {
-	debug.Assert(IsAtom(extern))
+func NewExternalTypeAlias(owner *Env, external Type) *TypeAlias {
+	debug.Assert(IsAtom(external))
 
 	return &TypeAlias{
-		owner:  owner,
-		extern: extern,
+		owner:    owner,
+		external: external,
 	}
 }
 
@@ -321,7 +321,7 @@ func (sym *TypeAlias) Type() Type {
 		return NewDescriptor(sym.alias)
 	}
 
-	return sym.extern
+	return sym.external
 }
 
 func (sym *TypeAlias) Node() ast.Node { return sym.node }
@@ -337,7 +337,7 @@ func (sym *TypeAlias) Name() string {
 		return sym.alias.name
 	}
 
-	return Render(sym.extern)
+	return Render(sym.external)
 }
 
 func (sym *TypeAlias) Ident() ast.Ident {
@@ -368,8 +368,8 @@ func (sym *Binding) debug() string {
 	if sym.IsVariant() {
 		mods = append(mods, "variant")
 	}
-	if sym.IsExtern() {
-		mods = append(mods, "extern")
+	if sym.IsExternal() {
+		mods = append(mods, "external")
 	}
 	if len(mods) != 0 {
 		result += "(" + strings.Join(mods, ", ") + ")"

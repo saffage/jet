@@ -1,7 +1,7 @@
-let scanf(c_const! format String, ...) Int = extern("scanf")
-let rand() Int                             = extern("rand")
-let rand_seed(seed Nat32) None             = extern("srand")
-let time_now(dest Ptr(Int64)) Int64        = extern("time")
+let scanf(c_const! format String, ...) Int = external("scanf")
+let rand() Int                             = external("rand")
+let rand_seed(seed Nat32) None             = external("srand")
+let time_now(dest Ptr(Int64)) Int64        = external("time")
 
 let rand_int(min Int, max Int) Int = rand() % (max + 1 - min) + min
 

@@ -159,7 +159,7 @@ func errInvalidSelectorExprType(node *ast.Dot, s string) report.Builder {
 	panic("unimplemented")
 }
 
-func errUnknownExtern(extern *ast.External, externName string) report.Builder {
+func errUnknownExternal(external *ast.External, externalName string) report.Builder {
 	panic("unimplemented")
 }
 

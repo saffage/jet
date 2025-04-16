@@ -13,7 +13,7 @@ import (
 // TODO introduce module hierarchy.
 
 func Check(f *text.File, stmts *ast.Stmts) (*Module, error) {
-	InitModuleCore()
+	InitPrelude()
 
 	var (
 		moduleName = f.Name
@@ -22,7 +22,7 @@ func Check(f *text.File, stmts *ast.Stmts) (*Module, error) {
 		check      = &checker{module: module, env: scope}
 	)
 
-	_ = scope.Use(ModuleCore.Env)
+	_ = scope.Use(prelude.Env)
 
 	report.DebugX("types", "checking module '%s'", moduleName)
 
@@ -61,18 +61,14 @@ func CheckFile(f *text.File) (*Module, error) {
 	return Check(f, stmts)
 }
 
-// This module contains the declaration of the Jet built-ins.
-var ModuleCore *Module
+var (
+	preludeSync sync.Once
+	prelude     *Module
+)
 
-// This module contains C type declarations and other tools for
-// interacting with the C backend.
-var ModuleC *Module
-
-var onceInitModuleCore sync.Once
-
-func InitModuleCore() {
-	onceInitModuleCore.Do(func() {
-		ModuleCore = NewModule(
+func InitPrelude() {
+	preludeSync.Do(func() {
+		prelude = NewModule(
 			NewNamedEnv(ModuleEnv, nil, "core"),
 			"core",
 			nil,
@@ -80,19 +76,19 @@ func InitModuleCore() {
 		)
 
 		var (
-			NoneTypeAlias   = NewExternTypeAlias(ModuleCore.Env, NoneType)
-			NeverTypeAlias  = NewExternTypeAlias(ModuleCore.Env, NeverType)
-			IntTypeAlias    = NewExternTypeAlias(ModuleCore.Env, IntType)
-			FloatTypeAlias  = NewExternTypeAlias(ModuleCore.Env, FloatType)
-			StringTypeAlias = NewExternTypeAlias(ModuleCore.Env, StringType)
-			BoolTypeAlias   = NewExternTypeDef(ModuleCore.Env, nil, BoolType)
+			UnitTypeAlias   = NewExternalTypeAlias(prelude.Env, UnitType)
+			NeverTypeAlias  = NewExternalTypeAlias(prelude.Env, NeverType)
+			IntTypeAlias    = NewExternalTypeAlias(prelude.Env, IntType)
+			FloatTypeAlias  = NewExternalTypeAlias(prelude.Env, FloatType)
+			StringTypeAlias = NewExternalTypeAlias(prelude.Env, StringType)
+			BoolTypeAlias   = NewExternalTypeDef(prelude.Env, nil, BoolType)
 
-			TrueVariant  = NewVariant(ModuleCore.Env, nil, BoolType.Variant(0), nil, nil)
-			FalseVariant = NewVariant(ModuleCore.Env, nil, BoolType.Variant(1), nil, nil)
+			TrueVariant  = NewVariant(prelude.Env, nil, BoolType.Variant(0), nil, nil)
+			FalseVariant = NewVariant(prelude.Env, nil, BoolType.Variant(1), nil, nil)
 		)
 
-		ModuleCore.Env.symbols = map[string]Symbol{
-			"None":   NoneTypeAlias,
+		prelude.Env.symbols = map[string]Symbol{
+			"Unit":   UnitTypeAlias,
 			"Never":  NeverTypeAlias,
 			"Int":    IntTypeAlias,
 			"Float":  FloatTypeAlias,

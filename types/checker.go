@@ -374,10 +374,10 @@ func (check *checker) resolveTypeAlias(node *ast.TypeAlias) {
 
 	var sym *TypeAlias
 
-	if extern, _ := node.Expr.(*ast.External); extern != nil {
+	if external, _ := node.Expr.(*ast.External); external != nil {
 		var err error
 
-		sym, err = check.resolveExternTypeAlias(extern, node)
+		sym, err = check.resolveExternalTypeAlias(external, node)
 		check.error(err)
 	} else {
 		v, err := check.eval(node.Expr)
@@ -589,15 +589,15 @@ func (check *checker) resolveSelector(node *ast.Dot) (*Value, error) {
 //
 //
 
-func (check *checker) resolveExternTypeAlias(
-	extern *ast.External,
+func (check *checker) resolveExternalTypeAlias(
+	external *ast.External,
 	node *ast.TypeAlias,
 ) (*TypeAlias, error) {
-	if extern.Args != nil {
+	if external.Args != nil {
 		panic("unimplemented")
 	}
 
-	// for _, arg := range extern.Args.Nodes {
+	// for _, arg := range external.Args.Nodes {
 	// 	lit, ok := arg.(*ast.Literal)
 
 	// 	if !ok {
@@ -610,11 +610,11 @@ func (check *checker) resolveExternTypeAlias(
 	// 	}
 	// }
 
-	externName := node.Ident.Data
+	externalName := node.Ident.Data
 
 	var desc Descriptor
 
-	switch externName {
+	switch externalName {
 	case "Int":
 		desc = Descriptor{base: IntType}
 
@@ -625,7 +625,7 @@ func (check *checker) resolveExternTypeAlias(
 		desc = Descriptor{base: StringType}
 
 	default:
-		return nil, errUnknownExtern(extern, externName)
+		return nil, errUnknownExternal(external, externalName)
 	}
 
 	return NewTypeAlias(
@@ -907,7 +907,7 @@ func (check *checker) infix(node *ast.Op, x, y *Value) (*Value, error) {
 		}
 
 		// check.setType(node.Y, x)
-		return &Value{T: NoneType}, report.Join(errs...)
+		return &Value{T: UnitType}, report.Join(errs...)
 	}
 
 	for _, opTypes := range operatorTypes[node.Kind] {
@@ -983,15 +983,15 @@ var operatorTypes = map[ast.OperatorKind][]operandTypes{
 	ast.OperatorNot:       {{nil, BoolType, BoolType}},
 	ast.OperatorNeg:       {{nil, IntType, IntType}, {nil, FloatType, FloatType}},
 	ast.OperatorAdd:       {{IntType, IntType, IntType}, {FloatType, FloatType, FloatType}},
-	ast.OperatorAddAssign: {{IntType, IntType, NoneType}, {FloatType, FloatType, NoneType}},
+	ast.OperatorAddAssign: {{IntType, IntType, UnitType}, {FloatType, FloatType, UnitType}},
 	ast.OperatorSub:       {{IntType, IntType, IntType}, {FloatType, FloatType, FloatType}},
-	ast.OperatorSubAssign: {{IntType, IntType, NoneType}, {FloatType, FloatType, NoneType}},
+	ast.OperatorSubAssign: {{IntType, IntType, UnitType}, {FloatType, FloatType, UnitType}},
 	ast.OperatorMul:       {{IntType, IntType, IntType}, {FloatType, FloatType, FloatType}},
-	ast.OperatorMulAssign: {{IntType, IntType, NoneType}, {FloatType, FloatType, NoneType}},
+	ast.OperatorMulAssign: {{IntType, IntType, UnitType}, {FloatType, FloatType, UnitType}},
 	ast.OperatorDiv:       {{IntType, IntType, IntType}, {FloatType, FloatType, FloatType}},
-	ast.OperatorDivAssign: {{IntType, IntType, NoneType}, {FloatType, FloatType, NoneType}},
+	ast.OperatorDivAssign: {{IntType, IntType, UnitType}, {FloatType, FloatType, UnitType}},
 	ast.OperatorMod:       {{IntType, IntType, IntType}},
-	ast.OperatorModAssign: {{IntType, IntType, NoneType}},
+	ast.OperatorModAssign: {{IntType, IntType, UnitType}},
 	ast.OperatorBitAnd:    {{IntType, IntType, IntType}},
 	ast.OperatorBitOr:     {{IntType, IntType, IntType}},
 	// ast.OperatorBitXor:       {{IntType, IntType, IntType}},

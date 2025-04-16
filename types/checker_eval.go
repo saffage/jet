@@ -74,7 +74,7 @@ func (check *checker) evalNode(node ast.Node) (*Value, error) {
 
 	case *ast.BadNode:
 		if check.flags&IgnoreBadNodes != 0 {
-			return &Value{T: NoneType}, nil
+			return &Value{T: UnitType}, nil
 		}
 
 		panic(errInternal(node.Range(), "ill-formed AST"))
@@ -86,7 +86,7 @@ func (check *checker) evalNode(node ast.Node) (*Value, error) {
 		panic(errIllFormedAst(node))
 
 	case *ast.Placeholder:
-		return &Value{T: NoneType}, nil
+		return &Value{T: UnitType}, nil
 
 	case ast.Ident:
 		return check.evalIdent(node)
@@ -302,7 +302,7 @@ func (check *checker) evalWhen(node *ast.When) (*Value, error) {
 }
 
 func (check *checker) evalBlock(node *ast.Block) (*Value, error) {
-	value := &Value{T: NoneType} // TODO implement constant None value
+	value := &Value{T: UnitType} // TODO implement constant None value
 	err := error(nil)
 
 	defer func() {
@@ -318,15 +318,15 @@ loop:
 		switch node := node.(type) {
 		case *ast.LetDecl:
 			check.resolveLetDecl(node)
-			value.T = NoneType
+			value.T = UnitType
 
 		case *ast.TypeAlias:
 			check.resolveTypeAlias(node)
-			value.T = NoneType
+			value.T = UnitType
 
 		case *ast.TypeDef:
 			check.resolveTypeDef(node)
-			value.T = NoneType
+			value.T = UnitType
 
 		default:
 			value, err = check.eval(node)

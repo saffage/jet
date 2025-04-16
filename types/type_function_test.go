@@ -9,13 +9,13 @@ import (
 func TestCheckArgs(t *testing.T) {
 	checkArgs(
 		t,
-		NewFn(TypeList{NoneType}, NoneType, nil),
-		TypeList{NoneType},
+		NewFn(TypeList{UnitType}, UnitType, nil),
+		TypeList{UnitType},
 		"",
 	)
 	checkArgs(
 		t,
-		NewFn(TypeList{IntType}, NoneType, nil),
+		NewFn(TypeList{IntType}, UnitType, nil),
 		TypeList{IntType},
 		"",
 	)
@@ -24,37 +24,37 @@ func TestCheckArgs(t *testing.T) {
 func TestCheckArgsFail(t *testing.T) {
 	checkArgs(
 		t,
-		NewFn(TypeList{}, NoneType, nil),
+		NewFn(TypeList{}, UnitType, nil),
 		TypeList{IntType},
 		"incorrect arity, too many arguments (expected 0 arguments, got 1)",
 	)
 	checkArgs(
 		t,
-		NewFn(TypeList{IntType}, NoneType, nil),
+		NewFn(TypeList{IntType}, UnitType, nil),
 		TypeList{},
 		"incorrect arity, not enough arguments (expected 1 arguments, got 0)",
 	)
 	checkArgs(
 		t,
-		NewFn(TypeList{IntType}, NoneType, nil),
+		NewFn(TypeList{IntType}, UnitType, nil),
 		TypeList{IntType, BoolType, IntType},
 		"incorrect arity, too many arguments (expected 1 arguments, got 3)",
 	)
 	checkArgs(
 		t,
-		NewFn(TypeList{IntType, BoolType, IntType}, NoneType, nil),
+		NewFn(TypeList{IntType, BoolType, IntType}, UnitType, nil),
 		TypeList{IntType},
 		"incorrect arity, not enough arguments (expected 3 arguments, got 1)",
 	)
 	checkArgs(
 		t,
-		NewFn(TypeList{BoolType}, NoneType, nil),
+		NewFn(TypeList{BoolType}, UnitType, nil),
 		TypeList{IntType},
 		"argument type mismatch (expected `Bool` for 1-st argument, got `Int`)",
 	)
 	checkArgs(
 		t,
-		NewFn(TypeList{IntType, BoolType}, NoneType, nil),
+		NewFn(TypeList{IntType, BoolType}, UnitType, nil),
 		TypeList{IntType, IntType},
 		"argument type mismatch (expected `Bool` for 2-nd argument, got `Int`)",
 	)
@@ -63,19 +63,19 @@ func TestCheckArgsFail(t *testing.T) {
 func TestCheckArgsVariadic(t *testing.T) {
 	checkArgs(
 		t,
-		NewFn(TypeList{}, NoneType, IntType),
+		NewFn(TypeList{}, UnitType, IntType),
 		TypeList{},
 		"",
 	)
 	checkArgs(
 		t,
-		NewFn(TypeList{}, NoneType, IntType),
+		NewFn(TypeList{}, UnitType, IntType),
 		TypeList{IntType},
 		"",
 	)
 	checkArgs(
 		t,
-		NewFn(TypeList{}, NoneType, IntType),
+		NewFn(TypeList{}, UnitType, IntType),
 		TypeList{IntType, IntType},
 		"",
 	)
@@ -84,25 +84,25 @@ func TestCheckArgsVariadic(t *testing.T) {
 func TestCheckArgsVariadicFail(t *testing.T) {
 	checkArgs(
 		t,
-		NewFn(TypeList{IntType}, NoneType, IntType),
+		NewFn(TypeList{IntType}, UnitType, IntType),
 		TypeList{},
 		"incorrect arity, not enough arguments (expected 1 arguments, got 0)",
 	)
 	checkArgs(
 		t,
-		NewFn(TypeList{IntType}, NoneType, IntType),
+		NewFn(TypeList{IntType}, UnitType, IntType),
 		TypeList{FloatType},
 		"argument type mismatch (expected `Int` for 1-st argument, got `Float`)",
 	)
 	checkArgs(
 		t,
-		NewFn(TypeList{}, NoneType, IntType),
+		NewFn(TypeList{}, UnitType, IntType),
 		TypeList{FloatType, IntType},
 		"argument type mismatch (expected `Int` for variadic argument, got `Float`)",
 	)
 	checkArgs(
 		t,
-		NewFn(TypeList{}, NoneType, IntType),
+		NewFn(TypeList{}, UnitType, IntType),
 		TypeList{IntType, FloatType},
 		"argument type mismatch (expected `Int` for variadic argument, got `Float`)",
 	)

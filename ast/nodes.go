@@ -494,7 +494,7 @@ func (node *External) Range() text.Span {
 	if node.Args != nil {
 		span.To = node.Args.Range().To
 	} else {
-		span.To = node.ExternalTok.WithOffset(len("extern") - 1)
+		span.To = node.ExternalTok.WithOffset(len("external") - 1)
 	}
 
 	return span
