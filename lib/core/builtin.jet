@@ -16,20 +16,20 @@ type Float64 = external(builtin: "Float64")
 type String  = external(builtin: "String")
 type Char    = external(builtin: "Char")
 
-## {Result} that represents the outcome of an operation.
-## It can either be a {Success} or a {Failure}.
-type Result(
-    success, ## The type representing a successful result.
-    failure, ## The type representing a failure or error.
-) {
-    Failure(failure)
-    Success(success)
+## [Result] that represents the outcome of an operation.
+##
+## Parameters:
+## * ['value] - the type representing a value.
+## * ['error] - the type representing a failure or error.
+type Result('value, 'error) {
+    Value('value)
+    Error('error)
 }
 
 type Bool { False; True }
 
 ## Represents a state that will never be reached.
-type Never = external(builtin: "never")
+type Never = external(builtin: "Never")
 
 ## Built-in function that causes panic in the current thread.
 ##

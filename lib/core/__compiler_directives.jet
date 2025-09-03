@@ -1,5 +1,5 @@
 ## Disables arrays\slices bound checks inside an expression that is passed in.
-let no_bound_check!(expression a) a = external(builtin: "no_bound_check!")
+let no_bound_check!(expression 'a) 'a = external(builtin: "no_bound_check!")
 
 ## Enables arrays\slices bound checks inside an expression that is passed in.
-let bound_check!(expression a) a = external(builtin: "bound_check!")
+let bound_check!(expression 'a) 'a = external(builtin: "bound_check!")

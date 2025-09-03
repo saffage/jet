@@ -1,31 +1,31 @@
 # target! "native"
 
-opaque type Ptr(t) {
+opaque type Ptr('t) {
     Null
     Addr(addr: Int)
 }
 
-let get(self Ptr(t)) t =
+let get(self Ptr('t)) 't =
     when self {
         Addr(addr) -> load(addr)
         Null       -> panic("trying to get value from null pointer")
     }
 
-let set(self Ptr(t), value t) =
+let set(self Ptr('t), value 't) =
     when ptr {
         Addr(addr) -> store(addr, value)
         Null       -> panic("trying to set value into null pointer")
     }
 
-let addr(self Ptr(t)) Int =
+let addr(self Ptr('t)) Int =
     when self {
         Addr(addr) -> addr
         Null       -> 0 # panic("Trying to get address of null pointer")
     }
 
-let ptr_from_int(addr Int) Ptr(t) = Addr(addr)
+let ptr_from_addr(addr Int) Ptr('t) = Addr(addr)
 
-let  null(type t) Ptr(t).Null       = external(builtin: "null")
-let  addr(expr t) Ptr(t).Addr       = external(builtin: "addr")
-let  load(from: addr Int) t         = external(builtin: "load")
-let store(into: addr Int, :value t) = external(builtin: "store")
+let  null(type 't) Ptr('t).Null      = external(builtin: "null")
+let  addr(expr 't) Ptr('t).Addr      = external(builtin: "addr")
+let  load(from: addr Int) 't         = external(builtin: "load")
+let store(into: addr Int, :value 't) = external(builtin: "store")
