@@ -2,7 +2,7 @@ package ast
 
 import "encoding/json"
 
-//go:generate stringer -type=OperatorKind -linecomment -output=operator_kind_string.go
+//go:generate go tool stringer -type=OperatorKind -linecomment -output=operator_kind_string.go
 type OperatorKind byte
 
 const (

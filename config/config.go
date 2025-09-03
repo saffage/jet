@@ -32,7 +32,7 @@ var (
 	LDFlags string      // Flags that must be passed to a linker.
 )
 
-//go:generate stringer -type=BuildTarget -linecomment -output=build_target_string.go
+//go:generate go tool stringer -type=BuildTarget -linecomment -output=build_target_string.go
 type BuildTarget byte
 
 const (

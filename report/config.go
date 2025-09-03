@@ -19,7 +19,7 @@ var MinDisplayLevel = LevelTrace
 // Specifies output.
 var Output io.Writer = os.Stderr
 
-//go:generate stringer -type=Level -linecomment
+//go:generate go tool stringer -type=Level -linecomment
 type Level byte
 
 const (

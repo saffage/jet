@@ -18,7 +18,7 @@ type Env struct {
 	kind     EnvKind
 }
 
-//go:generate stringer -type=EnvKind -linecomment -output=env_kind_string.go
+//go:generate go tool stringer -type=EnvKind -linecomment -output=env_kind_string.go
 type EnvKind byte
 
 const (

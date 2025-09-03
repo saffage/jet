@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-//go:generate stringer -type=Kind -linecomment
+//go:generate go tool stringer -type=Kind -linecomment
 type Kind byte
 
 const (

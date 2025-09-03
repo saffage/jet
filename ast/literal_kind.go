@@ -1,6 +1,6 @@
 package ast
 
-//go:generate stringer -type=LiteralKind -linecomment -output=literal_kind_string.go
+//go:generate go tool stringer -type=LiteralKind -linecomment -output=literal_kind_string.go
 type LiteralKind byte
 
 const (
