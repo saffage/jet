@@ -1,25 +1,26 @@
 package report
 
+//go:generate go tool stringer -type=Level -linecomment
+
 import (
 	"io"
 	"os"
 )
 
-// Specifies whether to output the actual code from the file.
+// ShowCodeSnapshot specifies whether to output the actual code from the file.
 var ShowCodeSnapshot = true
 
-// Specifies whether to use unicode symbols in reports.
+// UseUnicode specifies whether to use unicode symbols in reports.
 //
 // Affects only punctuation used in generated report.
 var UseUnicode = true
 
-// Specifies a level of messages to be displayed.
+// MinDisplayLevel specifies a level of messages to be displayed.
 var MinDisplayLevel = LevelTrace
 
-// Specifies output.
+// Output specifies the output file\stream.
 var Output io.Writer = os.Stderr
 
-//go:generate go tool stringer -type=Level -linecomment
 type Level byte
 
 const (

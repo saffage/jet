@@ -1,3 +1,4 @@
+// Package report implements compiler problem reporting system.
 package report
 
 import (
@@ -15,7 +16,7 @@ type Informer interface {
 	Info() *Info
 }
 
-// Render renders the error for a user, writing it into the specified [Output].
+// Render renders the error for a user, writing it into the [Output] variable.
 //
 // If the error implements the [Renderer] or [Informer] interfaces, it will be
 // used instead of the usual [Error] method.
@@ -23,17 +24,18 @@ type Informer interface {
 // Note that errors joined using [errors.Join] will not be shown as separate
 // errors, use [Join] instead.
 func Render(err error) (rendered bool) {
-	return RenderInto(Output, err)
+	return RenderTo(Output, err)
 }
 
-// Render renders the error for a user, writing it into the specified writer.
+// RenderTo renders the error for a user, writing it into the specified
+// writer.
 //
-// If the error implements the [Renderer] or [Informer] interfaces, it will be
-// used instead of the usual [Error] method.
+// If the error implements [text.Renderer] or [Informer] interfaces,
+// it will be used instead of the usual [Error] method.
 //
 // Note that errors joined using [errors.Join] will not be shown as separate
 // errors, use [Join] instead.
-func RenderInto(w io.Writer, err error) (rendered bool) {
+func RenderTo(w io.Writer, err error) (rendered bool) {
 	buf := bufio.NewWriter(w)
 	rendered = render(buf, err)
 	return rendered

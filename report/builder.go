@@ -11,6 +11,9 @@ type Builder struct {
 	info  *Info
 }
 
+// Build creates a new [Info] builder with specified error.
+//
+// It panics when inner error is nil.
 func Build(inner error) Builder {
 	if inner == nil {
 		panic("the error must be specified for report.Builder")
