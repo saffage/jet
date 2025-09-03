@@ -1,3 +1,14 @@
+// Package config provides global configuration settings for the compiler.
+// These settings are initialized through program arguments when the compiler
+// starts and remain unchanged throughout its execution.
+//
+// The configuration includes options to control the compiler's behavior,
+// such as enabling or disabling debug and trace information, path to the
+// compiler cache directory, etc.
+//
+// The package also defines functionality for managing files used by the
+// compiler, including creating new files, reading files, and retrieving files
+// by their ID.
 package config
 
 import (
@@ -11,20 +22,22 @@ var (
 	files      []*text.File
 )
 
+// Mutex is not needed due to one-time initialization.
+
 var (
-	CompilerFilepath string // Path to the compiler executable.
+	// Path to the compiler executable (i.e. the very first program argument).
+	CompilerFilepath string
 
-	TraceParser      bool // Trace parser calls (used for debugging).
-	Debug            bool // Enable debug information.
-	NoHints          bool // Disable compiler hints.
-	NoBuiltinPackage bool // Disable checking of 'builtin' package
-
-	// Path to the 'builtin' package directory,
-	// relative to the compiler executable.
-	BuiltinPackagePath string = "lib/builtin/"
+	TraceParser     bool // Trace parser calls (used for debugging).
+	Debug           bool // Enable debug information.
+	NoHints         bool // Disable compiler hints.
+	NoCoreLib       bool // Disable core library.
+	NoBuiltinLib    bool // Disable built-in library.
+	ShowTimings     bool // Show timings for every compiler stage.
+	ShowMemoryUsage bool // Show memory usage for every compiler stage.
 
 	// Compiler cache directory.
-	CacheDirName string = ".jet-cache"
+	CacheDirName string
 
 	Target  BuildTarget = TargetC
 	CC      string      // Path to a C compiler executable.

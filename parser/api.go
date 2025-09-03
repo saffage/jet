@@ -26,26 +26,45 @@ type parser struct {
 	flags  Flags
 }
 
-func FromFile(
-	file *text.File,
-	scannerFlags token.ScannerFlags,
-	flags Flags,
-	errorHandler func(error),
-) *parser {
-	scanner := token.NewScannerFromFile(file, scannerFlags)
-	return New(scanner, flags, errorHandler)
+type Options struct {
+	token.ScannerOptions
+
+	ParserFlags Flags
 }
 
-func New(s *token.Scanner, flags Flags, errorHandler func(error)) *parser {
-	if config.TraceParser {
-		flags |= Trace
+func FromFile(file *text.File, opts ...Options) *parser {
+	opt := Options{}
+
+	if len(opts) != 0 {
+		opt = opts[0]
+	} else {
+		opt.ScannerFlags = token.DefaultFlags
+		opt.ParserFlags = DefaultFlags
 	}
+
+	scanner := token.NewScannerFromFile(file, opt.ScannerOptions)
+	return New(scanner, opt)
+}
+
+func New(s *token.Scanner, opts ...Options) *parser {
+	opt := Options{}
+
+	if len(opts) != 0 {
+		opt = opts[0]
+	} else {
+		opt.ScannerFlags = token.DefaultFlags
+		opt.ParserFlags = DefaultFlags
+	}
+
+	if config.TraceParser {
+		opt.ParserFlags |= Trace
+	}
+
 	p := &parser{
 		Scanner: s,
-		flags:   flags,
-		tracer:  tracer{enabled: flags&Trace != 0, stack: []traceEntry{}},
+		flags:   opt.ParserFlags,
+		tracer:  tracer{enabled: opt.ParserFlags&Trace != 0},
 	}
-	p.ErrorHandler = errorHandler
 	p.next()
 	return p
 }
@@ -86,12 +105,11 @@ func (parse *parser) Parse() *ast.Stmts {
 }
 
 func (parse *parser) ParseOrError() (*ast.Stmts, error) {
-	defer func(errorHandler func(error)) {
-		parse.ErrorHandler = errorHandler
-	}(parse.ErrorHandler)
-
 	errs := []error{}
-	parse.ErrorHandler = func(err error) { errs = append(errs, err) }
+	prev := parse.SetErrorHandler(func(err error) { errs = append(errs, err) })
+
+	defer parse.SetErrorHandler(prev)
+
 	stmts := parse.Parse()
 
 	return stmts, report.Join(errs...)

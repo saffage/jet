@@ -1,9 +1,6 @@
 package types
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/saffage/jet/ast"
 	"github.com/saffage/jet/internal/debug"
 	"github.com/saffage/jet/text"
@@ -83,7 +80,7 @@ func NewVariant(
 		local:       local,
 		variant:     variant,
 		params:      params,
-		value:       &Value{T: NewFn(tParams, variant.Type(), nil)},
+		value:       &Value{T: &Fn{params: tParams, result: variant.Type()}},
 		node:        decl,
 		variantNode: node,
 	}
@@ -171,6 +168,20 @@ func (v *Binding) ValueNode() ast.Node {
 // Module
 //------------------------------------------------
 
+type ExternalBinding struct {
+	owner  *Env
+	local  *Env
+	value  *Value
+	params []*Binding
+
+	node     *ast.Decl
+	declNode *ast.LetDecl // May be nil.
+}
+
+//------------------------------------------------
+// Module
+//------------------------------------------------
+
 type Module struct {
 	*TypeInfo
 
@@ -193,11 +204,11 @@ func NewModule(env *Env, name string, file *text.File, stmts *ast.Stmts) *Module
 	}
 }
 
-func (m *Module) Type() Type       { return moduleType }
+func (m *Module) Type() Type       { return m }
 func (m *Module) Name() string     { return m.name }
 func (m *Module) Node() ast.Node   { return m.stmts }
 func (m *Module) Ident() ast.Ident { return nil } // TODO: just use *ast.Name with zero-initialized range
-func (m *Module) Value() *Value    { return &Value{T: moduleType} }
+func (m *Module) Value() *Value    { return &Value{T: m} }
 func (m *Module) Owner() *Env      { return m.Env.parent }
 
 func (m *Module) TypeOf(expr ast.Node) Type {
@@ -233,6 +244,7 @@ func (m *Module) SymbolOf(ident ast.Ident) Symbol {
 	return nil
 }
 
+/*
 //------------------------------------------------
 // Type Def Symbol
 //------------------------------------------------
@@ -383,3 +395,4 @@ func symbolTypeNoQualifier(sym Symbol) string {
 		"types.",
 	)
 }
+*/

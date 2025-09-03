@@ -468,6 +468,7 @@ func (parse *parser) simpleTypeExpr() ast.Node {
 		if parse.match(token.LParen) {
 			typeArgs := parse.parens(parse.typeExpr)
 
+			// TODO replace with distinct node.
 			return &ast.Call{
 				X:    node,
 				Args: typeArgs,

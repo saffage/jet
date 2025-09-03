@@ -17,47 +17,46 @@ const fileID = text.FileID(123)
 
 func TestExprs(t *testing.T) {
 	testCases := []struct {
-		error        error
-		input        string
-		name         string
-		expectedAST  string
-		scannerFlags token.ScannerFlags
-		parserFlags  Flags
+		error       error
+		input       string
+		name        string
+		expectedAST string
+		opts        Options
 	}{
 		{
 			input:       `10`,
 			name:        "untyped int literal",
 			expectedAST: "untyped_int_literal_ast.json",
-			parserFlags: AllowTopLevelCode,
+			opts:        Options{ParserFlags: AllowTopLevelCode},
 		},
 		{
 			input:       `"hi"`,
 			name:        "untyped string literal",
 			expectedAST: "untyped_string_literal_ast.json",
-			parserFlags: AllowTopLevelCode,
+			opts:        Options{ParserFlags: AllowTopLevelCode},
 		},
 		{
 			input:       `0.1`,
 			name:        "untyped float literal",
 			expectedAST: "untyped_float_literal_ast.json",
-			parserFlags: AllowTopLevelCode,
+			opts:        Options{ParserFlags: AllowTopLevelCode},
 		},
 		{
 			input:       `a + b * c`,
 			name:        "simple a b c expr",
 			expectedAST: "simple_a_b_c_expr.json",
-			parserFlags: AllowTopLevelCode,
+			opts:        Options{ParserFlags: AllowTopLevelCode},
 		},
 	}
 
-	for _, c := range testCases {
-		t.Run(c.name, func(t *testing.T) {
-			scanner := token.NewScanner([]byte(c.input), fileID, c.scannerFlags)
-			parser := New(scanner, c.parserFlags, nil)
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			scanner := token.NewScanner([]byte(tt.input), fileID, tt.opts.ScannerOptions)
+			parser := New(scanner, tt.opts)
 
 			stmts, err := parser.ParseOrError()
 
-			if !checkError(t, err, c.error) {
+			if !checkError(t, err, tt.error) {
 				return
 			}
 
@@ -68,8 +67,8 @@ func TestExprs(t *testing.T) {
 				return
 			}
 
-			if c.expectedAST != "" {
-				filename := filepath.Join("testdata", c.expectedAST)
+			if tt.expectedAST != "" {
+				filename := filepath.Join("testdata", tt.expectedAST)
 				expect, err := os.ReadFile(filename)
 
 				if err != nil {

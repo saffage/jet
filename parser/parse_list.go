@@ -138,8 +138,8 @@ func (parse *parser) listUntil(
 // The handleError invokes the [token.Scanner.ErrorHandler] if the error
 // is valid.
 func (parse *parser) handleError(err report.Builder) {
-	if err.IsValid() && parse.ErrorHandler != nil {
-		parse.ErrorHandler(err)
+	if err.IsValid() {
+		parse.HandleError(err)
 	}
 }
 

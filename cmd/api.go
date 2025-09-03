@@ -3,6 +3,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/saffage/jet/config"
@@ -83,17 +84,33 @@ func Run(args []string) error {
 		},
 		&cli.BoolFlag{
 			Name:  "no-core-lib",
-			Usage: "disable the language core library",
+			Usage: "disable core library",
+		},
+		&cli.BoolFlag{
+			Name:  "no-builtin-lib",
+			Usage: "disable builtin library",
 		},
 		&cli.PathFlag{
-			Name:    "core-lib-path",
-			Usage:   "path to the directory of the language core library",
-			Value:   "./lib",
-			EnvVars: []string{"JETLIB"},
+			Name:  "core-lib",
+			Usage: "`PATH` to the directory of the language core library",
+			Value: filepath.Join(args[0], "lib/core/"),
+		},
+		&cli.PathFlag{
+			Name:  "builtin-lib",
+			Usage: "`PATH` to the directory of the language core library",
+			Value: filepath.Join(args[0], "lib/builtin/"),
+		},
+		&cli.BoolFlag{
+			Name:  "show-timings",
+			Usage: "show time of every compiler stage",
+		},
+		&cli.BoolFlag{
+			Name:  "show-memory-usage",
+			Usage: "show memory usage of every compiler stage",
 		},
 		&cli.StringFlag{
 			Name:    "cache-dir",
-			Usage:   "compiler cache directory",
+			Usage:   "specify compiler cache `DIRECTORY`",
 			Value:   ".jet-cache",
 			EnvVars: []string{"JETCACHE"},
 		},
@@ -121,10 +138,14 @@ func Run(args []string) error {
 				Action:    actionCheck,
 			},
 			{
-				Name:      "parse-ast",
+				Name:      "parse",
 				Args:      true,
 				ArgsUsage: " <FILEPATH>",
-				Action:    actionParseAst,
+				Action:    actionParse,
+			},
+			{
+				Name:   "language-server",
+				Action: actionLanguageServer,
 			},
 		},
 	}
@@ -136,8 +157,10 @@ func beforeCommand(ctx *cli.Context) error {
 	config.Debug = ctx.Bool("debug")
 	config.TraceParser = ctx.Bool("trace-parser")
 	config.NoHints = ctx.Bool("no-hints")
-	config.NoBuiltinPackage = ctx.Bool("no-core-lib")
-	config.BuiltinPackagePath = ctx.Path("core-lib-path")
+	config.NoCoreLib = ctx.Bool("no-core")
+	config.NoBuiltinLib = ctx.Bool("no-builtin")
+	config.ShowTimings = ctx.Bool("show-timings")
+	config.ShowMemoryUsage = ctx.Bool("show-memory-usage")
 	config.CacheDirName = ctx.String("cache-dir")
 
 	switch {

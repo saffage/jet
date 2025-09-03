@@ -124,7 +124,7 @@ func TestSelectToken(t *testing.T) {
 	t.Parallel()
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			scanner := NewScanner([]byte(tt.input), id, NoFlags)
+			scanner := NewScanner([]byte(tt.input), id)
 			i := 0
 
 			for tok := range scanner.Tokens() {

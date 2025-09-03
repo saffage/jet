@@ -1,13 +1,13 @@
 package text
 
 // This file defines interfaces commonly used throughout the project for
-// handling text-related operations, such as rendering abstract syntax trees (AST),
-// processing file content, and generating reports.
+// handling text-related operations, such as rendering AST, processing file
+// content and generating reports.
 
 import "io"
 
 // Writer is an interface that combines the functionality of standard
-// I/O interfaces ([io.Writer], [io.ByteWriter], [io.StringWriter], providing
+// I\O interfaces ([io.Writer], [io.ByteWriter], [io.StringWriter], providing
 // a unified way to handle various types of data streams.
 type Writer interface {
 	io.Writer

@@ -7,18 +7,15 @@ import (
 	"github.com/saffage/jet/parser"
 	"github.com/saffage/jet/report"
 	"github.com/saffage/jet/text"
-	"github.com/saffage/jet/token"
 	"github.com/urfave/cli/v2"
 )
 
-func ParseAst(file *text.File) error {
-	errs := []error{}
-	stmts := parser.FromFile(
-		file,
-		token.DefaultFlags,
-		parser.DefaultFlags,
-		func(err error) { errs = append(errs, err) },
-	).Parse()
+func Parse(file *text.File) error {
+	errs := text.Errors{}
+	opts := parser.Options{}
+	opts.ErrorHandler = errs.Collect
+
+	stmts := parser.FromFile(file, opts).Parse()
 
 	if len(errs) == 0 {
 		fmt.Println(ast.Render(stmts))
@@ -27,12 +24,12 @@ func ParseAst(file *text.File) error {
 	return report.Join(errs...)
 }
 
-func actionParseAst(ctx *cli.Context) error {
+func actionParse(ctx *cli.Context) error {
 	file, err := fileArgument(ctx)
 
 	if err != nil {
 		return err
 	}
 
-	return ParseAst(file)
+	return Parse(file)
 }

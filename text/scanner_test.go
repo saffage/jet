@@ -4,7 +4,7 @@ import "testing"
 
 func TestTakeWhile(t *testing.T) {
 	buffer := "001"
-	s := NewScanner(([]byte)(buffer), 0)
+	s := NewScanner(([]byte)(buffer), 0, nil)
 
 	data := s.TakeWhile(func(char rune) bool { return char == '0' })
 

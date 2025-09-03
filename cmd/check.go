@@ -17,9 +17,11 @@ var (
 )
 
 func Check(file *text.File) error {
-	errs := []error{}
-	_ = types.CheckFile(file, func(err error) { errs = append(errs, err) })
+	errs := text.Errors{}
+	opts := types.CheckerOptions{}
+	opts.ErrorHandler = errs.Collect
 
+	types.CheckFile(file, opts)
 	return report.Join(errs...)
 }
 

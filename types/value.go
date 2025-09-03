@@ -13,10 +13,6 @@ type Value struct {
 	V ConstantValue
 }
 
-func (v *Value) Type() Type           { return v.T }
-func (v *Value) Value() ConstantValue { return v.V }
-func (v *Value) Index() int           { return 0 }
-
 //go:generate go tool stringer -type=Kind -output=value_string.go
 type Kind byte
 

@@ -2,6 +2,7 @@ package types
 
 import (
 	"iter"
+	"slices"
 	"strings"
 
 	"github.com/saffage/jet/ast"
@@ -24,8 +25,8 @@ type EnvKind byte
 const (
 	_ EnvKind = iota
 
-	ModuleEnv   // module scope
-	ScopeEnv    // block scope
+	ModuleEnv   // module
+	ScopeEnv    // scope
 	TypeEnv     // type body
 	FnEnv       // function body
 	FnParamsEnv // function parameters
@@ -188,11 +189,21 @@ func (env *Env) OnLocalSymbols() iter.Seq[Symbol] {
 	}
 }
 
+func (env *Env) OnParentEnvs() iter.Seq[*Env] {
+	return func(yield func(*Env) bool) {
+		for env := env.parent; env != nil; env = env.parent {
+			if !yield(env) {
+				return
+			}
+		}
+	}
+}
+
 func (env *Env) Path() string {
 	namesBeforeThisEnv := []string(nil)
 
-	for env := env.parent; env != nil; env = env.parent {
-		// FIXME: path is incorrect, currently used only for debugging.
+	for env := range env.OnParentEnvs() {
+		// NOTE: path is not a valid Jet code, must be used for debugging only.
 
 		if env.name == "" {
 			namesBeforeThisEnv = append(namesBeforeThisEnv, "#["+env.kind.String()+"]#")
@@ -203,8 +214,8 @@ func (env *Env) Path() string {
 
 	buf := strings.Builder{}
 
-	for i := len(namesBeforeThisEnv) - 1; i >= 0; i-- {
-		buf.WriteString(namesBeforeThisEnv[i])
+	for _, name := range slices.Backward(namesBeforeThisEnv) {
+		buf.WriteString(name)
 		buf.WriteByte('/')
 	}
 

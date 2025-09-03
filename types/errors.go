@@ -11,10 +11,14 @@ import (
 )
 
 var (
+	ErrIllFormedAst            = errors.New("ill-formed AST")
 	ErrIncorrectArityNotEnough = errors.New("incorrect arity, not enough arguments")
 	ErrIncorrectArityTooMany   = errors.New("incorrect arity, too many arguments")
 	ErrArgTypeMismatch         = errors.New("argument type mismatch")
 	ErrUndefinedIdent          = errors.New("identifier is undefined")
+	ErrUnknownValue            = errors.New("unknown value")
+	ErrUnresolvedType          = errors.New("unknown value")
+	ErrInvalidSelector         = errors.New("invalid operand for selector expression")
 )
 
 func errIncorrectArity(args *ast.Parens, expected, got int) report.Builder {
@@ -135,8 +139,10 @@ func errAlreadyDefined(span1, span2 text.Span, what, s string) report.Builder {
 	panic("unimplemented")
 }
 
-func errIllFormedAst(item ast.Node) report.Builder {
-	panic("unimplemented")
+func errIllFormedAst(node ast.Node) report.Builder {
+	return report.
+		Build(ErrIllFormedAst).
+		Selection(node.Range(), "")
 }
 
 func errPositionalParamAfterNamed(span1, span2 text.Span) report.Builder {

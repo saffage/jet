@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"iter"
-	"slices"
 	"strings"
 	"unicode"
 
@@ -42,12 +41,15 @@ var (
 )
 
 type Scanner struct {
-	ErrorHandler func(error)
-
 	text.Scanner
 
 	flags       ScannerFlags
 	emitNewLine bool
+}
+
+type ScannerOptions struct {
+	ScannerFlags ScannerFlags
+	ErrorHandler func(error)
 }
 
 // TODO remove it
@@ -57,23 +59,30 @@ type Token struct {
 	Span text.Span
 }
 
-func NewScanner(content []byte, id text.FileID, flags ScannerFlags) *Scanner {
+func NewScanner(content []byte, id text.FileID, opts ...ScannerOptions) *Scanner {
+	opt := ScannerOptions{}
+
+	if len(opts) != 0 {
+		opt = opts[0]
+	}
+
 	return &Scanner{
-		Scanner: *text.NewScanner(content, id),
-		flags:   flags,
+		Scanner: *text.NewScanner(content, id, opt.ErrorHandler),
+		flags:   opt.ScannerFlags,
 	}
 }
 
-func NewScannerFromFile(file *text.File, flags ScannerFlags) *Scanner {
-	return &Scanner{
-		Scanner: *text.NewScannerFromFile(file),
-		flags:   flags,
-	}
-}
+func NewScannerFromFile(file *text.File, opts ...ScannerOptions) *Scanner {
+	opt := ScannerOptions{}
 
-func Scan(input []byte, id text.FileID, flags ScannerFlags) []Token {
-	s := NewScanner(input, id, flags)
-	return slices.Collect(s.Tokens())
+	if len(opts) != 0 {
+		opt = opts[0]
+	}
+
+	return &Scanner{
+		Scanner: *text.NewScannerFromFile(file, opt.ErrorHandler),
+		flags:   opt.ScannerFlags,
+	}
 }
 
 func (s *Scanner) Tokens() iter.Seq[Token] {
@@ -571,18 +580,18 @@ func (s *Scanner) parseHexNumber(buf *strings.Builder) bool {
 	return s.parseNumber(buf, isHexDigit, ErrExpectedHexNumber)
 }
 
-// Emits an error. Error end is a current scanner position.
+// Wraps an error into a [report.Builder] for additional context.
+// Error ends at the current scanner position.
 func (s *Scanner) handleError(err error, start text.Pos, message ...any) {
-	if err != nil && s.ErrorHandler != nil {
-		s.ErrorHandler(
-			report.Build(err).
-				Tag("scan").
-				Selection(
-					text.Span{From: start, To: s.Pos()},
-					fmt.Sprint(message...),
-				),
-		)
-	}
+	s.Scanner.HandleError(
+		report.
+			Build(err).
+			Tag("scan").
+			Selection(
+				text.Span{From: start, To: s.Pos()},
+				fmt.Sprint(message...),
+			),
+	)
 }
 
 func isDigit(c rune) bool {
