@@ -1,0 +1,48 @@
+version: '3'
+
+tasks:
+  default:
+    cmds:
+      - task: install-deps
+      - task: generate
+      - task: build
+
+  install-deps:
+    aliases:
+      - deps
+    run: once
+    cmds:
+      - go mod download
+      - go mod verify
+
+  install-tools:
+    aliases:
+      - tools
+    run: once
+    cmds:
+      - go install tool
+
+  generate:
+    aliases:
+      - gen
+    run: once
+    desc: 'generates Go files from source'
+    cmds:
+      - go generate -x ./...
+
+  build:
+    cmds:
+      - go build -v .
+
+  test:
+    cmds:
+      - task: test-compiler
+      - task: test-examples
+
+  test-compiler:
+    cmds:
+      - go test ./...
+
+  test-examples:
+    cmds:
+      - echo "test-examples command is not implemented"
