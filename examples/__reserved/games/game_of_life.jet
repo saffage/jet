@@ -1,0 +1,90 @@
+let width  = 20
+let height = 15
+
+var field        [height][width]Bool
+var hidden_field [height][width]Bool
+
+fn init_field() {
+    for row in 0 ..< height {
+        for col in 0 ..< width {
+            field[row][col] = False
+        }
+    }
+    # Pattern: 'glider'
+    #
+    # . 0 .
+    # . . 0
+    # 0 0 0
+    field[0][1] = True
+    field[1][2] = True
+    field[2][0] = True
+    field[2][1] = True
+    field[2][2] = True
+}
+
+fn show_field() {
+    for row in 0 ..< height {
+        for col in 0 ..< width {
+            print(if field[row][col] { "0" } else { "." })
+        }
+        print("\n")
+    }
+    print("\n")
+}
+
+fn count_neighbors(row0 Int, col0 Int) Int {
+    var neighbors = 0
+    for row in -1 .. 1 {
+        for col in -1 .. 1 {
+            if row != 0 or col != 0 {
+                val neighbor_row = row0 + row
+                val neighbor_col = col0 + col
+                if 0 <= neighbor_row and neighbor_row < height {
+                    if 0 <= neighbor_col and neighbor_col < width {
+                        if field[neighbor_row][neighbor_col] {
+                            neighbors += 1
+                        }
+                    }
+                }
+            }
+        }
+    }
+    neighbors
+}
+
+fn next_field() {
+    for row in 0 ..< height {
+        for col in 0 ..< width {
+            val neighbors = count_neighbors(row, col)
+
+            hidden_field[row][col] =
+                if field[row][col] {
+                    neighbors == 2 or neighbors == 3
+                } else {
+                    neighbors == 3
+                }
+        }
+    }
+}
+
+fn flip_fields() {
+    for row in  0 ..< height {
+        for col in 0 ..< width {
+            field[row][col] = hidden_field[row][col]
+        }
+    }
+}
+
+fn main() {
+    let generations = 60
+
+    init_field()
+    show_field()
+
+    for _ in 0 .. generations {
+        next_field()
+        flip_fields()
+        print("\x1B[2;1H")
+        show_field()
+    }
+}

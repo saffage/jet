@@ -1,0 +1,35 @@
+let scanf(c_const! format String, ...) Int = external("scanf")
+let rand() Int                             = external("rand")
+let rand_seed(seed Nat32) None             = external("srand")
+let time_now(dest Ptr(Int64)) Int64        = external("time")
+
+let rand_int(min Int, max Int) Int = rand() % (max + 1 - min) + min
+
+let main() = {
+    var attempts = 0
+    var guess    = 0
+    var exit     = False
+
+    println("Welcome to the Guess the Number!")
+    rand_seed(time_now(Null) as Nat32)
+
+    val number_to_guess = rand_int(1, 100)
+
+    while !exit {
+        attempts += 1
+        print("\nType your guess: ")
+        val error = scanf("%d", addr!(guess))
+
+        if error == 0 {
+            println("Invalid input!")
+            exit = True
+        } else if guess < number_to_guess {
+            print("Too low")
+        } else if guess > number_to_guess {
+            print("Too high")
+        } else {
+            println("You've guessed the number in $attempts attempts")
+            exit = True
+        }
+    }
+}

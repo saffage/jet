@@ -17,18 +17,29 @@ Currently it looks more like a transpiler than a compiler. The syntax of the lan
 
 - [ ] new syntax
   - [ ] port parser, AST and type system from the `new-syntax-2` branch
+    - [x] scanner
+      - [ ] tests
+    - [ ] parser
+      - [ ] tests
+    - [ ] type system
+      - [ ] tests
     - [ ] rework checker to work with new AST & type system
     - [ ] rework code generator to work with new AST & type system
-  - [ ] fix interpolated strings parsing (this must be done using nested scanner pass)
+  - [ ] fix interpolated strings parsing (this must be done with additional scanner pass)
+  - [ ] update EBNF grammar
 
-- [ ] cleanup
-  - [ ] remove unused API from `scanner`, `parser`, `checker` packages
+- [x] cleanup
+  - [x] remove unused API from `scanner`, `parser`, `checker` packages
     - [x] functions named `Must...()` are redundant
-  - [ ] remove `constant` package
+  - [x] remove `constant` package
 
 - [ ] error reporting
   - [ ] generalize errors, maybe using builder pattern
   - [ ] fix a case when single error may be shown several times
+    - [ ] errors, occurred while scanning
+    - [x] errors, occurred while parsing
+    - [ ] errors, occurred while type checking
+    - [ ] errors, occurred while code generation
 
 - [ ] code generation
   - [ ] fix invalid evaluation order of complex expressions
@@ -36,6 +47,7 @@ Currently it looks more like a transpiler than a compiler. The syntax of the lan
 
 - [ ] misc
   - [ ] fault tolerant scanner
+    - [ ] ensure that scanner don't fall in endless loop (somehow)
   - [ ] fault tolerant parser
     - [ ] `let`
       - [ ] tests
@@ -45,7 +57,7 @@ Currently it looks more like a transpiler than a compiler. The syntax of the lan
       - [ ] tests
     - [ ] `when`
       - [ ] tests
-    - [ ] lists
+    - [x] lists
       - [ ] tests
     - [ ] expressions
       - [ ] tests

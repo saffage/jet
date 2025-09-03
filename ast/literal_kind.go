@@ -1,7 +1,5 @@
 package ast
 
-import "encoding/json"
-
 //go:generate stringer -type=LiteralKind -linecomment -output=literal_kind_string.go
 type LiteralKind byte
 
@@ -13,6 +11,6 @@ const (
 	StringLiteral // string
 )
 
-func (kind LiteralKind) MarshalJSON() ([]byte, error) {
-	return json.Marshal(kind.String())
+func (kind LiteralKind) MarshalText() ([]byte, error) {
+	return []byte(kind.String()), nil
 }

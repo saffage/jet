@@ -2,37 +2,33 @@ package report
 
 import (
 	"bytes"
+	"fmt"
 	"path/filepath"
 	"strings"
 
 	"github.com/fatih/color"
 	"github.com/saffage/jet/config"
+	"github.com/saffage/jet/internal/debug"
 	"github.com/saffage/jet/text"
 )
 
-const initialReportBufferSize = 512
-
-// Informer is an interface used to inform reporter how to report a problem.
-type Informer interface {
-	Info() *Info
-}
-
 type Info struct {
 	Title       string
-	Tag         string       // Optional
-	Selection   Selection    // Optional
-	Suggestions []Suggestion // Optional
+	Tag         string
+	Suggestions []Suggestion
+	Selection   Selection
 	Level       Level
 }
 
 type Selection struct {
-	CustomContent string
-	Hint          string
-	Range         text.Span
+	Code  string
+	Hint  string
+	Range text.Span
 }
 
 type Suggestion struct {
 	Message   string
+	Content   string
 	Selection Selection
 }
 
@@ -44,19 +40,13 @@ func (info *Info) Error() string {
 	buf := bytes.Buffer{}
 	buf.Grow(len(info.Title))
 
-	if info.Tag != "" {
-		buf.WriteString(info.Tag)
-		buf.WriteString(": ")
-		buf.WriteByte(' ')
-	}
-
 	if strings.TrimSpace(info.Title) == "" {
 		buf.WriteString(emptyMessage)
 	} else {
 		buf.WriteString(info.Title)
 	}
 
-	if info.Selection.IsValid() && info.Selection.Hint != "" {
+	if info.Selection.Hint != "" {
 		buf.WriteString(" (")
 		buf.WriteString(info.Selection.Hint)
 		buf.WriteString(")")
@@ -65,29 +55,36 @@ func (info *Info) Error() string {
 	return buf.String()
 }
 
-func (info *Info) Report() {
+func (info *Info) Render(buf text.Writer) (rendered bool) {
 	if info.Level > MinDisplayLevel {
-		return
+		return false
 	}
 
-	buf := bytes.Buffer{}
-	buf.Grow(initialReportBufferSize)
+	const initialReportBufferSize = 512
 
-	writeLabel(&buf, info.Level, info.Tag)
+	if buf, _ := buf.(*strings.Builder); buf != nil {
+		buf.Grow(initialReportBufferSize)
+	}
+
+	writeLabel(buf, info.Level, info.Tag)
 
 	if info.Title != "" {
-		titleStyle.Fprint(&buf, info.Title, "\n")
+		titleStyle.Fprint(buf, capitalize(info.Title), "\n")
 	} else {
-		titleStyle.Fprint(&buf, emptyMessage, "\n")
+		titleStyle.Fprint(buf, emptyMessage, "\n")
 	}
 
-	writeSelection(&buf, info.Selection, levelColor(info.Level))
+	writeSelection(buf, info.Selection, levelColor(info.Level))
 
 	for _, suggestion := range info.Suggestions {
-		writeSuggestion(&buf, suggestion)
+		writeSuggestion(buf, suggestion)
 	}
 
-	Output.Write(buf.Bytes())
+	return true
+}
+
+func (info *Info) Renderable() bool {
+	return true
 }
 
 func (info *Info) Info() *Info {
@@ -99,7 +96,7 @@ func (info *Info) With(suggestion Suggestion) *Info {
 	return info
 }
 
-func writeLabel(buf *bytes.Buffer, level Level, tag string) {
+func writeLabel(buf text.Writer, level Level, tag string) {
 	color := levelColor(level)
 
 	if tag != "" {
@@ -128,11 +125,12 @@ func levelColor(level Level) *color.Color {
 	}
 }
 
-func writeSelection(buf *bytes.Buffer, selection Selection, color *color.Color) {
-	// TODO handle custom content
-	file := config.File(selection.Range.ID())
-
-	if file == nil {
+func writeSelection(
+	buf text.Writer,
+	selection Selection,
+	color *color.Color,
+) {
+	if !ShowCodeSnapshot || !selection.Range.IsValid() {
 		if selection.Hint != "" {
 			buf.WriteString(" (")
 			buf.WriteString(selection.Hint)
@@ -142,25 +140,53 @@ func writeSelection(buf *bytes.Buffer, selection Selection, color *color.Color) 
 		return
 	}
 
-	if position, valid := file.GetPosition(selection.Range.From); valid {
-		buf.WriteByte('\n')
-		writePosition(buf, position)
-		buf.WriteByte('\n')
+	file := config.File(selection.Range.ID())
+	code := ""
 
-		if ShowCodeSnapshot {
-			endPosition, valid := file.GetPosition(selection.Range.To)
-
-			if !valid {
-				panic("selection range is corrupted, invalid right bound position")
-			}
-
-			code := file.Line(position.Pos)
-			writeCodeSnapshot(buf, color, code, selection.Hint, position, endPosition)
+	if selection.Code != "" {
+		if nl := strings.IndexByte(selection.Code, '\n'); nl < 0 {
+			code = selection.Code
+		} else {
+			code = selection.Code[:nl]
 		}
+	} else if file != nil {
+		// TODO: it could be optimized.
+		position := file.PositionOf(selection.Range.From)
+		debug.Assert(position.IsValid(), fmt.Sprintf("%#v", position))
+		code = file.LineContent(position.Line)
+	}
+
+	from := file.PositionOf(selection.Range.From)
+	to := file.PositionOf(selection.Range.To)
+
+	if !to.IsValid() {
+		if from.IsValid() {
+			to = from
+		} else {
+			panic(fmt.Sprintf(
+				"selection range is corrupted, invalid selection bounds (%s to %s), file context length is %d",
+				selection.Range.From,
+				selection.Range.To,
+				len(config.File(selection.Range.ID()).Content),
+			))
+		}
+	}
+
+	writeFilepath(buf, from, code != "")
+
+	buf.WriteByte('\n')
+
+	if code != "" {
+		writeCodeSnapshot(buf, color, code, selection.Hint, from, to)
 	}
 }
 
-func writeCodeSnapshot(buf *bytes.Buffer, color *color.Color, code, hint string, start, end text.Position) {
+func writeCodeSnapshot(
+	buf text.Writer,
+	color *color.Color,
+	code, hint string,
+	start, end text.Position,
+) {
 	left, right := start.Char-1, end.Char-1
 
 	if end.Line > start.Line {
@@ -169,6 +195,7 @@ func writeCodeSnapshot(buf *bytes.Buffer, color *color.Color, code, hint string,
 
 	writeLineNumber(buf, start.Line, false)
 	writeColoredRange(buf, code, color, codeStyle, left, right)
+
 	buf.WriteByte('\n')
 
 	writeLineNumber(buf, start.Line, true)
@@ -178,7 +205,7 @@ func writeCodeSnapshot(buf *bytes.Buffer, color *color.Color, code, hint string,
 		// keep tabs in the output
 		for _, c := range code[:left] {
 			if c == '\t' {
-				buf.WriteRune('\t')
+				buf.WriteByte('\t')
 			} else {
 				buf.WriteByte(' ')
 			}
@@ -186,34 +213,33 @@ func writeCodeSnapshot(buf *bytes.Buffer, color *color.Color, code, hint string,
 
 		underlineLen := max(1, right-left+1)
 
-		buf.WriteByte('^')
-		for range underlineLen - 1 {
-			buf.WriteByte('~')
-		}
+		color.Fprint(buf, "^", strings.Repeat("~", underlineLen-1))
 	}
 
 	if hint != "" {
 		buf.WriteByte(' ')
-		buf.WriteString(hint)
+		color.Fprint(buf, capitalize(hint))
 	}
 
 	buf.WriteByte('\n')
 }
 
-func writeSuggestion(buf *bytes.Buffer, suggestion Suggestion) {
+func writeSuggestion(buf text.Writer, suggestion Suggestion) {
 	if suggestion.Message == "" {
 		return
 	}
 
-	suggestionStyle.Fprint(buf, suggestion.Message, "\n")
+	suggestionStyle.Fprint(buf, capitalize(suggestion.Message), "\n")
 
-	// TODO content must be indented
-	const hintIndent = "\t"
-	// hintIndent + strings.ReplaceAll(hint.Suggestion, "\n", "\n"+hintIndent)
-	writeSelection(buf, suggestion.Selection, suggestionStyle)
+	if suggestion.Content != "" {
+		content := "\t" + strings.ReplaceAll(suggestion.Content, "\n", "\n\t")
+		suggestionContentStyle.Fprintln(buf, content)
+	} else {
+		writeSelection(buf, suggestion.Selection, suggestionStyle)
+	}
 }
 
-func writeLineNumber(buf *bytes.Buffer, line int, empty bool) {
+func writeLineNumber(buf text.Writer, line int, empty bool) {
 	if empty {
 		for range numLen(line) {
 			buf.WriteByte(' ')
@@ -229,8 +255,14 @@ func writeLineNumber(buf *bytes.Buffer, line int, empty bool) {
 	}
 }
 
-func writeColoredRange(buf *bytes.Buffer, text string, selection, rest *color.Color, i, j int) {
-	if len(text) == 0 {
+func writeColoredRange(
+	buf text.Writer,
+	text string,
+	selection, rest *color.Color,
+	i, j int,
+) {
+	if len(text) == 0 || i >= len(text) || j >= len(text) {
+		rest.Fprint(buf, text)
 		return
 	}
 
@@ -250,29 +282,34 @@ func writeColoredRange(buf *bytes.Buffer, text string, selection, rest *color.Co
 	rest.Fprint(buf, textAfter)
 }
 
-func writePosition(buf *bytes.Buffer, position text.Position) {
+func writeFilepath(buf text.Writer, position text.Position, withSnapshot bool) {
 	for range numLen(position.Line) {
 		buf.WriteByte(' ')
 	}
 
-	lineNumStyle.Fprintf(buf, "")
-
-	if UseUnicode {
-		separatorStyle.Fprint(buf, " ┌─ ")
+	if withSnapshot {
+		if UseUnicode {
+			separatorStyle.Fprint(buf, " ┌─ ")
+		} else {
+			separatorStyle.Fprint(buf, "--> ")
+		}
 	} else {
-		separatorStyle.Fprint(buf, "--> ")
+		if UseUnicode {
+			separatorStyle.Fprint(buf, " ↪ ")
+		} else {
+			separatorStyle.Fprint(buf, "--> ")
+		}
 	}
 
-	// if !ShowCodeSnapshot {
-	// 	buf.WriteString(" ↪ ")
-	// }
+	path := filepath.Clean(position.Filepath)
 
-	path := filepath.Clean(position.Path)
-
-	switch LineInfoStyle {
-	default: // LineInfoUnix
-		filepathStyle.Fprintf(buf, "%s:%d:%d", path, position.Line, position.Char)
-	}
+	filepathStyle.Fprintf(
+		buf,
+		"%s:%d:%d",
+		path,
+		position.Line,
+		position.Char,
+	)
 }
 
 func numLen(num int) (len int) {
@@ -286,11 +323,23 @@ func numLen(num int) (len int) {
 	return len
 }
 
+func capitalize(s string) string {
+	firstNonSpace := strings.IndexFunc(s, func(r rune) bool { return r != ' ' })
+
+	if firstNonSpace >= 0 {
+		firstNonSpace++
+		return strings.ToUpper(s[:firstNonSpace]) + s[firstNonSpace:]
+	}
+
+	return s
+}
+
 var (
-	titleStyle      = color.New(color.FgWhite)
-	lineNumStyle    = color.New(color.FgHiCyan, color.Bold)
-	separatorStyle  = color.New(color.FgBlack, color.Bold)
-	filepathStyle   = color.New(color.FgCyan)
-	codeStyle       = color.New(color.FgHiMagenta)
-	suggestionStyle = color.New(color.FgWhite)
+	titleStyle             = color.New(color.FgWhite)
+	lineNumStyle           = color.New(color.FgHiCyan, color.Bold)
+	separatorStyle         = color.New(color.FgBlack, color.Bold)
+	filepathStyle          = color.New(color.FgCyan)
+	codeStyle              = color.New(color.FgHiMagenta)
+	suggestionStyle        = color.New(color.FgWhite)
+	suggestionContentStyle = color.New(color.FgWhite, color.Italic)
 )

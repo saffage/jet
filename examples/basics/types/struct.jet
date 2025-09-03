@@ -1,0 +1,14 @@
+# Custom type definition, it may contain any amount of field and also variants
+# (see in [examples/basics/types/tagged_union.jet].
+type Person {
+    name String
+    age  Int
+}
+
+val jack = Person("Jack", 21)
+println(jack.name) # output: `Jack`
+println(jack.age) # output: `21`
+
+val john = Person("John", 32)
+println(john.name) # output: `John`
+println(john.age) # output: `32`

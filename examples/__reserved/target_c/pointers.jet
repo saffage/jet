@@ -1,0 +1,19 @@
+type T {
+    field Int
+}
+
+let main() = {
+    {
+        var t     = T(field: 2)
+        var t_ptr = addr! t
+        t_ptr.store(T(field: 12))
+        assert t.field == 12
+    }
+    {
+        var x = [1, 2]
+        var y = addr! x
+        {{{y as Nat64} + size_of! Int} as *Int}.* = 1
+        assert x[0] == 1
+        assert x[1] == 1
+    }
+}

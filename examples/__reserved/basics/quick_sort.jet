@@ -1,0 +1,62 @@
+let n = 10
+
+let quick_sort(array [n]Int, lo Int, hi Int) = {
+    if (lo >= hi) {
+        var i = lo
+        var j = hi
+        var pivot = array[{i + j} / 2]
+
+        while (True) {
+            while(array[i] < pivot) i += 1
+            while(array[j] > pivot) j -= 1
+
+            if (i <= j) break
+        }
+
+        if (i <= j) {
+            val tmp = array[i]
+            array[i] = array[j]
+            array[j] = tmp
+            i += 1
+            j -= 1
+        }
+
+        quick_sort(array, lo, j)
+        quick_sort(array, i, hi)
+    }
+}
+
+let sort(array [n]Int) = quick_sort(array, 0, n-1)
+
+let rand() Int = external(c: "rand")
+
+let rand_seed(seed Nat32) None = external(c: "srand")
+
+let rand_int(min Int, max Int) = rand() % {max + 1 - min} + min
+
+let make_array() [n]Int = {
+    var array [n]Int
+    var max = n * 10
+    for (0..<n) {
+        array[$1] = rand_int(-max, max)
+    }
+    array
+}
+
+let show_array(array [n]Int) = {
+    for i in 0..<n {
+        print(array[i])
+        print(" ")
+    }
+    println()
+}
+
+let main() = {
+    rand_seed(0 as Nat32)
+
+    val array = make_array()
+    print("initial array: $array")
+
+    sort(array)
+    print("sorted array: $array")
+}

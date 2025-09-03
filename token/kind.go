@@ -1,6 +1,9 @@
 package token
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 //go:generate stringer -type=Kind -linecomment
 type Kind byte
@@ -8,16 +11,16 @@ type Kind byte
 const (
 	Illegal Kind = iota // illegal character
 
-	EOF        // end of file
-	Comment    // comment
-	Whitespace // whitespace
-	Tab        // horizontal tabulation
-	NewLine    // new line
+	EOF     // end of file
+	Comment // comment
+	Newline // newline
 
-	Ident  // identifier
-	Int    // untyped int
-	Float  // untyped float
-	String // untyped string
+	LowercaseIdent   // lowercase identifier
+	UppercaseIdent   // uppercase identifier
+	IdentPlaceholder // identifier placeholder
+	Int              // int literal
+	Float            // float literal
+	String           // string literal
 
 	LParen    // '('
 	RParen    // ')'
@@ -56,45 +59,51 @@ const (
 	PercentEq  // operator '%='
 	Amp        // operator '&'
 	AmpEq      // operator '&='
-	Pipe       // operator '|'
-	PipeEq     // operator '|='
+	Bar        // operator '|'
+	BarEq      // operator '|='
 	Caret      // operator '^'
 	CaretEq    // operator '^='
 
 	// End of position dependent tokens.
 
-	At           // operator '@'
-	Dollar       // operator '$'
-	QuestionMark // operator '?'
-	Arrow        // operator '->'
-	FatArrow     // operator '=>'
-	Dot          // operator '.'
-	Dot2         // operator '..'
-	Dot2Less     // operator '..<'
-	Ellipsis     // operator '...'
+	At       // '@'
+	Dollar   // '$'
+	Arrow    // '->'
+	FatArrow // '=>'
+	Dot      // '.'
+	Dot2     // '..'
+	Ellipsis // '...'
+
+	KwExternal // keyword 'external'
+	KwFn       // keyword 'fn'
+	KwLet      // keyword 'let'
+	KwType     // keyword 'type'
+	KwVal      // keyword 'val'
+	KwVar      // keyword 'var'
+	KwWhen     // keyword 'when'
+
+	// Reserved keywords.
 
 	KwAnd      // keyword 'and'
-	KwOr       // keyword 'or'
-	KwStruct   // keyword 'struct'
-	KwEnum     // keyword 'enum'
-	KwMut      // keyword 'mut'
-	KwIf       // keyword 'if'
-	KwElse     // keyword 'else'
-	KwWhile    // keyword 'while'
-	KwFor      // keyword 'for'
-	KwIn       // keyword 'in'
 	KwAs       // keyword 'as'
-	KwDefer    // keyword 'defer'
-	KwReturn   // keyword 'return'
 	KwBreak    // keyword 'break'
 	KwContinue // keyword 'continue'
+	KwDefer    // keyword 'defer'
+	KwElse     // keyword 'else'
+	KwFor      // keyword 'for'
+	KwIf       // keyword 'if'
+	KwIn       // keyword 'in'
+	KwOf       // keyword 'of'
+	KwOr       // keyword 'or'
+	KwReturn   // keyword 'return'
+	KwWhile    // keyword 'while'
 )
 
 const (
 	_special_begin = EOF
-	_special_end   = NewLine
+	_special_end   = Newline
 
-	_primary_begin = Ident
+	_primary_begin = LowercaseIdent
 	_primary_end   = String
 
 	_punctuation_begin = LParen
@@ -103,147 +112,119 @@ const (
 	_operator_begin = Eq
 	_operator_end   = Ellipsis
 
-	_keywords_begin = KwAnd
-	_keywords_end   = KwContinue
+	_keywords_begin = KwExternal
+	_keywords_end   = KwWhile
 
-	_kinds_last = _keywords_end
+	_reserved_begin = KwAnd
+	_reserved_end   = KwWhile
+
+	_kinds_first = _special_begin
+	_kinds_last  = _reserved_end
 )
 
-// Returns `Illegal` if `s` is not a kind name.
-func KindFromString(s string) Kind {
+type stringLike interface {
+	~[]byte | ~[]rune | ~string | ~rune | ~byte
+}
+
+func FromRepresentation[T stringLike](s T) Kind {
+	x := string(s)
 	for kind, str := range representableKinds {
-		if str == s {
+		if str == x {
 			return kind
 		}
 	}
-
 	return Illegal
 }
 
-func (kind Kind) IsSpecial() bool {
-	return _special_begin <= kind && kind <= _special_end
+func Representation(kind Kind) string {
+	return representableKinds[kind]
 }
 
-func (kind Kind) IsPrimary() bool {
-	return _primary_begin <= kind && kind <= _primary_end
-}
+func (kind Kind) IsSpecial() bool         { return _special_begin <= kind && kind <= _special_end }
+func (kind Kind) IsPrimary() bool         { return _primary_begin <= kind && kind <= _primary_end }
+func (kind Kind) IsPunctuation() bool     { return _punctuation_begin <= kind && kind <= _punctuation_end }
+func (kind Kind) IsOperator() bool        { return _operator_begin <= kind && kind <= _operator_end }
+func (kind Kind) IsKeyword() bool         { return _keywords_begin <= kind && kind <= _keywords_end }
+func (kind Kind) IsReservedKeyword() bool { return _reserved_begin <= kind && kind <= _reserved_end }
+func (kind Kind) Renderable() bool        { return _punctuation_begin <= kind && kind <= _reserved_end }
 
-func (kind Kind) IsPunctuation() bool {
-	return _punctuation_begin <= kind && kind <= _punctuation_end
-}
-
-func (kind Kind) IsOperator() bool {
-	return _operator_begin <= kind && kind <= _operator_end
-}
-
-func (kind Kind) IsKeyword() bool {
-	return _keywords_begin <= kind && kind <= _keywords_end
-}
-
-func (kind Kind) Repr() string {
-	s, ok := representableKinds[kind]
+func (kind Kind) Render(buf *strings.Builder) {
+	representation, ok := representableKinds[kind]
 
 	if !ok {
 		panic(fmt.Sprintf("%s cannot be represented as string (not enough data)", kind))
 	}
 
-	return s
-}
-
-func getKinds(begin, end int) []Kind {
-	kinds := make([]Kind, 0, end-begin+1)
-
-	for kind := begin; kind <= end; kind++ {
-		kinds = append(kinds, Kind(kind))
-	}
-
-	return kinds
-}
-
-func SpecialKinds() []Kind {
-	return getKinds(int(_special_begin), int(_special_end))
-}
-
-func PrimaryKinds() []Kind {
-	return getKinds(int(_primary_begin), int(_primary_end))
-}
-
-func PunctuationKinds() []Kind {
-	return getKinds(int(_punctuation_begin), int(_punctuation_end))
-}
-
-func OperatorKinds() []Kind {
-	return getKinds(int(_operator_begin), int(_operator_end))
-}
-
-func KeywordKinds() []Kind {
-	return getKinds(int(_keywords_begin), int(_keywords_end))
-}
-
-func AllKinds() []Kind {
-	return getKinds(0, int(_kinds_last))
+	buf.WriteString(representation)
 }
 
 var representableKinds = map[Kind]string{
-	LParen:       "(",
-	RParen:       ")",
-	LCurly:       "{",
-	RCurly:       "}",
-	LBracket:     "[",
-	RBracket:     "]",
-	Dot:          ".",
-	Comma:        ",",
-	Colon:        ":",
-	Semicolon:    ";",
-	Eq:           "=",
-	Bang:         "!",
-	QuestionMark: "?",
-	EqOp:         "==",
-	NeOp:         "!=",
-	LtOp:         "<",
-	GtOp:         ">",
-	LeOp:         "<=",
-	GeOp:         ">=",
-	Arrow:        "->",
-	FatArrow:     "=>",
-	Shl:          "<<",
-	ShlEq:        "<<=",
-	Shr:          ">>",
-	ShrEq:        ">>=",
-	Plus:         "+",
-	Minus:        "-",
-	Asterisk:     "*",
-	Slash:        "/",
-	Percent:      "%",
-	Amp:          "&",
-	AmpEq:        "&=",
-	Pipe:         "|",
-	PipeEq:       "|=",
-	Caret:        "^",
-	CaretEq:      "^=",
-	At:           "@",
-	Dollar:       "$",
-	PlusEq:       "+=",
-	MinusEq:      "-=",
-	AsteriskEq:   "*=",
-	SlashEq:      "/=",
-	PercentEq:    "%=",
-	Dot2:         "..",
-	Dot2Less:     "..<",
-	Ellipsis:     "...",
-	KwAnd:        "and",
-	KwOr:         "or",
-	KwStruct:     "struct",
-	KwEnum:       "enum",
-	KwMut:        "mut",
-	KwIf:         "if",
-	KwElse:       "else",
-	KwWhile:      "while",
-	KwFor:        "for",
-	KwIn:         "in",
-	KwAs:         "as",
-	KwDefer:      "defer",
-	KwReturn:     "return",
-	KwBreak:      "break",
-	KwContinue:   "continue",
+	LParen:    "(",
+	RParen:    ")",
+	LCurly:    "{",
+	RCurly:    "}",
+	LBracket:  "[",
+	RBracket:  "]",
+	Comma:     ",",
+	Colon:     ":",
+	Semicolon: ";",
+
+	Eq:         "=",
+	EqOp:       "==",
+	Bang:       "!",
+	NeOp:       "!=",
+	LtOp:       "<",
+	LeOp:       "<=",
+	GtOp:       ">",
+	GeOp:       ">=",
+	Shl:        "<<",
+	ShlEq:      "<<=",
+	Shr:        ">>",
+	ShrEq:      ">>=",
+	Plus:       "+",
+	PlusEq:     "+=",
+	Minus:      "-",
+	MinusEq:    "-=",
+	Asterisk:   "*",
+	AsteriskEq: "*=",
+	Slash:      "/",
+	SlashEq:    "/=",
+	Percent:    "%",
+	PercentEq:  "%=",
+	Amp:        "&",
+	AmpEq:      "&=",
+	Bar:        "|",
+	BarEq:      "|=",
+	Caret:      "^",
+	CaretEq:    "^=",
+
+	At:       "@",
+	Dollar:   "$",
+	Arrow:    "->",
+	FatArrow: "=>",
+	Dot:      ".",
+	Dot2:     "..",
+	Ellipsis: "...",
+
+	KwExternal: "external",
+	KwFn:       "fn",
+	KwLet:      "let",
+	KwType:     "type",
+	KwVal:      "val",
+	KwVar:      "var",
+	KwWhen:     "when",
+
+	KwAnd:      "and",
+	KwAs:       "as",
+	KwBreak:    "break",
+	KwContinue: "continue",
+	KwDefer:    "defer",
+	KwElse:     "else",
+	KwFor:      "for",
+	KwIf:       "if",
+	KwIn:       "in",
+	KwOf:       "of",
+	KwOr:       "or",
+	KwReturn:   "return",
+	KwWhile:    "while",
 }

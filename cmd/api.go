@@ -1,33 +1,44 @@
 package cmd
 
 import (
+	"errors"
+	"fmt"
+	"strings"
+
 	"github.com/saffage/jet/config"
 	"github.com/saffage/jet/report"
+	"github.com/saffage/jet/text"
 	"github.com/urfave/cli/v2"
 )
 
 func Run(args []string) error {
 	buildFlags := []cli.Flag{
 		&cli.BoolFlag{
-			Name:               "run",
-			Usage:              "run a compiled executable",
-			Aliases:            []string{"r"},
-			DisableDefaultText: true,
-		},
-		&cli.BoolFlag{
 			Name:               "parse-ast",
 			Usage:              "display program AST of the specified module and exit",
 			DisableDefaultText: true,
 		},
-		&cli.BoolFlag{
-			Name:               "trace-parser",
-			Usage:              "trace parser calls (used for debugging)",
-			DisableDefaultText: true,
-		},
 		&cli.PathFlag{
 			Name:  "cc",
-			Usage: "path to a C compiler executable",
-			Value: "gcc",
+			Usage: "C compiler `COMMAND`",
+			Value: "cc",
+		},
+		&cli.StringFlag{
+			Name:        "target",
+			Usage:       "specify build `TARGET`",
+			DefaultText: "c",
+			Action: func(ctx *cli.Context, value string) error {
+				target, isValidTarget := config.BuildTargetFromString(
+					strings.ToLower(value),
+				)
+
+				if !isValidTarget {
+					return errInvalidEnumValueFor("build target", value, "c")
+				}
+
+				config.Target = target
+				return nil
+			},
 		},
 		&cli.StringFlag{
 			Name:        "cc-flags",
@@ -40,10 +51,29 @@ func Run(args []string) error {
 			DefaultText: "",
 		},
 	}
+	checkFlags := []cli.Flag{
+		&cli.StringFlag{
+			Name:     "usages",
+			Category: "actions",
+			Usage:    "display `SYMBOL` usages",
+			Action:   actionUsages,
+		},
+		&cli.StringFlag{
+			Name:     "def",
+			Category: "actions",
+			Usage:    "display `SYMBOL` definitions",
+			Action:   actionDefinition,
+		},
+	}
 	appFlags := []cli.Flag{
 		&cli.BoolFlag{
 			Name:               "debug",
 			Usage:              "enable compiler debug output",
+			DisableDefaultText: true,
+		},
+		&cli.BoolFlag{
+			Name:               "trace-parser",
+			Usage:              "trace parser calls (used for debugging)",
 			DisableDefaultText: true,
 		},
 		&cli.BoolFlag{
@@ -84,8 +114,17 @@ func Run(args []string) error {
 				Before:          beforeBuild,
 			},
 			{
-				Name:   "parse-ast",
-				Action: actionParseAst,
+				Name:      "check",
+				Args:      true,
+				ArgsUsage: " <FILEPATH>",
+				Flags:     checkFlags,
+				Action:    actionCheck,
+			},
+			{
+				Name:      "parse-ast",
+				Args:      true,
+				ArgsUsage: " <FILEPATH>",
+				Action:    actionParseAst,
 			},
 		},
 	}
@@ -95,6 +134,7 @@ func Run(args []string) error {
 
 func beforeCommand(ctx *cli.Context) error {
 	config.Debug = ctx.Bool("debug")
+	config.TraceParser = ctx.Bool("trace-parser")
 	config.NoHints = ctx.Bool("no-hints")
 	config.NoBuiltinPackage = ctx.Bool("no-core-lib")
 	config.BuiltinPackagePath = ctx.Path("core-lib-path")
@@ -112,4 +152,32 @@ func beforeCommand(ctx *cli.Context) error {
 	}
 
 	return nil
+}
+
+func fileArgument(ctx *cli.Context) (*text.File, error) {
+	if !ctx.Args().Present() {
+		return nil, errors.New("expected path to a file")
+	}
+
+	if ctx.Args().Len() != 1 {
+		return nil, errors.New("invalid arguments count (expected 1)")
+	}
+
+	argument := ctx.Args().Get(0)
+	file, err := config.ReadFile(argument)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return file, nil
+}
+
+func errInvalidEnumValueFor(what, value string, available ...string) error {
+	return fmt.Errorf(
+		"unknown %s: '%s', available options is: %s",
+		what,
+		value,
+		strings.Join(available, ", "),
+	)
 }

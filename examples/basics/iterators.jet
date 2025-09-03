@@ -1,0 +1,20 @@
+# The `Seq(T)` is type used to represent arbitrary sequence of data.
+# It's defined like: {type Seq(t) = fn(yield(t) Bool) None}
+let odd(numbers List(Int)) Seq(Int) = {
+    for number in numbers {
+        if number % 2 == 1 {
+            # TODO: explain `$foo` syntax
+            if !$yield(number) {
+                break
+            }
+        }
+    }
+}
+
+# Let's define some list of numbers.
+let numbers = [1, 2, 3, 4, 5, 6]
+
+# Iterate over odd numbers using out `odd` function.
+for number in odd(numbers) {
+    println(number)
+}

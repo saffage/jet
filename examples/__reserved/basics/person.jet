@@ -1,0 +1,13 @@
+type Person {
+  name String
+  age  Nat
+}
+
+val people = [
+  Person("Jack", 21),
+  Person("Adam", 30),
+]
+
+for person in people {
+  println("${person.name} is ${person.age} years old")
+}

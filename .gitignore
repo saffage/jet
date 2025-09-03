@@ -1,18 +1,27 @@
-# Some Go stuff
+# Linux executable
+*
+!*.*
+!*/
+
+# Binaries
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
+
+# Some Go stuff
 *.test
 *.out
 go.work
+
+# Go generated files
 *_string.go
 
 # Editor configuration
 /.vscode/
 
-# For local files
+# Local files
 /.local/
 
 # Jet

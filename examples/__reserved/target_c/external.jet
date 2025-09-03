@@ -1,0 +1,15 @@
+let malloc(size Nat64) Ptr('a) = external(c: "malloc")
+
+let free(p Pointer) None = external(c: "free")
+
+let main() = {
+    var x Ptr(Int) = malloc(size_of! Int)
+
+    defer println("after free: ${int_from_ptr(x)}")
+    defer {
+        free(x)
+        x = null!
+    }
+
+    println("x: ${int_from_ptr(x)}")
+}

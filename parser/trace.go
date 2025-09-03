@@ -9,56 +9,96 @@ import (
 	"github.com/saffage/jet/report"
 )
 
-func printTrace(p *parser, args ...any) {
-	// pos := p.tok.Span.From
+const indentation = ": "
 
-	// if report.UseColors {
-	// 	fmt.Print(color.HiCyanString("%6d:%4d: ", pos.Line, pos.Char))
-	// } else {
-	// 	fmt.Printf("%6d:%4d: ", pos.Line, pos.Char)
-	// }
-
-	for i := 0; i < p.indent; i++ {
-		fmt.Print("  ")
-	}
-
-	if report.UseColors {
-		fmt.Print(color.HiGreenString("- "))
-		fmt.Println(color.YellowString(fmt.Sprint(args...)))
-	} else {
-		fmt.Printf("- %s", fmt.Sprint(args...))
-	}
+type tracer struct {
+	stack      []traceEntry
+	enabled    bool
+	tokenIndex int
 }
 
-func trace(p *parser) *parser {
-	caller := "unknown caller"
+type traceEntry struct {
+	err         error
+	caller      string
+	indentation int
+}
+
+func (parse *parser) pushTrace(args ...string) bool {
+	if !parse.tracer.enabled {
+		return false
+	}
+
+	caller := "untracked caller"
 
 	if pc, _, _, ok := runtime.Caller(1); ok {
 		if details := runtime.FuncForPC(pc); details != nil {
-			// Remove type arguments.
-			caller = strings.TrimSuffix(details.Name(), "[...]")
+			const parserPrefix = "(*parser)."
 
-			i := strings.LastIndex(caller, "parse")
-			dot := strings.LastIndex(caller, ".")
+			caller = details.Name()
+			i := strings.LastIndex(caller, parserPrefix)
 
-			if i != -1 && i == dot+1 {
-				caller = caller[i+len("parse"):]
-			} else {
-				caller = caller[dot+1:]
-			}
-
-			if strings.HasPrefix(strings.ToLower(caller), "error") ||
-				strings.HasSuffix(strings.ToLower(caller), "error") {
-				caller = color.RedString("error")
+			if i >= 0 {
+				caller = caller[len(parserPrefix)+i:]
 			}
 		}
 	}
 
-	printTrace(p, caller)
-	p.indent++
-	return p
+	pos := parse.PositionOf(parse.Span.From)
+
+	fmt.Fprintf(
+		report.Output,
+		"%s%s%s[%s]\n",
+		color.HiBlackString("%s", strings.Repeat(indentation, len(parse.tracer.stack))),
+		color.HiGreenString("- "),
+		color.YellowString("%s %s ", caller, strings.Join(args, ", ")),
+		color.HiBlackString(
+			"%d: %s (%s)",
+			parse.tracer.tokenIndex,
+			parse.Kind,
+			pos,
+		),
+	)
+
+	parse.tracer.stack = append(parse.tracer.stack, traceEntry{
+		caller:      caller,
+		indentation: len(parse.tracer.stack),
+	})
+
+	return true
 }
 
-func un(p *parser) {
-	p.indent--
+func (parse *parser) popTrace() {
+	if !parse.tracer.enabled {
+		return
+	}
+
+	entry := &parse.tracer.stack[len(parse.tracer.stack)-1]
+	parse.tracer.stack = parse.tracer.stack[:len(parse.tracer.stack)-1]
+
+	if entry.err != nil {
+		pos := parse.PositionOf(parse.Span.From)
+
+		fmt.Fprintf(
+			report.Output,
+			"%s%s%s [%s]\n",
+			color.HiBlackString("%s", strings.Repeat(indentation, entry.indentation)),
+			color.HiGreenString("- "),
+			color.RedString("%s", entry.err),
+			color.HiBlackString(
+				"%d: %s (%s)",
+				parse.tracer.tokenIndex,
+				parse.Kind,
+				pos,
+			),
+		)
+	}
+}
+
+func (parse *parser) error(err report.Builder) {
+	if parse.tracer.enabled {
+		entry := &parse.tracer.stack[len(parse.tracer.stack)-1]
+		entry.err = err
+	}
+
+	panic(err)
 }

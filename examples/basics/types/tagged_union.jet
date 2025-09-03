@@ -1,0 +1,54 @@
+type LineInfo {
+    filepath String
+    line     Int
+    column   Int
+}
+
+# TODO: something like `ref` type.
+type Node {
+    Empty
+
+    # Variant can have a payload.
+    Variable(String)
+    IntLiteral(Int)
+
+    # Payload can be named.
+    Negate(operand: Node)
+
+    # You can have any amount of payload.
+    AddOp(x: Node, y: Node)
+    SubOp(x: Node, y: Node)
+    MulOp(x: Node, y: Node)
+    DivOp(x: Node, y: Node)
+
+    # There ale also shared fields accessible from any variant.
+    info LineInfo
+}
+
+let variant_opr(node Node) String = when node {
+    AddOp -> "+"
+    SubOp -> "-"
+    MulOp -> "*"
+    DivOp -> "/"
+    _     -> panic("invalid node variant: ${variant:node}")
+}
+
+let print_node(node Node) = when node {
+    # Do nothing for empty node.
+    Empty -> {}
+
+    # Bind any string payload to a variable.
+    Variable(name)    -> print(name)
+    IntLiteral(value) -> print(value)
+
+    # You can bind the payload to any variable name.
+    Negate(operand: x) -> print("-${print_node(node)}")
+
+    # You can have `or` patterns.
+    # Also payload name doesn't required to be specified or even match the name.
+    AddOp(x, y) | SubOp(x, y) | MulOp(x, y) | DivOp(x, y) -> {
+        # TODO: For better readability use string format operator:
+        #   {print("$1 $2 $3" ??? [print_node(x), variant_opr(node), print_node(y)])}
+        print("${print_node(x)} ${variant_opr(node)} ${print_node(y)}")
+    }
+}
