@@ -1,3 +1,4 @@
+// Package parser implements parsing of a Jet code to an AST.
 package parser
 
 import (
