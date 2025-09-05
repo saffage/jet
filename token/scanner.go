@@ -398,8 +398,6 @@ func (s *Scanner) scanNumber() (kind Kind, data string, span text.Span, ok bool)
 			return
 		}
 
-		s.parseNumber(nil, isZero, nil)
-
 		if s.SkipWhile(isZero) > 0 {
 			// TODO warning?
 			s.handleError(ErrFirstDigitIsZero, span.From)
