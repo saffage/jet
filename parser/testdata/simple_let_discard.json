@@ -1,0 +1,19 @@
+{
+    "items": [
+        {
+            "pattern": {
+                "Name": {
+                    "data": "_",
+                    "span": "1,4"
+                }
+            },
+            "value": {
+                "value": "10",
+                "kind": "int",
+                "span": "1,8,9"
+            },
+            "keyword_pos": "1,0",
+            "kind": 0
+        }
+    ]
+}

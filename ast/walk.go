@@ -5,7 +5,7 @@ type Walker interface {
 	Walk(Node, Visitor)
 }
 
-// Applies some action, specified by implementor, to a node.
+// Visitor applies some action, specified by implementor, to a node.
 //
 // Implementor may implement any of the interfaces below.
 type Visitor interface {
@@ -14,38 +14,48 @@ type Visitor interface {
 
 // Visitor interface for a specific node type.
 //
-// Concrete node visitor have higher precedence over generic one.
+// Concrete node visitor have higher precedence over generic ones.
 type (
 	NodeVisitor  interface{ Visit(Node) }
 	IdentVisitor interface{ VisitIdent(Ident) }
 
-	BadNodeVisitor     interface{ VisitBadNode(*BadNode) }
-	LowerVisitor       interface{ VisitLower(*Lower) }
-	UpperVisitor       interface{ VisitUpper(*Upper) }
-	PlaceholderVisitor interface{ VisitPlaceholder(*Placeholder) }
-	LiteralVisitor     interface{ VisitLiteral(*Literal) }
+	BadNodeVisitor      interface{ VisitBadNode(*BadNode) }
+	LowerVisitor        interface{ VisitLower(*Lower) }
+	UpperVisitor        interface{ VisitUpper(*Capitalized) }
+	PlaceholderVisitor  interface{ VisitPlaceholder(*Placeholder) }
+	TypeVariableVisitor interface{ VisitTypeVariable(*TypeVariable) }
+	LiteralVisitor      interface{ VisitLiteral(*Literal) }
 
-	LetDeclVisitor   interface{ VisitLetDecl(*LetDecl) }
-	TypeAliasVisitor interface{ VisitTypeAlias(*TypeAlias) }
-	TypeDefVisitor   interface{ VisitTypeDef(*TypeDef) }
-	DeclVisitor      interface{ VisitDecl(*Decl) }
-	VariantVisitor   interface{ VisitVariant(*Variant) }
+	BindingVisitor   interface{ VisitBinding(*ValueDecl) }
+	TypeAliasVisitor interface{ VisitTypeAlias(*TypeAliasDecl) }
+	TypeDefVisitor   interface{ VisitTypeDef(*TypeDecl) }
+	FieldVisitor     interface{ VisitField(*FieldDecl) }
+	VariantVisitor   interface{ VisitVariant(*VariantDecl) }
 
 	LabelVisitor     interface{ VisitLabel(*Label) }
 	SignatureVisitor interface{ VisitSignature(*Signature) }
-	FunctionVisitor  interface{ VisitFunction(*Function) }
+	FnTypeVisitor    interface{ VisitFnType(*FnType) }
+	FnVisitor        interface{ VisitFn(*Fn) }
 	CallVisitor      interface{ VisitCall(*Call) }
 	DotVisitor       interface{ VisitDot(*Dot) }
 	OpVisitor        interface{ VisitOp(*Op) }
 
-	ListVisitor   interface{ VisitList(*List) }
-	BlockVisitor  interface{ VisitBlock(*Block) }
-	StmtsVisitor  interface{ VisitStmts(*Stmts) }
-	ParensVisitor interface{ VisitParens(*Parens) }
+	ListVisitor  interface{ VisitList(*List) }
+	BlockVisitor interface{ VisitBlock(*Block) }
+	StmtsVisitor interface{ VisitStmts(*Stmts) }
 
-	WhenVisitor     interface{ VisitWhen(*When) }
-	CaseVisitor     interface{ VisitCase(*Case) }
-	SpreadVisitor   interface{ VisitSpread(*Spread) }
-	AsVisitor       interface{ VisitAs(*As) }
-	ExternalVisitor interface{ VisitExternal(*External) }
+	WhenVisitor       interface{ VisitWhen(*When) }
+	CaseClauseVisitor interface{ VisitCaseClause(*CaseClause) }
+	ExternalVisitor   interface{ VisitExternal(*External) }
+
+	PatternInvalidVisitor     interface{ VisitPatternInvalid(*PatternInvalid) }
+	PatternLiteralVisitor     interface{ VisitPatternLiteral(*PatternLiteral) }
+	PatternBindingVisitor     interface{ VisitPatternBinding(*PatternBinding) }
+	PatternPlaceholderVisitor interface{ VisitPatternPlaceholder(*PatternPlaceholder) }
+	PatternRebindingVisitor   interface{ VisitPatternRebinding(*PatternRebinding) }
+	PatternListVisitor        interface{ VisitPatternList(*PatternList) }
+	PatternRangeVisitor       interface{ VisitPatternRange(*PatternRange) }
+	PatternVariantVisitor     interface{ VisitPatternVariant(*PatternVariant) }
+	PatternTypeTestVisitor    interface{ VisitPatternTypeTest(*PatternTypeTest) }
+	PatternAlternativeVisitor interface{ VisitPatternAlternative(*PatternAlternative) }
 )

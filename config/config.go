@@ -19,7 +19,7 @@ import (
 
 var (
 	filesMutex sync.RWMutex
-	files      []*text.File
+	files      map[text.FileID]*text.File
 )
 
 // Mutex is not needed due to one-time initialization.
@@ -72,7 +72,11 @@ func NewFile(path string, content []byte) (*text.File, error) {
 		return nil, err
 	}
 
-	files = append(files, file)
+	if files == nil {
+		files = map[text.FileID]*text.File{}
+	}
+
+	files[fileID] = file
 	return file, nil
 }
 
@@ -87,7 +91,11 @@ func ReadFile(path string) (*text.File, error) {
 		return nil, err
 	}
 
-	files = append(files, file)
+	if files == nil {
+		files = map[text.FileID]*text.File{}
+	}
+
+	files[fileID] = file
 	return file, nil
 }
 
@@ -95,9 +103,13 @@ func File(id text.FileID) *text.File {
 	filesMutex.RLock()
 	defer filesMutex.RUnlock()
 
-	if len(files) <= int(id) && id != 0 {
-		return files[id-1]
-	}
+	// 0 ID is never set so it's safe.
+	return files[id]
+}
 
-	return nil
+func RemoveFile(id text.FileID) {
+	filesMutex.RLock()
+	defer filesMutex.RUnlock()
+
+	delete(files, id)
 }

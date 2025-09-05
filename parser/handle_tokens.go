@@ -8,13 +8,13 @@ import (
 )
 
 func (parse *parser) next() (previous token.Token) {
-	if parse.Kind != token.EOF {
+	if parse.tok.Kind != token.EOF {
 		for {
-			tok := parse.NextToken()
+			tok := parse.scanner.NextToken()
 
 			if tok.Kind != token.Illegal && tok.Kind != token.Comment {
-				previous = parse.Token
-				parse.Token = tok
+				previous = parse.tok
+				parse.tok = tok
 				parse.tracer.tokenIndex++
 				break
 			}
@@ -25,11 +25,11 @@ func (parse *parser) next() (previous token.Token) {
 }
 
 func (parse *parser) match(kind token.Kind) bool {
-	return parse.Kind == kind
+	return parse.tok.Kind == kind
 }
 
 func (parse *parser) matchAny(kinds ...token.Kind) bool {
-	return len(kinds) == 0 || slices.Contains(kinds, parse.Kind)
+	return len(kinds) == 0 || slices.Contains(kinds, parse.tok.Kind)
 }
 
 func (parse *parser) skip(kind token.Kind) (skipped bool) {
@@ -54,7 +54,7 @@ func (parse *parser) skipAny(kinds ...token.Kind) (skipped bool) {
 // Skips any of the specified tokens. Returns true if token was skipped.
 func (parse *parser) skipSeq(kinds ...token.Kind) bool {
 	for _, kind := range kinds {
-		if parse.Kind != kind {
+		if parse.tok.Kind != kind {
 			return false
 		}
 
@@ -70,7 +70,7 @@ func (parse *parser) skipUntil(kinds ...token.Kind) (skipped text.Span) {
 		panic("must be at least 1 token")
 	}
 
-	skipped = parse.Span
+	skipped = parse.tok.Span
 
 	for !(parse.match(token.EOF) || parse.matchAny(kinds...)) {
 		skipped.To = parse.next().Span.To
@@ -81,7 +81,7 @@ func (parse *parser) skipUntil(kinds ...token.Kind) (skipped text.Span) {
 
 // Skips newline tokens.
 func (parse *parser) skipNewLines() {
-	for parse.Kind == token.Newline {
+	for parse.tok.Kind == token.Newline {
 		parse.next()
 	}
 }
@@ -127,7 +127,7 @@ func (parse *parser) expect(kind token.Kind) token.Token {
 	tok, ok := parse.consume(kind)
 
 	if !ok {
-		panic(errUnexpectedToken(parse.Span, parse.Kind, kind))
+		panic(errUnexpectedToken(parse.tok.Span, parse.tok.Kind, kind))
 	}
 
 	return tok
@@ -137,7 +137,7 @@ func (parse *parser) expectAny(kinds ...token.Kind) token.Token {
 	tok, ok := parse.consumeAny(kinds...)
 
 	if !ok {
-		panic(errUnexpectedToken(parse.Span, parse.Kind, kinds...))
+		panic(errUnexpectedToken(parse.tok.Span, parse.tok.Kind, kinds...))
 	}
 
 	return tok

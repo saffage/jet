@@ -1,3 +1,5 @@
+// Package ast provides Abstract Syntax Tree types and some functions
+// to work with.
 package ast
 
 import "github.com/saffage/jet/text"
@@ -36,164 +38,135 @@ type (
 	}
 
 	Lower struct {
-		Data string    `json:"data,omitempty"`
+		Data string    `json:"data"`
 		Span text.Span `json:"span,omitzero"`
 	}
 
-	Upper struct {
-		Data string    `json:"data,omitempty"`
+	Capitalized struct {
+		Data string    `json:"data"`
 		Span text.Span `json:"span,omitzero"`
 	}
 
 	Placeholder struct {
-		Data string    `json:"data,omitempty"`
+		Data string    `json:"data"`
+		Span text.Span `json:"span,omitzero"`
+	}
+
+	TypeVariable struct {
+		Data string    `json:"name"`
 		Span text.Span `json:"span,omitzero"`
 	}
 
 	Literal struct {
-		Value string      `json:"value,omitempty"`
-		Kind  LiteralKind `json:"kind,omitempty"`
+		Value string      `json:"value"`
+		Kind  LiteralKind `json:"kind"`
 		Span  text.Span   `json:"span,omitzero"`
 	}
 )
 
-func (node *BadNode) Range() text.Span     { return text.Span{From: node.DesiredPos} }
-func (node *Lower) Range() text.Span       { return node.Span }
-func (node *Upper) Range() text.Span       { return node.Span }
-func (node *Placeholder) Range() text.Span { return node.Span }
-func (node *Literal) Range() text.Span     { return node.Span }
+func (node *BadNode) Range() text.Span      { return text.Span{From: node.DesiredPos} }
+func (node *Lower) Range() text.Span        { return node.Span }
+func (node *Capitalized) Range() text.Span  { return node.Span }
+func (node *Placeholder) Range() text.Span  { return node.Span }
+func (node *TypeVariable) Range() text.Span { return node.Span }
+func (node *Literal) Range() text.Span      { return node.Span }
 
-func (node *Lower) Name() string       { return node.Data }
-func (node *Upper) Name() string       { return node.Data }
-func (node *Placeholder) Name() string { return node.Data }
+func (node *Lower) Name() string        { return node.Data }
+func (node *Capitalized) Name() string  { return node.Data }
+func (node *Placeholder) Name() string  { return node.Data }
+func (node *TypeVariable) Name() string { return node.Data }
 
 //------------------------------------------------
 // Declaration
 //------------------------------------------------
 
+type ValueKind byte
+
+const (
+	ValueLet ValueKind = iota
+	ValueVal
+	ValueVar
+)
+
 type (
-	// CommentGroup struct {
-	// 	Comments []struct {
-	// 		Value string
-	// 		Span  text.Span
-	// 	}
-	// }
-
-	// Represents 'let name Type = value'.
-	LetDecl struct {
-		Decl   *Decl    `json:"decl,omitempty"`
-		Value  Node     `json:"value,omitempty"`
-		LetTok text.Pos `json:"let_tok,omitzero"`
+	// ValueDecl represents let\val\var binding:
+	//
+	//	let a = 10
+	//	val b = "..."
+	//	var c = 0.0
+	ValueDecl struct {
+		Pattern    Pattern   `json:"pattern"`
+		Value      Node      `json:"value"`
+		KeywordPos text.Pos  `json:"keyword_pos,omitzero"`
+		Kind       ValueKind `json:"kind"`
 	}
 
-	// Represents 'val name Type = value'.
-	ValDecl struct {
-		Decl   *Decl    `json:"decl,omitempty"`
-		Value  Node     `json:"value,omitempty"`
-		ValTok text.Pos `json:"val_tok,omitzero"`
+	// TypeAliasDecl represents 'type Name = Type' or 'type Name(params) = Type'.
+	TypeAliasDecl struct {
+		Ident   *Capitalized `json:"ident"`
+		Args    *Parens      `json:"args,omitzero"`
+		Expr    Node         `json:"expr"`
+		TypeTok text.Pos     `json:"type_tok,omitzero"`
+		EqTok   text.Pos     `json:"eq_tok,omitzero"`
 	}
 
-	// Represents 'var name Type = value'.
-	VarDecl struct {
-		Decl   *Decl    `json:"decl,omitempty"`
-		Value  Node     `json:"value,omitempty"`
-		VarTok text.Pos `json:"var_tok,omitzero"`
+	// TypeDecl represents 'type Name { fields and variants }' or 'type Name(params) { fields and variants }'.
+	TypeDecl struct {
+		Ident   *Capitalized `json:"ident"`
+		Args    *Parens      `json:"args,omitzero"`
+		Body    *Block       `json:"body"`
+		TypeTok text.Pos     `json:"type_tok,omitzero"`
 	}
 
-	// Represents 'type Name = Type' or 'type Name(params) = Type'.
-	TypeAlias struct {
-		Ident   *Upper   `json:"ident,omitempty"`
-		Args    *Parens  `json:"args,omitempty"`
-		Expr    Node     `json:"expr,omitempty"`
-		TypeTok text.Pos `json:"type_tok,omitzero"`
-		EqTok   text.Pos `json:"eq_tok,omitzero"`
+	// FieldDecl represents [TypeDecl] field:
+	//
+	//	type T {
+	//		field1        Type
+	//		label: field2 Type
+	//		:field3       Type // label is field3
+	//	}
+	FieldDecl struct {
+		Label *Label `json:"label,omitzero"`
+		Name  *Lower `json:"name"`
+		Type  Node   `json:"type"`
 	}
 
-	// Represents 'type Name { fields and variants }' or 'type Name(params) { fields and variants }'.
-	TypeDef struct {
-		Ident   *Upper   `json:"ident,omitempty"`
-		Args    *Parens  `json:"args,omitempty"`
-		Body    *Block   `json:"body,omitempty"`
-		TypeTok text.Pos `json:"type_tok,omitzero"`
-	}
-
-	// Represents `name T`, `name`, `type name T`, `type name`.
-	Decl struct {
-		Ident   Ident    `json:"ident,omitempty"`
-		Type    Node     `json:"type,omitempty"`
-		TypeTok text.Pos `json:"type_tok,omitzero"`
-	}
-
-	// Represents 'Name' or 'Name(T)'.
-	Variant struct {
-		Name   *Upper  `json:"name,omitempty"`
-		Params *Parens `json:"params,omitempty"` // Optional.
+	// VariantDecl represents 'Name' or 'Name(T, ...)'.
+	VariantDecl struct {
+		Name   *Capitalized `json:"name"`
+		Params *Parens      `json:"params,omitempty"` // Optional.
 	}
 )
 
-// func (node *CommentGroup) Range() text.Span {
-// 	if len(node.Comments) > 0 {
-// 		return text.Span{
-// 			From: node.Comments[0].Span.From,
-// 			To:   node.Comments[len(node.Comments)-1].Span.To,
-// 		}
-// 	}
-
-// 	return text.Span{}
-// }
-
-func (node *LetDecl) Range() text.Span {
+func (node *ValueDecl) Range() text.Span {
 	return text.Span{
-		From: node.LetTok,
+		From: node.KeywordPos,
 		To:   node.Value.Range().To,
 	}
 }
 
-func (node *ValDecl) Range() text.Span {
-	return text.Span{
-		From: node.ValTok,
-		To:   node.Value.Range().To,
-	}
-}
-
-func (node *VarDecl) Range() text.Span {
-	return text.Span{
-		From: node.VarTok,
-		To:   node.Value.Range().To,
-	}
-}
-
-func (node *TypeAlias) Range() text.Span {
+func (node *TypeAliasDecl) Range() text.Span {
 	return text.Span{
 		From: node.TypeTok,
 		To:   node.Expr.Range().To,
 	}
 }
 
-func (node *TypeDef) Range() text.Span {
+func (node *TypeDecl) Range() text.Span {
 	return text.Span{
 		From: node.TypeTok,
 		To:   node.Body.Range().To,
 	}
 }
 
-func (node *Decl) Range() (span text.Span) {
-	if node.TypeTok.IsValid() {
-		span.From = node.TypeTok
-	} else {
-		span.From = node.Ident.Range().From
+func (node *FieldDecl) Range() (span text.Span) {
+	return text.Span{
+		From: node.Label.Range().From,
+		To:   node.Type.Range().To,
 	}
-
-	if node.Type != nil {
-		span.To = node.Type.Range().To
-	} else {
-		span.To = node.Ident.Range().To
-	}
-
-	return
 }
 
-func (node *Variant) Range() (span text.Span) {
+func (node *VariantDecl) Range() (span text.Span) {
 	span.From = node.Name.Range().From
 
 	if node.Params != nil {
@@ -212,38 +185,43 @@ func (node *Variant) Range() (span text.Span) {
 type (
 	Label struct {
 		Name     *Lower   `json:"name,omitempty"`
-		X        Node     `json:"x,omitempty"`
+		X        Node     `json:"x"`
 		ColonTok text.Pos `json:"colon_tok,omitzero"`
 	}
 
-	// Represents '() T with Effects'.
+	// Signature represents signature type '(...) T'.
+	// It also used for 'fn(...) T' but have different semantics.
 	Signature struct {
-		Params *Parens `json:"params,omitempty"`
-		Result Node    `json:"result,omitempty"` // can be nil in some cases
+		Params *Parens `json:"params"`
+		Result Node    `json:"result,omitempty"`
 	}
 
-	// Represents 'fn() R = expr'
-	Function struct {
-		Signature *Signature `json:"signature,omitempty"`
-		Body      Node       `json:"body,omitempty"`
+	// FnType represents 'fn() R'
+	FnType struct {
+		Signature *Signature `json:"signature"`
 		FnTok     text.Pos   `json:"fn_tok,omitzero"`
-		EqTok     text.Pos   `json:"eq_tok,omitzero"`
 	}
 
-	// Represents 'x(...args)'.
+	// Fn represents 'fn() R { expr }'
+	Fn struct {
+		Type *FnType `json:"fn_type,omitempty"`
+		Body *Block  `json:"body,omitempty"`
+	}
+
+	// Call represents 'x(...args)'.
 	Call struct {
 		X    Node    `json:"x,omitempty"`
 		Args *Parens `json:"args,omitempty"`
 	}
 
-	// Represents 'x.y'.
+	// Dot represents 'x.y'.
 	Dot struct {
 		X      Node     `json:"x,omitempty"`
 		Y      Node     `json:"y,omitempty"`
 		DotPos text.Pos `json:"dot_pos,omitzero"`
 	}
 
-	// Represents 'x OP y, where 'OP' is an operator.
+	// Op represents 'x OP y, where 'OP' is an operator.
 	Op struct {
 		X    Node         `json:"x,omitempty"`
 		Y    Node         `json:"y,omitempty"`
@@ -259,6 +237,8 @@ func (node *Label) Range() text.Span {
 	}
 }
 
+// Label returns a label, as it may be indirect.
+//
 // # Short labels
 //
 // Short labels are syntactic sugar for specifying a label with the same name as
@@ -299,9 +279,9 @@ func (node *Label) Label() *Lower {
 	case *Lower:
 		return labeledExpr
 
-	case *Decl:
-		if name, _ := labeledExpr.Ident.(*Lower); name != nil {
-			return name
+	case *PatternTypeTest:
+		if name, _ := labeledExpr.X.(*PatternBinding); name != nil {
+			return name.Name
 		}
 
 	case *Dot:
@@ -339,9 +319,16 @@ func (node *Signature) Range() (span text.Span) {
 	return
 }
 
-func (node *Function) Range() text.Span {
+func (node *FnType) Range() text.Span {
 	return text.Span{
 		From: node.FnTok,
+		To:   node.Signature.Range().To,
+	}
+}
+
+func (node *Fn) Range() text.Span {
+	return text.Span{
+		From: node.Type.Range().From,
 		To:   node.Body.Range().To,
 	}
 }
@@ -386,7 +373,7 @@ func (node *Op) IsName() bool    { return node.X == nil && node.Y == nil }
 //------------------------------------------------
 
 type (
-	// Represents '[a, b, c]'.
+	// List represents '[a, b, c]'.
 	List struct {
 		Nodes []Node    `json:"nodes,omitempty"`
 		Span  text.Span `json:"span,omitzero"`
@@ -397,22 +384,15 @@ type (
 		DesiredPos text.Pos `json:"desired_pos,omitzero"`
 	}
 
-	// Represents '{ a; b; c }'.
+	// Block represents '{ a; b; c }'.
 	Block struct {
 		Stmts *Stmts    `json:"stmts,omitempty"`
 		Span  text.Span `json:"span,omitzero"`
 	}
-
-	// Represents '(a, b, c)'.
-	Parens struct {
-		Nodes []Node    `json:"nodes,omitempty"`
-		Span  text.Span `json:"span,omitzero"`
-	}
 )
 
-func (node *List) Range() text.Span   { return node.Span }
-func (node *Block) Range() text.Span  { return node.Span }
-func (node *Parens) Range() text.Span { return node.Span }
+func (node *List) Range() text.Span  { return node.Span }
+func (node *Block) Range() text.Span { return node.Span }
 
 func (stmts *Stmts) Range() text.Span {
 	if len(stmts.Items) > 0 {
@@ -424,32 +404,35 @@ func (stmts *Stmts) Range() text.Span {
 	return text.Span{From: stmts.DesiredPos}
 }
 
+// Parens represents '(a, b, c)'.
+type Parens struct {
+	Nodes []Node    `json:"nodes,omitempty"`
+	Span  text.Span `json:"span,omitzero"`
+}
+
+type Parens2[T Node] struct {
+	Items []T       `json:"items"`
+	Span  text.Span `json:"span"`
+}
+
+func (node *Parens) Range() text.Span     { return node.Span }
+func (node *Parens2[T]) Range() text.Span { return node.Span }
+
 //------------------------------------------------
 // Language constructions
 //------------------------------------------------
 
 type (
 	When struct {
-		Expr    Node     `json:"expr,omitempty"`
-		Body    *Block   `json:"body,omitempty"`
+		Cond    Node     `json:"cond,omitempty"`
+		Clauses *Block   `json:"clauses,omitempty"`
 		WhenTok text.Pos `json:"when_tok,omitzero"`
 	}
 
-	Case struct {
+	CaseClause struct {
 		Pattern  Node     `json:"pattern,omitempty"`
 		Expr     Node     `json:"expr,omitempty"`
 		ArrowTok text.Pos `json:"arrow_tok,omitzero"`
-	}
-
-	Spread struct {
-		Expr      Node     `json:"expr,omitempty"`
-		SpreadTok text.Pos `json:"spread_tok,omitzero"`
-	}
-
-	As struct {
-		Expr    Node     `json:"expr,omitempty"`
-		NewName Ident    `json:"new_name,omitempty"`
-		AsTok   text.Pos `json:"as_tok,omitzero"`
 	}
 
 	External struct {
@@ -461,28 +444,14 @@ type (
 func (node *When) Range() text.Span {
 	return text.Span{
 		From: node.WhenTok,
-		To:   node.Body.Range().To,
+		To:   node.Clauses.Range().To,
 	}
 }
 
-func (node *Case) Range() text.Span {
+func (node *CaseClause) Range() text.Span {
 	return text.Span{
 		From: node.Pattern.Range().From,
 		To:   node.Expr.Range().To,
-	}
-}
-
-func (node *Spread) Range() text.Span {
-	return text.Span{
-		From: node.SpreadTok,
-		To:   node.Expr.Range().To,
-	}
-}
-
-func (node *As) Range() text.Span {
-	return text.Span{
-		From: node.Expr.Range().From,
-		To:   node.NewName.Range().To,
 	}
 }
 
@@ -498,24 +467,208 @@ func (node *External) Range() text.Span {
 	return span
 }
 
+//------------------------------------------------
+// Patterns
+//------------------------------------------------
+
+type (
+	Pattern interface {
+		Node
+		isPattern()
+	}
+
+	// PatternInvalid represents incorrectly parsed pattern.
+	PatternInvalid struct {
+		Span text.Span
+	}
+
+	// PatternLiteral represents literal pattern (10, "...", 1.25).
+	PatternLiteral struct {
+		Value *Literal
+	}
+
+	// PatternBinding represents binding pattern (name).
+	PatternBinding struct {
+		Name *Lower
+	}
+
+	// PatternPlaceholder represents placeholder pattern (_).
+	PatternPlaceholder struct {
+		Name *Placeholder
+	}
+
+	// PatternRebinding represents binding another pattern to name:
+	//
+	//	when [1, 2, 3] {
+	//		[1, ...] as x -> /* x is List(Int) */
+	//	}
+	//
+	// It also valid to do this:
+	//
+	//	a as b
+	PatternRebinding struct {
+		X          Pattern
+		Name       *Lower
+		KeywordPos text.Pos
+	}
+
+	// PatternList represents 'List('item)' type pattern, it may have any
+	// number of values or ranges between values (...), example:
+	//
+	//	when [1, 2, 3] {
+	//		[1, 2, 3]   -> {/* matches exact length and values */}
+	//		[1, ...]    -> {/* matches first value and >=0 values after */}
+	//		[1, ..., 3] -> {/* matches first and last values and >=0 values between */}
+	//		[..., 3]    -> {/* matches last value and >=0 values before */}
+	//		[...]       -> {/* matches any list */}
+	//	}
+	PatternList struct {
+		Items    []Pattern
+		Brackets text.Span
+	}
+
+	// PatternRange represents 'List('item)' range pattern.
+	//
+	//	when [1, 2, 3] {
+	//		[...rest] -> {}	/*
+	//		 ^  ^
+	//		 |  name
+	//		 |
+	//		 range token	*/
+	//	}
+	PatternRange struct {
+		Name     *Lower // optional
+		DotsSpan text.Span
+	}
+
+	// PatternVariant represents type variant pattern:
+	//
+	//	when get_int() {
+	//		Some(value) -> {}
+	//		None        -> {}
+	//	}
+	PatternVariant struct {
+		Name   *Capitalized
+		Values []Pattern
+		Parens text.Span
+	}
+
+	// PatternLabeled represents labeled value in variant pattern:
+	//
+	//	type T {
+	//		One(a: Int)
+	//		Two(b: Int)
+	//	}
+	//	when t() {
+	//		One(:a)   -> {}
+	//		Two(b: c) -> {}
+	//	}
+	PatternLabeled struct {
+		Label    *Lower
+		X        Pattern
+		ColonPos text.Pos
+	}
+
+	// PatternTypeTest represents type test operation (aka type annotation):
+	//
+	//	let x Int = 10		/*
+	//	    ^^^^^
+	//	    type test pattern	*/
+	//
+	//	when anything {
+	//		int   Int       -> {}
+	//		float Float     -> {}
+	//		ints  List(Int) -> {}
+	//	}
+	PatternTypeTest struct {
+		X    Pattern
+		Type Node
+	}
+
+	// PatternAlternative represents alternative patterns:
+	//
+	//	when int {
+	//		0 | 1 | 2 -> {}
+	//	}
+	PatternAlternative struct {
+		Items []Pattern
+	}
+)
+
+func (*PatternInvalid) isPattern()     {}
+func (*PatternLiteral) isPattern()     {}
+func (*PatternBinding) isPattern()     {}
+func (*PatternPlaceholder) isPattern() {}
+func (*PatternRebinding) isPattern()   {}
+func (*PatternList) isPattern()        {}
+func (*PatternRange) isPattern()       {}
+func (*PatternVariant) isPattern()     {}
+func (*PatternLabeled) isPattern()     {}
+func (*PatternTypeTest) isPattern()    {}
+func (*PatternAlternative) isPattern() {}
+
+func (*PatternInvalid) Range() text.Span {
+	return text.Span{}
+}
+
+func (*PatternLiteral) Range() text.Span {
+	return text.Span{}
+}
+
+func (*PatternBinding) Range() text.Span {
+	return text.Span{}
+}
+
+func (*PatternPlaceholder) Range() text.Span {
+	return text.Span{}
+}
+
+func (*PatternRebinding) Range() text.Span {
+	return text.Span{}
+}
+
+func (*PatternList) Range() text.Span {
+	return text.Span{}
+}
+
+func (*PatternRange) Range() text.Span {
+	return text.Span{}
+}
+
+func (*PatternVariant) Range() text.Span {
+	return text.Span{}
+}
+
+func (*PatternLabeled) Range() text.Span {
+	return text.Span{}
+}
+
+func (*PatternTypeTest) Range() text.Span {
+	return text.Span{}
+}
+
+func (*PatternAlternative) Range() text.Span {
+	return text.Span{}
+}
+
 var (
+	_ Ident = (*Lower)(nil)
+	_ Ident = (*Capitalized)(nil)
+	_ Ident = (*Placeholder)(nil)
+	_ Ident = (*TypeVariable)(nil)
+
 	_ Node = (*BadNode)(nil)
-	_ Node = (*Lower)(nil)
-	_ Node = (*Upper)(nil)
-	_ Node = (*Placeholder)(nil)
 	_ Node = (*Literal)(nil)
 
-	_ Node = (*LetDecl)(nil)
-	_ Node = (*ValDecl)(nil)
-	_ Node = (*VarDecl)(nil)
-	_ Node = (*TypeAlias)(nil)
-	_ Node = (*TypeDef)(nil)
-	_ Node = (*Decl)(nil)
-	_ Node = (*Variant)(nil)
+	_ Node = (*ValueDecl)(nil)
+	_ Node = (*TypeAliasDecl)(nil)
+	_ Node = (*TypeDecl)(nil)
+	_ Node = (*FieldDecl)(nil)
+	_ Node = (*VariantDecl)(nil)
 
 	_ Node = (*Label)(nil)
 	_ Node = (*Signature)(nil)
-	_ Node = (*Function)(nil)
+	_ Node = (*Fn)(nil)
 	_ Node = (*Call)(nil)
 	_ Node = (*Dot)(nil)
 	_ Node = (*Op)(nil)
@@ -523,15 +676,20 @@ var (
 	_ Node = (*List)(nil)
 	_ Node = (*Stmts)(nil)
 	_ Node = (*Block)(nil)
-	_ Node = (*Parens)(nil)
+	// _ Node = (*Parens)(nil)
 
 	_ Node = (*When)(nil)
-	_ Node = (*Case)(nil)
+	_ Node = (*CaseClause)(nil)
 	_ Node = (*External)(nil)
-)
 
-var (
-	_ Ident = (*Lower)(nil)
-	_ Ident = (*Upper)(nil)
-	_ Ident = (*Placeholder)(nil)
+	_ Pattern = (*PatternLiteral)(nil)
+	_ Pattern = (*PatternBinding)(nil)
+	_ Pattern = (*PatternPlaceholder)(nil)
+	_ Pattern = (*PatternRebinding)(nil)
+	_ Pattern = (*PatternList)(nil)
+	_ Pattern = (*PatternRange)(nil)
+	_ Pattern = (*PatternVariant)(nil)
+	_ Pattern = (*PatternLabeled)(nil)
+	_ Pattern = (*PatternTypeTest)(nil)
+	_ Pattern = (*PatternAlternative)(nil)
 )

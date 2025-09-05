@@ -1,3 +1,4 @@
+// Package parser implements parsing of a Jet code to an AST.
 package parser
 
 import (
@@ -19,8 +20,10 @@ const (
 )
 
 type parser struct {
-	*token.Scanner
-	token.Token
+	// TODO: dis-embed fields as it's pollutes API.
+
+	scanner *token.Scanner
+	tok     token.Token
 
 	tracer tracer
 	flags  Flags
@@ -61,7 +64,7 @@ func New(s *token.Scanner, opts ...Options) *parser {
 	}
 
 	p := &parser{
-		Scanner: s,
+		scanner: s,
 		flags:   opt.ParserFlags,
 		tracer:  tracer{enabled: opt.ParserFlags&Trace != 0},
 	}
@@ -72,7 +75,7 @@ func New(s *token.Scanner, opts ...Options) *parser {
 func (parse *parser) Parse() *ast.Stmts {
 	decls := parse.listUntil(
 		parse.declOrExpr,
-		parse.Span,
+		parse.tok.Span,
 		token.EOF,
 		token.Semicolon,
 		token.Newline,
@@ -83,11 +86,9 @@ func (parse *parser) Parse() *ast.Stmts {
 			switch node.(type) {
 			case nil:
 				panic("unreachable")
-			case *ast.LetDecl,
-				*ast.ValDecl,
-				*ast.VarDecl,
-				*ast.TypeDef,
-				*ast.TypeAlias,
+			case *ast.ValueDecl,
+				*ast.TypeDecl,
+				*ast.TypeAliasDecl,
 				*ast.BadNode:
 				// OK
 			default:
@@ -106,9 +107,9 @@ func (parse *parser) Parse() *ast.Stmts {
 
 func (parse *parser) ParseOrError() (*ast.Stmts, error) {
 	errs := []error{}
-	prev := parse.SetErrorHandler(func(err error) { errs = append(errs, err) })
+	prev := parse.scanner.SetErrorHandler(func(err error) { errs = append(errs, err) })
 
-	defer parse.SetErrorHandler(prev)
+	defer parse.scanner.SetErrorHandler(prev)
 
 	stmts := parse.Parse()
 

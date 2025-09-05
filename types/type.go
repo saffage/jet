@@ -39,7 +39,7 @@ type Named struct {
 	body *Env
 
 	// An AST node of the type definition.
-	node *ast.TypeDef
+	node *ast.TypeDecl
 
 	// Type parameters (aka "generics" or "parametric polymorphism").
 	//
@@ -113,7 +113,7 @@ type Alias struct {
 	owner *Env
 
 	// An AST node of the type definition.
-	node *ast.TypeAlias
+	node *ast.TypeAliasDecl
 
 	// Type parameters (aka "generics" or "parametric polymorphism").
 	//
@@ -258,8 +258,8 @@ func (t *Fn) CheckArgs(args TypeList, argsNode ...*ast.Parens) error {
 
 	var errs []error
 	var arg = func(i int) ast.Node {
-		if i < len(argsNode) {
-			return argsNode[i]
+		if i < len(node.Nodes) {
+			return node.Nodes[i]
 		}
 		return nil
 	}

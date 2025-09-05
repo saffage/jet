@@ -3,7 +3,7 @@
 		{
 			"value": "\"hi\"",
 			"kind": "string",
-			"span": "123,0,3"
+			"span": "1,0,3"
 		}
 	]
 }

@@ -1,19 +1,19 @@
-package parser
+package parser_test
 
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
 
+	"github.com/saffage/jet/config"
+	"github.com/saffage/jet/parser"
 	"github.com/saffage/jet/report"
-	"github.com/saffage/jet/text"
 	"github.com/saffage/jet/token"
 )
-
-const fileID = text.FileID(123)
 
 func TestExprs(t *testing.T) {
 	testCases := []struct {
@@ -21,38 +21,63 @@ func TestExprs(t *testing.T) {
 		input       string
 		name        string
 		expectedAST string
-		opts        Options
+		opts        parser.Options
 	}{
 		{
 			input:       `10`,
 			name:        "untyped int literal",
 			expectedAST: "untyped_int_literal_ast.json",
-			opts:        Options{ParserFlags: AllowTopLevelCode},
+			opts:        parser.Options{ParserFlags: parser.AllowTopLevelCode},
 		},
 		{
 			input:       `"hi"`,
 			name:        "untyped string literal",
 			expectedAST: "untyped_string_literal_ast.json",
-			opts:        Options{ParserFlags: AllowTopLevelCode},
+			opts:        parser.Options{ParserFlags: parser.AllowTopLevelCode},
 		},
 		{
 			input:       `0.1`,
 			name:        "untyped float literal",
 			expectedAST: "untyped_float_literal_ast.json",
-			opts:        Options{ParserFlags: AllowTopLevelCode},
+			opts:        parser.Options{ParserFlags: parser.AllowTopLevelCode},
 		},
 		{
 			input:       `a + b * c`,
 			name:        "simple a b c expr",
 			expectedAST: "simple_a_b_c_expr.json",
-			opts:        Options{ParserFlags: AllowTopLevelCode},
+			opts:        parser.Options{ParserFlags: parser.AllowTopLevelCode},
+		},
+		{
+			input:       `let x = 10`,
+			name:        "simple let binding",
+			expectedAST: "simple_let_binding.json",
+			opts:        parser.Options{ParserFlags: parser.AllowTopLevelCode},
+		},
+		{
+			input:       `let _ = 10`,
+			name:        "simple let discard",
+			expectedAST: "simple_let_discard.json",
+			opts:        parser.Options{ParserFlags: parser.AllowTopLevelCode},
+		},
+		{
+			input: `let a, b = 10, 20`,
+			name:  "simple let binding tuple",
+			// expectedAST: "simple_let_binding_tuple.json",
+			opts: parser.Options{ParserFlags: parser.AllowTopLevelCode},
 		},
 	}
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			scanner := token.NewScanner([]byte(tt.input), fileID, tt.opts.ScannerOptions)
-			parser := New(scanner, tt.opts)
+			file, err := config.NewFile(fmt.Sprintf("parser_test(%s).jet", tt.name), []byte(tt.input))
+			if err != nil {
+				t.Fatal(err)
+				return
+			}
+			defer config.RemoveFile(file.ID)
+
+			scanner := token.NewScannerFromFile(file, tt.opts.ScannerOptions)
+			parser := parser.New(scanner, tt.opts)
 
 			stmts, err := parser.ParseOrError()
 
@@ -76,7 +101,7 @@ func TestExprs(t *testing.T) {
 					return
 				}
 
-				if equal, err := JSONBytesEqual(actual, expect); err != nil {
+				if equal, err := JSONEqual(actual, expect); err != nil {
 					t.Error(err)
 				} else if !equal {
 					t.Errorf(
@@ -121,7 +146,7 @@ func checkError(t *testing.T, got, want error) bool {
 	return true
 }
 
-func JSONBytesEqual(a, b []byte) (bool, error) {
+func JSONEqual(a, b []byte) (bool, error) {
 	a = bytes.TrimSpace(a)
 	b = bytes.TrimSpace(b)
 

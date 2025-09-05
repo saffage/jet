@@ -9,22 +9,17 @@ import (
 	"github.com/saffage/jet/token"
 )
 
-type (
-	parseFunc        func() ast.Node
-	parseLabeledFunc func(label *ast.Lower, colon text.Pos) ast.Node
-)
-
 // Grammar:
 //
 //	item {separator item}
-func (parse *parser) sequence(item parseFunc, separator ...token.Kind) []ast.Node {
+func (parse *parser) sequence(item func() ast.Node, separator ...token.Kind) []ast.Node {
 	if parse.pushTrace(stringify(separator)...) {
 		defer parse.popTrace()
 	}
 
 	nodes := []ast.Node{}
 
-	for parse.Kind != token.EOF {
+	for parse.tok.Kind != token.EOF {
 		// TODO: Determine a reliable way to recover the parser state to allow
 		// parsing subsequent items without skipping too many tokens.
 		//
@@ -51,7 +46,7 @@ func (parse *parser) sequence(item parseFunc, separator ...token.Kind) []ast.Nod
 //
 //	open [item {separator item} [separator]] close
 func (parse *parser) listOpenClose(
-	item parseFunc,
+	item func() ast.Node,
 	open, close token.Kind,
 	separator ...token.Kind,
 ) ([]ast.Node, text.Span) {
@@ -78,7 +73,7 @@ func (parse *parser) listOpenClose(
 //
 //	[item {separator item} [separator]] delimiter
 func (parse *parser) listUntil(
-	item parseFunc,
+	item func() ast.Node,
 	begin text.Span,
 	delimiter token.Kind,
 	separator ...token.Kind,
@@ -98,7 +93,7 @@ func (parse *parser) listUntil(
 	//  - unterminated list `... EOF`
 	for !parse.matchAny(delimiter, token.EOF) {
 		tracing := parse.pushTrace("item")
-		nodeStart := parse.Span.From
+		nodeStart := parse.tok.Span.From
 		node, err := catch(item)
 
 		if !err.IsValid() {
@@ -139,16 +134,16 @@ func (parse *parser) listUntil(
 // is valid.
 func (parse *parser) handleError(err report.Builder) {
 	if err.IsValid() {
-		parse.HandleError(err)
+		parse.scanner.HandleError(err)
 	}
 }
 
 // The try function catches any error panic while parsing the item and
-// replaces node with [ast.BadNode] in case of error.
+// replaces node with [*ast.BadNode] in case of error.
 //
-// This function always return not-nil node.
+// This function always return non-nil node.
 func (parse *parser) try(item func() ast.Node) ast.Node {
-	start := parse.Span.From
+	start := parse.tok.Span.From
 	node, err := catch(item)
 
 	if err.IsValid() {
@@ -161,8 +156,6 @@ func (parse *parser) try(item func() ast.Node) ast.Node {
 
 // The ensure function catches any error panic while parsing the item and
 // replaces node with nil in case of error.
-//
-// This function always return not-nil node.
 func (parse *parser) ensure(item func() ast.Node) ast.Node {
 	node, err := catch(item)
 
@@ -177,7 +170,7 @@ func (parse *parser) ensure(item func() ast.Node) ast.Node {
 // The catch function catches any error panic while parsing the item. If the
 // panic value is not an error, it re-panics with the original value.
 //
-// The item must return a non-nil node, otherwise this function will panic.
+// The item must parse a non-nil node, otherwise this function will panic.
 func catch(item func() ast.Node) (node ast.Node, err report.Builder) {
 	defer func() {
 		if p := recover(); p != nil {
