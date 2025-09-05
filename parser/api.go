@@ -19,6 +19,8 @@ const (
 )
 
 type parser struct {
+	// TODO: dis-embed fields as it's pollutes API.
+
 	*token.Scanner
 	token.Token
 
@@ -83,11 +85,9 @@ func (parse *parser) Parse() *ast.Stmts {
 			switch node.(type) {
 			case nil:
 				panic("unreachable")
-			case *ast.LetDecl,
-				*ast.ValDecl,
-				*ast.VarDecl,
-				*ast.TypeDef,
-				*ast.TypeAlias,
+			case *ast.ValueDecl,
+				*ast.TypeDecl,
+				*ast.TypeAliasDecl,
 				*ast.BadNode:
 				// OK
 			default:

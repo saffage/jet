@@ -40,12 +40,18 @@ func (node *Lower) Render(buf text.Writer) (rendered bool) {
 	return true
 }
 
-func (node *Upper) Render(buf text.Writer) (rendered bool) {
+func (node *Capitalized) Render(buf text.Writer) (rendered bool) {
 	buf.WriteString(node.Data)
 	return true
 }
 
 func (node *Placeholder) Render(buf text.Writer) (rendered bool) {
+	buf.WriteString(node.Data)
+	return true
+}
+
+func (node *TypeVariable) Render(buf text.Writer) (rendered bool) {
+	buf.WriteByte('\'')
 	buf.WriteString(node.Data)
 	return true
 }
@@ -65,13 +71,13 @@ func (node *Literal) Render(buf text.Writer) (rendered bool) {
 	return true
 }
 
-func (node *Binding) Render(buf text.Writer) (rendered bool) {
+func (node *ValueDecl) Render(buf text.Writer) (rendered bool) {
 	switch node.Kind {
-	case BindingLet:
+	case ValueLet:
 		buf.WriteString("let ")
-	case BindingVal:
+	case ValueVal:
 		buf.WriteString("val ")
-	case BindingVar:
+	case ValueVar:
 		buf.WriteString("var ")
 	}
 
@@ -81,7 +87,7 @@ func (node *Binding) Render(buf text.Writer) (rendered bool) {
 	return true
 }
 
-func (node *TypeAlias) Render(buf text.Writer) (rendered bool) {
+func (node *TypeAliasDecl) Render(buf text.Writer) (rendered bool) {
 	buf.WriteString("type ")
 	render(node.Ident, buf)
 
@@ -94,7 +100,7 @@ func (node *TypeAlias) Render(buf text.Writer) (rendered bool) {
 	return true
 }
 
-func (node *TypeDef) Render(buf text.Writer) (rendered bool) {
+func (node *TypeDecl) Render(buf text.Writer) (rendered bool) {
 	buf.WriteString("type ")
 	render(node.Ident, buf)
 
@@ -107,14 +113,14 @@ func (node *TypeDef) Render(buf text.Writer) (rendered bool) {
 	return true
 }
 
-func (node *Field) Render(buf text.Writer) (rendered bool) {
+func (node *FieldDecl) Render(buf text.Writer) (rendered bool) {
 	render(node.Label, buf)
 	buf.WriteByte(' ')
 	render(node.Type, buf)
 	return true
 }
 
-func (node *Variant) Render(buf text.Writer) (rendered bool) {
+func (node *VariantDecl) Render(buf text.Writer) (rendered bool) {
 	render(node.Name, buf)
 
 	if node.Params != nil {
@@ -147,15 +153,16 @@ func (node *Signature) Render(buf text.Writer) (rendered bool) {
 	return true
 }
 
-func (node *Fn) Render(buf text.Writer) (rendered bool) {
+func (node *FnType) Render(buf text.Writer) (rendered bool) {
 	buf.WriteString("fn")
 	render(node.Signature, buf)
+	return true
+}
 
-	if node.Body != nil {
-		buf.WriteString(" = ")
-		render(node.Body, buf)
-	}
-
+func (node *Fn) Render(buf text.Writer) (rendered bool) {
+	render(node.Type, buf)
+	buf.WriteByte(' ')
+	render(node.Body, buf)
 	return true
 }
 
@@ -279,11 +286,15 @@ func (node *Lower) IsValid() bool {
 	return node != nil && token.IsValidIdent(node.Data)
 }
 
-func (node *Upper) IsValid() bool {
+func (node *Capitalized) IsValid() bool {
 	return node != nil && token.IsValidIdent(node.Data)
 }
 
 func (node *Placeholder) IsValid() bool {
+	return node != nil && token.IsValidIdent(node.Data)
+}
+
+func (node *TypeVariable) IsValid() bool {
 	return node != nil && token.IsValidIdent(node.Data)
 }
 
@@ -292,27 +303,27 @@ func (node *Literal) IsValid() bool {
 		(IntLiteral <= node.Kind && node.Kind <= StringLiteral)
 }
 
-func (node *Binding) IsValid() bool {
+func (node *ValueDecl) IsValid() bool {
 	return node != nil &&
 		node.Pattern != nil &&
 		node.Value != nil &&
 		node.KeywordPos.IsValid() &&
-		(node.Kind >= BindingLet && node.Kind <= BindingVar)
+		(node.Kind >= ValueLet && node.Kind <= ValueVar)
 }
 
-func (node *TypeAlias) IsValid() bool {
+func (node *TypeAliasDecl) IsValid() bool {
 	return node != nil && node.Ident != nil && node.Expr != nil
 }
 
-func (node *TypeDef) IsValid() bool {
+func (node *TypeDecl) IsValid() bool {
 	return node != nil && node.Ident != nil && node.Body != nil
 }
 
-func (node *Field) IsValid() bool {
+func (node *FieldDecl) IsValid() bool {
 	return node != nil && node.Name != nil && node.Type != nil
 }
 
-func (node *Variant) IsValid() bool {
+func (node *VariantDecl) IsValid() bool {
 	return node != nil && node.Name != nil
 }
 
@@ -324,8 +335,12 @@ func (node *Signature) IsValid() bool {
 	return node != nil && node.Params != nil
 }
 
+func (node *FnType) IsValid() bool {
+	return node != nil && node.Signature.IsValid()
+}
+
 func (node *Fn) IsValid() bool {
-	return node != nil && node.Signature != nil && node.Body != nil
+	return node != nil && node.Type.IsValid() && node.Body.IsValid()
 }
 
 func (node *Call) IsValid() bool {
@@ -368,6 +383,11 @@ func (node *External) IsValid() bool {
 //
 //
 //
+
+func (pattern *PatternInvalid) Render(buf text.Writer) (rendered bool) {
+	buf.WriteString("#[bad-pattern]#")
+	return true
+}
 
 func (pattern *PatternLiteral) Render(buf text.Writer) (rendered bool) {
 	render(pattern.Value, buf)
@@ -437,6 +457,18 @@ func (pattern *PatternVariant) Render(buf text.Writer) (rendered bool) {
 	return true
 }
 
+func (pattern *PatternLabeled) Render(buf text.Writer) (rendered bool) {
+	if pattern.Label != nil {
+		render(pattern.Label, buf)
+		buf.WriteString(": ")
+	} else {
+		buf.WriteByte(':')
+	}
+
+	render(pattern.X, buf)
+	return true
+}
+
 func (pattern *PatternTypeTest) Render(buf text.Writer) (rendered bool) {
 	render(pattern.X, buf)
 	buf.WriteByte(' ')
@@ -456,12 +488,46 @@ func (pattern *PatternAlternative) Render(buf text.Writer) (rendered bool) {
 	return true
 }
 
-func (*PatternLiteral) IsValid() bool     { return false }
-func (*PatternBinding) IsValid() bool     { return false }
-func (*PatternPlaceholder) IsValid() bool { return false }
-func (*PatternRebinding) IsValid() bool   { return false }
-func (*PatternList) IsValid() bool        { return false }
-func (*PatternRange) IsValid() bool       { return false }
-func (*PatternVariant) IsValid() bool     { return false }
-func (*PatternTypeTest) IsValid() bool    { return false }
-func (*PatternAlternative) IsValid() bool { return false }
+func (pattern *PatternInvalid) IsValid() bool {
+	return false
+}
+
+func (pattern *PatternLiteral) IsValid() bool {
+	return false
+}
+
+func (pattern *PatternBinding) IsValid() bool {
+	return false
+}
+
+func (pattern *PatternPlaceholder) IsValid() bool {
+	return false
+}
+
+func (pattern *PatternRebinding) IsValid() bool {
+	return false
+}
+
+func (pattern *PatternList) IsValid() bool {
+	return false
+}
+
+func (pattern *PatternRange) IsValid() bool {
+	return false
+}
+
+func (pattern *PatternVariant) IsValid() bool {
+	return false
+}
+
+func (pattern *PatternLabeled) IsValid() bool {
+	return false
+}
+
+func (pattern *PatternTypeTest) IsValid() bool {
+	return false
+}
+
+func (pattern *PatternAlternative) IsValid() bool {
+	return false
+}

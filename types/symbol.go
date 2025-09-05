@@ -32,9 +32,9 @@ type Binding struct {
 	params  []*Binding
 
 	node        *ast.Decl
-	declNode    *ast.LetDecl // May be nil.
-	labelNode   *ast.Lower   // May be nil.
-	variantNode *ast.Variant // May be nil.
+	declNode    *ast.LetDecl     // May be nil.
+	labelNode   *ast.Lower       // May be nil.
+	variantNode *ast.VariantDecl // May be nil.
 
 	externalName string
 	isParam      bool
@@ -61,7 +61,7 @@ func NewVariant(
 	local *Env,
 	variant *Variant,
 	params []*Binding,
-	node *ast.Variant,
+	node *ast.VariantDecl,
 ) *Binding {
 	tParams := make(TypeList, len(params))
 

@@ -42,7 +42,7 @@ func (walk TopDownWalker) Walk(n Node, v Visitor) {
 			v.Visit(n)
 		}
 
-	case *Upper:
+	case *Capitalized:
 		switch v := v.(type) {
 		case UpperVisitor:
 			v.VisitUpper(n)
@@ -62,6 +62,16 @@ func (walk TopDownWalker) Walk(n Node, v Visitor) {
 			v.Visit(n)
 		}
 
+	case *TypeVariable:
+		switch v := v.(type) {
+		case TypeVariableVisitor:
+			v.VisitTypeVariable(n)
+		case IdentVisitor:
+			v.VisitIdent(n)
+		case NodeVisitor:
+			v.Visit(n)
+		}
+
 	case *Literal:
 		switch v := v.(type) {
 		case LiteralVisitor:
@@ -70,7 +80,7 @@ func (walk TopDownWalker) Walk(n Node, v Visitor) {
 			v.Visit(n)
 		}
 
-	case *Binding:
+	case *ValueDecl:
 		switch v := v.(type) {
 		case BindingVisitor:
 			v.VisitBinding(n)
@@ -80,7 +90,7 @@ func (walk TopDownWalker) Walk(n Node, v Visitor) {
 			walk.Binding(n, v)
 		}
 
-	case *TypeAlias:
+	case *TypeAliasDecl:
 		switch v := v.(type) {
 		case TypeAliasVisitor:
 			v.VisitTypeAlias(n)
@@ -90,7 +100,7 @@ func (walk TopDownWalker) Walk(n Node, v Visitor) {
 			walk.TypeAlias(n, v)
 		}
 
-	case *TypeDef:
+	case *TypeDecl:
 		switch v := v.(type) {
 		case TypeDefVisitor:
 			v.VisitTypeDef(n)
@@ -100,7 +110,7 @@ func (walk TopDownWalker) Walk(n Node, v Visitor) {
 			walk.TypeDef(n, v)
 		}
 
-	case *Field:
+	case *FieldDecl:
 		switch v := v.(type) {
 		case FieldVisitor:
 			v.VisitField(n)
@@ -110,7 +120,7 @@ func (walk TopDownWalker) Walk(n Node, v Visitor) {
 			walk.Field(n, v)
 		}
 
-	case *Variant:
+	case *VariantDecl:
 		switch v := v.(type) {
 		case VariantVisitor:
 			v.VisitVariant(n)
@@ -138,6 +148,16 @@ func (walk TopDownWalker) Walk(n Node, v Visitor) {
 			v.Visit(n)
 		default:
 			walk.Signature(n, v)
+		}
+
+	case *FnType:
+		switch v := v.(type) {
+		case FnTypeVisitor:
+			v.VisitFnType(n)
+		case NodeVisitor:
+			v.Visit(n)
+		default:
+			walk.FnType(n, v)
 		}
 
 	case *Fn:
@@ -240,6 +260,14 @@ func (walk TopDownWalker) Walk(n Node, v Visitor) {
 			walk.External(n, v)
 		}
 
+	case *PatternInvalid:
+		switch v := v.(type) {
+		case PatternInvalidVisitor:
+			v.VisitPatternInvalid(n)
+		case NodeVisitor:
+			v.Visit(n)
+		}
+
 	case *PatternLiteral:
 		switch v := v.(type) {
 		case PatternLiteralVisitor:
@@ -335,12 +363,12 @@ func (walk TopDownWalker) Walk(n Node, v Visitor) {
 	}
 }
 
-func (walk TopDownWalker) Binding(node *Binding, v Visitor) {
+func (walk TopDownWalker) Binding(node *ValueDecl, v Visitor) {
 	WalkTopDown(node.Pattern, v)
 	WalkTopDown(node.Value, v)
 }
 
-func (walk TopDownWalker) TypeAlias(node *TypeAlias, v Visitor) {
+func (walk TopDownWalker) TypeAlias(node *TypeAliasDecl, v Visitor) {
 	WalkTopDown(node.Ident, v)
 
 	if node.Args != nil {
@@ -352,7 +380,7 @@ func (walk TopDownWalker) TypeAlias(node *TypeAlias, v Visitor) {
 	WalkTopDown(node.Expr, v)
 }
 
-func (walk TopDownWalker) TypeDef(node *TypeDef, v Visitor) {
+func (walk TopDownWalker) TypeDef(node *TypeDecl, v Visitor) {
 	WalkTopDown(node.Ident, v)
 
 	if node.Args != nil {
@@ -364,7 +392,7 @@ func (walk TopDownWalker) TypeDef(node *TypeDef, v Visitor) {
 	WalkTopDown(node.Body, v)
 }
 
-func (walk TopDownWalker) Field(node *Field, v Visitor) {
+func (walk TopDownWalker) Field(node *FieldDecl, v Visitor) {
 	if node.Label != nil {
 		WalkTopDown(node.Label, v)
 	}
@@ -373,7 +401,7 @@ func (walk TopDownWalker) Field(node *Field, v Visitor) {
 	WalkTopDown(node.Type, v)
 }
 
-func (walk TopDownWalker) Variant(node *Variant, v Visitor) {
+func (walk TopDownWalker) Variant(node *VariantDecl, v Visitor) {
 	WalkTopDown(node.Name, v)
 
 	if node.Params != nil {
@@ -398,12 +426,13 @@ func (walk TopDownWalker) Signature(node *Signature, v Visitor) {
 	}
 }
 
-func (walk TopDownWalker) Fn(node *Fn, v Visitor) {
+func (walk TopDownWalker) FnType(node *FnType, v Visitor) {
 	WalkTopDown(node.Signature, v)
+}
 
-	if node.Body != nil {
-		WalkTopDown(node.Body, v)
-	}
+func (walk TopDownWalker) Fn(node *Fn, v Visitor) {
+	WalkTopDown(node.Type, v)
+	WalkTopDown(node.Body, v)
 }
 
 func (walk TopDownWalker) Call(node *Call, v Visitor) {

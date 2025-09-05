@@ -25,6 +25,8 @@ var (
 	ErrUnterminatedExpr     = errors.New("unterminated expression")
 	ErrUnterminatedList     = errors.New("unterminated list, bracket is never closed")
 	// ErrInvalidBinaryOperator    = errors.New("invalid binary operator")
+
+	WarnRedundantRebinding = errors.New("redundant rebinding")
 )
 
 func errExpectedBlock(span text.Span) report.Builder {
@@ -105,6 +107,13 @@ func errUnterminatedList(span text.Span) report.Builder {
 	return report.Build(ErrUnterminatedList).
 		Tag("parse").
 		Selection(span, "")
+}
+
+func warnRedundantRebinding(span text.Span, name string) report.Builder {
+	return report.Build(WarnRedundantRebinding).
+		Tag("parse").
+		Level(report.LevelWarning).
+		SelectionF(span, "This could be replaced with just `%s`", name)
 }
 
 func prettyJoin[T any](items []T) string {

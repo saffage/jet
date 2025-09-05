@@ -39,7 +39,7 @@ type Named struct {
 	body *Env
 
 	// An AST node of the type definition.
-	node *ast.TypeDef
+	node *ast.TypeDecl
 
 	// Type parameters (aka "generics" or "parametric polymorphism").
 	//
@@ -113,7 +113,7 @@ type Alias struct {
 	owner *Env
 
 	// An AST node of the type definition.
-	node *ast.TypeAlias
+	node *ast.TypeAliasDecl
 
 	// Type parameters (aka "generics" or "parametric polymorphism").
 	//

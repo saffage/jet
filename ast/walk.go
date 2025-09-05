@@ -19,20 +19,22 @@ type (
 	NodeVisitor  interface{ Visit(Node) }
 	IdentVisitor interface{ VisitIdent(Ident) }
 
-	BadNodeVisitor     interface{ VisitBadNode(*BadNode) }
-	LowerVisitor       interface{ VisitLower(*Lower) }
-	UpperVisitor       interface{ VisitUpper(*Upper) }
-	PlaceholderVisitor interface{ VisitPlaceholder(*Placeholder) }
-	LiteralVisitor     interface{ VisitLiteral(*Literal) }
+	BadNodeVisitor      interface{ VisitBadNode(*BadNode) }
+	LowerVisitor        interface{ VisitLower(*Lower) }
+	UpperVisitor        interface{ VisitUpper(*Capitalized) }
+	PlaceholderVisitor  interface{ VisitPlaceholder(*Placeholder) }
+	TypeVariableVisitor interface{ VisitTypeVariable(*TypeVariable) }
+	LiteralVisitor      interface{ VisitLiteral(*Literal) }
 
-	BindingVisitor   interface{ VisitBinding(*Binding) }
-	TypeAliasVisitor interface{ VisitTypeAlias(*TypeAlias) }
-	TypeDefVisitor   interface{ VisitTypeDef(*TypeDef) }
-	FieldVisitor     interface{ VisitField(*Field) }
-	VariantVisitor   interface{ VisitVariant(*Variant) }
+	BindingVisitor   interface{ VisitBinding(*ValueDecl) }
+	TypeAliasVisitor interface{ VisitTypeAlias(*TypeAliasDecl) }
+	TypeDefVisitor   interface{ VisitTypeDef(*TypeDecl) }
+	FieldVisitor     interface{ VisitField(*FieldDecl) }
+	VariantVisitor   interface{ VisitVariant(*VariantDecl) }
 
 	LabelVisitor     interface{ VisitLabel(*Label) }
 	SignatureVisitor interface{ VisitSignature(*Signature) }
+	FnTypeVisitor    interface{ VisitFnType(*FnType) }
 	FnVisitor        interface{ VisitFn(*Fn) }
 	CallVisitor      interface{ VisitCall(*Call) }
 	DotVisitor       interface{ VisitDot(*Dot) }
@@ -46,6 +48,7 @@ type (
 	CaseClauseVisitor interface{ VisitCaseClause(*CaseClause) }
 	ExternalVisitor   interface{ VisitExternal(*External) }
 
+	PatternInvalidVisitor     interface{ VisitPatternInvalid(*PatternInvalid) }
 	PatternLiteralVisitor     interface{ VisitPatternLiteral(*PatternLiteral) }
 	PatternBindingVisitor     interface{ VisitPatternBinding(*PatternBinding) }
 	PatternPlaceholderVisitor interface{ VisitPatternPlaceholder(*PatternPlaceholder) }

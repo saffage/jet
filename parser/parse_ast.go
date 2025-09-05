@@ -19,7 +19,7 @@ func (parse *parser) declOrExpr() ast.Node {
 
 	switch parse.Kind {
 	case token.KwLet, token.KwVal, token.KwVar:
-		return parse.valueDecl()
+		return parse.binding()
 
 	case token.KwType:
 		return parse.typeDecl()
@@ -29,26 +29,50 @@ func (parse *parser) declOrExpr() ast.Node {
 	}
 }
 
-func (parse *parser) variable() ast.Node {
+func (parse *parser) fieldDecl() ast.Node {
 	if parse.pushTrace() {
 		defer parse.popTrace()
 	}
 
-	name := parse.ident()
-	ty := ast.Node(nil)
+	parse.labeled(
+		func(label *ast.Lower, colon text.Pos) ast.Node {
+			if label != nil {
+				if colon.IsValid() {
+					variable := parse.try(parse.typeExpr)
 
-	if parse.isTypeStartOrSignature() {
-		ty = parse.typeOrSignature()
-	}
+					return &ast.Label{
+						Name:     label,
+						X:        variable,
+						ColonTok: colon,
+					}
+				} else {
+					parse.error(errUnexpectedToken(
+						label.Span,
+						"lowercase identifier",
+						"type",
+					))
+					panic("unreachable")
+				}
+			} else {
+				if colon.IsValid() {
+					parse.error(errUnexpectedToken(
+						label.Span,
+						"':' for label shorthand",
+						"type",
+						"labeled type",
+					))
+					panic("unreachable")
+				} else {
+					return parse.try(parse.typeExpr)
+				}
+			}
+		},
+	)
 
-	return &ast.Decl{
-		Ident:   name,
-		Type:    ty,
-		TypeTok: text.NoPos,
-	}
+	return nil
 }
 
-func (parse *parser) variant() ast.Node {
+func (parse *parser) variantDecl() ast.Node {
 	if parse.pushTrace() {
 		defer parse.popTrace()
 	}
@@ -60,33 +84,42 @@ func (parse *parser) variant() ast.Node {
 		params = parse.parens(
 			parse.labeled(
 				func(label *ast.Lower, colon text.Pos) ast.Node {
-					switch {
-					case colon.IsValid():
-						variable := parse.try(parse.variable)
+					if label != nil {
+						if colon.IsValid() {
+							variable := parse.try(parse.typeExpr)
 
-						return &ast.Label{
-							Name:     label,
-							X:        variable,
-							ColonTok: colon,
+							return &ast.Label{
+								Name:     label,
+								X:        variable,
+								ColonTok: colon,
+							}
+						} else {
+							parse.error(errUnexpectedToken(
+								label.Span,
+								"lowercase identifier",
+								"type",
+							))
+							panic("unreachable")
 						}
-
-					case label != nil:
-						decl := &ast.Decl{Ident: label}
-
-						if parse.isTypeStart() {
-							decl.Type = parse.typeExpr()
+					} else {
+						if colon.IsValid() {
+							parse.error(errUnexpectedToken(
+								label.Span,
+								"':' for label shorthand",
+								"type",
+								"labeled type",
+							))
+							panic("unreachable")
+						} else {
+							return parse.try(parse.typeExpr)
 						}
-
-						return decl
 					}
-
-					return parse.typeExpr()
 				},
 			),
 		)
 	}
 
-	return &ast.Variant{
+	return &ast.VariantDecl{
 		Name:   name,
 		Params: params,
 	}
@@ -97,75 +130,47 @@ func (parse *parser) typeVariable() ast.Node {
 		defer parse.popTrace()
 	}
 
-	name := parse.lowerNode()
-	ty := ast.Node(nil)
+	name := parse.lowerNode().(*ast.Lower)
 
-	// type constraint
-	// if parse.isTypeStart() {
-	// 	ty = parse.typeExpr()
-	// }
-
-	decl := &ast.Decl{
-		Ident:   name,
-		Type:    ty,
-		TypeTok: text.NoPos,
+	return &ast.TypeVariable{
+		Data: name.Data,
+		Span: name.Span,
 	}
-
-	// if tok, ok := parse.consume(token.Eq); ok {
-	// 	var tyDefault ast.Node
-	//
-	// 	if tyDefault, err = parse.typeExpr(); err != nil {
-	// 		return nil, err
-	// 	}
-	//
-	// 	return &ast.Op{
-	// 		X:    decl,
-	// 		Y:    tyDefault,
-	// 		Span: tok.Span,
-	// 		Kind: ast.OperatorAssign,
-	// 	}, nil
-	// }
-
-	return decl
 }
 
-func (parse *parser) valueDecl() ast.Node {
+func (parse *parser) binding() ast.Node {
 	if parse.pushTrace() {
 		defer parse.popTrace()
 	}
 
 	tok := parse.expectAny(token.KwLet, token.KwVal, token.KwVar)
-	decl := parse.variable().(*ast.Decl)
+	pattern := parse.pattern(patternKindValue).(ast.Pattern)
 
 	parse.expect(token.Eq)
 	parse.skipNewLines()
 
-	expr := parse.externalOr(parse.expr)()
+	value := parse.externalOr(parse.expr)()
+	bindingKind := ast.ValueLet
 
 	switch tok.Kind {
 	case token.KwLet:
-		return &ast.LetDecl{
-			LetTok: tok.Span.From,
-			Decl:   decl,
-			Value:  expr,
-		}
+		// Default value.
 
 	case token.KwVal:
-		return &ast.ValDecl{
-			ValTok: tok.Span.From,
-			Decl:   decl,
-			Value:  expr,
-		}
+		bindingKind = ast.ValueVal
 
 	case token.KwVar:
-		return &ast.VarDecl{
-			VarTok: tok.Span.From,
-			Decl:   decl,
-			Value:  expr,
-		}
+		bindingKind = ast.ValueVar
 
 	default:
 		panic("unreachable")
+	}
+
+	return &ast.ValueDecl{
+		Pattern:    pattern,
+		Value:      value,
+		KeywordPos: tok.Span.From,
+		Kind:       bindingKind,
 	}
 }
 
@@ -187,7 +192,7 @@ func (parse *parser) typeDecl() ast.Node {
 		eqTok := parse.next()
 		expr := parse.externalOr(parse.typeExpr)()
 
-		return &ast.TypeAlias{
+		return &ast.TypeAliasDecl{
 			TypeTok: typeTok.Span.From,
 			EqTok:   eqTok.Span.From,
 			Ident:   name,
@@ -198,7 +203,7 @@ func (parse *parser) typeDecl() ast.Node {
 	case token.LCurly:
 		body := parse.blockFunc(parse.typeVariantOrField)
 
-		return &ast.TypeDef{
+		return &ast.TypeDecl{
 			TypeTok: typeTok.Span.From,
 			Ident:   name,
 			Args:    args,
@@ -209,8 +214,8 @@ func (parse *parser) typeDecl() ast.Node {
 		parse.error(errUnexpectedToken(
 			parse.Span,
 			parse.Kind,
-			token.Eq.String(),
-			"type definition block",
+			"'=' for type alias",
+			"'{' for type definition",
 		))
 		panic("unreachable")
 	}
@@ -225,10 +230,10 @@ func (parse *parser) typeVariantOrField() ast.Node {
 
 	switch parse.Kind {
 	case token.LowercaseIdent, token.IdentPlaceholder, token.Colon:
-		return parse.labeled(parse.variableFromLabel)()
+		return parse.fieldDecl()
 
 	case token.UppercaseIdent:
-		return parse.variant()
+		return parse.variantDecl()
 
 	default:
 		parse.error(errUnexpectedToken(
@@ -288,13 +293,13 @@ func (parse *parser) upperNode() ast.Ident {
 
 	tok := parse.expect(token.UppercaseIdent)
 
-	return &ast.Upper{
+	return &ast.Capitalized{
 		Data: tok.Data,
 		Span: tok.Span,
 	}
 }
 
-func (parse *parser) UppercaseIdent() *ast.Upper {
+func (parse *parser) UppercaseIdent() *ast.Capitalized {
 	if parse.pushTrace() {
 		defer parse.popTrace()
 	}
@@ -305,7 +310,7 @@ func (parse *parser) UppercaseIdent() *ast.Upper {
 		return nil
 	}
 
-	return &ast.Upper{
+	return &ast.Capitalized{
 		Data: tok.Data,
 		Span: tok.Span,
 	}
@@ -411,12 +416,16 @@ func (parse *parser) args() *ast.Parens {
 	)
 }
 
-func (parse *parser) typeArgs() ast.Node {
-	return parse.parens(parse.typeExpr)
-}
+// func (parse *parser) typeArgs() *ast.Parens {
+// 	return parse.parens(parse.typeExpr)
+// }
 
 func (parse *parser) isTypeStart() bool {
-	return parse.matchAny(token.UppercaseIdent, token.LowercaseIdent, token.LParen)
+	return parse.matchAny(
+		token.UppercaseIdent,
+		token.LowercaseIdent,
+		token.LParen,
+	)
 }
 
 func (parse *parser) isTypeStartOrSignature() bool {
@@ -508,9 +517,7 @@ func (parse *parser) typeOrSignature() ast.Node {
 
 	switch {
 	case parse.match(token.LParen):
-		return parse.signature(
-			parse.labeled(parse.variableFromLabel),
-		)()
+		return parse.signature(func() ast.Node { return fromLabel(parse, fieldFromLabel{}) })()
 
 	case parse.isTypeStart():
 		return parse.typeExpr()
@@ -528,51 +535,48 @@ func (parse *parser) typeOrSignature() ast.Node {
 	}
 }
 
-func (parse *parser) variableFromLabel(
-	label *ast.Lower,
-	colon text.Pos,
-) ast.Node {
-	if parse.pushTrace() {
-		defer parse.popTrace()
-	}
+// func (parse *parser) variableFromLabel(
+// 	label *ast.Lower,
+// 	colon text.Pos,
+// ) ast.Node {
+// 	if parse.pushTrace() {
+// 		defer parse.popTrace()
+// 	}
 
-	switch {
-	case colon.IsValid():
-		variable := parse.try(parse.variable)
+// 	switch {
+// 	case colon.IsValid():
+// 		variable := parse.try(parse.variable)
 
-		return &ast.Label{
-			Name:     label,
-			X:        variable,
-			ColonTok: colon,
-		}
+// 		return &ast.Label{
+// 			Name:     label,
+// 			X:        variable,
+// 			ColonTok: colon,
+// 		}
 
-	case label != nil:
-		decl := &ast.Decl{Ident: label}
+// 	case label != nil:
+// 		decl := &ast.Decl{Ident: label}
 
-		if parse.isTypeStart() {
-			decl.Type = parse.typeExpr()
-		}
+// 		if parse.isTypeStart() {
+// 			decl.Type = parse.typeExpr()
+// 		}
 
-		return decl
-	}
+// 		return decl
+// 	}
 
-	return parse.variable()
-}
+// 	return parse.variable()
+// }
 
 func (parse *parser) functionType() ast.Node {
 	if parse.pushTrace() {
 		defer parse.popTrace()
 	}
 
-	parse.expect(token.KwFn)
-
+	tok := parse.expect(token.KwFn)
 	signature := parse.signature(parse.typeExpr)()
 
-	return &ast.Function{
+	return &ast.FnType{
 		Signature: signature.(*ast.Signature),
-		Body:      nil,
-		FnTok:     text.NoPos,
-		EqTok:     text.NoPos,
+		FnTok:     tok.Span.From,
 	}
 }
 
@@ -581,12 +585,13 @@ func (parse *parser) function() ast.Node {
 		defer parse.popTrace()
 	}
 
-	fn := parse.functionType().(*ast.Function)
-	tok := parse.expect(token.Eq)
-	fn.EqTok = tok.Span.From
-	fn.Body = parse.expr()
+	fnType := parse.functionType().(*ast.FnType)
+	fnBody := parse.block().(*ast.Block)
 
-	return fn
+	return &ast.Fn{
+		Type: fnType,
+		Body: fnBody,
+	}
 }
 
 func (parse *parser) expr() ast.Node {
@@ -613,118 +618,29 @@ func (parse *parser) whenExpr() ast.Node {
 
 	whenTok := parse.expect(token.KwWhen)
 	expr := parse.expr()
-	body := parse.blockFunc(parse.case_)
+	body := parse.blockFunc(parse.caseClause)
 
 	return &ast.When{
-		Expr:    expr,
-		Body:    body,
+		Cond:    expr,
+		Clauses: body,
 		WhenTok: whenTok.Span.From,
 	}
 }
 
-func (parse *parser) case_() ast.Node {
+func (parse *parser) caseClause() ast.Node {
 	if parse.pushTrace() {
 		defer parse.popTrace()
 	}
 
-	pattern := parse.casePattern()
+	pattern := parse.pattern(patternKindCase)
 	arrowTok := parse.expect(token.Arrow)
 	expr := parse.expr()
 
-	return &ast.Case{
+	return &ast.CaseClause{
 		Pattern:  pattern,
 		Expr:     expr,
 		ArrowTok: arrowTok.Span.From,
 	}
-}
-
-func (parse *parser) casePattern() ast.Node {
-	if parse.pushTrace() {
-		defer parse.popTrace()
-	}
-
-	node := ast.Node(nil)
-
-	switch {
-	case parse.matchAny(token.Int, token.Float, token.String):
-		node = parse.literal()
-
-	case parse.matchAny(token.LowercaseIdent, token.IdentPlaceholder):
-		name := parse.ident()
-
-		if parse.isTypeStart() {
-			ty := parse.typeExpr()
-
-			node = &ast.Decl{Ident: name, Type: ty}
-		} else {
-			node = name
-		}
-
-	case parse.match(token.UppercaseIdent):
-		node = parse.upperNode()
-
-		if parse.match(token.LParen) {
-			spreadOrLabeledExpr := parse.spread(
-				parse.labeled(
-					func(label *ast.Lower, colon text.Pos) ast.Node {
-						switch {
-						case label != nil && colon.IsValid():
-							x := parse.try(parse.casePattern)
-
-							return &ast.Label{
-								Name:     label,
-								X:        x,
-								ColonTok: colon,
-							}
-
-						case label != nil && !colon.IsValid():
-							if parse.isTypeStart() {
-								ty := parse.typeExpr()
-
-								node = &ast.Decl{Ident: label, Type: ty}
-							} else {
-								node = label
-							}
-
-						case label == nil && colon.IsValid():
-							if ident := parse.LowercaseIdent(); ident != nil {
-								return &ast.Label{
-									X:        ident,
-									ColonTok: colon,
-								}
-							}
-						}
-						return parse.casePattern()
-					},
-				),
-			)
-
-			list := parse.parens(spreadOrLabeledExpr)
-			node = &ast.Call{X: node, Args: list}
-		}
-
-	case parse.match(token.LBracket):
-		node = parse.brackets(parse.spread(parse.casePattern))
-
-	case parse.match(token.LParen):
-		node = parse.parens(parse.casePattern)
-
-	default:
-		parse.error(errExpectedPattern(parse.Span, 0))
-		panic("unreachable")
-	}
-
-	if tok, ok := parse.consume(token.KwAs); ok {
-		name := parse.lowerNode()
-
-		return &ast.As{
-			Expr:    node,
-			NewName: name,
-			AsTok:   tok.Span.From,
-		}
-	}
-
-	return node
 }
 
 func (parse *parser) binaryExpr(precedence int) ast.Node {
@@ -853,23 +769,7 @@ func (parse *parser) selector() ast.Node {
 		defer parse.popTrace()
 	}
 
-	switch parse.Kind {
-	case token.LowercaseIdent:
-		return parse.lowerNode()
-
-	case token.UppercaseIdent:
-		return parse.upperNode()
-
-	case token.LCurly:
-		return parse.block()
-
-	case token.LParen:
-		return parse.parens(parse.expr)
-
-	case token.LBracket:
-		return parse.brackets(parse.expr)
-
-	default:
+	if parse.Kind != token.LowercaseIdent {
 		parse.error(errUnexpectedToken(
 			parse.Span,
 			parse.Kind,
@@ -881,21 +781,23 @@ func (parse *parser) selector() ast.Node {
 		))
 		panic("unreachable")
 	}
+
+	return parse.lowerNode()
 }
 
 //
 //
 //
 
-func (parse *parser) labeled(f parseLabeledFunc) parseFunc {
+func (parse *parser) labeled(f func(label *ast.Lower, colon text.Pos) ast.Node) func() ast.Node {
 	return func() ast.Node {
 		if parse.pushTrace() {
 			defer parse.popTrace()
 		}
 
-		// f   ->   nil, nil 	- no ident
-		// :f  ->   nil, colon 	- short ident, 'f' must be able to parse an ident
-		// l:f -> ident, colon 	- regular ident, followed by 'f'
+		// f   ->   nil, nil 	- no label, just 'f'
+		// :f  ->   nil, colon 	- short label, 'f' must be able to parse an ident
+		// l:f -> ident, colon 	- regular label, followed by 'f'
 		// l   -> ident, nil 	- 'f' must be able to parse an ident
 		ident := parse.LowercaseIdent()
 		colon, _ := parse.consume(token.Colon)
@@ -904,7 +806,7 @@ func (parse *parser) labeled(f parseLabeledFunc) parseFunc {
 	}
 }
 
-func (parse *parser) externalOr(f parseFunc) parseFunc {
+func (parse *parser) externalOr(f func() ast.Node) func() ast.Node {
 	return func() ast.Node {
 		if parse.pushTrace() {
 			defer parse.popTrace()
@@ -927,7 +829,7 @@ func (parse *parser) externalOr(f parseFunc) parseFunc {
 	}
 }
 
-func (parse *parser) signature(parseParamFunc parseFunc) parseFunc {
+func (parse *parser) signature(parseParamFunc func() ast.Node) func() ast.Node {
 	return func() ast.Node {
 		if parse.pushTrace() {
 			defer parse.popTrace()
@@ -947,26 +849,26 @@ func (parse *parser) signature(parseParamFunc parseFunc) parseFunc {
 	}
 }
 
-func (parse *parser) spread(fallback parseFunc) parseFunc {
-	return func() ast.Node {
-		if parse.pushTrace() {
-			defer parse.popTrace()
-		}
+// func (parse *parser) spread(fallback func() ast.Node) func() ast.Node {
+// 	return func() ast.Node {
+// 		if parse.pushTrace() {
+// 			defer parse.popTrace()
+// 		}
 
-		if tok, ok := parse.consume(token.Dot2); ok {
-			ident := parse.identOrNil()
+// 		if tok, ok := parse.consume(token.Dot2); ok {
+// 			ident := parse.identOrNil()
 
-			return &ast.Spread{
-				Expr:      ident,
-				SpreadTok: tok.Span.From,
-			}
-		}
+// 			return &ast.Spread{
+// 				Expr:      ident,
+// 				SpreadTok: tok.Span.From,
+// 			}
+// 		}
 
-		return fallback()
-	}
-}
+// 		return fallback()
+// 	}
+// }
 
-func (parse *parser) blockFunc(f parseFunc) *ast.Block {
+func (parse *parser) blockFunc(f func() ast.Node) *ast.Block {
 	if parse.pushTrace() {
 		defer parse.popTrace()
 	}
@@ -990,7 +892,7 @@ func (parse *parser) blockFunc(f parseFunc) *ast.Block {
 	}
 }
 
-func (parse *parser) parens(f parseFunc) *ast.Parens {
+func (parse *parser) parens(f func() ast.Node) *ast.Parens {
 	if parse.pushTrace() {
 		defer parse.popTrace()
 	}
@@ -1008,7 +910,7 @@ func (parse *parser) parens(f parseFunc) *ast.Parens {
 	}
 }
 
-func (parse *parser) brackets(f parseFunc) *ast.List {
+func (parse *parser) brackets(f func() ast.Node) *ast.List {
 	if parse.pushTrace() {
 		defer parse.popTrace()
 	}
@@ -1024,6 +926,87 @@ func (parse *parser) brackets(f parseFunc) *ast.List {
 		Nodes: nodes,
 		Span:  span,
 	}
+}
+
+type labelParser interface {
+	FromLabel(parse *parser, name *ast.Lower, colon text.Pos) ast.Node
+	FromLower(parse *parser, name *ast.Lower) ast.Node
+	FromColon(parse *parser, colon text.Pos) ast.Node
+	FromNothing(parse *parser) ast.Node
+}
+
+func fromLabel[T labelParser](parse *parser, t T) ast.Node {
+	if parse.pushTrace() {
+		defer parse.popTrace()
+	}
+
+	ident := parse.LowercaseIdent()
+	colon, _ := parse.consume(token.Colon)
+
+	// l:f -> ident, colon 	- regular label, followed by 'f'
+	// l   -> ident, nil 	- 'f' must be able to parse an ident
+	// :f  ->   nil, colon 	- short label, 'f' must be able to parse an ident
+	// f   ->   nil, nil 	- no label, just 'f'
+	if ident != nil {
+		if colon.Span.IsValid() {
+			return t.FromLabel(parse, ident, colon.Span.From)
+		} else {
+			return t.FromLower(parse, ident)
+		}
+	} else {
+		if colon.Span.IsValid() {
+			return t.FromColon(parse, colon.Span.From)
+		} else {
+			return t.FromNothing(parse)
+		}
+	}
+}
+
+type fieldFromLabel struct{}
+
+func (fieldFromLabel) FromLabel(parse *parser, name *ast.Lower, colon text.Pos) ast.Node {
+	ty := parse.try(parse.typeExpr)
+
+	return &ast.FieldDecl{
+		Label: nil,
+		Name:  name,
+		Type:  ty,
+	}
+}
+
+func (fieldFromLabel) FromLower(parse *parser, name *ast.Lower) ast.Node {
+	ty := parse.try(parse.typeExpr)
+
+	return &ast.FieldDecl{
+		Label: nil,
+		Name:  name,
+		Type:  ty,
+	}
+}
+
+func (fieldFromLabel) FromColon(parse *parser, colon text.Pos) ast.Node {
+	name := parse.try(func() ast.Node { return parse.lowerNode() }).(*ast.Lower)
+	ty := parse.try(parse.typeExpr)
+
+	return &ast.FieldDecl{
+		Label: nil,
+		Name:  name,
+		Type:  ty,
+	}
+}
+
+func (fieldFromLabel) FromNothing(parse *parser) ast.Node {
+	if parse.match(token.UppercaseIdent) {
+		return parse.variantDecl()
+	}
+
+	parse.error(errUnexpectedToken(
+		parse.Span,
+		parse.Kind,
+		"'lowercase identifier' or ':' for field",
+		"'capitalized identifier' for variant",
+	))
+	panic("unreachable")
 }
 
 var precedences = map[token.Kind]int{

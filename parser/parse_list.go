@@ -9,15 +9,10 @@ import (
 	"github.com/saffage/jet/token"
 )
 
-type (
-	parseFunc        func() ast.Node
-	parseLabeledFunc func(label *ast.Lower, colon text.Pos) ast.Node
-)
-
 // Grammar:
 //
 //	item {separator item}
-func (parse *parser) sequence(item parseFunc, separator ...token.Kind) []ast.Node {
+func (parse *parser) sequence(item func() ast.Node, separator ...token.Kind) []ast.Node {
 	if parse.pushTrace(stringify(separator)...) {
 		defer parse.popTrace()
 	}
@@ -51,7 +46,7 @@ func (parse *parser) sequence(item parseFunc, separator ...token.Kind) []ast.Nod
 //
 //	open [item {separator item} [separator]] close
 func (parse *parser) listOpenClose(
-	item parseFunc,
+	item func() ast.Node,
 	open, close token.Kind,
 	separator ...token.Kind,
 ) ([]ast.Node, text.Span) {
@@ -78,7 +73,7 @@ func (parse *parser) listOpenClose(
 //
 //	[item {separator item} [separator]] delimiter
 func (parse *parser) listUntil(
-	item parseFunc,
+	item func() ast.Node,
 	begin text.Span,
 	delimiter token.Kind,
 	separator ...token.Kind,
