@@ -21,8 +21,8 @@ const (
 type parser struct {
 	// TODO: dis-embed fields as it's pollutes API.
 
-	*token.Scanner
-	token.Token
+	scanner *token.Scanner
+	tok     token.Token
 
 	tracer tracer
 	flags  Flags
@@ -63,7 +63,7 @@ func New(s *token.Scanner, opts ...Options) *parser {
 	}
 
 	p := &parser{
-		Scanner: s,
+		scanner: s,
 		flags:   opt.ParserFlags,
 		tracer:  tracer{enabled: opt.ParserFlags&Trace != 0},
 	}
@@ -74,7 +74,7 @@ func New(s *token.Scanner, opts ...Options) *parser {
 func (parse *parser) Parse() *ast.Stmts {
 	decls := parse.listUntil(
 		parse.declOrExpr,
-		parse.Span,
+		parse.tok.Span,
 		token.EOF,
 		token.Semicolon,
 		token.Newline,
@@ -106,9 +106,9 @@ func (parse *parser) Parse() *ast.Stmts {
 
 func (parse *parser) ParseOrError() (*ast.Stmts, error) {
 	errs := []error{}
-	prev := parse.SetErrorHandler(func(err error) { errs = append(errs, err) })
+	prev := parse.scanner.SetErrorHandler(func(err error) { errs = append(errs, err) })
 
-	defer parse.SetErrorHandler(prev)
+	defer parse.scanner.SetErrorHandler(prev)
 
 	stmts := parse.Parse()
 

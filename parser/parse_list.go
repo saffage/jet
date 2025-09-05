@@ -19,7 +19,7 @@ func (parse *parser) sequence(item func() ast.Node, separator ...token.Kind) []a
 
 	nodes := []ast.Node{}
 
-	for parse.Kind != token.EOF {
+	for parse.tok.Kind != token.EOF {
 		// TODO: Determine a reliable way to recover the parser state to allow
 		// parsing subsequent items without skipping too many tokens.
 		//
@@ -93,7 +93,7 @@ func (parse *parser) listUntil(
 	//  - unterminated list `... EOF`
 	for !parse.matchAny(delimiter, token.EOF) {
 		tracing := parse.pushTrace("item")
-		nodeStart := parse.Span.From
+		nodeStart := parse.tok.Span.From
 		node, err := catch(item)
 
 		if !err.IsValid() {
@@ -134,7 +134,7 @@ func (parse *parser) listUntil(
 // is valid.
 func (parse *parser) handleError(err report.Builder) {
 	if err.IsValid() {
-		parse.HandleError(err)
+		parse.scanner.HandleError(err)
 	}
 }
 
@@ -143,7 +143,7 @@ func (parse *parser) handleError(err report.Builder) {
 //
 // This function always return non-nil node.
 func (parse *parser) try(item func() ast.Node) ast.Node {
-	start := parse.Span.From
+	start := parse.tok.Span.From
 	node, err := catch(item)
 
 	if err.IsValid() {

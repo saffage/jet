@@ -43,7 +43,7 @@ func (parse *parser) pushTrace(args ...string) bool {
 		}
 	}
 
-	pos := parse.PositionOf(parse.Span.From)
+	pos := parse.scanner.PositionOf(parse.tok.Span.From)
 
 	fmt.Fprintf(
 		report.Output,
@@ -54,7 +54,7 @@ func (parse *parser) pushTrace(args ...string) bool {
 		color.HiBlackString(
 			"%d: %s (%s)",
 			parse.tracer.tokenIndex,
-			parse.Kind,
+			parse.tok.Kind,
 			pos,
 		),
 	)
@@ -76,7 +76,7 @@ func (parse *parser) popTrace() {
 	parse.tracer.stack = parse.tracer.stack[:len(parse.tracer.stack)-1]
 
 	if entry.err != nil {
-		pos := parse.PositionOf(parse.Span.From)
+		pos := parse.scanner.PositionOf(parse.tok.Span.From)
 
 		fmt.Fprintf(
 			report.Output,
@@ -87,7 +87,7 @@ func (parse *parser) popTrace() {
 			color.HiBlackString(
 				"%d: %s (%s)",
 				parse.tracer.tokenIndex,
-				parse.Kind,
+				parse.tok.Kind,
 				pos,
 			),
 		)

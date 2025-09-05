@@ -17,7 +17,7 @@ func (parse *parser) declOrExpr() ast.Node {
 
 	parse.skipNewLines()
 
-	switch parse.Kind {
+	switch parse.tok.Kind {
 	case token.KwLet, token.KwVal, token.KwVar:
 		return parse.binding()
 
@@ -77,7 +77,7 @@ func (parse *parser) variantDecl() ast.Node {
 		defer parse.popTrace()
 	}
 
-	name := parse.UppercaseIdent()
+	name := parse.uppercaseIdent()
 	params := (*ast.Parens)(nil)
 
 	if parse.match(token.LParen) {
@@ -180,14 +180,14 @@ func (parse *parser) typeDecl() ast.Node {
 	}
 
 	typeTok := parse.expect(token.KwType)
-	name := parse.UppercaseIdent()
+	name := parse.uppercaseIdent()
 	args := (*ast.Parens)(nil)
 
 	if parse.match(token.LParen) {
 		args = parse.parens(parse.typeVariable)
 	}
 
-	switch parse.Kind {
+	switch parse.tok.Kind {
 	case token.Eq:
 		eqTok := parse.next()
 		expr := parse.externalOr(parse.typeExpr)()
@@ -212,8 +212,8 @@ func (parse *parser) typeDecl() ast.Node {
 
 	default:
 		parse.error(errUnexpectedToken(
-			parse.Span,
-			parse.Kind,
+			parse.tok.Span,
+			parse.tok.Kind,
 			"'=' for type alias",
 			"'{' for type definition",
 		))
@@ -228,7 +228,7 @@ func (parse *parser) typeVariantOrField() ast.Node {
 
 	parse.skipNewLines()
 
-	switch parse.Kind {
+	switch parse.tok.Kind {
 	case token.LowercaseIdent, token.IdentPlaceholder, token.Colon:
 		return parse.fieldDecl()
 
@@ -237,8 +237,8 @@ func (parse *parser) typeVariantOrField() ast.Node {
 
 	default:
 		parse.error(errUnexpectedToken(
-			parse.Span,
-			parse.Kind,
+			parse.tok.Span,
+			parse.tok.Kind,
 			"field",
 			"variant",
 		))
@@ -246,7 +246,7 @@ func (parse *parser) typeVariantOrField() ast.Node {
 	}
 }
 
-func (parse *parser) IdentPlaceholder() ast.Ident {
+func (parse *parser) identPlaceholder() ast.Ident {
 	if parse.pushTrace() {
 		defer parse.popTrace()
 	}
@@ -272,7 +272,7 @@ func (parse *parser) lowerNode() ast.Ident {
 	}
 }
 
-func (parse *parser) LowercaseIdent() *ast.Lower {
+func (parse *parser) lowercaseIdent() *ast.Lower {
 	if parse.pushTrace() {
 		defer parse.popTrace()
 	}
@@ -299,7 +299,7 @@ func (parse *parser) upperNode() ast.Ident {
 	}
 }
 
-func (parse *parser) UppercaseIdent() *ast.Capitalized {
+func (parse *parser) uppercaseIdent() *ast.Capitalized {
 	if parse.pushTrace() {
 		defer parse.popTrace()
 	}
@@ -320,7 +320,7 @@ func (parse *parser) literal() ast.Node {
 	tok, ok := parse.consumeAny(token.Int, token.Float, token.String)
 
 	if !ok {
-		parse.error(errExpectedOperand(parse.Span))
+		parse.error(errExpectedOperand(parse.tok.Span))
 		panic("unreachable")
 	}
 
@@ -336,17 +336,17 @@ func (parse *parser) ident() ast.Ident {
 		defer parse.popTrace()
 	}
 
-	switch parse.Kind {
+	switch parse.tok.Kind {
 	case token.LowercaseIdent:
 		return parse.lowerNode()
 
 	case token.IdentPlaceholder:
-		return parse.IdentPlaceholder()
+		return parse.identPlaceholder()
 
 	default:
 		parse.error(errUnexpectedToken(
-			parse.Span,
-			parse.Kind,
+			parse.tok.Span,
+			parse.tok.Kind,
 			token.LowercaseIdent,
 			token.IdentPlaceholder,
 		))
@@ -359,12 +359,12 @@ func (parse *parser) identOrNil() ast.Ident {
 		defer parse.popTrace()
 	}
 
-	switch parse.Kind {
+	switch parse.tok.Kind {
 	case token.LowercaseIdent:
 		return parse.lowerNode()
 
 	case token.IdentPlaceholder:
-		return parse.IdentPlaceholder()
+		return parse.identPlaceholder()
 
 	default:
 		return nil
@@ -470,7 +470,7 @@ func (parse *parser) simpleTypeExpr() ast.Node {
 		defer parse.popTrace()
 	}
 
-	switch parse.Kind {
+	switch parse.tok.Kind {
 	case token.UppercaseIdent:
 		node := parse.upperNode()
 
@@ -500,8 +500,8 @@ func (parse *parser) simpleTypeExpr() ast.Node {
 
 	default:
 		parse.error(errUnexpectedToken(
-			parse.Span,
-			parse.Kind,
+			parse.tok.Span,
+			parse.tok.Kind,
 			token.UppercaseIdent,
 			token.LowercaseIdent,
 			token.KwFn,
@@ -524,8 +524,8 @@ func (parse *parser) typeOrSignature() ast.Node {
 
 	default:
 		parse.error(errUnexpectedToken(
-			parse.Span,
-			parse.Kind.String(),
+			parse.tok.Span,
+			parse.tok.Kind.String(),
 			token.UppercaseIdent.String(),
 			token.LowercaseIdent.String(),
 			token.KwFn.String(),
@@ -660,8 +660,8 @@ func (parse *parser) binaryExprFrom(x ast.Node, precedence int) ast.Node {
 		panic("unreachable")
 	}
 
-	for oprKind, ok := operators[parse.Kind]; ok &&
-		precedences[parse.Kind] >= precedence; {
+	for oprKind, ok := operators[parse.tok.Kind]; ok &&
+		precedences[parse.tok.Kind] >= precedence; {
 
 		operatorTok := parse.next()
 		y := parse.binaryExpr(precedences[operatorTok.Kind] + 1)
@@ -709,7 +709,7 @@ func (parse *parser) primaryFrom(operand ast.Node) ast.Node {
 	}
 
 	for {
-		switch parse.Kind {
+		switch parse.tok.Kind {
 		case token.Dot:
 			dotTok := parse.next()
 
@@ -738,7 +738,7 @@ func (parse *parser) operand() ast.Node {
 		defer parse.popTrace()
 	}
 
-	switch parse.Kind {
+	switch parse.tok.Kind {
 	case token.LowercaseIdent, token.IdentPlaceholder:
 		return parse.ident()
 
@@ -755,7 +755,7 @@ func (parse *parser) operand() ast.Node {
 		return parse.brackets(parse.expr)
 
 	default:
-		parse.error(errExpectedOperand(parse.Span))
+		parse.error(errExpectedOperand(parse.tok.Span))
 		panic("unreachable")
 	}
 }
@@ -769,10 +769,10 @@ func (parse *parser) selector() ast.Node {
 		defer parse.popTrace()
 	}
 
-	if parse.Kind != token.LowercaseIdent {
+	if parse.tok.Kind != token.LowercaseIdent {
 		parse.error(errUnexpectedToken(
-			parse.Span,
-			parse.Kind,
+			parse.tok.Span,
+			parse.tok.Kind,
 			token.LowercaseIdent,
 			token.UppercaseIdent,
 			token.LCurly,
@@ -799,7 +799,7 @@ func (parse *parser) labeled(f func(label *ast.Lower, colon text.Pos) ast.Node) 
 		// :f  ->   nil, colon 	- short label, 'f' must be able to parse an ident
 		// l:f -> ident, colon 	- regular label, followed by 'f'
 		// l   -> ident, nil 	- 'f' must be able to parse an ident
-		ident := parse.LowercaseIdent()
+		ident := parse.lowercaseIdent()
 		colon, _ := parse.consume(token.Colon)
 
 		return f(ident, colon.Span.From)
@@ -874,7 +874,7 @@ func (parse *parser) blockFunc(f func() ast.Node) *ast.Block {
 	}
 
 	if !parse.match(token.LCurly) {
-		parse.error(errExpectedBlock(parse.Span))
+		parse.error(errExpectedBlock(parse.tok.Span))
 		panic("unreachable")
 	}
 
@@ -940,7 +940,7 @@ func fromLabel[T labelParser](parse *parser, t T) ast.Node {
 		defer parse.popTrace()
 	}
 
-	ident := parse.LowercaseIdent()
+	ident := parse.lowercaseIdent()
 	colon, _ := parse.consume(token.Colon)
 
 	// l:f -> ident, colon 	- regular label, followed by 'f'
@@ -1001,8 +1001,8 @@ func (fieldFromLabel) FromNothing(parse *parser) ast.Node {
 	}
 
 	parse.error(errUnexpectedToken(
-		parse.Span,
-		parse.Kind,
+		parse.tok.Span,
+		parse.tok.Kind,
 		"'lowercase identifier' or ':' for field",
 		"'capitalized identifier' for variant",
 	))

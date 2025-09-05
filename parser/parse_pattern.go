@@ -96,7 +96,7 @@ func (parse *parser) pattern(kind patternKind) ast.Pattern {
 		}
 
 	default:
-		parse.error(errExpectedPattern(parse.Span, 0))
+		parse.error(errExpectedPattern(parse.tok.Span, 0))
 		panic("unreachable")
 	}
 
@@ -187,7 +187,7 @@ func (parse *parser) patternRebinding(pattern ast.Pattern) ast.Pattern {
 
 func (parse *parser) patternListItem(kind patternKind) ast.Node {
 	if dots, ok := parse.consume(token.Ellipsis); ok {
-		name := parse.LowercaseIdent()
+		name := parse.lowercaseIdent()
 
 		return &ast.PatternRange{
 			Name:     name,
