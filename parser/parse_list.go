@@ -144,9 +144,9 @@ func (parse *parser) handleError(err report.Builder) {
 }
 
 // The try function catches any error panic while parsing the item and
-// replaces node with [ast.BadNode] in case of error.
+// replaces node with [*ast.BadNode] in case of error.
 //
-// This function always return not-nil node.
+// This function always return non-nil node.
 func (parse *parser) try(item func() ast.Node) ast.Node {
 	start := parse.Span.From
 	node, err := catch(item)
@@ -161,8 +161,6 @@ func (parse *parser) try(item func() ast.Node) ast.Node {
 
 // The ensure function catches any error panic while parsing the item and
 // replaces node with nil in case of error.
-//
-// This function always return not-nil node.
 func (parse *parser) ensure(item func() ast.Node) ast.Node {
 	node, err := catch(item)
 
@@ -177,7 +175,7 @@ func (parse *parser) ensure(item func() ast.Node) ast.Node {
 // The catch function catches any error panic while parsing the item. If the
 // panic value is not an error, it re-panics with the original value.
 //
-// The item must return a non-nil node, otherwise this function will panic.
+// The item must parse a non-nil node, otherwise this function will panic.
 func catch(item func() ast.Node) (node ast.Node, err report.Builder) {
 	defer func() {
 		if p := recover(); p != nil {
