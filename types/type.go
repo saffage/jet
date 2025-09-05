@@ -258,8 +258,8 @@ func (t *Fn) CheckArgs(args TypeList, argsNode ...*ast.Parens) error {
 
 	var errs []error
 	var arg = func(i int) ast.Node {
-		if i < len(argsNode) {
-			return argsNode[i]
+		if i < len(node.Nodes) {
+			return node.Nodes[i]
 		}
 		return nil
 	}
