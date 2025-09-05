@@ -31,8 +31,8 @@ type Binding struct {
 	variant *Variant
 	params  []*Binding
 
-	node        *ast.Decl
-	declNode    *ast.LetDecl     // May be nil.
+	node        ast.Ident
+	declNode    *ast.ValueDecl   // May be nil.
 	labelNode   *ast.Lower       // May be nil.
 	variantNode *ast.VariantDecl // May be nil.
 
@@ -44,8 +44,8 @@ func NewBinding(
 	owner *Env,
 	local *Env,
 	value *Value,
-	decl *ast.Decl,
-	letNode *ast.LetDecl,
+	decl ast.Ident,
+	letNode *ast.ValueDecl,
 ) *Binding {
 	return &Binding{
 		owner:    owner,
@@ -69,10 +69,10 @@ func NewVariant(
 		tParams[i] = param.Type()
 	}
 
-	var decl *ast.Decl
+	var decl ast.Ident
 
 	if node != nil {
-		decl = &ast.Decl{Ident: node.Name}
+		decl = node.Name
 	}
 
 	return &Binding{
@@ -89,7 +89,7 @@ func NewVariant(
 func NewField(
 	owner *Env,
 	field *Field,
-	node *ast.Decl,
+	node *ast.Lower,
 	label *ast.Lower,
 ) *Binding {
 	return &Binding{
@@ -118,7 +118,7 @@ func (sym *Binding) Params() []*Binding   { return sym.params }
 func (sym *Binding) Ident() ast.Ident {
 	if sym.IsVariant() {
 		if sym.node != nil {
-			return sym.node.Ident
+			return sym.node
 		}
 
 		return &ast.Lower{Data: sym.variant.Name}
@@ -126,7 +126,7 @@ func (sym *Binding) Ident() ast.Ident {
 
 	if sym.IsField() {
 		if sym.node != nil {
-			return sym.node.Ident
+			return sym.node
 		}
 
 		return &ast.Lower{Data: sym.field.Name}
@@ -137,7 +137,7 @@ func (sym *Binding) Ident() ast.Ident {
 		return &ast.Lower{Data: sym.externalName}
 	}
 
-	return sym.node.Ident
+	return sym.node
 }
 
 func (sym *Binding) ParamTypes() TypeList {
@@ -157,9 +157,9 @@ func (sym *Binding) Variadic() Type {
 	return nil
 }
 
-func (v *Binding) ValueNode() ast.Node {
-	if v.declNode != nil {
-		return v.declNode.Value
+func (sym *Binding) ValueNode() ast.Node {
+	if sym.declNode != nil {
+		return sym.declNode.Value
 	}
 	return nil
 }
@@ -174,8 +174,8 @@ type ExternalBinding struct {
 	value  *Value
 	params []*Binding
 
-	node     *ast.Decl
-	declNode *ast.LetDecl // May be nil.
+	node     *ast.Lower
+	declNode *ast.ValueDecl // May be nil.
 }
 
 //------------------------------------------------
